@@ -1,0 +1,2 @@
+[env]
+TESTING_CONTENT_ROOT = { value = "tests/data/content/files", relative = true }

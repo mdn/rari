@@ -1,0 +1,105 @@
+use std::path::{PathBuf, StripPrefixError};
+use std::sync::PoisonError;
+
+use css_syntax::error::SyntaxError;
+use rari_md::error::MarkdownError;
+use rari_types::error::EnvError;
+use rari_types::locale::LocaleError;
+use rari_types::ArgError;
+use thiserror::Error;
+
+use crate::docs::page::PageCategory;
+
+#[derive(Debug, Error)]
+pub enum DocError {
+    #[error("No parent")]
+    NoParent(PathBuf),
+    #[error(transparent)]
+    NoSuchPrefix(#[from] StripPrefixError),
+    #[error("No curricm root set")]
+    NoCurriculumRoot,
+    #[error("No H1 found")]
+    NoH1,
+    #[error(transparent)]
+    WalkError(#[from] ignore::Error),
+    #[error(transparent)]
+    JsonError(#[from] serde_json::Error),
+    #[error("File not found in static cache: {0}")]
+    NotFoundInStaticCache(PathBuf),
+    #[error("File cache broken")]
+    FileCacheBroken,
+    #[error("File cache poisoned")]
+    FileCachePoisoned,
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
+    #[error("Error parsing frontmatter: {0}")]
+    FMError(#[from] yaml_rust::scanner::ScanError),
+    #[error("Missing frontmatter")]
+    NoFrontmatter,
+    #[error("Invalid frontmatter: {0}")]
+    InvalidFrontmatter(#[from] serde_yaml::Error),
+    #[error(transparent)]
+    EnvError(#[from] EnvError),
+    #[error(transparent)]
+    UrlError(#[from] UrlError),
+    #[error(transparent)]
+    MarkdownError(#[from] MarkdownError),
+    #[error(transparent)]
+    LocaleError(#[from] LocaleError),
+    #[error("failed to convert bytes: {0}")]
+    StrUtf8Error(#[from] std::str::Utf8Error),
+    #[error(transparent)]
+    LolError(#[from] lol_html::errors::RewritingError),
+    #[error(transparent)]
+    Utf8Error(#[from] std::string::FromUtf8Error),
+    #[error("Link to redirect: {from} -> {to}")]
+    RedirectedLink { from: String, to: String },
+    #[error("Sidebar cache poisoned")]
+    SidebarCachePoisoned,
+    #[error("Unknown macro: {0}")]
+    UnknownMacro(String),
+    #[error("CSS Page type required")]
+    CssPageTypeRequired,
+    #[error(transparent)]
+    ArgError(#[from] ArgError),
+    #[error("pest error: {0}")]
+    PestError(String),
+    #[error("failed to decode ks: {0}")]
+    DecodeError(#[from] base64::DecodeError),
+    #[error("failed to de/serialize")]
+    SerializationError,
+    #[error(transparent)]
+    CssSyntaxError(#[from] SyntaxError),
+    #[error(transparent)]
+    FmtError(#[from] std::fmt::Error),
+    #[error("invalid templ: {0}")]
+    InvalidTempl(String),
+    #[error("doc not found {0}")]
+    DocNotFound(PathBuf),
+    #[error("page({1:?}) not found {0}")]
+    PageNotFound(String, PageCategory),
+    #[error("no blog root")]
+    NoBlogRoot,
+}
+
+impl<T> From<PoisonError<T>> for DocError {
+    fn from(_: PoisonError<T>) -> Self {
+        Self::FileCachePoisoned
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum UrlError {
+    #[error("invalid url")]
+    InvalidUrl,
+    #[error(transparent)]
+    LocaleError(#[from] LocaleError),
+    #[error(transparent)]
+    EnvError(#[from] EnvError),
+}
+
+#[derive(Debug, Error)]
+pub enum FileError {
+    #[error("not a subpath")]
+    NoSubPath(#[from] StripPrefixError),
+}

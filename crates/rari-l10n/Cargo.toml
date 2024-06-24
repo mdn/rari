@@ -1,0 +1,10 @@
+[package]
+name = "rari-l10n"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+rari-types = { path = "../rari-types" }
+

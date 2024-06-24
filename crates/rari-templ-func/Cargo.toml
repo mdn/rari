@@ -1,0 +1,17 @@
+[package]
+name = "rari-templ-func"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+rari-types = { path = "../rari-types" }
+
+[dev-dependencies]
+anyhow = "1"

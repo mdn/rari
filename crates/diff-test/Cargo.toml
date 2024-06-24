@@ -1,0 +1,21 @@
+[package]
+name = "diff-test"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.5.1", features = ["derive"] }
+ignore = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+jsonpath_lib = "0.3.0"
+prettydiff = "0.7"
+html-minifier = "5"
+ansi-to-html = "0.2"
+itertools = "0.13"
+similar = "2"
+regex = "1"
+once_cell = "1"
