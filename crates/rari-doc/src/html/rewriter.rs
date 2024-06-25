@@ -155,9 +155,10 @@ pub fn post_process_html<T: PageLike>(
         }),
     ];
     if sidebar {
-        element_content_handlers.push(element!(&format!("a[href=\"{}\"]", page.url()), |el| {
-            el.before("<em>", ContentType::Html);
-            el.after("</em>", ContentType::Html);
+        element_content_handlers.push(element!("*[data-rewriter=em]", |el| {
+            el.prepend("<em>", ContentType::Html);
+            el.append("</em>", ContentType::Html);
+            el.remove_attribute("data-rewriter");
             Ok(())
         }));
         element_content_handlers.push(element!("html", |el| {

@@ -7,7 +7,7 @@ use rari_types::locale::Locale;
 
 use crate::docs::page::{Page, PageLike, PageReader};
 use crate::error::DocError;
-use crate::html::links::render_link;
+use crate::html::links::render_link_via_page;
 use crate::percent::PATH_SEGMENT;
 use crate::redirects::resolve_redirect;
 use crate::utils::COLLATOR;
@@ -52,7 +52,7 @@ impl RariApi {
         let doc = Page::page_from_url_path(url)?;
         if let Some(folder) = doc.full_path().parent() {
             let sub_folders = walk_builder(&[folder], None)?
-                .max_depth(depth)
+                .max_depth(depth.map(|i| i + 1))
                 .build()
                 .filter_map(|f| f.ok())
                 .filter(|f| f.file_type().map(|ft| ft.is_file()).unwrap_or(false))
@@ -79,14 +79,14 @@ impl RariApi {
 
     pub fn link(
         link: &str,
-        locale: Option<&Locale>,
+        locale: Option<Locale>,
         content: Option<&str>,
         code: bool,
         title: Option<&str>,
         with_badge: bool,
     ) -> Result<String, DocError> {
         let mut out = String::new();
-        render_link(&mut out, link, locale, content, code, title, with_badge)?;
+        render_link_via_page(&mut out, link, locale, content, code, title, with_badge)?;
         Ok(out)
     }
 }

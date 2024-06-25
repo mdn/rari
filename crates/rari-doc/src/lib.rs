@@ -7,6 +7,7 @@ pub mod html;
 pub mod percent;
 pub mod redirects;
 pub mod resolve;
+pub mod sidebars;
 pub mod specs;
 pub mod templ;
 pub mod utils;

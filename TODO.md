@@ -9,3 +9,4 @@
 - [ ] blog order uses inverse title compare as fallback
 - [ ] unify link rendering
 - [ ] locale compare for sidebar?!
+- [ ] l10n for jsref

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 pub use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
+use ego_tree::NodeId;
 use html5ever::{namespace_url, ns, QualName};
 use once_cell::sync::Lazy;
 use rari_types::fm_types::PageType;
@@ -10,10 +11,11 @@ use rari_types::locale::Locale;
 use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize};
 
-use super::links::render_link;
+use super::links::{render_link_from_page, render_link_via_page, LinkModifier};
 use super::rewriter::post_process_html;
 use crate::cached_readers::read_sidebar;
 use crate::docs::doc::Doc;
+use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::templ::macros::listsubpages::{
     list_sub_pages_grouped_internal, list_sub_pages_internal,
@@ -34,11 +36,30 @@ type SidebarCache = Arc<RwLock<HashMap<Locale, HashMap<String, String>>>>;
 
 static SIDEBAR_CACHE: Lazy<SidebarCache> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
+fn add_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str) {
+    if let Some(mut details) = html.tree.get_mut(node_id) {
+        if let Node::Element(ref mut el) = details.value() {
+            el.attrs.insert(
+                QualName {
+                    prefix: None,
+                    ns: ns!(),
+                    local: key.into(),
+                },
+                value.into(),
+            );
+        }
+    }
+}
+
 fn highlight_current(mut html: Html, url: &str) -> Result<String, DocError> {
     let a_selector = Selector::parse(&format!("a[href=\"{url}\"]")).unwrap();
     let mut details = vec![];
+    let mut parent_id = None;
     if let Some(a) = html.select(&a_selector).next() {
         let mut next = a.parent();
+        if let Some(parent) = &next {
+            parent_id = Some(parent.id());
+        }
         while let Some(parent) = next {
             if let Node::Element(el) = parent.value() {
                 if el.name() == "details" {
@@ -48,19 +69,11 @@ fn highlight_current(mut html: Html, url: &str) -> Result<String, DocError> {
             next = parent.parent();
         }
     }
+    if let Some(parent_id) = parent_id {
+        add_attribute(&mut html, parent_id, "data-rewriter", "em");
+    }
     for details in details {
-        if let Some(mut details) = html.tree.get_mut(details) {
-            if let Node::Element(ref mut el) = details.value() {
-                el.attrs.insert(
-                    QualName {
-                        prefix: None,
-                        ns: ns!(),
-                        local: "open".into(),
-                    },
-                    "".into(),
-                );
-            }
-        }
+        add_attribute(&mut html, details, "open", "");
     }
 
     Ok(html.html())
@@ -83,8 +96,8 @@ pub fn render_sidebar(doc: &Doc) -> Result<Option<String>, DocError> {
                     return Ok::<_, DocError>(sb.to_owned());
                 }
             }
-            let sidebar = read_sidebar(s, locale)?;
-            let rendered_sidebar = sidebar.render(&locale)?;
+            let sidebar = read_sidebar(s, locale, doc.slug())?;
+            let rendered_sidebar = sidebar.render(locale)?;
             if cache {
                 SIDEBAR_CACHE
                     .write()
@@ -106,12 +119,13 @@ pub fn render_sidebar(doc: &Doc) -> Result<Option<String>, DocError> {
     Ok(if out.is_empty() { None } else { Some(out) })
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(transparent)]
 pub struct Sidebar {
     pub entries: Vec<SidebarEntry>,
 }
 
+#[derive(Debug)]
 pub struct MetaSidebar {
     pub entries: Vec<SidebarMetaEntry>,
 }
@@ -124,7 +138,7 @@ impl From<Sidebar> for MetaSidebar {
 }
 
 impl MetaSidebar {
-    pub fn render(&self, locale: &Locale) -> Result<String, DocError> {
+    pub fn render(&self, locale: Locale) -> Result<String, DocError> {
         let mut out = String::new();
         out.push_str("<ol>");
         for entry in &self.entries {
@@ -135,16 +149,18 @@ impl MetaSidebar {
     }
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub struct BasicEntry {
     pub link: Option<String>,
     pub title: Option<String>,
     #[serde(default)]
+    pub code: bool,
+    #[serde(default)]
     pub children: Vec<SidebarEntry>,
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub struct SubPageEntry {
     pub path: String,
@@ -156,7 +172,7 @@ pub struct SubPageEntry {
     pub details: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SidebarEntry {
     Section(BasicEntry),
@@ -169,18 +185,67 @@ pub enum SidebarEntry {
     Link(String),
 }
 
+#[derive(Debug, Default)]
 pub enum MetaChildren {
     Children(Vec<SidebarMetaEntry>),
     ListSubPages(String, Vec<PageType>),
     ListSubPagesGrouped(String, Vec<PageType>),
+    #[default]
     None,
 }
 
+#[derive(Debug)]
+pub enum SidebarMetaEntryContent {
+    Link {
+        link: Option<String>,
+        title: Option<String>,
+    },
+    Page(Page),
+}
+
+impl Default for SidebarMetaEntryContent {
+    fn default() -> Self {
+        Self::Link {
+            link: None,
+            title: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Details {
+    #[default]
+    None,
+    Closed,
+    Open,
+}
+
+impl Details {
+    pub fn is_set(&self) -> bool {
+        matches!(self, Self::Closed | Self::Open)
+    }
+
+    pub fn is_open(&self) -> bool {
+        matches!(self, Self::Open)
+    }
+}
+
+impl From<bool> for Details {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::Closed
+        } else {
+            Self::None
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct SidebarMetaEntry {
-    pub details: bool,
+    pub details: Details,
     pub section: bool,
-    pub link: Option<String>,
-    pub title: Option<String>,
+    pub code: bool,
+    pub content: SidebarMetaEntryContent,
     pub children: MetaChildren,
 }
 
@@ -190,12 +255,13 @@ impl From<SidebarEntry> for SidebarMetaEntry {
             SidebarEntry::Section(BasicEntry {
                 link,
                 title,
+                code,
                 children,
             }) => SidebarMetaEntry {
                 section: true,
-                details: false,
-                link,
-                title,
+                details: Details::None,
+                code,
+                content: SidebarMetaEntryContent::Link { link, title },
                 children: if children.is_empty() {
                     MetaChildren::None
                 } else {
@@ -205,12 +271,13 @@ impl From<SidebarEntry> for SidebarMetaEntry {
             SidebarEntry::Details(BasicEntry {
                 link,
                 title,
+                code,
                 children,
             }) => SidebarMetaEntry {
                 section: false,
-                details: true,
-                link,
-                title,
+                details: Details::Closed,
+                code,
+                content: SidebarMetaEntryContent::Link { link, title },
                 children: if children.is_empty() {
                     MetaChildren::None
                 } else {
@@ -225,9 +292,9 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 path,
             }) => SidebarMetaEntry {
                 section: false,
-                details,
-                link,
-                title,
+                details: details.into(),
+                code: false,
+                content: SidebarMetaEntryContent::Link { link, title },
                 children: MetaChildren::ListSubPages(path, tags),
             },
             SidebarEntry::ListSubPagesGrouped(SubPageEntry {
@@ -238,27 +305,31 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 path,
             }) => SidebarMetaEntry {
                 section: false,
-                details,
-                link,
-                title,
+                details: details.into(),
+                code: false,
+                content: SidebarMetaEntryContent::Link { link, title },
                 children: MetaChildren::ListSubPagesGrouped(path, tags),
             },
             SidebarEntry::Default(BasicEntry {
                 link,
                 title,
+                code,
                 children,
             }) => SidebarMetaEntry {
                 section: false,
-                details: false,
-                link,
-                title,
+                details: Details::None,
+                code,
+                content: SidebarMetaEntryContent::Link { link, title },
                 children: MetaChildren::Children(children.into_iter().map(Into::into).collect()),
             },
             SidebarEntry::Link(link) => SidebarMetaEntry {
                 section: false,
-                details: false,
-                link: Some(link),
-                title: None,
+                details: Details::None,
+                code: false,
+                content: SidebarMetaEntryContent::Link {
+                    link: Some(link),
+                    title: None,
+                },
                 children: MetaChildren::None,
             },
         }
@@ -266,33 +337,60 @@ impl From<SidebarEntry> for SidebarMetaEntry {
 }
 
 impl SidebarMetaEntry {
-    pub fn render(&self, out: &mut String, locale: &Locale) -> Result<(), DocError> {
+    pub fn render(&self, out: &mut String, locale: Locale) -> Result<(), DocError> {
         out.push_str("<li");
         if self.section {
             out.push_str(" class=\"section\"");
         }
-        if self.details || !matches!(self.children, MetaChildren::None) {
+        if self.details.is_set() || !matches!(self.children, MetaChildren::None) {
             out.push_str(" class=\"toggle\"");
         }
-        if self.details {
-            out.push_str("><details><summary");
+        if self.details.is_set() {
+            out.push_str("><details");
+            if self.details.is_open() {
+                out.push_str(" open ")
+            }
+            out.push_str("><summary")
         }
         out.push('>');
-        if let Some(link) = &self.link {
-            render_link(
-                out,
-                link,
-                Some(locale),
-                self.title.as_deref(),
-                false,
-                None,
-                true,
-            )?;
-        } else {
-            out.push_str(self.title.as_deref().unwrap_or_default());
+        match &self.content {
+            SidebarMetaEntryContent::Link {
+                link: Some(link),
+                title,
+            } => {
+                render_link_via_page(
+                    out,
+                    link,
+                    Some(locale),
+                    title.as_deref(),
+                    self.code,
+                    None,
+                    true,
+                )?;
+            }
+            SidebarMetaEntryContent::Link { link: None, title } => {
+                if self.code {
+                    out.push_str("<code>");
+                }
+                out.push_str(title.as_deref().unwrap_or_default());
+                if self.code {
+                    out.push_str("</code>");
+                }
+            }
+            SidebarMetaEntryContent::Page(page) => {
+                render_link_from_page(
+                    out,
+                    page,
+                    &LinkModifier {
+                        badges: page.status(),
+                        badge_locale: page.locale(),
+                        code: self.code,
+                    },
+                )?;
+            }
         }
 
-        if self.details {
+        if self.details.is_set() {
             out.push_str("</summary>");
         }
 
@@ -316,7 +414,7 @@ impl SidebarMetaEntry {
         if !matches!(self.children, MetaChildren::None) {
             out.push_str("</ol>");
         }
-        if self.details {
+        if self.details.is_set() {
             out.push_str("</details>");
         }
         out.push_str("</li>");

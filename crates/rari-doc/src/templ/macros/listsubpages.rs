@@ -30,7 +30,7 @@ pub fn list_sub_pages(
     list_sub_pages_internal(
         &mut out,
         url,
-        &env.locale,
+        env.locale,
         page_types
             .map(|pt| {
                 pt.split(',')
@@ -60,7 +60,7 @@ pub fn list_sub_pages_grouped(
     list_sub_pages_grouped_internal(
         &mut out,
         url,
-        &env.locale,
+        env.locale,
         page_types
             .map(|pt| {
                 pt.split(',')
@@ -74,10 +74,10 @@ pub fn list_sub_pages_grouped(
     Ok(out)
 }
 
-fn write_li_with_badges(
+pub fn write_li_with_badges(
     out: &mut impl Write,
     page: &impl PageLike,
-    locale: &Locale,
+    locale: Locale,
 ) -> std::fmt::Result {
     write!(
         out,
@@ -100,7 +100,7 @@ fn write_li_with_badges(
 pub fn list_sub_pages_internal(
     out: &mut impl Write,
     url: &str,
-    locale: &Locale,
+    locale: Locale,
     page_types: &[PageType],
 ) -> Result<(), DocError> {
     let sub_pages = RariApi::get_sub_pages(url, None)?;
@@ -117,7 +117,7 @@ pub fn list_sub_pages_internal(
 pub fn list_sub_pages_grouped_internal(
     out: &mut String,
     url: &str,
-    locale: &Locale,
+    locale: Locale,
     page_types: &[PageType],
 ) -> Result<(), DocError> {
     let sub_pages = RariApi::get_sub_pages(url, None)?;

@@ -2,7 +2,7 @@ use rari_types::globals::json_l10n_files;
 use rari_types::locale::Locale;
 
 #[allow(clippy::wildcard_in_or_patterns)]
-pub fn l10n(key: &str, locale: &Locale) -> &'static str {
+pub fn l10n(key: &str, locale: Locale) -> &'static str {
     match key {
         "experimental_badge_title" => match locale {
             Locale::EnUs => "Experimental. Expect behavior to change in the future.",

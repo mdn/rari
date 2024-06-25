@@ -9,7 +9,7 @@ pub fn glossary(term_name: String, display_name: Option<String>) -> Result<Strin
     let url = format!("/Glossary/{}", trim_ws(&term_name).replace(' ', "_"));
     RariApi::link(
         &url,
-        Some(&env.locale),
+        Some(env.locale),
         Some(&display_name.unwrap_or(term_name)),
         false,
         None,

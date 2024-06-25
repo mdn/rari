@@ -17,7 +17,7 @@ use validator::Validate;
 use super::page::{Page, PageCategory, PageLike, PageReader};
 use crate::cached_readers::{page_from_static_files, CACHED_PAGE_FILES};
 use crate::error::DocError;
-use crate::resolve::build_url;
+use crate::resolve::{build_url, url_to_path_buf};
 use crate::templ::parser::{decode_ks, encode_ks};
 use crate::utils::{locale_and_typ_from_path, root_for_locale, split_fm, t_or_vec};
 
@@ -85,6 +85,19 @@ pub struct Doc {
 }
 
 pub type ADoc = Arc<Doc>;
+
+impl Doc {
+    pub fn page_from_slug(slug: &str, locale: Locale) -> Result<Page, DocError> {
+        Doc::page_from_slug_path(&url_to_path_buf(slug), locale)
+    }
+    pub fn page_from_slug_path(path: &Path, locale: Locale) -> Result<Page, DocError> {
+        let mut file = root_for_locale(locale)?.to_path_buf();
+        file.push(locale.as_folder_str());
+        file.push(path);
+        file.push("index.md");
+        Doc::read(file)
+    }
+}
 
 impl PageReader for Doc {
     fn read(path: impl Into<PathBuf>) -> Result<Page, DocError> {

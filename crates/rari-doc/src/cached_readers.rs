@@ -14,12 +14,13 @@ use crate::docs::curriculum::{CurriculumIndexEntry, CurriculumPage};
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::html::sidebar::{MetaSidebar, Sidebar};
+use crate::sidebars::jsref;
 use crate::utils::{root_for_locale, split_fm};
 use crate::walker::{read_docs_parallel, walk_builder};
 
 pub static STATIC_PAGE_FILES: OnceCell<HashMap<PathBuf, Page>> = OnceCell::new();
 pub static CACHED_PAGE_FILES: OnceCell<Arc<RwLock<HashMap<PathBuf, Page>>>> = OnceCell::new();
-type SidebarFilesCache = Arc<RwLock<HashMap<PathBuf, Arc<MetaSidebar>>>>;
+type SidebarFilesCache = Arc<RwLock<HashMap<(String, Locale), Arc<MetaSidebar>>>>;
 pub static CACHED_SIDEBAR_FILES: Lazy<SidebarFilesCache> =
     Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 pub static CACHED_CURRICULUM: OnceCell<CurriculumFiles> = OnceCell::new();
@@ -39,23 +40,30 @@ pub struct CurriculumFiles {
     pub index: Vec<CurriculumIndexEntry>,
 }
 
-pub fn read_sidebar(name: &str, locale: Locale) -> Result<Arc<MetaSidebar>, DocError> {
-    let mut file = root_for_locale(locale)?.to_path_buf();
-    file.push("sidebars");
-    file.push(locale.as_folder_str());
-    file.push(name);
-    file.set_extension("yaml");
-    if cache_content() {
-        if let Some(sidebar) = CACHED_SIDEBAR_FILES.read()?.get(&file) {
-            return Ok(sidebar.clone());
+pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSidebar>, DocError> {
+    let sidebar = match name {
+        "jsref" => Arc::new(jsref::sidebar(slug, locale)?),
+        _ => {
+            let key = (name.to_string(), locale);
+            if cache_content() {
+                if let Some(sidebar) = CACHED_SIDEBAR_FILES.read()?.get(&key) {
+                    return Ok(sidebar.clone());
+                }
+            }
+            let mut file = root_for_locale(locale)?.to_path_buf();
+            file.push("sidebars");
+            file.push(locale.as_folder_str());
+            file.push(name);
+            file.set_extension("yaml");
+            let raw = read_to_string(&file)?;
+            let sidebar: Sidebar = serde_yaml::from_str(&raw)?;
+            let sidebar = Arc::new(MetaSidebar::from(sidebar));
+            if cache_content() {
+                CACHED_SIDEBAR_FILES.write()?.insert(key, sidebar.clone());
+            }
+            sidebar
         }
-    }
-    let raw = read_to_string(&file)?;
-    let sidebar: Sidebar = serde_yaml::from_str(&raw)?;
-    let sidebar = Arc::new(MetaSidebar::from(sidebar));
-    if cache_content() {
-        CACHED_SIDEBAR_FILES.write()?.insert(file, sidebar.clone());
-    }
+    };
     Ok(sidebar)
 }
 
