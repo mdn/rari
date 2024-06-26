@@ -170,7 +170,6 @@ const IGNORE: &[&str] = &[
     "doc.sidebarHTML",
 ];
 
-static LOWER_CASE: &[&str] = &[];
 static WS_DIFF: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
 
 fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<String, String>) {
