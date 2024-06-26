@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashSet;
 
 use lol_html::html_content::ContentType;
 use lol_html::{element, text, HtmlRewriter, Settings};
@@ -18,8 +19,33 @@ pub fn post_process_html<T: PageLike>(
     sidebar: bool,
 ) -> Result<String, DocError> {
     let mut output = vec![];
+    let mut ids = HashSet::new();
 
     let mut element_content_handlers = vec![
+        element!("*[id]", |el| {
+            if let Some(id) = el.get_attribute("id") {
+                if !ids.contains(id.as_str()) {
+                    let (prefix, mut count) = if let Some((prefix, counter)) = id.rsplit_once('_') {
+                        if counter.chars().all(|c| c.is_ascii_digit()) {
+                            let count = counter.parse::<i64>().unwrap_or_default() + 1;
+                            (prefix, count)
+                        } else {
+                            (id.as_str(), 2)
+                        }
+                    } else {
+                        (id.as_str(), 2)
+                    };
+                    let mut id = format!("{prefix}_{count}");
+                    while !ids.insert(id) && count < 666 {
+                        count += 1;
+                        id = format!("{prefix}_{count}");
+                    }
+                } else {
+                    ids.insert(id);
+                }
+            }
+            Ok(())
+        }),
         element!("img:not([loading])", |el| {
             el.set_attribute("loading", "lazy")?;
             Ok(())

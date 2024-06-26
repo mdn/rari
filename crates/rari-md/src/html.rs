@@ -123,7 +123,7 @@ impl Anchorizer {
             let anchor = if uniq == 0 {
                 Cow::from(&id)
             } else {
-                Cow::from(format!("{}_{}", id, uniq))
+                Cow::from(format!("{}_{}", id, uniq + 1))
             };
 
             if !self.0.contains(&*anchor) {
