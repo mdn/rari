@@ -97,6 +97,7 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
                     }
 
                     if text.starts_with(NoteCard::Warning.prefix_for_locale(locale)) {
+                        grand_child.detach();
                         return Some(NoteCard::Warning);
                     }
                     if text.starts_with(NoteCard::Note.prefix_for_locale(locale)) {

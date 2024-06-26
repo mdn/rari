@@ -1,24 +1,20 @@
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rari_md::m2h;
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
-use tracing::warn;
 use validator::Validate;
 
 use super::page::{Page, PageCategory, PageLike, PageReader};
 use crate::cached_readers::{page_from_static_files, CACHED_PAGE_FILES};
 use crate::error::DocError;
 use crate::resolve::{build_url, url_to_path_buf};
-use crate::templ::parser::{decode_ks, encode_ks};
 use crate::utils::{locale_and_typ_from_path, root_for_locale, split_fm, t_or_vec};
 
 /*
@@ -238,26 +234,8 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
     })
 }
 
-pub fn render_md_to_html(
-    input: &str,
-    locale: Locale,
-    path: Option<&impl Display>,
-) -> Result<String, DocError> {
-    let (encoded, before) = encode_ks(input)?;
-    let encoded_html = m2h(&encoded, locale)?;
-    let (html, after) = decode_ks(&encoded_html)?;
-    if before != after {
-        if deny_warnings() {
-            return Err(DocError::InvalidTempl(
-                path.map(|s| s.to_string()).unwrap_or_default(),
-            ));
-        }
-        warn!(
-            "invalid templ: {}",
-            path.map(|s| s.to_string()).unwrap_or_default()
-        );
-    }
-
+pub fn render_md_to_html(input: &str, locale: Locale) -> Result<String, DocError> {
+    let html = m2h(input, locale)?;
     Ok(html)
 }
 

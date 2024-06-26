@@ -87,7 +87,8 @@ pub fn post_process_html<T: PageLike>(
 
             Ok(())
         }),
-        element!("dt:first-child:not(a)", |el| {
+        element!("dt[data-add-link]", |el| {
+            el.remove_attribute("data-add-link");
             if let Some(id) = el.get_attribute("id") {
                 el.prepend(&format!("<a href=\"#{id}\">"), ContentType::Html);
                 el.append("</a>", ContentType::Html);

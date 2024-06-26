@@ -35,7 +35,7 @@ where
 pub fn m2h(input: &str, locale: Locale) -> Result<String, MarkdownError> {
     let arena = Arena::new();
     let mut options = ComrakOptions::default();
-    options.extension.tagfilter = true;
+    options.extension.tagfilter = false;
     options.render.unsafe_ = true;
     options.extension.table = true;
     options.extension.autolink = true;

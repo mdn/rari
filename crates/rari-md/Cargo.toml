@@ -13,3 +13,4 @@ once_cell = "1"
 thiserror = "1"
 comrak = { version = "0.24", default-features = false, features = ["syntect"] }
 rari-types = { path = "../rari-types" }
+itertools = "0.13"

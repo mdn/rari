@@ -2328,6 +2328,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "comrak",
+ "itertools",
  "once_cell",
  "rari-types",
  "regex",

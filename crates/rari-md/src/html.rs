@@ -16,6 +16,7 @@ use comrak::nodes::{
     TableAlignment,
 };
 use comrak::{ComrakOptions, ComrakPlugins, Options};
+use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rari_types::locale::Locale;
 
@@ -472,6 +473,28 @@ impl<'o> HtmlFormatter<'o> {
         }
     }
 
+    fn next_is_link<'a>(node: &'a AstNode<'a>) -> bool {
+        if let Some(child) = node.children().next() {
+            if matches!(child.data.borrow().value, NodeValue::Link(_)) {
+                return true;
+            }
+            if let NodeValue::HtmlInline(res) = &child.data.borrow().value {
+                return res.starts_with("<a ");
+            }
+            if matches!(child.data.borrow().value, NodeValue::Paragraph) {
+                if let Some(child) = child.children().next() {
+                    if matches!(child.data.borrow().value, NodeValue::Link(_)) {
+                        return true;
+                    }
+                    if let NodeValue::HtmlInline(res) = &child.data.borrow().value {
+                        return res.starts_with("<a ");
+                    }
+                }
+            }
+        }
+        false
+    }
+
     fn format_node<'a>(
         &mut self,
         node: &'a AstNode<'a>,
@@ -568,6 +591,9 @@ impl<'o> HtmlFormatter<'o> {
                     let mut id = String::from_utf8(text_content).unwrap();
                     id = self.anchorizer.anchorize(id);
                     write!(self.output, "<dt id=\"{}\"", id)?;
+                    if !Self::next_is_link(node) {
+                        write!(self.output, " data-add-link")?;
+                    }
                     self.render_sourcepos(node)?;
                     self.output.write_all(b">")?;
                 } else {
@@ -682,10 +708,13 @@ impl<'o> HtmlFormatter<'o> {
                                 pre_attributes.extend(code_attributes);
                                 let with_code = if let Some(cls) = pre_attributes.get_mut("class") {
                                     if !ncb.info.is_empty() {
-                                        *cls = format!(
-                                            "brush: {} notranslate",
-                                            ncb.info.strip_suffix("-nolint").unwrap_or(&ncb.info)
-                                        );
+                                        let langs = ncb
+                                            .info
+                                            .split_ascii_whitespace()
+                                            .map(|s| s.strip_suffix("-nolint").unwrap_or(s))
+                                            .join(" ");
+
+                                        *cls = format!("brush: {langs} notranslate",);
                                         &ncb.info != "plain"
                                     } else {
                                         *cls = "notranslate".to_string();

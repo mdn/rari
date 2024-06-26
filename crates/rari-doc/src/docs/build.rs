@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rari_types::fm_types::PageType;
 use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
@@ -129,17 +131,13 @@ pub fn make_toc(sections: &[BuildSection], with_h3: bool) -> Vec<TocEntry> {
 }
 
 pub fn build_content<T: PageLike>(doc: &T) -> Result<PageContent, DocError> {
-    let html = render_md_to_html(
-        doc.content(),
-        doc.locale(),
-        Some(&doc.full_path().display()),
-    )?;
     let ks_rendered_doc = if let Some(rari_env) = &doc.rari_env() {
-        render(rari_env, &html)?
+        Cow::Owned(render(rari_env, doc.content())?)
     } else {
-        html
+        Cow::Borrowed(doc.content())
     };
-    let post_processed_html = post_process_html(&ks_rendered_doc, doc, false)?;
+    let html = render_md_to_html(&ks_rendered_doc, doc.locale())?;
+    let post_processed_html = post_process_html(&html, doc, false)?;
     let fragment = Html::parse_fragment(&post_processed_html);
     let (sections, summary) = split_sections(&fragment).expect("DOOM");
     let toc = make_toc(&sections, matches!(doc.page_type(), PageType::Curriculum));

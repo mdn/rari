@@ -1,7 +1,3 @@
-use std::fmt::Write;
-
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
 use pest::iterators::Pair;
 use pest::Parser;
 use rari_types::{Arg, Quotes};
@@ -115,92 +111,6 @@ pub(crate) fn parse(input: &str) -> Result<Vec<Token>, DocError> {
     Ok(tokens)
 }
 
-fn encode_macro(s: &str, out: &mut String) -> Result<(), DocError> {
-    Ok(write!(
-        out,
-        "!::::{}::::!",
-        STANDARD.encode(&s[2..(s.len() - 2)])
-    )?)
-}
-
-fn decode_macro(s: &str, out: &mut String) -> Result<(), DocError> {
-    Ok(write!(
-        out,
-        "{{{{{}}}}}",
-        std::str::from_utf8(&STANDARD.decode(s)?)?
-    )?)
-}
-
-pub(crate) fn encode_ks(input: &str) -> Result<(String, i32), DocError> {
-    let tokens = parse(input)?;
-    let mut encoded = String::with_capacity(input.len());
-    let mut num_macros = 0;
-    for token in tokens {
-        match token {
-            Token::Text(t) => {
-                encoded.push_str(&input[t.start..t.end]);
-            }
-            Token::Macro(t) => {
-                num_macros += 1;
-                encode_macro(&input[t.start..t.end], &mut encoded)?
-            }
-        }
-    }
-    Ok((encoded, num_macros))
-}
-
-fn _strip_escape_residues(s: &str) -> &str {
-    let s = s.strip_prefix("&gt;").or(s.strip_prefix('>')).unwrap_or(s);
-    let s = s
-        .strip_suffix("!&lt;")
-        .or(s.strip_suffix("!<"))
-        .unwrap_or(s);
-    s
-}
-
-pub(crate) fn decode_ks(input: &str) -> Result<(String, i32), DocError> {
-    let mut decoded = String::with_capacity(input.len());
-    let mut num_macros = 0;
-    // We're splitting only by `!-- ks___` because e.g. ks in a <pre> will be escaped.
-    if !input.contains("!::::") {
-        return Ok((input.to_string(), 0));
-    }
-    let mut frags = vec![];
-    for frag in input.split("!::::") {
-        let has_ks = frag.contains("::::!");
-        for (i, sub_frag) in frag.splitn(2, "::::!").enumerate() {
-            if i == 0 && has_ks {
-                num_macros += 1;
-                frags.push(sub_frag);
-                //decode_macro(sub_frag, &mut decoded)?;
-            } else {
-                //decoded.push_str(strip_escape_residues(sub_frag))
-                frags.push(sub_frag)
-            }
-        }
-    }
-    for i in 0..frags.len() {
-        if i % 2 == 1
-            && i < frags.len() + 1
-            && frags[i - 1].ends_with("<p>")
-            && frags[i + 1].starts_with("</p>")
-        {
-            frags[i - 1] = frags[i - 1].strip_suffix("<p>").unwrap();
-            frags[i + 1] = frags[i + 1].strip_prefix("</p>").unwrap();
-        }
-    }
-
-    for (i, frag) in frags.iter().enumerate() {
-        if i % 2 == 1 {
-            decode_macro(frag, &mut decoded)?;
-        } else {
-            decoded.push_str(frag)
-        }
-    }
-
-    Ok((decoded, num_macros))
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -235,32 +145,5 @@ mod test {
     fn weird3() {
         let p = parse(r#"foo {{foo(0.1)}} bar"#);
         println!("{:#?}", p);
-    }
-
-    #[test]
-    fn ks_escape() -> Result<(), DocError> {
-        let ks = r#"Foo {{jsxref("Array",,1,true) }}bar {{ foo }}"#;
-        let enc = encode_ks(ks)?;
-        let dec = decode_ks(&enc.0)?;
-        assert_eq!(ks, dec.0);
-        Ok(())
-    }
-
-    #[test]
-    fn ks_escape_2() -> Result<(), DocError> {
-        let ks = r#"<{{jsxref("Array",,1,true) }}>bar {{ foo }}"#;
-        let enc = encode_ks(ks)?;
-        let dec = decode_ks(&enc.0)?;
-        assert_eq!(ks, dec.0);
-        Ok(())
-    }
-
-    #[test]
-    fn ks_escape_3() -> Result<(), DocError> {
-        let ks = r#"{{foo}}{{foo-bar}}"#;
-        let enc = encode_ks(ks)?;
-        let dec = decode_ks(&enc.0)?;
-        assert_eq!(ks, dec.0);
-        Ok(())
     }
 }
