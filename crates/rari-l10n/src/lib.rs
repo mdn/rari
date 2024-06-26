@@ -72,6 +72,16 @@ pub fn l10n(key: &str, locale: Locale) -> &'static str {
             Locale::ZhTw => "嘗試一下",
         },
 
+        "optional" => match locale {
+            Locale::Fr => "Facultatif",
+            Locale::Ja => "省略可",
+            Locale::Ru => "Необязательный",
+            Locale::ZhCn => "可选",
+            Locale::ZhTw => "選擇性",
+            Locale::Es => "Opcional",
+            Locale::EnUs | _ => "Optional",
+        },
+
         _ => "l10n missing",
     }
 }

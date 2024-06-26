@@ -473,6 +473,21 @@ impl<'o> HtmlFormatter<'o> {
         }
     }
 
+    fn collect_first_child_text<'a>(node: &'a AstNode<'a>, output: &mut Vec<u8>) {
+        if let Some(child) = node.children().next() {
+            if matches!(child.data.borrow().value, NodeValue::Paragraph) {
+                if let Some(child) = child.children().next() {
+                    if !matches!(child.data.borrow().value, NodeValue::HtmlInline(_)) {
+                        return Self::collect_text(child, output);
+                    }
+                }
+            }
+            Self::collect_text(child, output)
+        } else {
+            Self::collect_text(node, output)
+        }
+    }
+
     fn next_is_link<'a>(node: &'a AstNode<'a>) -> bool {
         if let Some(child) = node.children().next() {
             if matches!(child.data.borrow().value, NodeValue::Link(_)) {
@@ -587,7 +602,7 @@ impl<'o> HtmlFormatter<'o> {
                 if entering {
                     self.cr()?;
                     let mut text_content = Vec::with_capacity(20);
-                    Self::collect_text(node, &mut text_content);
+                    Self::collect_first_child_text(node, &mut text_content);
                     let mut id = String::from_utf8(text_content).unwrap();
                     id = self.anchorizer.anchorize(id);
                     write!(self.output, "<dt id=\"{}\"", id)?;

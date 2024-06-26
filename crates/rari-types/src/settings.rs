@@ -16,6 +16,7 @@ pub struct Settings {
     pub base_url: String,
     pub live_samples_base_url: String,
     pub legacy_live_samples_base_url: String,
+    pub interactive_examples_base_url: String,
 }
 
 impl Settings {

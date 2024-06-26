@@ -117,8 +117,11 @@ pub fn post_process_html<T: PageLike>(
             el.remove_attribute("data-add-link");
             if let Some(id) = el.get_attribute("id") {
                 el.prepend(&format!("<a href=\"#{id}\">"), ContentType::Html);
-                el.append("</a>", ContentType::Html);
             }
+            Ok(())
+        }),
+        element!("dt[data-add-link] *:first-child", |el| {
+            el.append("</a>", ContentType::Html);
             Ok(())
         }),
         element!("pre[class*=brush]:not(.hidden)", |el| {

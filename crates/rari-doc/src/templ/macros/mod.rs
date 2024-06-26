@@ -31,6 +31,7 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
         "experimentalbadge" | "experimental_inline" => badges::experimental_any,
         "nonstandardbadge" | "non-standard_inline" => badges::non_standard_any,
         "deprecated_inline" => badges::deprecated_any,
+        "optional_inline" => badges::optional_any,
 
         // links
         "jsxref" => jsxref::jsxref_any,

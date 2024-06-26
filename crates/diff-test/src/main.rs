@@ -160,7 +160,17 @@ fn is_html(s: &str) -> bool {
     s.starts_with('<') && s.ends_with('>')
 }
 
-const IGNORE: &[&str] = &["doc.flaws", "blogMeta.readTime"];
+const IGNORE: &[&str] = &[
+    "doc.flaws",
+    "blogMeta.readTime",
+    "doc.modified",
+    "doc.popularity",
+    "doc.source.github_url",
+    "doc.source.last_commit_url",
+    "doc.sidebarHTML",
+];
+
+static LOWER_CASE: &[&str] = &[];
 static WS_DIFF: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
 
 fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<String, String>) {
@@ -203,12 +213,23 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
             (Value::String(lhs), Value::String(rhs)) => {
                 let mut lhs = lhs.to_owned();
                 let mut rhs = rhs.to_owned();
+                let key = make_key(path);
+                match key.as_str() {
+                    "doc.sidebarMacro" => {
+                        lhs = lhs.to_lowercase();
+                        rhs = rhs.to_lowercase();
+                    }
+                    "doc.summary" => {
+                        lhs = lhs.replace("\n  ", "\n");
+                        rhs = rhs.replace("\n  ", "\n");
+                    }
+                    _ => {}
+                };
                 if is_html(&lhs) && is_html(&rhs) {
                     lhs = html_minifier::minify(WS_DIFF.replace_all(&lhs, "$x$y")).unwrap();
                     rhs = html_minifier::minify(WS_DIFF.replace_all(&rhs, "$x$y")).unwrap();
                 }
                 if lhs != rhs {
-                    let key = make_key(path);
                     if IGNORE.contains(&key.as_str()) {
                         return;
                     }

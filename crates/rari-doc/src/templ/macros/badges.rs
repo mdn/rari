@@ -24,6 +24,14 @@ pub fn deprecated() -> Result<String, DocError> {
     Ok(out)
 }
 
+#[rari_f]
+pub fn optional() -> Result<String, DocError> {
+    let str = rari_l10n::l10n("optional", env.locale);
+    Ok(format!(
+        r#"<span class="badge inline optional">{str}</span>"#
+    ))
+}
+
 pub fn write_experimental(out: &mut impl std::fmt::Write, locale: Locale) -> std::fmt::Result {
     let title = rari_l10n::l10n("experimental_badge_title", locale);
     let abbreviation = rari_l10n::l10n("experimental_badge_abbreviation", locale);

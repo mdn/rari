@@ -74,7 +74,7 @@ impl RariApi {
     }
 
     pub fn interactive_examples_base_url() -> &'static str {
-        "https://interactive-examples.mdn.mozilla.net/"
+        &settings().interactive_examples_base_url
     }
 
     pub fn link(
