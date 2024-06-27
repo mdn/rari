@@ -493,16 +493,10 @@ impl<'o> HtmlFormatter<'o> {
             if matches!(child.data.borrow().value, NodeValue::Link(_)) {
                 return true;
             }
-            if let NodeValue::HtmlInline(res) = &child.data.borrow().value {
-                return res.starts_with("<a ");
-            }
             if matches!(child.data.borrow().value, NodeValue::Paragraph) {
                 if let Some(child) = child.children().next() {
                     if matches!(child.data.borrow().value, NodeValue::Link(_)) {
                         return true;
-                    }
-                    if let NodeValue::HtmlInline(res) = &child.data.borrow().value {
-                        return res.starts_with("<a ");
                     }
                 }
             }
@@ -603,10 +597,15 @@ impl<'o> HtmlFormatter<'o> {
                     self.cr()?;
                     let mut text_content = Vec::with_capacity(20);
                     Self::collect_first_child_text(node, &mut text_content);
-                    let mut id = String::from_utf8(text_content).unwrap();
-                    id = self.anchorizer.anchorize(id);
-                    write!(self.output, "<dt id=\"{}\"", id)?;
-                    if !Self::next_is_link(node) {
+                    let raw_id = String::from_utf8(text_content).unwrap();
+                    let is_templ = raw_id.starts_with("!::::");
+                    if is_templ {
+                        write!(self.output, "<dt id=\"---update-id\"")?;
+                    } else {
+                        let id = self.anchorizer.anchorize(raw_id);
+                        write!(self.output, "<dt id=\"{}\"", id)?;
+                    };
+                    if !is_templ && !Self::next_is_link(node) {
                         write!(self.output, " data-add-link")?;
                     }
                     self.render_sourcepos(node)?;

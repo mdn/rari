@@ -90,7 +90,7 @@ mod test {
         let out = m2h("- {{foo}}\n  - : bar", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<dl>\n<dt id=\"foo\">{{foo}}</dt>\n<dd>\n<p>bar</p>\n</dd>\n</dl>\n"
+            "<dl>\n<dt id=\"foo\" data-add-link>{{foo}}</dt>\n<dd>\n<p>bar</p>\n</dd>\n</dl>\n"
         );
         Ok(())
     }

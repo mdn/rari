@@ -13,6 +13,10 @@ use crate::docs::page::PageCategory;
 
 #[derive(Debug, Error)]
 pub enum DocError {
+    #[error("Cannot parse templ index")]
+    TemplIndexParseError(#[from] std::num::ParseIntError),
+    #[error("Invalid templ index {0}")]
+    InvalidTemplIndex(usize),
     #[error("No parent")]
     NoParent(PathBuf),
     #[error(transparent)]
@@ -65,8 +69,6 @@ pub enum DocError {
     ArgError(#[from] ArgError),
     #[error("pest error: {0}")]
     PestError(String),
-    #[error("failed to decode ks: {0}")]
-    DecodeError(#[from] base64::DecodeError),
     #[error("failed to de/serialize")]
     SerializationError,
     #[error(transparent)]

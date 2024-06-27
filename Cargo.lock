@@ -2273,7 +2273,6 @@ dependencies = [
 name = "rari-doc"
 version = "0.0.1"
 dependencies = [
- "base64 0.22.1",
  "chrono",
  "crossbeam-channel",
  "css-syntax",

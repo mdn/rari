@@ -22,10 +22,11 @@ use super::sections::{split_sections, BuildSection, BuildSectionType};
 use super::title::{page_title, transform_title};
 use crate::baseline::get_baseline;
 use crate::error::DocError;
+use crate::html::modifier::add_missing_ids;
 use crate::html::rewriter::post_process_html;
 use crate::html::sidebar::render_sidebar;
 use crate::specs::extract_specifications;
-use crate::templ::render::render;
+use crate::templ::render::{decode_ref, render};
 
 impl<'a> From<BuildSection<'a>> for Section {
     fn from(value: BuildSection) -> Self {
@@ -131,14 +132,17 @@ pub fn make_toc(sections: &[BuildSection], with_h3: bool) -> Vec<TocEntry> {
 }
 
 pub fn build_content<T: PageLike>(doc: &T) -> Result<PageContent, DocError> {
-    let ks_rendered_doc = if let Some(rari_env) = &doc.rari_env() {
-        Cow::Owned(render(rari_env, doc.content())?)
+    let (ks_rendered_doc, templs) = if let Some(rari_env) = &doc.rari_env() {
+        let (out, templs) = render(rari_env, doc.content())?;
+        (Cow::Owned(out), templs)
     } else {
-        Cow::Borrowed(doc.content())
+        (Cow::Borrowed(doc.content()), vec![])
     };
-    let html = render_md_to_html(&ks_rendered_doc, doc.locale())?;
+    let encoded_html = render_md_to_html(&ks_rendered_doc, doc.locale())?;
+    let html = decode_ref(&encoded_html, &templs)?;
     let post_processed_html = post_process_html(&html, doc, false)?;
-    let fragment = Html::parse_fragment(&post_processed_html);
+    let mut fragment = Html::parse_fragment(&post_processed_html);
+    add_missing_ids(&mut fragment)?;
     let (sections, summary) = split_sections(&fragment).expect("DOOM");
     let toc = make_toc(&sections, matches!(doc.page_type(), PageType::Curriculum));
     let body = sections.into_iter().map(Into::into).collect();

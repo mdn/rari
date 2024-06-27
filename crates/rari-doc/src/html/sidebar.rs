@@ -2,8 +2,6 @@ use std::collections::HashMap;
 pub use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
-use ego_tree::NodeId;
-use html5ever::{namespace_url, ns, QualName};
 use once_cell::sync::Lazy;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
@@ -12,6 +10,7 @@ use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize};
 
 use super::links::{render_link_from_page, render_link_via_page, LinkModifier};
+use super::modifier::add_attribute;
 use super::rewriter::post_process_html;
 use crate::cached_readers::read_sidebar;
 use crate::docs::doc::Doc;
@@ -36,22 +35,7 @@ type SidebarCache = Arc<RwLock<HashMap<Locale, HashMap<String, String>>>>;
 
 static SIDEBAR_CACHE: Lazy<SidebarCache> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
-fn add_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str) {
-    if let Some(mut details) = html.tree.get_mut(node_id) {
-        if let Node::Element(ref mut el) = details.value() {
-            el.attrs.insert(
-                QualName {
-                    prefix: None,
-                    ns: ns!(),
-                    local: key.into(),
-                },
-                value.into(),
-            );
-        }
-    }
-}
-
-fn highlight_current(mut html: Html, url: &str) -> Result<String, DocError> {
+fn expand_details_to_for_current(mut html: Html, url: &str) -> Result<String, DocError> {
     let a_selector = Selector::parse(&format!("a[href=\"{url}\"]")).unwrap();
     let mut details = vec![];
     let mut parent_id = None;
@@ -111,7 +95,7 @@ pub fn render_sidebar(doc: &Doc) -> Result<Option<String>, DocError> {
         })
         .map(|ks_rendered_sidebar| {
             let fragment = Html::parse_fragment(&ks_rendered_sidebar?);
-            let pre_processed_html = highlight_current(fragment, &doc.meta.url)?;
+            let pre_processed_html = expand_details_to_for_current(fragment, &doc.meta.url)?;
             let post_processed_html = post_process_html(&pre_processed_html, doc, true)?;
             Ok::<_, DocError>(post_processed_html)
         })

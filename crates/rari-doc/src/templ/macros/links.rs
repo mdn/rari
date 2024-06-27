@@ -112,14 +112,15 @@ pub fn link_internal(
 mod test {
 
     use crate::error::DocError;
-    use crate::templ::render::render;
+    use crate::templ::render::{decode_ref, render};
 
     #[test]
     fn test_link() -> Result<(), DocError> {
         let env = rari_types::RariEnv {
             ..Default::default()
         };
-        let out = render(&env, r#"{{ link("/en-US/docs/basic") }}"#)?;
+        let (out, templs) = render(&env, r#"{{ link("/en-US/docs/basic") }}"#)?;
+        let out = decode_ref(&out, &templs)?;
         assert_eq!(out, r#"<a href="/en-US/docs/Basic">The Basic Page</a>"#);
         Ok(())
     }
