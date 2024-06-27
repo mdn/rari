@@ -6,6 +6,7 @@ use lol_html::{element, text, HtmlRewriter, Settings};
 use rari_md::bq::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
+use url::Url;
 
 use crate::docs::curriculum::relative_file_to_curriculum_page;
 use crate::docs::page::{Page, PageLike};
@@ -21,6 +22,9 @@ pub fn post_process_html<T: PageLike>(
     let mut output = vec![];
     let mut ids = HashSet::new();
     let open_dt_a = std::rc::Rc::new(std::cell::RefCell::new(false));
+    let options = Url::options();
+    let base = Url::parse(&format!("http://rari.placeholder{}/", page.url()))?;
+    let base_url = options.base_url(Some(&base));
 
     let mut element_content_handlers = vec![
         element!("*[id]", |el| {
@@ -43,6 +47,15 @@ pub fn post_process_html<T: PageLike>(
                     }
                 } else {
                     ids.insert(id);
+                }
+            }
+            Ok(())
+        }),
+        element!("img[src]", |el| {
+            if let Some(src) = el.get_attribute("src") {
+                let url = base_url.parse(&src)?;
+                if url.host() == base.host() {
+                    el.set_attribute("src", url.path())?;
                 }
             }
             Ok(())

@@ -85,6 +85,8 @@ pub enum DocError {
     NoBlogRoot,
     #[error(transparent)]
     L10nError(#[from] L10nError),
+    #[error(transparent)]
+    UrlParseError(#[from] url::ParseError),
 }
 
 impl<T> From<PoisonError<T>> for DocError {

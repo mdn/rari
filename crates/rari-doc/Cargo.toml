@@ -31,6 +31,7 @@ icu_collator = "1"
 icu_locid = "1"
 strum = { version = "0.26", features = ["derive"] }
 ego-tree = "0.6"
+url = "2"
 
 rari-types = { path = "../rari-types" }
 rari-md = { path = "../rari-md" }

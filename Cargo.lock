@@ -2302,6 +2302,7 @@ dependencies = [
  "strum",
  "thiserror",
  "tracing",
+ "url",
  "validator",
  "yaml-rust",
 ]
