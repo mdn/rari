@@ -78,7 +78,7 @@ pub fn write_li_with_badges(
     out: &mut impl Write,
     page: &impl PageLike,
     locale: Locale,
-) -> std::fmt::Result {
+) -> Result<(), DocError> {
     write!(
         out,
         "<li><a href=\"{}\">{}</a>",
@@ -94,7 +94,7 @@ pub fn write_li_with_badges(
     if page.status().contains(&FeatureStatus::Deprecated) {
         write_deprecated(out, locale)?;
     }
-    write!(out, "</li>")
+    Ok(write!(out, "</li>")?)
 }
 
 pub fn list_sub_pages_internal(

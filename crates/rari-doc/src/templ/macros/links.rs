@@ -77,7 +77,7 @@ pub fn rfc(
         (None, Some(anchor)) => (
             format!(
                 ", {} {anchor}",
-                l10n_json_data("Common", "section", &env.locale).unwrap_or("Section")
+                l10n_json_data("Common", "section", env.locale)?
             ),
             format!("#section-{anchor}"),
         ),
@@ -85,7 +85,7 @@ pub fn rfc(
         (Some(content), Some(anchor)) => (
             format!(
                 ": {content}, {} {anchor}",
-                l10n_json_data("Common", "section", &env.locale).unwrap_or("Section")
+                l10n_json_data("Common", "section", env.locale)?
             ),
             format!("#section-{anchor}"),
         ),

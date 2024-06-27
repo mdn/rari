@@ -1,4 +1,4 @@
-use rari_l10n::l10n;
+use rari_l10n::l10n_json_data;
 use rari_templ_func::rari_f;
 
 use crate::error::DocError;
@@ -13,7 +13,7 @@ use crate::templ::api::RariApi;
 ///  Example call {{EmbedInteractiveExample("pages/css/animation.html", "taller")}}
 #[rari_f]
 pub fn embed_interactive_example(path: String, height: Option<String>) -> Result<String, DocError> {
-    let title = l10n("interactive_example_cta", env.locale);
+    let title = l10n_json_data("Template", "interactive_example_cta", env.locale)?;
     let url = format!("{}/{path}", RariApi::interactive_examples_base_url());
     let height_class = match height.as_deref() {
         h @ Some("shorter" | "taller" | "tabbed-shorter" | "tabbed-standard" | "tabbed-taller") => {

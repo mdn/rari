@@ -26,31 +26,34 @@ pub fn deprecated() -> Result<String, DocError> {
 
 #[rari_f]
 pub fn optional() -> Result<String, DocError> {
-    let str = rari_l10n::l10n("optional", env.locale);
+    let str = rari_l10n::l10n_json_data("Template", "optional", env.locale)?;
     Ok(format!(
         r#"<span class="badge inline optional">{str}</span>"#
     ))
 }
 
-pub fn write_experimental(out: &mut impl std::fmt::Write, locale: Locale) -> std::fmt::Result {
-    let title = rari_l10n::l10n("experimental_badge_title", locale);
-    let abbreviation = rari_l10n::l10n("experimental_badge_abbreviation", locale);
+pub fn write_experimental(out: &mut impl std::fmt::Write, locale: Locale) -> Result<(), DocError> {
+    let title = rari_l10n::l10n_json_data("Template", "experimental_badge_title", locale)?;
+    let abbreviation =
+        rari_l10n::l10n_json_data("Template", "experimental_badge_abbreviation", locale)?;
 
-    write_badge(out, title, abbreviation, "experimental")
+    Ok(write_badge(out, title, abbreviation, "experimental")?)
 }
 
-pub fn write_non_standard(out: &mut impl std::fmt::Write, locale: Locale) -> std::fmt::Result {
-    let title = rari_l10n::l10n("non_standard_badge_title", locale);
-    let abbreviation = rari_l10n::l10n("non_standard_badge_abbreviation", locale);
+pub fn write_non_standard(out: &mut impl std::fmt::Write, locale: Locale) -> Result<(), DocError> {
+    let title = rari_l10n::l10n_json_data("Template", "non_standard_badge_title", locale)?;
+    let abbreviation =
+        rari_l10n::l10n_json_data("Template", "non_standard_badge_abbreviation", locale)?;
 
-    write_badge(out, title, abbreviation, "nonstandard")
+    Ok(write_badge(out, title, abbreviation, "nonstandard")?)
 }
 
-pub fn write_deprecated(out: &mut impl std::fmt::Write, locale: Locale) -> std::fmt::Result {
-    let title = rari_l10n::l10n("deprecated_badge_title", locale);
-    let abbreviation = rari_l10n::l10n("deprecated_badge_abbreviation", locale);
+pub fn write_deprecated(out: &mut impl std::fmt::Write, locale: Locale) -> Result<(), DocError> {
+    let title = rari_l10n::l10n_json_data("Template", "deprecated_badge_title", locale)?;
+    let abbreviation =
+        rari_l10n::l10n_json_data("Template", "deprecated_badge_abbreviation", locale)?;
 
-    write_badge(out, title, abbreviation, "deprecated")
+    Ok(write_badge(out, title, abbreviation, "deprecated")?)
 }
 
 pub fn write_badge(

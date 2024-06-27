@@ -41,7 +41,7 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
         "rfc" => links::rfc_any,
 
         // ignore
-        "ccsref" | "glossarysidebar" | "jsref" => return Ok(Default::default()),
+        "cssref" | "glossarysidebar" | "jsref" => return Ok(Default::default()),
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),
