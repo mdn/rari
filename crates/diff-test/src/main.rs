@@ -168,6 +168,8 @@ const IGNORE: &[&str] = &[
     "doc.source.github_url",
     "doc.source.last_commit_url",
     "doc.sidebarHTML",
+    "doc.hasMathML",
+    "doc.other_translations",
 ];
 
 static WS_DIFF: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
@@ -181,6 +183,10 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
         }
     }
     if lhs != rhs {
+        let key = make_key(path);
+        if IGNORE.iter().any(|i| key.starts_with(i)) {
+            return;
+        }
         match (lhs, rhs) {
             (Value::Array(lhs), Value::Array(rhs)) => {
                 let len = max(lhs.len(), rhs.len());
@@ -212,7 +218,6 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
             (Value::String(lhs), Value::String(rhs)) => {
                 let mut lhs = lhs.to_owned();
                 let mut rhs = rhs.to_owned();
-                let key = make_key(path);
                 match key.as_str() {
                     "doc.sidebarMacro" => {
                         lhs = lhs.to_lowercase();
@@ -229,9 +234,6 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
                     rhs = html_minifier::minify(WS_DIFF.replace_all(&rhs, "$x$y")).unwrap();
                 }
                 if lhs != rhs {
-                    if IGNORE.contains(&key.as_str()) {
-                        return;
-                    }
                     if key != "doc.sidebarHTML" {
                         diff.insert(
                             key,
@@ -249,10 +251,6 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
                 let lhs = lhs.to_string();
                 let rhs = rhs.to_string();
                 if lhs != rhs {
-                    let key = make_key(path);
-                    if IGNORE.contains(&key.as_str()) {
-                        return;
-                    }
                     diff.insert(
                         key,
                         //ansi_to_html::convert(

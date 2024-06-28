@@ -722,6 +722,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "doc-comment"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
+
+[[package]]
 name = "dtoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1377,6 +1383,12 @@ dependencies = [
  "walkdir",
  "winapi-util",
 ]
+
+[[package]]
+name = "imagesize"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edcd27d72f2f071c64249075f42e205ff93c9a4c5f6c6da53e79ed9f9832c285"
 
 [[package]]
 name = "indexmap"
@@ -2283,6 +2295,7 @@ dependencies = [
  "icu_collator",
  "icu_locid",
  "ignore",
+ "imagesize",
  "lol_html",
  "once_cell",
  "percent-encoding",
@@ -2300,6 +2313,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "strum",
+ "svg_metadata",
  "thiserror",
  "tracing",
  "url",
@@ -2524,6 +2538,12 @@ dependencies = [
  "untrusted",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "roxmltree"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rustc-demangle"
@@ -2933,6 +2953,18 @@ name = "subtle"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d0208408ba0c3df17ed26eb06992cb1a1268d41b2c0e12e65203fbe3972cee5"
+
+[[package]]
+name = "svg_metadata"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "274c7cbc78c2e2cdc104ea7d98db4d2416d2433dfaa3f2ae6fb8c8f9c9e2271c"
+dependencies = [
+ "doc-comment",
+ "once_cell",
+ "regex",
+ "roxmltree",
+]
 
 [[package]]
 name = "syn"

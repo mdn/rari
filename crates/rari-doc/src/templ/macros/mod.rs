@@ -2,8 +2,10 @@ pub mod badges;
 pub mod compat;
 pub mod csssyntax;
 pub mod cssxref;
+pub mod domxref;
 pub mod embedinteractiveexample;
 pub mod glossary;
+pub mod htmlxref;
 pub mod jsxref;
 pub mod links;
 pub mod listsubpages;
@@ -20,7 +22,6 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
         "compat" => compat::compat_any,
         "specifications" => specification::specification_any,
         "glossary" => glossary::glossary_any,
-        "cssxref" => cssxref::cssxref_any,
         "csssyntax" => csssyntax::csssyntax_any,
         "embedinteractiveexample" => embedinteractiveexample::embed_interactive_example_any,
         "listsubpages" => listsubpages::list_sub_pages_any,
@@ -34,11 +35,17 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
         "optional_inline" => badges::optional_any,
 
         // links
-        "jsxref" => jsxref::jsxref_any,
         "link" => links::link_any,
         "doclink" => links::doc_link_any,
         "csp" => links::csp_any,
         "rfc" => links::rfc_any,
+        "httpheader" => links::http_header_any,
+
+        // xrefs
+        "cssxref" => cssxref::cssxref_any,
+        "jsxref" => jsxref::jsxref_any,
+        "domxref" => domxref::domxref_any,
+        "htmlelement" => htmlxref::htmlxref_any,
 
         // ignore
         "cssref" | "glossarysidebar" | "jsref" => return Ok(Default::default()),

@@ -1,4 +1,5 @@
 use rari_templ_func::rari_f;
+use rari_types::AnyArg;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
@@ -8,7 +9,7 @@ pub fn jsxref(
     api_name: String,
     display: Option<String>,
     anchor: Option<String>,
-    no_code: Option<i64>,
+    no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let global_objects = "Global_Objects";
     let display = display.as_deref().unwrap_or(api_name.as_str());
@@ -42,6 +43,6 @@ pub fn jsxref(
         url.push_str(&anchor);
     }
 
-    let code = no_code.unwrap_or_default() == 0;
+    let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
     RariApi::link(&url, None, Some(display), code, None, false)
 }

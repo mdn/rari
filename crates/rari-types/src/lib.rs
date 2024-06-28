@@ -66,6 +66,14 @@ impl AnyArg {
             Arg::Bool(false) => 0,
         }
     }
+    pub fn as_bool(&self) -> bool {
+        match &self.value {
+            Arg::String(s, _) => !s.trim().is_empty(),
+            Arg::Int(n) => *n != 0,
+            Arg::Float(f) => *f != 0f64 && !f.is_nan(),
+            Arg::Bool(b) => *b,
+        }
+    }
 }
 
 impl Display for AnyArg {

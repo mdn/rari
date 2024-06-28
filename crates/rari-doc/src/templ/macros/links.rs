@@ -1,5 +1,6 @@
 use rari_l10n::l10n_json_data;
 use rari_templ_func::rari_f;
+use rari_types::AnyArg;
 
 use crate::docs::page::PageLike;
 use crate::error::DocError;
@@ -66,7 +67,7 @@ pub fn http_header(slug: String, content: Option<String>) -> Result<String, DocE
 
 #[rari_f]
 pub fn rfc(
-    number: i64,
+    number: AnyArg,
     content: Option<String>,
     anchor: Option<String>,
 ) -> Result<String, DocError> {
@@ -90,6 +91,7 @@ pub fn rfc(
             format!("#section-{anchor}"),
         ),
     };
+    let number = number.as_int();
     Ok(format!(
         r#"<a href="https://datatracker.ietf.org/doc/html/rfc{number}{anchor}">RFC {number}{content}</a>"#
     ))

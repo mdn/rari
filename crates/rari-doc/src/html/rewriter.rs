@@ -56,6 +56,29 @@ pub fn post_process_html<T: PageLike>(
                 let url = base_url.parse(&src)?;
                 if url.host() == base.host() {
                     el.set_attribute("src", url.path())?;
+                    let file = page.full_path().parent().unwrap().join(&src);
+                    let (width, height) = if src.ends_with(".svg") {
+                        let meta = svg_metadata::Metadata::parse_file(&file)?;
+                        (
+                            meta.width
+                                .map(|width| width.width)
+                                .or(meta.view_box.map(|vb| vb.width))
+                                .map(|width| format!("{:.0}", width)),
+                            meta.height
+                                .map(|height| height.height)
+                                .or(meta.view_box.map(|vb| vb.height))
+                                .map(|height| format!("{:.0}", height)),
+                        )
+                    } else {
+                        let dim = imagesize::size(&file)?;
+                        (Some(dim.width.to_string()), Some(dim.height.to_string()))
+                    };
+                    if let Some(width) = width {
+                        el.set_attribute("width", &width)?;
+                    }
+                    if let Some(height) = height {
+                        el.set_attribute("height", &height)?;
+                    }
                 }
             }
             Ok(())

@@ -6,7 +6,10 @@ pub fn parents<T: PageLike>(doc: &T) -> Vec<Parent> {
     let mut url = doc.url();
     let mut parents = vec![Parent {
         uri: url.into(),
-        title: transform_title(doc.short_title().unwrap_or(doc.title())).to_string(),
+        title: doc
+            .short_title()
+            .unwrap_or(transform_title(doc.title()))
+            .to_string(),
     }];
     while let Some(i) = url.trim_end_matches('/').rfind('/') {
         let parent_url = &url[..if doc.trailing_slash() { i + 1 } else { i }];
@@ -16,7 +19,10 @@ pub fn parents<T: PageLike>(doc: &T) -> Vec<Parent> {
         if let Ok(parent) = Page::page_from_url_path(parent_url) {
             parents.push(Parent {
                 uri: parent.url().into(),
-                title: transform_title(parent.title()).to_string(),
+                title: parent
+                    .short_title()
+                    .unwrap_or(transform_title(parent.title()))
+                    .to_string(),
             })
         }
         url = parent_url
