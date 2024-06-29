@@ -173,6 +173,7 @@ const IGNORE: &[&str] = &[
 ];
 
 static WS_DIFF: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
+static DATA_FLAW_SRC: Lazy<Regex> = Lazy::new(|| Regex::new(r#" data-flaw-src="[^"]+""#).unwrap());
 
 fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<String, String>) {
     if path.len() == 1 {
@@ -230,8 +231,12 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
                     _ => {}
                 };
                 if is_html(&lhs) && is_html(&rhs) {
-                    lhs = html_minifier::minify(WS_DIFF.replace_all(&lhs, "$x$y")).unwrap();
-                    rhs = html_minifier::minify(WS_DIFF.replace_all(&rhs, "$x$y")).unwrap();
+                    let lhs_t = WS_DIFF.replace_all(&lhs, "$x$y");
+                    let rhs_t = WS_DIFF.replace_all(&rhs, "$x$y");
+                    let lhs_t = DATA_FLAW_SRC.replace_all(&lhs_t, "");
+                    let rhs_t = DATA_FLAW_SRC.replace_all(&rhs_t, "");
+                    lhs = html_minifier::minify(lhs_t).unwrap();
+                    rhs = html_minifier::minify(rhs_t).unwrap();
                 }
                 if lhs != rhs {
                     if key != "doc.sidebarHTML" {

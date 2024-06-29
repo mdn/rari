@@ -23,7 +23,12 @@ pub fn post_process_html<T: PageLike>(
     let mut ids = HashSet::new();
     let open_dt_a = std::rc::Rc::new(std::cell::RefCell::new(false));
     let options = Url::options();
-    let base = Url::parse(&format!("http://rari.placeholder{}/", page.url()))?;
+    let url = page.url();
+    let base = Url::parse(&format!(
+        "http://rari.placeholder{}{}",
+        url,
+        if url.ends_with('/') { "" } else { "/" }
+    ))?;
     let base_url = options.base_url(Some(&base));
 
     let mut element_content_handlers = vec![

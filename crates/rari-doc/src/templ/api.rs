@@ -1,6 +1,8 @@
+use std::borrow::Cow;
 use std::path::PathBuf;
 
 use percent_encoding::utf8_percent_encode;
+use rari_l10n::l10n_json_data;
 use rari_md::anchor::anchorize;
 use rari_types::globals::{deny_warnings, settings};
 use rari_types::locale::Locale;
@@ -86,7 +88,22 @@ impl RariApi {
         with_badge: bool,
     ) -> Result<String, DocError> {
         let mut out = String::new();
-        render_link_via_page(&mut out, link, locale, content, code, title, with_badge)?;
+        if let Err(DocError::IOError(_)) =
+            render_link_via_page(&mut out, link, locale, content, code, title, with_badge)
+        {
+            let title_for_missing_page =
+                l10n_json_data("Common", "summary", locale.unwrap_or_default()).unwrap_or_default();
+            let content = content.unwrap_or(link);
+            let content = if code {
+                Cow::Owned(format!("<code>{}</code>", content))
+            } else {
+                Cow::Borrowed(content)
+            };
+            return Ok(format!(
+                r#"<a class="page-not-created" title="{title_for_missing_page}">{content}</a>"#
+            ));
+        }
+
         Ok(out)
     }
 }
