@@ -74,6 +74,7 @@ fn main() -> Result<(), anyhow::Error> {
     rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;
     rari_deps::web_features::update_web_features(rari_types::globals::data_dir())?;
     rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;
+    rari_deps::mdn_data::update_mdn_data(rari_types::globals::data_dir())?;
 
     let filter = filter::Targets::new()
         .with_target("rari_builder", cli.verbose.log_level_filter().as_trace())

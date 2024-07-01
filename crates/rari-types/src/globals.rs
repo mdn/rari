@@ -124,7 +124,6 @@ pub fn json_l10n_files() -> &'static HashMap<String, JsonL10nFile> {
             .collect()
     })
 }
-
 pub static GIT_HISTORY: Lazy<HashMap<PathBuf, HistoryEntry>> = Lazy::new(|| {
     let f = content_root().join("en-US").join("_history.json");
     if let Ok(json_str) = fs::read_to_string(f) {

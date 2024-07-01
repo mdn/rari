@@ -87,6 +87,10 @@ pub enum DocError {
     L10nError(#[from] L10nError),
     #[error(transparent)]
     UrlParseError(#[from] url::ParseError),
+    #[error("Missing CSS l10n in mdn/data")]
+    MissingCSSL10n,
+    #[error("At rule was empty")]
+    MustHaveAtRule,
 }
 
 impl<T> From<PoisonError<T>> for DocError {

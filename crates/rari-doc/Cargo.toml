@@ -34,6 +34,7 @@ ego-tree = "0.6"
 url = "2"
 imagesize = "0.13"
 svg_metadata = "0.5"
+itertools = "0.13"
 
 rari-types = { path = "../rari-types" }
 rari-md = { path = "../rari-md" }

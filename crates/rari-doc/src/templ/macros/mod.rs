@@ -1,5 +1,6 @@
 pub mod badges;
 pub mod compat;
+pub mod cssinfo;
 pub mod csssyntax;
 pub mod cssxref;
 pub mod domxref;
@@ -27,6 +28,7 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
         "listsubpages" => listsubpages::list_sub_pages_any,
         "listsubpagesgrouped" => listsubpages::list_sub_pages_grouped_any,
         "embedlivesample" => livesample::live_sample_any,
+        "cssinfo" => cssinfo::cssinfo_any,
 
         // badges
         "experimentalbadge" | "experimental_inline" => badges::experimental_any,

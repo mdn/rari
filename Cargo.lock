@@ -2287,6 +2287,7 @@ dependencies = [
  "icu_locid",
  "ignore",
  "imagesize",
+ "itertools",
  "lol_html",
  "once_cell",
  "percent-encoding",

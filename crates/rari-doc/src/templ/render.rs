@@ -16,6 +16,11 @@ fn encode_ref(index: usize, out: &mut String) -> Result<(), DocError> {
     Ok(write!(out, "!::::{index}::::!",)?)
 }
 
+pub fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
+    let (out, templs) = render(env, input)?;
+    decode_ref(&out, &templs)
+}
+
 pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocError> {
     let mut decoded = String::with_capacity(input.len());
     if !input.contains("!::::") {
