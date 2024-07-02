@@ -12,6 +12,7 @@ pub mod links;
 pub mod listsubpages;
 pub mod livesample;
 pub mod specification;
+pub mod svgxref;
 
 use rari_types::globals::deny_warnings;
 use rari_types::{Arg, RariEnv};
@@ -48,6 +49,7 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
         "jsxref" => jsxref::jsxref_any,
         "domxref" => domxref::domxref_any,
         "htmlelement" => htmlxref::htmlxref_any,
+        "svgelement" => svgxref::svgxref_any,
 
         // ignore
         "cssref" | "glossarysidebar" | "jsref" => return Ok(Default::default()),

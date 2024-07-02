@@ -30,9 +30,10 @@ pub fn cssinfo() -> Result<String, DocError> {
 
     let mut out = String::new();
     out.push_str(r#"<table class="properties"><tbody>"#);
-    for (name, label) in css_info_properties(&name, at_rule, env.locale, css_info_data)? {
+    for (name, label) in css_info_properties(at_rule, env.locale, css_info_data)? {
         write!(&mut out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write_computed_output(env, &mut out, env.locale, css_info_data, name, at_rule)?;
+        write!(&mut out, r#"</td></tr>"#)?;
     }
     out.push_str(r#"</tbody></table>"#);
     Ok(out)

@@ -14,8 +14,8 @@ use tracing::warn;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
-use crate::templ::macros::cssxref::{cssxref, cssxref_internal};
-use crate::templ::render::{render, render_and_decode_ref};
+use crate::templ::macros::cssxref::cssxref_internal;
+use crate::templ::render::render_and_decode_ref;
 
 // mdn/data is deprecated so we do a least effort integration here.
 #[derive(Debug, Default)]
@@ -53,7 +53,6 @@ pub fn mdn_data_files() -> &'static MDNDataFiles {
     })
 }
 pub fn css_info_properties(
-    name: &str,
     at_rule: Option<&str>,
     locale: Locale,
     css_info_data: &Value,
@@ -69,32 +68,38 @@ pub fn css_info_properties(
             Cow::Borrowed(get_css_l10n_for_locale("relatedAtRule", locale)),
         ));
     }
-    out.push(("inital", Cow::Owned(css_inital(locale)?)));
+
+    out.push(("initial", Cow::Owned(css_inital(locale)?)));
 
     if at_rule.is_none() {
         out.push((
             "appliesto",
-            Cow::Borrowed(get_css_l10n_for_locale("appliesto", locale)),
+            Cow::Borrowed(get_css_l10n_for_locale("appliesTo", locale)),
         ));
     }
 
     if !css_info_data["inherited"].is_null() {
         out.push(("inherited", Cow::Owned(css_inherited(locale)?)));
     }
-    if css_info_data["percentages"].as_str() != Some("no") {
+
+    if css_info_data["percentages"].as_str() != Some("no")
+        && !css_info_data["percentages"].is_null()
+    {
         out.push((
             "percentages",
             Cow::Borrowed(get_css_l10n_for_locale("percentages", locale)),
         ));
     }
+
     out.push(("computed", Cow::Owned(css_computed(locale)?)));
+
     if at_rule.is_none() {
         out.push((
-            "animationTyp",
+            "animationType",
             Cow::Owned(RariApi::link(
-                "Web/CSS/CSS_animated_properties",
+                "/Web/CSS/CSS_animated_properties",
                 Some(locale),
-                Some(get_css_l10n_for_locale("percentages", locale)),
+                Some(get_css_l10n_for_locale("animationType", locale)),
                 false,
                 None,
                 false,
@@ -104,7 +109,7 @@ pub fn css_info_properties(
     if css_info_data["stacking"].as_bool().unwrap_or_default() {
         out.push((
             "stacking",
-            Cow::Borrowed(get_css_l10n_for_locale("rstacking", locale)),
+            Cow::Borrowed(get_css_l10n_for_locale("createsStackingContext", locale)),
         ));
     }
     Ok(out)
@@ -127,9 +132,13 @@ pub fn write_computed_output(
             at_rule,
             at_rule
         )?;
+        return Ok(());
     }
-    match &css_info_data[property] {
-        Value::Null => {}
+    let data = &css_info_data[property];
+    match data {
+        Value::Null => {
+            //write_missing(out, locale)?;
+        }
         Value::Bool(b) => out.push_str(get_css_l10n_for_locale(
             if *b { "yes" } else { "no" },
             locale,
@@ -144,7 +153,7 @@ pub fn write_computed_output(
                         if animation_type_value == "lpc" {
                             return Cow::Owned(remove_me_replace_placeholder(
                                 localized,
-                                &[get_css_l10n_for_locale("lenth", locale)],
+                                &[get_css_l10n_for_locale("length", locale)],
                             ));
                         }
                         return Cow::Borrowed(localized);
@@ -156,15 +165,12 @@ pub fn write_computed_output(
                 )?);
                 return Ok(());
             } else if s.starts_with('\'') && s.ends_with('\'') {
-                return write_computed_output(
-                    env,
-                    out,
-                    locale,
-                    &css_info_data[&s[1..s.len() - 1]],
-                    property,
-                    at_rule,
-                );
-            } else if property == "initial" && mdn_data_files().css_l10n.contains_key(s) {
+                let s_data = mdn_data_files()
+                    .css_properties
+                    .get(&s[1..s.len() - 1])
+                    .unwrap_or(&Value::Null);
+                return write_computed_output(env, out, locale, s_data, property, at_rule);
+            } else if property == "initial" && !mdn_data_files().css_l10n.contains_key(s) {
                 return Ok(write!(out, "<code>{s}</code>")?);
             } else {
                 let replaced_keywords = s
@@ -178,9 +184,43 @@ pub fn write_computed_output(
                 return Ok(());
             }
         }
-        // TODO
-        Value::Array(_) => {}
-        Value::Object(_) => {}
+        Value::Array(a) => {
+            let mut tmp = String::new();
+            tmp.push_str(get_css_l10n_for_locale("asLonghands", locale));
+            tmp.push_str("<br /><ul>");
+            for longhand in a.iter().filter_map(Value::as_str) {
+                tmp.push_str("<li>{{cssxref(\"");
+                tmp.push_str(longhand);
+                tmp.push_str("\")}}: ");
+                let longhand_data = mdn_data_files()
+                    .css_properties
+                    .get(longhand)
+                    .unwrap_or(&Value::Null);
+                if !longhand_data.is_null() {
+                    write_computed_output(env, &mut tmp, locale, longhand_data, property, at_rule)?;
+                } else {
+                    write_missing(&mut tmp, locale)?;
+                }
+                tmp.push_str("</li>")
+            }
+            tmp.push_str("</ul>");
+            out.push_str(&render_and_decode_ref(
+                env,
+                &add_additional_applies_to(&tmp, property, css_info_data, locale),
+            )?);
+            return Ok(());
+        }
+        Value::Object(_) => {
+            if let Some(localized) = get_for_locale(locale, data).as_str() {
+                out.push_str(&render_and_decode_ref(
+                    env,
+                    &add_additional_applies_to(localized, property, css_info_data, locale),
+                )?);
+            } else {
+                write_missing(out, locale)?;
+            }
+            return Ok(());
+        }
     };
     Ok(())
 }
@@ -191,7 +231,7 @@ fn add_additional_applies_to<'a>(
     css_info_data: &Value,
     locale: Locale,
 ) -> Cow<'a, str> {
-    if property == "appliesto" || !css_info_data["alsoAppliesTo"].is_array() {
+    if property != "appliesto" || !css_info_data["alsoAppliesTo"].is_array() {
         return Cow::Borrowed(output);
     }
 
@@ -200,23 +240,27 @@ fn add_additional_applies_to<'a>(
     let also_applies_to = also_applies_to
         .iter()
         .filter_map(Value::as_str)
-        .filter(|element| *element == "::placeholder")
+        .filter(|element| *element != "::placeholder" && !element.is_empty())
         .map(|element| {
             cssxref_internal(element, None, None, locale).unwrap_or_else(|e| e.to_string())
         })
         .collect::<Vec<_>>();
 
+    if also_applies_to.is_empty() {
+        return Cow::Borrowed(output);
+    }
+
     let mut additional_applies_to = String::new();
     for (i, additional) in also_applies_to.iter().enumerate() {
         additional_applies_to.push_str(additional.as_str());
-        if i + 2 < additional_applies_to.len() {
+        if also_applies_to.len() - i > 2 {
             additional_applies_to.push_str(get_css_l10n_for_locale("listSeparator", locale));
-        } else if i + 1 < additional_applies_to.len() {
+        } else if also_applies_to.len() - i > 1 {
             additional_applies_to.push_str(get_css_l10n_for_locale("andInEnumeration", locale));
         }
     }
     return Cow::Owned(remove_me_replace_placeholder(
-        get_css_l10n_for_locale("applyingtoMultiple", locale),
+        get_css_l10n_for_locale("applyingToMultiple", locale),
         &[output, &additional_applies_to],
     ));
 }
@@ -245,7 +289,7 @@ pub fn get_for_locale(locale: Locale, lookup: &Value) -> &Value {
 pub fn css_computed(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_csscomputed", locale)?;
     RariApi::link(
-        "Web/CSS/computed_value",
+        "/Web/CSS/computed_value",
         Some(locale),
         Some(copy),
         false,
@@ -257,7 +301,7 @@ pub fn css_computed(locale: Locale) -> Result<String, DocError> {
 pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinherited", locale)?;
     RariApi::link(
-        "Web/CSS/inheritance",
+        "/Web/CSS/inheritance",
         Some(locale),
         Some(copy),
         false,
@@ -269,7 +313,7 @@ pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
 pub fn css_inital(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinitial", locale)?;
     RariApi::link(
-        "Web/CSS/initial_value",
+        "/Web/CSS/initial_value",
         Some(locale),
         Some(copy),
         false,
@@ -278,9 +322,14 @@ pub fn css_inital(locale: Locale) -> Result<String, DocError> {
     )
 }
 
+fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
+    let missing = l10n_json_data("CSS", "missing", locale)?;
+    Ok(write!(out, "<span style=\"color:red;\">{missing}</span>")?)
+}
+
 fn remove_me_replace_placeholder(s: &str, replacements: &[&str]) -> String {
     let s = s
-        .replace("$1$", replacements.get(0).unwrap_or(&"$1$"))
+        .replace("$1$", replacements.first().unwrap_or(&"$1$"))
         .replace("$2$", replacements.get(1).unwrap_or(&"$2$"));
     s
 }
