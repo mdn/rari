@@ -26,12 +26,17 @@ fn title_natural_sorter(a: &Page, b: &Page) -> Ordering {
     natural_compare_with_floats(a.title(), b.title())
 }
 
+fn slug_natural_sorter(a: &Page, b: &Page) -> Ordering {
+    natural_compare_with_floats(a.slug(), b.slug())
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SubPagesSorter {
     #[default]
     Title,
     Slug,
     TitleNatural,
+    SlugNatural,
 }
 
 impl SubPagesSorter {
@@ -40,6 +45,7 @@ impl SubPagesSorter {
             SubPagesSorter::Title => title_sorter,
             SubPagesSorter::Slug => slug_sorter,
             SubPagesSorter::TitleNatural => title_natural_sorter,
+            SubPagesSorter::SlugNatural => slug_natural_sorter,
         }
     }
 }

@@ -8,11 +8,6 @@ use crate::error::DocError;
 use crate::helpers::subpages::{self, SubPagesSorter};
 
 /// List sub pages
-///
-/// Parameters:
-///  $0  Base url
-///  $1  Title
-///  $3  Page types
 #[rari_f]
 pub fn list_sub_pages(
     url: Option<String>,
@@ -29,8 +24,8 @@ pub fn list_sub_pages(
         url,
         env.locale,
         Some(depth.map(|d| d.as_int() as usize).unwrap_or(1)),
-        reverse.map(|r| r.as_bool()).unwrap_or_default(),
-        Some(SubPagesSorter::TitleNatural),
+        reverse.map(|r| r.as_int() != 0).unwrap_or_default(), // Yes the old marco checks for == 0 not === 0.
+        Some(SubPagesSorter::SlugNatural),
         &[],
     )?;
     out.push_str(if ordered { "</ol>" } else { "</ul>" });

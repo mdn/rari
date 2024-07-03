@@ -22,9 +22,13 @@ pub struct BuildSection<'a> {
     pub id: Option<String>,
 }
 
-pub fn split_sections(
-    html: &Html,
-) -> Result<(Vec<BuildSection<'_>>, Option<String>, Option<String>), DocError> {
+pub struct Splitted<'a> {
+    pub sections: Vec<BuildSection<'a>>,
+    pub summary: Option<String>,
+    pub sidebar: Option<String>,
+}
+
+pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
     let root_children = html.root_element().children();
     let raw_sections = root_children;
     let summary_selector = Selector::parse("p").unwrap();
@@ -107,7 +111,7 @@ pub fn split_sections(
                         if let Some(section) = maybe_section.take() {
                             sections.push(section);
                         }
-                        let html = ElementRef::wrap(current).unwrap().html();
+                        let html = ElementRef::wrap(current).unwrap().inner_html();
                         sidebar = Some(html)
                     }
                     _ => {
@@ -233,5 +237,9 @@ pub fn split_sections(
     if let Some(section) = last.take() {
         sections.push(section);
     }
-    Ok((sections, summary, sidebar))
+    Ok(Splitted {
+        sections,
+        summary,
+        sidebar,
+    })
 }

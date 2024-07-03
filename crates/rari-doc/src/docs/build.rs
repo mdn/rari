@@ -22,9 +22,9 @@ use super::title::{page_title, transform_title};
 use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::html::modifier::add_missing_ids;
-use crate::html::rewriter::post_process_html;
-use crate::html::sections::{split_sections, BuildSection, BuildSectionType};
-use crate::html::sidebar::build_sidebars;
+use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
+use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Splitted};
+use crate::html::sidebar::{build_sidebars, expand_details_and_mark_current_for_inline_sidebar};
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render};
 
@@ -144,7 +144,17 @@ pub fn build_content<T: PageLike>(doc: &T) -> Result<PageContent, DocError> {
     let post_processed_html = post_process_html(&html, doc, false)?;
     let mut fragment = Html::parse_fragment(&post_processed_html);
     add_missing_ids(&mut fragment)?;
-    let (sections, summary, sidebar) = split_sections(&fragment).expect("DOOM");
+    expand_details_and_mark_current_for_inline_sidebar(&mut fragment, doc.url())?;
+    let Splitted {
+        sections,
+        summary,
+        sidebar,
+    } = split_sections(&fragment).expect("DOOM");
+    let sidebar = if let Some(sidebar) = sidebar {
+        Some(post_process_inline_sidebar(&sidebar)?)
+    } else {
+        None
+    };
     let toc = make_toc(&sections, matches!(doc.page_type(), PageType::Curriculum));
     let body = sections.into_iter().map(Into::into).collect();
     Ok(PageContent {

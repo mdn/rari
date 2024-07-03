@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use lol_html::html_content::ContentType;
-use lol_html::{element, text, HtmlRewriter, Settings};
+use lol_html::{element, rewrite_str, text, HtmlRewriter, RewriteStrSettings, Settings};
 use rari_md::bq::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
@@ -13,6 +13,22 @@ use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::redirects::resolve_redirect;
 use crate::resolve::strip_locale_from_url;
+
+pub fn post_process_inline_sidebar(input: &str) -> Result<String, DocError> {
+    let element_content_handlers = vec![element!("*[data-rewriter=em]", |el| {
+        el.prepend("<em>", ContentType::Html);
+        el.append("</em>", ContentType::Html);
+        el.remove_attribute("data-rewriter");
+        Ok(())
+    })];
+    Ok(rewrite_str(
+        input,
+        RewriteStrSettings {
+            element_content_handlers,
+            ..Default::default()
+        },
+    )?)
+}
 
 pub fn post_process_html<T: PageLike>(
     input: &str,

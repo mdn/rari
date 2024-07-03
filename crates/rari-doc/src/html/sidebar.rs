@@ -33,8 +33,19 @@ type SidebarCache = Arc<RwLock<HashMap<Locale, HashMap<String, String>>>>;
 
 static SIDEBAR_CACHE: Lazy<SidebarCache> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
-fn expand_details_to_for_current(mut html: Html, url: &str) -> Result<String, DocError> {
+pub fn expand_details_and_mark_current_for_inline_sidebar(
+    html: &mut Html,
+    url: &str,
+) -> Result<(), DocError> {
+    let a_selector = Selector::parse(&format!("#Quick_links a[href=\"{url}\"]")).unwrap();
+    expand_details_and_mark_current(html, a_selector)
+}
+fn expand_details_and_mark_current_for_sidebar(html: &mut Html, url: &str) -> Result<(), DocError> {
     let a_selector = Selector::parse(&format!("a[href=\"{url}\"]")).unwrap();
+    expand_details_and_mark_current(html, a_selector)
+}
+
+fn expand_details_and_mark_current(html: &mut Html, a_selector: Selector) -> Result<(), DocError> {
     let mut details = vec![];
     let mut parent_id = None;
     if let Some(a) = html.select(&a_selector).next() {
@@ -52,19 +63,20 @@ fn expand_details_to_for_current(mut html: Html, url: &str) -> Result<String, Do
         }
     }
     if let Some(parent_id) = parent_id {
-        add_attribute(&mut html, parent_id, "data-rewriter", "em");
+        add_attribute(html, parent_id, "data-rewriter", "em");
     }
     for details in details {
-        add_attribute(&mut html, details, "open", "");
+        add_attribute(html, details, "open", "");
     }
 
-    Ok(html.html())
+    Ok(())
 }
 
 fn postprocess_sidebar(ks_rendered_sidebar: &str, doc: &Doc) -> Result<String, DocError> {
-    let fragment = Html::parse_fragment(ks_rendered_sidebar);
-    let pre_processed_html = expand_details_to_for_current(fragment, &doc.meta.url)?;
-    let post_processed_html = post_process_html(&pre_processed_html, doc, true)?;
+    let mut fragment = Html::parse_fragment(ks_rendered_sidebar);
+
+    expand_details_and_mark_current_for_sidebar(&mut fragment, &doc.meta.url)?;
+    let post_processed_html = post_process_html(&fragment.html(), doc, true)?;
     Ok::<_, DocError>(post_processed_html)
 }
 
