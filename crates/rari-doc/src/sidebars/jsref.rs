@@ -8,10 +8,10 @@ use rari_types::locale::Locale;
 use crate::docs::doc::Doc;
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
+use crate::helpers::subpages::get_sub_pages;
 use crate::html::sidebar::{
     Details, MetaChildren, MetaSidebar, SidebarMetaEntry, SidebarMetaEntryContent,
 };
-use crate::templ::api::RariApi;
 
 static BASE: &str = "%Base%";
 
@@ -175,9 +175,10 @@ impl JSRefItem {
         let mut static_properties = vec![];
         let mut static_methods = vec![];
         if obj == BASE {
-            let instance_props = RariApi::get_sub_pages(
+            let instance_props = get_sub_pages(
                 "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
                 Some(1),
+                Default::default(),
             )
             .unwrap_or_default();
             for page in instance_props
@@ -192,9 +193,10 @@ impl JSRefItem {
                 }
             }
 
-            let static_props = RariApi::get_sub_pages(
+            let static_props = get_sub_pages(
                 "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
                 Some(1),
+                Default::default(),
             );
             let static_props = static_props.unwrap_or_default();
             for page in static_props
@@ -209,9 +211,10 @@ impl JSRefItem {
                 }
             }
         } else {
-            let pages = RariApi::get_sub_pages(
+            let pages = get_sub_pages(
                 &format!("/en-US/docs/Web/JavaScript/Reference/Global_Objects/{sub_path}"),
                 Some(1),
+                Default::default(),
             )
             .unwrap_or_default();
 
@@ -314,9 +317,10 @@ fn inheritance_data(obj: &str) -> Option<&str> {
 static INTL_SUBPAGES: Lazy<Vec<Cow<'static, str>>> = Lazy::new(|| {
     once(Cow::Borrowed("Intl"))
         .chain(
-            RariApi::get_sub_pages(
+            get_sub_pages(
                 "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl",
                 Some(1),
+                Default::default(),
             )
             .unwrap_or_default()
             .iter()

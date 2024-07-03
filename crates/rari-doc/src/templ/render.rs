@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use rari_types::globals::deny_warnings;
 use rari_types::RariEnv;
-use tracing::{error, span, Level};
+use tracing::{span, warn, Level};
 
 use super::macros::invoke;
 use super::parser::{parse, Token};
@@ -94,7 +94,7 @@ pub fn render_tokens(
                     }
                     Err(e) if deny_warnings() => return Err(e),
                     Err(e) => {
-                        error!("{e}");
+                        warn!("{e}");
                         writeln!(&mut out, "{e}")?;
                     }
                 };

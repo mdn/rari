@@ -16,7 +16,7 @@ use crate::resolve::url_to_path_buf;
 pub fn build_single_page(page: &Page) {
     let slug = &page.slug();
     let locale = page.locale();
-    let span = span!(Level::ERROR, "ctx", "{}:{}", locale, slug);
+    let span = span!(Level::ERROR, "page", "{}:{}", locale, slug);
     let _enter = span.enter();
     let built_page = match page {
         Page::Doc(doc) => build_doc(doc),

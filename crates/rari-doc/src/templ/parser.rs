@@ -155,4 +155,10 @@ mod test {
         let p = parse(r#"foo {{foo(0.1)}} bar"#);
         println!("{:#?}", p);
     }
+
+    #[test]
+    fn weird4() {
+        let p = parse(r#"dasd \\{{foo}} 200 {{bar}}"#);
+        println!("{:#?}", p);
+    }
 }

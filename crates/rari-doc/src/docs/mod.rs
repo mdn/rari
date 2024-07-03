@@ -6,6 +6,5 @@ pub mod dummy;
 pub mod json;
 pub mod page;
 pub mod parents;
-pub mod sections;
 pub mod title;
 pub mod types;

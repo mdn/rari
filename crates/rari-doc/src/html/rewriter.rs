@@ -243,14 +243,14 @@ pub fn post_process_html<T: PageLike>(
             el.after("</figure>", ContentType::Html);
             Ok(())
         }),
-    ];
-    if sidebar {
-        element_content_handlers.push(element!("*[data-rewriter=em]", |el| {
+        element!("*[data-rewriter=em]", |el| {
             el.prepend("<em>", ContentType::Html);
             el.append("</em>", ContentType::Html);
             el.remove_attribute("data-rewriter");
             Ok(())
-        }));
+        }),
+    ];
+    if sidebar {
         element_content_handlers.push(element!("html", |el| {
             el.remove_and_keep_content();
             Ok(())

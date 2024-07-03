@@ -16,9 +16,7 @@ use crate::cached_readers::read_sidebar;
 use crate::docs::doc::Doc;
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
-use crate::templ::macros::listsubpages::{
-    list_sub_pages_grouped_internal, list_sub_pages_internal,
-};
+use crate::helpers::subpages::{list_sub_pages_grouped_internal, list_sub_pages_internal};
 use crate::utils::t_or_vec;
 
 fn cache_side_bar(sidebar: &str) -> bool {
@@ -62,43 +60,52 @@ fn expand_details_to_for_current(mut html: Html, url: &str) -> Result<String, Do
 
     Ok(html.html())
 }
-pub fn render_sidebar(doc: &Doc) -> Result<Option<String>, DocError> {
-    let locale = doc.meta.locale;
+
+fn postprocess_sidebar(ks_rendered_sidebar: &str, doc: &Doc) -> Result<String, DocError> {
+    let fragment = Html::parse_fragment(ks_rendered_sidebar);
+    let pre_processed_html = expand_details_to_for_current(fragment, &doc.meta.url)?;
+    let post_processed_html = post_process_html(&pre_processed_html, doc, true)?;
+    Ok::<_, DocError>(post_processed_html)
+}
+
+fn render_sidebar(s: &str, doc: &Doc) -> Result<String, DocError> {
+    let locale = doc.locale();
+    let cache = cache_side_bar(s);
+    if cache {
+        if let Some(sb) = SIDEBAR_CACHE
+            .read()
+            .map_err(|_| DocError::SidebarCachePoisoned)?
+            .get(&locale)
+            .and_then(|map| map.get(s))
+        {
+            return Ok::<_, DocError>(sb.to_string());
+        }
+    }
+    let sidebar = read_sidebar(s, locale, doc.slug())?;
+    let rendered_sidebar = sidebar.render(locale)?;
+    if cache {
+        SIDEBAR_CACHE
+            .write()
+            .map_err(|_| DocError::SidebarCachePoisoned)?
+            .entry(locale)
+            .or_default()
+            .entry(s.to_string())
+            .or_insert(rendered_sidebar.clone());
+    }
+    Ok::<_, DocError>(rendered_sidebar)
+}
+
+pub fn build_sidebar(s: &str, doc: &Doc) -> Result<String, DocError> {
+    let rendered_sidebar = render_sidebar(s, doc)?;
+    postprocess_sidebar(&rendered_sidebar, doc)
+}
+
+pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
     let out = doc
         .meta
         .sidebar
         .iter()
-        .map(|s| {
-            let cache = cache_side_bar(s);
-            if cache {
-                if let Some(sb) = SIDEBAR_CACHE
-                    .read()
-                    .map_err(|_| DocError::SidebarCachePoisoned)?
-                    .get(&locale)
-                    .and_then(|map| map.get(s))
-                {
-                    return Ok::<_, DocError>(sb.to_owned());
-                }
-            }
-            let sidebar = read_sidebar(s, locale, doc.slug())?;
-            let rendered_sidebar = sidebar.render(locale)?;
-            if cache {
-                SIDEBAR_CACHE
-                    .write()
-                    .map_err(|_| DocError::SidebarCachePoisoned)?
-                    .entry(locale)
-                    .or_default()
-                    .entry(s.clone())
-                    .or_insert(rendered_sidebar.clone());
-            }
-            Ok::<_, DocError>(rendered_sidebar)
-        })
-        .map(|ks_rendered_sidebar| {
-            let fragment = Html::parse_fragment(&ks_rendered_sidebar?);
-            let pre_processed_html = expand_details_to_for_current(fragment, &doc.meta.url)?;
-            let post_processed_html = post_process_html(&pre_processed_html, doc, true)?;
-            Ok::<_, DocError>(post_processed_html)
-        })
+        .map(|s| build_sidebar(s.as_str(), doc))
         .collect::<Result<String, DocError>>()?;
     Ok(if out.is_empty() { None } else { Some(out) })
 }
@@ -388,10 +395,10 @@ impl SidebarMetaEntry {
                 }
             }
             MetaChildren::ListSubPages(url, page_types) => {
-                list_sub_pages_internal(out, url, locale, page_types)?
+                list_sub_pages_internal(out, url, locale, Some(1), false, None, page_types)?
             }
             MetaChildren::ListSubPagesGrouped(url, page_types) => {
-                list_sub_pages_grouped_internal(out, url, locale, page_types)?
+                list_sub_pages_grouped_internal(out, url, locale, None, page_types)?
             }
             MetaChildren::None => {}
         }

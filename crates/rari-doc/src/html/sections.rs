@@ -22,7 +22,9 @@ pub struct BuildSection<'a> {
     pub id: Option<String>,
 }
 
-pub fn split_sections(html: &Html) -> Result<(Vec<BuildSection<'_>>, Option<String>), DocError> {
+pub fn split_sections(
+    html: &Html,
+) -> Result<(Vec<BuildSection<'_>>, Option<String>, Option<String>), DocError> {
     let root_children = html.root_element().children();
     let raw_sections = root_children;
     let summary_selector = Selector::parse("p").unwrap();
@@ -34,6 +36,7 @@ pub fn split_sections(html: &Html) -> Result<(Vec<BuildSection<'_>>, Option<Stri
             None
         }
     });
+    let mut sidebar = None;
 
     let (mut sections, mut last) = raw_sections.fold(
         (Vec::new(), None::<BuildSection>),
@@ -99,6 +102,13 @@ pub fn split_sections(html: &Html) -> Result<(Vec<BuildSection<'_>>, Option<Stri
                             spec_urls: None,
                             id,
                         });
+                    }
+                    "section" if element.id() == Some("Quick_links") => {
+                        if let Some(section) = maybe_section.take() {
+                            sections.push(section);
+                        }
+                        let html = ElementRef::wrap(current).unwrap().html();
+                        sidebar = Some(html)
                     }
                     _ => {
                         let (typ, query, urls) = if element.classes().any(|cls| cls == "bc-data") {
@@ -223,5 +233,5 @@ pub fn split_sections(html: &Html) -> Result<(Vec<BuildSection<'_>>, Option<Stri
     if let Some(section) = last.take() {
         sections.push(section);
     }
-    Ok((sections, summary))
+    Ok((sections, summary, sidebar))
 }

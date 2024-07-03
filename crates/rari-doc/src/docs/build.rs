@@ -18,13 +18,13 @@ use super::json::{
 };
 use super::page::PageLike;
 use super::parents::parents;
-use super::sections::{split_sections, BuildSection, BuildSectionType};
 use super::title::{page_title, transform_title};
 use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::html::modifier::add_missing_ids;
 use crate::html::rewriter::post_process_html;
-use crate::html::sidebar::render_sidebar;
+use crate::html::sections::{split_sections, BuildSection, BuildSectionType};
+use crate::html::sidebar::build_sidebars;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render};
 
@@ -122,6 +122,7 @@ pub struct PageContent {
     body: Vec<Section>,
     toc: Vec<TocEntry>,
     summary: Option<String>,
+    sidebar: Option<String>,
 }
 
 pub fn make_toc(sections: &[BuildSection], with_h3: bool) -> Vec<TocEntry> {
@@ -143,15 +144,29 @@ pub fn build_content<T: PageLike>(doc: &T) -> Result<PageContent, DocError> {
     let post_processed_html = post_process_html(&html, doc, false)?;
     let mut fragment = Html::parse_fragment(&post_processed_html);
     add_missing_ids(&mut fragment)?;
-    let (sections, summary) = split_sections(&fragment).expect("DOOM");
+    let (sections, summary, sidebar) = split_sections(&fragment).expect("DOOM");
     let toc = make_toc(&sections, matches!(doc.page_type(), PageType::Curriculum));
     let body = sections.into_iter().map(Into::into).collect();
-    Ok(PageContent { body, toc, summary })
+    Ok(PageContent {
+        body,
+        toc,
+        summary,
+        sidebar,
+    })
 }
 
 pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
-    let PageContent { body, toc, summary } = build_content(doc)?;
-    let sidebar_html = render_sidebar(doc)?;
+    let PageContent {
+        body,
+        toc,
+        summary,
+        sidebar,
+    } = build_content(doc)?;
+    let sidebar_html = if sidebar.is_some() {
+        sidebar
+    } else {
+        build_sidebars(doc)?
+    };
     let baseline = get_baseline(&doc.meta.browser_compat);
     let folder = doc
         .meta

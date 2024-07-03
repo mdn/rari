@@ -29,7 +29,7 @@ pub enum DocError {
     WalkError(#[from] ignore::Error),
     #[error(transparent)]
     JsonError(#[from] serde_json::Error),
-    #[error("File not found in static cache: {0}")]
+    #[error("Page not found (static cache): {0}")]
     NotFoundInStaticCache(PathBuf),
     #[error("File cache broken")]
     FileCacheBroken,

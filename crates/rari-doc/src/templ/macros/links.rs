@@ -69,11 +69,11 @@ pub fn http_header(slug: String, content: Option<String>) -> Result<String, DocE
 pub fn rfc(
     number: AnyArg,
     content: Option<String>,
-    anchor: Option<String>,
+    anchor: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let content = content.and_then(|c| if c.is_empty() { None } else { Some(c) });
-    let anchor = anchor.and_then(|a| if a.is_empty() { None } else { Some(a) });
-    let (content, anchor): (String, String) = match (content, anchor) {
+    let anchor_str = anchor.and_then(|a| if a.is_empty() { None } else { Some(a) });
+    let (content, anchor): (String, String) = match (content, anchor_str) {
         (None, None) => Default::default(),
         (None, Some(anchor)) => (
             format!(

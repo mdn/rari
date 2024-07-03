@@ -59,7 +59,7 @@ macro_tag = ${
     ~ WHITESPACE* ~ tag_end
 }
 
-dropped_escape = _{ "\\" }
+dropped_escape = _{ "\\\\" | "\\" }
 text = ${ ((dropped_escape | !(tag_start)) ~ ANY)+ }
 content = @{
 	text |
