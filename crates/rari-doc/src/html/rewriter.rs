@@ -14,6 +14,26 @@ use crate::error::DocError;
 use crate::redirects::resolve_redirect;
 use crate::resolve::strip_locale_from_url;
 
+pub fn cleanup(input: &str) -> Result<String, DocError> {
+    let element_content_handlers = vec![
+        element!("span.curriculum-outcomes", |el| {
+            el.remove_and_keep_content();
+            Ok(())
+        }),
+        element!("span.curriculum-resources", |el| {
+            el.remove_and_keep_content();
+            Ok(())
+        }),
+    ];
+    Ok(rewrite_str(
+        input,
+        RewriteStrSettings {
+            element_content_handlers,
+            ..Default::default()
+        },
+    )?)
+}
+
 pub fn post_process_inline_sidebar(input: &str) -> Result<String, DocError> {
     let element_content_handlers = vec![element!("*[data-rewriter=em]", |el| {
         el.prepend("<em>", ContentType::Html);
@@ -293,16 +313,12 @@ pub fn post_process_html<T: PageLike>(
                 }),
                 text!("p", |t| {
                     if t.as_str() == "Learning outcomes:" {
-                        t.before(
-                            "<span class=\"curriculum-outcomes\"></span>",
-                            ContentType::Html,
-                        )
+                        t.before("<span class=\"curriculum-outcomes\">", ContentType::Html);
+                        t.after("</span>", ContentType::Html);
                     }
                     if t.as_str() == "Resources:" || t.as_str() == "General resources:" {
-                        t.before(
-                            "<span class=\"curriculum-resources\"></span>",
-                            ContentType::Html,
-                        )
+                        t.before("<span class=\"curriculum-resources\">", ContentType::Html);
+                        t.after("</span>", ContentType::Html);
                     }
                     Ok(())
                 }),

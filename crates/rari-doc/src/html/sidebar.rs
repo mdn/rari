@@ -388,6 +388,7 @@ impl SidebarMetaEntry {
                         badges: page.status(),
                         badge_locale: page.locale(),
                         code: self.code,
+                        only_en_us: page.locale() != locale,
                     },
                 )?;
             }

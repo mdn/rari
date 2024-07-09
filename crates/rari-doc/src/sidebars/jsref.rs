@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::iter::once;
 
 use once_cell::sync::Lazy;
+use rari_l10n::l10n_json_data;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 
@@ -16,6 +17,14 @@ use crate::html::sidebar::{
 static BASE: &str = "%Base%";
 
 pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
+    let constructor_label = l10n_json_data("Common", "Constructor", locale)?;
+    let static_methods_label = l10n_json_data("Common", "Static_methods", locale)?;
+    let static_properties_label = l10n_json_data("Common", "Static_properties", locale)?;
+    let instance_methods_label = l10n_json_data("Common", "Instance_methods", locale)?;
+    let instance_properties_label = l10n_json_data("Common", "Instance_properties", locale)?;
+    let inheritance_label = l10n_json_data("Common", "Inheritance", locale)?;
+    let related_labl = l10n_json_data("Common", "Related_pages_wo_group", locale)?;
+
     let main_object = slug_to_object_name(slug);
     let mut inheritance = vec![Cow::Borrowed(main_object.as_ref())];
     if let Some(data) = inheritance_data(&main_object) {
@@ -52,7 +61,7 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
             entries.push(SidebarMetaEntry {
                 section: true,
                 content: SidebarMetaEntryContent::Link {
-                    title: Some("Inheritence".into()),
+                    title: Some(inheritance_label.to_string()),
                     link: None,
                 },
                 ..Default::default()
@@ -79,17 +88,24 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         };
 
         for (label, list) in &[
-            ("Constructor", item.constructors),
-            ("Static methods", item.static_methods),
-            ("Static properties", item.static_properties),
-            ("Instance methods", item.instance_methods),
-            ("Instance Properties", item.instance_properties),
+            (constructor_label, item.constructors),
+            (static_methods_label, item.static_methods),
+            (static_properties_label, item.static_properties),
+            (instance_methods_label, item.instance_methods),
+            (instance_properties_label, item.instance_properties),
         ] {
             let children: Vec<_> = list
                 .iter()
                 .map(|page| SidebarMetaEntry {
                     code: true,
-                    content: SidebarMetaEntryContent::Page(page.clone()),
+                    content: SidebarMetaEntryContent::Link {
+                        title: None,
+                        link: page
+                            .clone()
+                            .url()
+                            .strip_prefix("/en-US/docs")
+                            .map(String::from),
+                    },
                     ..Default::default()
                 })
                 .collect();
@@ -111,7 +127,7 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         entries.push(SidebarMetaEntry {
             section: true,
             content: SidebarMetaEntryContent::Link {
-                title: Some("Related".into()),
+                title: Some(related_labl.to_string()),
                 link: None,
             },
             ..Default::default()

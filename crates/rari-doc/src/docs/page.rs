@@ -91,6 +91,14 @@ impl PageReader for Page {
     }
 }
 
+fn doc_from_path_and_locale(path: &Path, locale: Locale) -> Result<Page, DocError> {
+    let mut file = root_for_locale(locale)?.to_path_buf();
+    file.push(locale.as_folder_str());
+    file.push(path);
+    file.push("index.md");
+    Doc::read(file)
+}
+
 pub fn url_path_to_page(url_path: &str) -> Result<Page, DocError> {
     if let Some(dummy) = Dummy::from_url(url_path) {
         return Ok(dummy);
@@ -98,11 +106,12 @@ pub fn url_path_to_page(url_path: &str) -> Result<Page, DocError> {
     let (path, locale, typ) = url_path_to_path_buf(url_path)?;
     match typ {
         PageCategory::Doc => {
-            let mut file = root_for_locale(locale)?.to_path_buf();
-            file.push(locale.as_folder_str());
-            file.push(path);
-            file.push("index.md");
-            Doc::read(file)
+            let doc = doc_from_path_and_locale(&path, locale);
+            if doc.is_err() && locale != Default::default() {
+                doc_from_path_and_locale(&path, Default::default())
+            } else {
+                doc
+            }
         }
         PageCategory::BlogPost => blog_from_url(url_path).ok_or(DocError::PageNotFound(
             url_path.to_string(),

@@ -6,7 +6,7 @@ use rari_types::locale::{Locale, Native};
 use serde::Serialize;
 
 use super::blog::BlogMeta;
-use super::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Topic};
+use super::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
 use super::dummy::BlogIndex;
 use super::types::PrevNextCurriculum;
 use crate::specs::Specification;
@@ -165,6 +165,7 @@ pub struct JsonCurriculumDoc {
     pub modules: Vec<CurriculumIndexEntry>,
     #[serde(rename = "prevNext", skip_serializing_if = "Option::is_none")]
     pub prev_next: Option<PrevNextCurriculum>,
+    pub template: Template,
 }
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct JsonCurriculum {

@@ -11,6 +11,7 @@ pub mod jsxref;
 pub mod links;
 pub mod listsubpages;
 pub mod livesample;
+pub mod quick_links_with_subpages;
 pub mod specification;
 pub mod svgxref;
 
@@ -30,6 +31,7 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
         "listsubpagesgrouped" => listsubpages::list_sub_pages_grouped_any,
         "embedlivesample" => livesample::live_sample_any,
         "cssinfo" => cssinfo::cssinfo_any,
+        "quicklinkswithsubpages" => quick_links_with_subpages::quick_links_with_subpages_any,
 
         // badges
         "experimentalbadge" | "experimental_inline" => badges::experimental_any,

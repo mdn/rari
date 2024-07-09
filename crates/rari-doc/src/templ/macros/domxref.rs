@@ -22,11 +22,12 @@ pub fn domxref(
     if api.is_empty() {
         return Err(DocError::ArgError(ArgError::MustBeProvided));
     }
+    let (first_char_index, _) = api.char_indices().next().unwrap_or_default();
     let mut url = format!(
         "/{}/docs/Web/API/{}{}",
         env.locale.as_url_str(),
-        &api[0..1].to_uppercase(),
-        &api[1..],
+        &api[0..first_char_index].to_uppercase(),
+        &api[first_char_index..],
     );
     if let Some(anchor) = anchor {
         if !anchor.is_empty() {
@@ -35,8 +36,9 @@ pub fn domxref(
                 display_with_fallback = Cow::Owned(format!("{}.{}", display_with_fallback, anchor));
             }
             url.push_str(&anchor);
-            display_with_fallback =
-                Cow::Owned(format!("{}.{}", display_with_fallback, &anchor[1..]));
+            if let Some(anchor) = anchor.strip_prefix('#') {
+                display_with_fallback = Cow::Owned(format!("{}.{}", display_with_fallback, anchor));
+            }
         }
     }
 

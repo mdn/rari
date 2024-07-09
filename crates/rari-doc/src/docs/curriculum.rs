@@ -16,7 +16,7 @@ use super::types::{PrevNextBlog, PrevNextCurriculum, UrlNTitle};
 use crate::cached_readers::{curriculum_files, curriculum_from_path};
 use crate::error::DocError;
 use crate::utils::{as_null, split_fm};
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum Template {
     Module,

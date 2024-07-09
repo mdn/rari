@@ -12,6 +12,7 @@ pub struct LinkModifier<'a> {
     pub badges: &'a [FeatureStatus],
     pub badge_locale: Locale,
     pub code: bool,
+    pub only_en_us: bool,
 }
 
 pub fn render_internal_link(
@@ -26,6 +27,9 @@ pub fn render_internal_link(
     if let Some(title) = title {
         out.push_str("\" title=\"");
         out.push_str(title);
+    }
+    if modifier.only_en_us {
+        out.push_str("\" class=\"only-in-en-us")
     }
     out.push_str("\">");
     if modifier.code {
@@ -87,6 +91,7 @@ pub fn render_link_via_page(
                 badges: if with_badges { page.status() } else { &[] },
                 badge_locale: locale.unwrap_or(page.locale()),
                 code,
+                only_en_us: page.locale() != locale.unwrap_or_default(),
             },
         )?;
     } else {
