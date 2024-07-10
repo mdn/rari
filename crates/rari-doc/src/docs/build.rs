@@ -23,7 +23,7 @@ use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::html::bubble_up::bubble_up_curriculum_page;
 use crate::html::modifier::add_missing_ids;
-use crate::html::rewriter::{cleanup, post_process_html, post_process_inline_sidebar};
+use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
 use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Splitted};
 use crate::html::sidebar::{build_sidebars, expand_details_and_mark_current_for_inline_sidebar};
 use crate::specs::extract_specifications;
@@ -149,9 +149,6 @@ pub fn build_content<T: PageLike>(doc: &T) -> Result<PageContent, DocError> {
     }
     add_missing_ids(&mut fragment)?;
     expand_details_and_mark_current_for_inline_sidebar(&mut fragment, doc.url())?;
-    let html = fragment.html();
-    let clean_html = cleanup(&html)?;
-    let fragment = Html::parse_fragment(&clean_html);
     let Splitted {
         sections,
         summary,

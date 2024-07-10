@@ -4,6 +4,8 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::path::Path;
 use std::str::FromStr;
+use std::sync::mpsc::Sender;
+use std::sync::OnceLock;
 
 use chrono::NaiveDateTime;
 use icu_collator::{Collator, CollatorOptions, Strength};
@@ -221,5 +223,12 @@ thread_local! {
         let mut options = CollatorOptions::new();
         options.strength = Some(Strength::Primary);
         Collator::try_new(&locale, options).unwrap()
+    };
+}
+
+pub static TEMPL_RECORDER_SENDER: OnceLock<Sender<String>> = OnceLock::new();
+thread_local! {
+    pub static TEMPL_RECORDER: Option<Sender<String>> = {
+        TEMPL_RECORDER_SENDER.get().cloned()
     };
 }

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use lol_html::html_content::ContentType;
-use lol_html::{element, rewrite_str, text, HtmlRewriter, RewriteStrSettings, Settings};
+use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings};
 use rari_md::bq::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
@@ -13,26 +13,6 @@ use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::redirects::resolve_redirect;
 use crate::resolve::strip_locale_from_url;
-
-pub fn cleanup(input: &str) -> Result<String, DocError> {
-    let element_content_handlers = vec![
-        element!("span.curriculum-outcomes", |el| {
-            el.remove_and_keep_content();
-            Ok(())
-        }),
-        element!("span.curriculum-resources", |el| {
-            el.remove_and_keep_content();
-            Ok(())
-        }),
-    ];
-    Ok(rewrite_str(
-        input,
-        RewriteStrSettings {
-            element_content_handlers,
-            ..Default::default()
-        },
-    )?)
-}
 
 pub fn post_process_inline_sidebar(input: &str) -> Result<String, DocError> {
     let element_content_handlers = vec![element!("*[data-rewriter=em]", |el| {
@@ -294,35 +274,22 @@ pub fn post_process_html<T: PageLike>(
     }
     if page.page_type() == PageType::Curriculum {
         element_content_handlers = {
-            let mut curriculum_links = vec![
-                element!("a[href^=\".\"]", |el| {
-                    let href = el.get_attribute("href").unwrap_or_default();
-                    let split_href = href.split_once('#');
-                    if let Ok(page) = relative_file_to_curriculum_page(
-                        page.full_path(),
-                        split_href.map(|s| s.0).unwrap_or(&href),
-                    ) {
-                        el.set_attribute(
-                            "href",
-                            &split_href
-                                .map(|s| Cow::Owned(format!("{}#{}", page.url(), s.1)))
-                                .unwrap_or(Cow::Borrowed(page.url())),
-                        )?;
-                    }
-                    Ok(())
-                }),
-                text!("p", |t| {
-                    if t.as_str() == "Learning outcomes:" {
-                        t.before("<span class=\"curriculum-outcomes\">", ContentType::Html);
-                        t.after("</span>", ContentType::Html);
-                    }
-                    if t.as_str() == "Resources:" || t.as_str() == "General resources:" {
-                        t.before("<span class=\"curriculum-resources\">", ContentType::Html);
-                        t.after("</span>", ContentType::Html);
-                    }
-                    Ok(())
-                }),
-            ];
+            let mut curriculum_links = vec![element!("a[href^=\".\"]", |el| {
+                let href = el.get_attribute("href").unwrap_or_default();
+                let split_href = href.split_once('#');
+                if let Ok(page) = relative_file_to_curriculum_page(
+                    page.full_path(),
+                    split_href.map(|s| s.0).unwrap_or(&href),
+                ) {
+                    el.set_attribute(
+                        "href",
+                        &split_href
+                            .map(|s| Cow::Owned(format!("{}#{}", page.url(), s.1)))
+                            .unwrap_or(Cow::Borrowed(page.url())),
+                    )?;
+                }
+                Ok(())
+            })];
 
             curriculum_links.append(&mut element_content_handlers);
             curriculum_links

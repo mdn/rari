@@ -17,8 +17,10 @@ pub mod svgxref;
 
 use rari_types::globals::deny_warnings;
 use rari_types::{Arg, RariEnv};
+use tracing::error;
 
 use crate::error::DocError;
+use crate::utils::TEMPL_RECORDER;
 
 pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<String, DocError> {
     (match ident.to_lowercase().as_str() {
@@ -58,6 +60,15 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),
-        _ => return Ok(format!("<s>unsupported templ: {ident}</s>")), //
+        _ => {
+            TEMPL_RECORDER.with(|tx| {
+                if let Some(tx) = tx {
+                    if let Err(e) = tx.send(ident.to_string()) {
+                        error!("templ recorder: {e}");
+                    }
+                }
+            });
+            return Ok(format!("<s>unsupported templ: {ident}</s>"));
+        } //
     })(env, args)
 }

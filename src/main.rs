@@ -1,17 +1,22 @@
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::PathBuf;
+use std::sync::mpsc::channel;
 use std::sync::{Arc, RwLock};
+use std::thread::spawn;
 
 use clap::{Args, Parser, Subcommand};
 use rari_doc::build::{build_blog_pages, build_curriculum_pages, build_docs};
 use rari_doc::cached_readers::{CACHED_PAGE_FILES, STATIC_PAGE_FILES};
 use rari_doc::docs::doc::Doc;
 use rari_doc::docs::page::PageLike;
+use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_doc::walker::read_docs_parallel;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_types::globals::SETTINGS;
 use rari_types::settings::Settings;
+use tabwriter::TabWriter;
 use tracing_log::AsTrace;
 use tracing_subscriber::filter;
 use tracing_subscriber::layer::SubscriberExt;
@@ -61,6 +66,8 @@ struct BuildArgs {
     skip_blog: bool,
     #[arg(long)]
     skip_curriculum: bool,
+    #[arg(long)]
+    templ_stats: bool,
 }
 
 enum Cache {
@@ -92,6 +99,39 @@ fn main() -> Result<(), anyhow::Error> {
             settings.deny_warnings = args.deny_warnings;
             settings.cache_content = args.cache_content;
             let _ = SETTINGS.set(settings);
+
+            let templ_stats = if args.templ_stats {
+                let (tx, rx) = channel::<String>();
+                TEMPL_RECORDER_SENDER
+                    .set(tx.clone())
+                    .expect("unable to create templ recorder");
+                let recorder_handler = spawn(move || {
+                    let mut stats = HashMap::new();
+                    while let Ok(t) = rx.recv() {
+                        if t == "∞" {
+                            break;
+                        }
+                        let t = t.to_lowercase();
+                        if let Some(n) = stats.get_mut(&t) {
+                            *n += 1usize;
+                        } else {
+                            stats.insert(t, 1usize);
+                        }
+                    }
+                    let mut out = stats.into_iter().collect::<Vec<(String, usize)>>();
+                    out.sort_by(|(_, a), (_, b)| b.cmp(a));
+                    println!("--- templ summary ---");
+                    let mut tw = TabWriter::new(vec![]);
+                    for (templ, count) in out {
+                        writeln!(&mut tw, "{templ}\t{count}").expect("unable to write");
+                    }
+                    print!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                });
+                Some((recorder_handler, tx))
+            } else {
+                None
+            };
+
             let cache = match (args.files.is_empty(), cli.no_cache) {
                 (_, true) => Cache::None,
                 (true, false) => Cache::Static,
@@ -131,6 +171,12 @@ fn main() -> Result<(), anyhow::Error> {
                 let start = std::time::Instant::now();
                 build_blog_pages()?;
                 println!("Took: {:?} to build blog", start.elapsed());
+            }
+            if let Some((recorder_handler, tx)) = templ_stats {
+                tx.send("∞".to_string())?;
+                recorder_handler
+                    .join()
+                    .expect("unable to close templ recorder");
             }
         }
         Commands::Serve(args) => {
