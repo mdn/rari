@@ -122,8 +122,9 @@ fn main() -> Result<(), anyhow::Error> {
                     out.sort_by(|(_, a), (_, b)| b.cmp(a));
                     println!("--- templ summary ---");
                     let mut tw = TabWriter::new(vec![]);
-                    for (templ, count) in out {
-                        writeln!(&mut tw, "{templ}\t{count}").expect("unable to write");
+                    for (i, (templ, count)) in out.iter().enumerate() {
+                        writeln!(&mut tw, "{:2}\t{templ}\t{count:4}", i + 1)
+                            .expect("unable to write");
                     }
                     print!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
                 });

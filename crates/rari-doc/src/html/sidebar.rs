@@ -72,11 +72,14 @@ fn expand_details_and_mark_current(html: &mut Html, a_selector: Selector) -> Res
     Ok(())
 }
 
-fn postprocess_sidebar(ks_rendered_sidebar: &str, doc: &Doc) -> Result<String, DocError> {
+pub fn postprocess_sidebar<T: PageLike>(
+    ks_rendered_sidebar: &str,
+    page: &T,
+) -> Result<String, DocError> {
     let mut fragment = Html::parse_fragment(ks_rendered_sidebar);
 
-    expand_details_and_mark_current_for_sidebar(&mut fragment, &doc.meta.url)?;
-    let post_processed_html = post_process_html(&fragment.html(), doc, true)?;
+    expand_details_and_mark_current_for_sidebar(&mut fragment, page.url())?;
+    let post_processed_html = post_process_html(&fragment.html(), page, true)?;
     Ok::<_, DocError>(post_processed_html)
 }
 

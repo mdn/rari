@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use itertools::Itertools;
 use rari_types::fm_types::PageType;
 use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
@@ -16,7 +17,7 @@ use super::json::{
     BuiltDocy, Compat, JsonBlogPost, JsonBlogPostDoc, JsonCurriculum, JsonDoADoc, JsonDoc, Prose,
     Section, Source, SpecificationSection, TocEntry,
 };
-use super::page::PageLike;
+use super::page::{Page, PageLike};
 use super::parents::parents;
 use super::title::{page_title, transform_title};
 use crate::baseline::get_baseline;
@@ -25,9 +26,12 @@ use crate::html::bubble_up::bubble_up_curriculum_page;
 use crate::html::modifier::add_missing_ids;
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
 use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Splitted};
-use crate::html::sidebar::{build_sidebars, expand_details_and_mark_current_for_inline_sidebar};
+use crate::html::sidebar::{
+    self, build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
+};
+use crate::sidebars;
 use crate::specs::extract_specifications;
-use crate::templ::render::{decode_ref, render};
+use crate::templ::render::{decode_ref, render, Rendered};
 
 impl<'a> From<BuildSection<'a>> for Section {
     fn from(value: BuildSection) -> Self {
@@ -133,33 +137,47 @@ pub fn make_toc(sections: &[BuildSection], with_h3: bool) -> Vec<TocEntry> {
         .collect()
 }
 
-pub fn build_content<T: PageLike>(doc: &T) -> Result<PageContent, DocError> {
-    let (ks_rendered_doc, templs) = if let Some(rari_env) = &doc.rari_env() {
-        let (out, templs) = render(rari_env, doc.content())?;
-        (Cow::Owned(out), templs)
+pub fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
+    let (ks_rendered_doc, templs, sidebars) = if let Some(rari_env) = &page.rari_env() {
+        let Rendered {
+            content,
+            templs,
+            sidebars,
+        } = render(rari_env, page.content())?;
+        (Cow::Owned(content), templs, sidebars)
     } else {
-        (Cow::Borrowed(doc.content()), vec![])
+        (Cow::Borrowed(page.content()), vec![], vec![])
     };
-    let encoded_html = render_md_to_html(&ks_rendered_doc, doc.locale())?;
+    let encoded_html = render_md_to_html(&ks_rendered_doc, page.locale())?;
     let html = decode_ref(&encoded_html, &templs)?;
-    let post_processed_html = post_process_html(&html, doc, false)?;
+    let post_processed_html = post_process_html(&html, page, false)?;
     let mut fragment = Html::parse_fragment(&post_processed_html);
-    if doc.page_type() == PageType::Curriculum {
+    if page.page_type() == PageType::Curriculum {
         bubble_up_curriculum_page(&mut fragment)?;
     }
     add_missing_ids(&mut fragment)?;
-    expand_details_and_mark_current_for_inline_sidebar(&mut fragment, doc.url())?;
+    expand_details_and_mark_current_for_inline_sidebar(&mut fragment, page.url())?;
     let Splitted {
         sections,
         summary,
         sidebar,
     } = split_sections(&fragment).expect("DOOM");
-    let sidebar = if let Some(sidebar) = sidebar {
-        Some(post_process_inline_sidebar(&sidebar)?)
-    } else {
+
+    // TODO cleanup
+    let mut sidebars = sidebars
+        .iter()
+        .map(|s| postprocess_sidebar(s, page))
+        .collect::<Vec<_>>();
+    if let Some(sidebar) = &sidebar {
+        sidebars.push(post_process_inline_sidebar(sidebar));
+    }
+
+    let sidebar = if sidebars.is_empty() {
         None
+    } else {
+        Some(sidebars.into_iter().collect::<Result<String, _>>()?)
     };
-    let toc = make_toc(&sections, matches!(doc.page_type(), PageType::Curriculum));
+    let toc = make_toc(&sections, matches!(page.page_type(), PageType::Curriculum));
     let body = sections.into_iter().map(Into::into).collect();
     Ok(PageContent {
         body,

@@ -16,15 +16,17 @@ mod test {
     use rari_types::RariEnv;
 
     use crate::error::DocError;
-    use crate::templ::render::{decode_ref, render};
+    use crate::templ::render::{decode_ref, render, Rendered};
 
     #[test]
     fn test_compat_none() -> Result<(), DocError> {
         let env = RariEnv {
             ..Default::default()
         };
-        let (out, templs) = render(&env, r#"{{ compat }}"#)?;
-        let out = decode_ref(&out, &templs)?;
+        let Rendered {
+            content, templs, ..
+        } = render(&env, r#"{{ compat }}"#)?;
+        let out = decode_ref(&content, &templs)?;
         assert_eq!(out, r#""#);
         Ok(())
     }
@@ -38,8 +40,10 @@ mod test {
         let exp = r#"<div class="bc-data" data-query="javascript.builtins.Array.concat" data-depth="1" data-multiple="false">
 If you're able to see this, something went wrong on this page.
 </div>"#;
-        let (out, templs) = render(&env, r#"{{ compat }}"#)?;
-        let out = decode_ref(&out, &templs)?;
+        let Rendered {
+            content, templs, ..
+        } = render(&env, r#"{{ compat }}"#)?;
+        let out = decode_ref(&content, &templs)?;
         assert_eq!(out, exp);
         Ok(())
     }
@@ -59,8 +63,10 @@ If you're able to see this, something went wrong on this page.
 <div class="bc-data" data-query="javascript.builtins.Array.filter" data-depth="1" data-multiple="true">
 If you're able to see this, something went wrong on this page.
 </div>"#;
-        let (out, templs) = render(&env, r#"{{ compat }}"#)?;
-        let out = decode_ref(&out, &templs)?;
+        let Rendered {
+            content, templs, ..
+        } = render(&env, r#"{{ compat }}"#)?;
+        let out = decode_ref(&content, &templs)?;
         assert_eq!(out, exp);
         Ok(())
     }

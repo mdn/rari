@@ -8,7 +8,13 @@ use super::macros::invoke;
 use super::parser::{parse, Token};
 use crate::error::DocError;
 
-pub fn render(env: &RariEnv, input: &str) -> Result<(String, Vec<String>), DocError> {
+pub struct Rendered {
+    pub content: String,
+    pub templs: Vec<String>,
+    pub sidebars: Vec<String>,
+}
+
+pub fn render(env: &RariEnv, input: &str) -> Result<Rendered, DocError> {
     let tokens = parse(input)?;
     render_tokens(env, tokens, input)
 }
@@ -17,8 +23,10 @@ fn encode_ref(index: usize, out: &mut String) -> Result<(), DocError> {
 }
 
 pub fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
-    let (out, templs) = render(env, input)?;
-    decode_ref(&out, &templs)
+    let Rendered {
+        content, templs, ..
+    } = render(env, input)?;
+    decode_ref(&content, &templs)
 }
 
 pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocError> {
@@ -65,12 +73,9 @@ pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocEr
 
     Ok(decoded)
 }
-pub fn render_tokens(
-    env: &RariEnv,
-    tokens: Vec<Token>,
-    input: &str,
-) -> Result<(String, Vec<String>), DocError> {
+pub fn render_tokens(env: &RariEnv, tokens: Vec<Token>, input: &str) -> Result<Rendered, DocError> {
     let mut templs = vec![];
+    let mut sidebars = vec![];
     let mut out = String::with_capacity(input.len());
     for token in tokens {
         match token {
@@ -88,9 +93,13 @@ pub fn render_tokens(
                 let span = span!(Level::ERROR, "templ", "{}", &ident);
                 let _enter = span.enter();
                 match invoke(env, &mac.ident, mac.args) {
-                    Ok(rendered) => {
-                        encode_ref(templs.len(), &mut out)?;
-                        templs.push(rendered)
+                    Ok((rendered, is_sidebar)) => {
+                        if is_sidebar {
+                            sidebars.push(rendered)
+                        } else {
+                            encode_ref(templs.len(), &mut out)?;
+                            templs.push(rendered)
+                        }
                     }
                     Err(e) if deny_warnings() => return Err(e),
                     Err(e) => {
@@ -101,5 +110,9 @@ pub fn render_tokens(
             }
         }
     }
-    Ok((out, templs))
+    Ok(Rendered {
+        content: out,
+        templs,
+        sidebars,
+    })
 }

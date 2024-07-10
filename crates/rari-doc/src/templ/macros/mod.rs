@@ -1,3 +1,4 @@
+pub mod apiref;
 pub mod badges;
 pub mod compat;
 pub mod cssinfo;
@@ -22,8 +23,13 @@ use tracing::error;
 use crate::error::DocError;
 use crate::utils::TEMPL_RECORDER;
 
-pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<String, DocError> {
-    (match ident.to_lowercase().as_str() {
+pub fn invoke(
+    env: &RariEnv,
+    ident: &str,
+    args: Vec<Option<Arg>>,
+) -> Result<(String, bool), DocError> {
+    let is_sidebar = matches!(ident.to_lowercase().as_str(), "apiref");
+    let f = match ident.to_lowercase().as_str() {
         "compat" => compat::compat_any,
         "specifications" => specification::specification_any,
         "glossary" => glossary::glossary_any,
@@ -55,6 +61,9 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
         "htmlelement" => htmlxref::htmlxref_any,
         "svgelement" => svgxref::svgxref_any,
 
+        // sidebars
+        "apiref" => apiref::apiref_any,
+
         // ignore
         "cssref" | "glossarysidebar" | "jsref" => return Ok(Default::default()),
 
@@ -68,7 +77,8 @@ pub fn invoke(env: &RariEnv, ident: &str, args: Vec<Option<Arg>>) -> Result<Stri
                     }
                 }
             });
-            return Ok(format!("<s>unsupported templ: {ident}</s>"));
+            return Ok((format!("<s>unsupported templ: {ident}</s>"), is_sidebar));
         } //
-    })(env, args)
+    };
+    f(env, args).map(|s| (s, is_sidebar))
 }

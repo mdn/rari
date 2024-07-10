@@ -91,6 +91,8 @@ pub enum DocError {
     MissingCSSL10n,
     #[error("At rule was empty")]
     MustHaveAtRule,
+    #[error("Invalid slug for templ/sidebar: {0}")]
+    InvalidSlugForX(String),
 }
 
 impl<T> From<PoisonError<T>> for DocError {
