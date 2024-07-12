@@ -14,8 +14,8 @@ use tracing::warn;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
-use crate::templ::macros::links::cssxref::cssxref_internal;
 use crate::templ::render::render_and_decode_ref;
+use crate::templ::templs::links::cssxref::cssxref_internal;
 
 // mdn/data is deprecated so we do a least effort integration here.
 #[derive(Debug, Default)]

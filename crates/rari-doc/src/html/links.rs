@@ -6,7 +6,7 @@ use rari_types::locale::Locale;
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::templ::api::RariApi;
-use crate::templ::macros::badges::{write_deprecated, write_experimental, write_non_standard};
+use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 
 pub struct LinkModifier<'a> {
     pub badges: &'a [FeatureStatus],

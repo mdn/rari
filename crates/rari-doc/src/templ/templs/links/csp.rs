@@ -3,7 +3,7 @@ use rari_templ_func::rari_f;
 use crate::docs::page::PageLike;
 use crate::error::DocError;
 use crate::templ::api::RariApi;
-use crate::templ::macros::links::link::link_internal;
+use crate::templ::templs::links::link::link_internal;
 
 #[rari_f]
 pub fn csp(directive: String) -> Result<String, DocError> {

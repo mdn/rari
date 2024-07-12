@@ -4,8 +4,8 @@ use rari_types::globals::deny_warnings;
 use rari_types::RariEnv;
 use tracing::{span, warn, Level};
 
-use super::macros::invoke;
 use super::parser::{parse, Token};
+use super::templs::invoke;
 use crate::error::DocError;
 
 pub struct Rendered {

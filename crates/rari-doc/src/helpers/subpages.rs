@@ -11,7 +11,7 @@ use rari_types::locale::Locale;
 use crate::docs::page::{Page, PageLike, PageReader};
 use crate::error::DocError;
 use crate::redirects::resolve_redirect;
-use crate::templ::macros::badges::{write_deprecated, write_experimental, write_non_standard};
+use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 use crate::utils::COLLATOR;
 use crate::walker::walk_builder;
 

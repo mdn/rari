@@ -3,7 +3,7 @@ use rari_templ_func::rari_f;
 use crate::{
     docs::page::PageLike,
     error::DocError,
-    templ::{api::RariApi, macros::links::link::link_internal},
+    templ::{api::RariApi, templs::links::link::link_internal},
 };
 
 #[rari_f]
