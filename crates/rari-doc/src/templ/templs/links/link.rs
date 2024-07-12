@@ -1,4 +1,5 @@
-use crate::{docs::page::PageLike, error::DocError};
+use crate::docs::page::PageLike;
+use crate::error::DocError;
 
 pub fn link_internal(
     url: &str,

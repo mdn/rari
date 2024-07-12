@@ -52,6 +52,7 @@ pub fn invoke(
         "domxref" => links::domxref::domxref_any,
         "htmlelement" => links::htmlxref::htmlxref_any,
         "svgelement" => links::svgxref::svgxref_any,
+        "webextapiref" => links::webextapixref::webextapixref_any,
 
         // sidebars
         "apiref" => apiref::apiref_any,

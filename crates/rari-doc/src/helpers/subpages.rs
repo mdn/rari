@@ -8,14 +8,13 @@ use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
 
+use super::titles::api_page_title;
 use crate::docs::page::{Page, PageLike, PageReader};
 use crate::error::DocError;
 use crate::redirects::resolve_redirect;
 use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 use crate::utils::COLLATOR;
 use crate::walker::walk_builder;
-
-use super::titles::api_page_title;
 
 fn title_sorter(a: &Page, b: &Page) -> Ordering {
     COLLATOR.with(|c| c.compare(a.title(), b.title()))

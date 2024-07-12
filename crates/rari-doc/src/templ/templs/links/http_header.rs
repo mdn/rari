@@ -1,10 +1,9 @@
 use rari_templ_func::rari_f;
 
-use crate::{
-    docs::page::PageLike,
-    error::DocError,
-    templ::{api::RariApi, templs::links::link::link_internal},
-};
+use crate::docs::page::PageLike;
+use crate::error::DocError;
+use crate::templ::api::RariApi;
+use crate::templ::templs::links::link::link_internal;
 
 #[rari_f]
 pub fn http_header(slug: String, content: Option<String>) -> Result<String, DocError> {

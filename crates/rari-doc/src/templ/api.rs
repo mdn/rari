@@ -65,7 +65,7 @@ impl RariApi {
                 Cow::Borrowed(content)
             };
             return Ok(format!(
-                r#"<a class="page-not-created" title="{title_for_missing_page}">{content}</a>"#
+                r#"<a href="{link}" class="page-not-created" title="{title_for_missing_page}">{content}</a>"#
             ));
         }
 
