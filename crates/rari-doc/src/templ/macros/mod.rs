@@ -3,18 +3,13 @@ pub mod badges;
 pub mod compat;
 pub mod cssinfo;
 pub mod csssyntax;
-pub mod cssxref;
-pub mod domxref;
 pub mod embedinteractiveexample;
 pub mod glossary;
-pub mod htmlxref;
-pub mod jsxref;
 pub mod links;
 pub mod listsubpages;
 pub mod livesample;
 pub mod quick_links_with_subpages;
 pub mod specification;
-pub mod svgxref;
 
 use rari_types::globals::deny_warnings;
 use rari_types::{Arg, RariEnv};
@@ -46,20 +41,17 @@ pub fn invoke(
         "nonstandardbadge" | "non-standard_inline" => badges::non_standard_any,
         "deprecated_inline" => badges::deprecated_any,
         "optional_inline" => badges::optional_any,
+        "readonlyinline" => badges::readonly_any,
 
         // links
-        "link" => links::link_any,
-        "doclink" => links::doc_link_any,
-        "csp" => links::csp_any,
-        "rfc" => links::rfc_any,
-        "httpheader" => links::http_header_any,
-
-        // xrefs
-        "cssxref" => cssxref::cssxref_any,
-        "jsxref" => jsxref::jsxref_any,
-        "domxref" => domxref::domxref_any,
-        "htmlelement" => htmlxref::htmlxref_any,
-        "svgelement" => svgxref::svgxref_any,
+        "csp" => links::csp::csp_any,
+        "rfc" => links::rfc::rfc_any,
+        "httpheader" => links::http_header::http_header_any,
+        "cssxref" => links::cssxref::cssxref_any,
+        "jsxref" => links::jsxref::jsxref_any,
+        "domxref" => links::domxref::domxref_any,
+        "htmlelement" => links::htmlxref::htmlxref_any,
+        "svgelement" => links::svgxref::svgxref_any,
 
         // sidebars
         "apiref" => apiref::apiref_any,

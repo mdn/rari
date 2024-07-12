@@ -11,7 +11,7 @@ use crate::error::DocError;
 pub fn walk_builder(
     paths: &[impl AsRef<Path>],
     glob: Option<&str>,
-) -> Result<WalkBuilder, DocError> {
+) -> Result<WalkBuilder, ignore::Error> {
     let mut types = TypesBuilder::new();
     types.add_def(&format!("markdown:{}", glob.unwrap_or("index.md")))?;
     types.select("markdown");

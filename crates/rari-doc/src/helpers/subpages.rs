@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::path::PathBuf;
 
+use memoize::memoize;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
@@ -175,24 +176,31 @@ pub fn get_sub_pages(
     let doc = Page::page_from_url_path(url)?;
     let full_path = doc.full_path();
     if let Some(folder) = full_path.parent() {
-        let sub_folders = walk_builder(&[folder], None)?
-            .max_depth(depth.map(|i| i + 1))
-            .build()
-            .filter_map(|f| f.ok())
-            .filter(|f| {
-                f.file_type().map(|ft| ft.is_file()).unwrap_or(false) && f.path() != full_path
-            })
-            .map(|f| f.into_path())
-            .collect::<Vec<PathBuf>>();
+        let sub_folders = read_sub_folders_cached(folder.to_path_buf(), depth)?;
 
         let mut sub_pages = sub_folders
             .iter()
+            .filter(|f| f.as_path() != full_path)
             .map(Page::read)
             .collect::<Result<Vec<_>, DocError>>()?;
         sub_pages.sort_by(sorter.sorter());
         return Ok(sub_pages);
     }
     Ok(vec![])
+}
+
+#[memoize(SharedCache)]
+fn read_sub_folders_cached(
+    folder: PathBuf,
+    depth: Option<usize>,
+) -> Result<Vec<PathBuf>, ignore::Error> {
+    Ok(walk_builder(&[folder], None)?
+        .max_depth(depth.map(|i| i + 1))
+        .build()
+        .filter_map(|f| f.ok())
+        .filter(|f| f.file_type().map(|ft| ft.is_file()).unwrap_or(false))
+        .map(|f| f.into_path())
+        .collect())
 }
 
 fn split_into_parts(s: &str) -> Vec<(bool, &str)> {
