@@ -14,8 +14,14 @@ use crate::templ::macros::badges::{write_deprecated, write_experimental, write_n
 use crate::utils::COLLATOR;
 use crate::walker::walk_builder;
 
+use super::titles::api_page_title;
+
 fn title_sorter(a: &Page, b: &Page) -> Ordering {
     COLLATOR.with(|c| c.compare(a.title(), b.title()))
+}
+
+fn title_api_sorter(a: &Page, b: &Page) -> Ordering {
+    COLLATOR.with(|c| c.compare(api_page_title(a), api_page_title(b)))
 }
 
 fn slug_sorter(a: &Page, b: &Page) -> Ordering {
@@ -37,6 +43,7 @@ pub enum SubPagesSorter {
     Slug,
     TitleNatural,
     SlugNatural,
+    TitleAPI,
 }
 
 impl SubPagesSorter {
@@ -46,6 +53,7 @@ impl SubPagesSorter {
             SubPagesSorter::Slug => slug_sorter,
             SubPagesSorter::TitleNatural => title_natural_sorter,
             SubPagesSorter::SlugNatural => slug_natural_sorter,
+            SubPagesSorter::TitleAPI => title_api_sorter,
         }
     }
 }

@@ -14,7 +14,7 @@ use crate::docs::curriculum::{CurriculumIndexEntry, CurriculumPage};
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::html::sidebar::{MetaSidebar, Sidebar};
-use crate::sidebars::{apiref, jsref};
+use crate::sidebars::jsref;
 use crate::utils::{root_for_locale, split_fm};
 use crate::walker::{read_docs_parallel, walk_builder};
 

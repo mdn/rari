@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use itertools::Itertools;
 use rari_types::fm_types::PageType;
 use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
@@ -17,7 +16,7 @@ use super::json::{
     BuiltDocy, Compat, JsonBlogPost, JsonBlogPostDoc, JsonCurriculum, JsonDoADoc, JsonDoc, Prose,
     Section, Source, SpecificationSection, TocEntry,
 };
-use super::page::{Page, PageLike};
+use super::page::PageLike;
 use super::parents::parents;
 use super::title::{page_title, transform_title};
 use crate::baseline::get_baseline;
@@ -27,9 +26,8 @@ use crate::html::modifier::add_missing_ids;
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
 use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Splitted};
 use crate::html::sidebar::{
-    self, build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
+    build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
-use crate::sidebars;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
 

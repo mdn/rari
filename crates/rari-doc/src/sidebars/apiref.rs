@@ -7,7 +7,8 @@ use crate::docs::doc::Doc;
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::helpers::json_data::{json_data_group, json_data_interface};
-use crate::helpers::subpages::get_sub_pages;
+use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
+use crate::helpers::titles::api_page_title;
 use crate::html::sidebar::{
     Details, MetaChildren, MetaSidebar, SidebarMetaEntry, SidebarMetaEntryContent,
 };
@@ -19,10 +20,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     let instance_methods_label = l10n_json_data("Common", "Instance_methods", locale)?;
     let constructor_label = l10n_json_data("Common", "Constructor", locale)?;
     let inheritance_label = l10n_json_data("Common", "Inheritance", locale)?;
-    let implemented_by_label = l10n_json_data("Common", "Implemented_by", locale)?;
     let related_label = l10n_json_data("Common", "Related_pages_wo_group", locale)?;
-    let translate_label = l10n_json_data("Common", "[Translate]", locale)?;
-    let title_label = l10n_json_data("Common", "TranslationCTA", locale)?;
     let events_label = l10n_json_data("Common", "Events", locale)?;
 
     let main_if = slug
@@ -42,11 +40,10 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     let web_api_data = json_data_interface();
     let web_api_groups = group.and_then(|group| json_data_group().get(group));
 
-    // TODO: custom sorting?
     let main_if_pages = get_sub_pages(
         &format!("/en-US/docs/Web/API/{}", main_if),
         Some(1),
-        Default::default(),
+        SubPagesSorter::TitleAPI,
     )?;
 
     let related = if let Some(iter) = web_api_groups.map(|groups| {
@@ -150,7 +147,7 @@ fn build_sublist(entries: &mut Vec<SidebarMetaEntry>, sub_pages: &[Page], label:
                     .map(|page| SidebarMetaEntry {
                         code: true,
                         content: SidebarMetaEntryContent::Link {
-                            title: None,
+                            title: Some(api_page_title(page).to_string()),
                             link: page
                                 .clone()
                                 .url()
@@ -192,24 +189,5 @@ fn build_interface_list(entries: &mut Vec<SidebarMetaEntry>, interfaces: &[&str]
             ),
             ..Default::default()
         })
-    }
-}
-
-fn api_page_title(page: &Page) -> &str {
-    if let Some(short_title) = page.short_title() {
-        return short_title;
-    }
-    let title = page.title();
-    let title = &title[title.rfind('.').unwrap_or(0)..];
-    if matches!(page.page_type(), PageType::WebApiEvent) {
-        let title = page.slug();
-        let title = &title[title.rfind('/').unwrap_or(0)..];
-        if let Some(title) = title.strip_suffix("_event") {
-            title
-        } else {
-            title
-        }
-    } else {
-        title
     }
 }
