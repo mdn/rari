@@ -6,5 +6,6 @@ pub mod http_header;
 pub mod jsxref;
 pub mod link;
 pub mod rfc;
+pub mod svgattr;
 pub mod svgxref;
 pub mod webextapixref;

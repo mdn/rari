@@ -9,6 +9,7 @@ pub mod links;
 pub mod listsubpages;
 pub mod livesample;
 pub mod quick_links_with_subpages;
+pub mod seecompattable;
 pub mod specification;
 
 use rari_types::globals::deny_warnings;
@@ -42,6 +43,7 @@ pub fn invoke(
         "deprecated_inline" => badges::deprecated_any,
         "optional_inline" => badges::optional_any,
         "readonlyinline" => badges::readonly_any,
+        "seecompattable" => seecompattable::see_compat_table_any,
 
         // links
         "csp" => links::csp::csp_any,
@@ -52,6 +54,7 @@ pub fn invoke(
         "domxref" => links::domxref::domxref_any,
         "htmlelement" => links::htmlxref::htmlxref_any,
         "svgelement" => links::svgxref::svgxref_any,
+        "svgattr" => links::svgattr::svgattr_any,
         "webextapiref" => links::webextapixref::webextapixref_any,
 
         // sidebars
