@@ -1,14 +1,19 @@
 use anyhow::Error;
 use rari_doc::docs::build::{build_blog_post, build_curriculum, build_doc, build_dummy};
 use rari_doc::docs::json::BuiltDocy;
-use rari_doc::docs::page::Page;
+use rari_doc::docs::page::{Page, PageLike};
 use serde_json::Value;
 use tiny_http::{Response, Server};
+use tracing::{error, span, Level};
 
 fn get_json(url: &str) -> Result<BuiltDocy, Error> {
-    let doc = Page::page_from_url_path(url)?;
+    let page = Page::page_from_url_path(url)?;
 
-    let json = match doc {
+    let slug = &page.slug();
+    let locale = page.locale();
+    let span = span!(Level::ERROR, "page", "{}:{}", locale, slug);
+    let _enter = span.enter();
+    let json = match page {
         Page::Doc(doc) => build_doc(&doc)?,
         Page::BlogPost(post) => build_blog_post(&post)?,
         Page::Dummy(dummy) => build_dummy(&dummy)?,
@@ -21,7 +26,10 @@ pub fn serve() -> Result<(), Error> {
     let server = Server::http("0.0.0.0:8083").unwrap();
 
     for request in server.incoming_requests() {
-        match get_json(request.url()) {
+        let url = request.url();
+        let url_span = span!(Level::ERROR, "url", "{}", url);
+        let _url_enter = url_span.enter();
+        match get_json(url) {
             Ok(out) => {
                 let data = serde_json::to_string(&out).unwrap();
 
@@ -34,7 +42,7 @@ pub fn serve() -> Result<(), Error> {
                 )?;
             }
             Err(e) => {
-                println!("{e}");
+                error!("{e}");
                 request.respond(
                     Response::from_data(
                         serde_json::to_string_pretty(&Value::Null)

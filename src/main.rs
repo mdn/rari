@@ -85,7 +85,8 @@ fn main() -> Result<(), anyhow::Error> {
 
     let filter = filter::Targets::new()
         .with_target("rari_builder", cli.verbose.log_level_filter().as_trace())
-        .with_target("rari_doc", cli.verbose.log_level_filter().as_trace());
+        .with_target("rari_doc", cli.verbose.log_level_filter().as_trace())
+        .with_target("rari", cli.verbose.log_level_filter().as_trace());
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer().without_time())

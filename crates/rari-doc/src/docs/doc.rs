@@ -9,6 +9,7 @@ use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
+use tracing::debug;
 use validator::Validate;
 
 use super::page::{Page, PageCategory, PageLike, PageReader};
@@ -107,6 +108,7 @@ impl PageReader for Doc {
                 return Ok(doc.clone());
             }
         }
+        debug!("reading doc: {}", &path.display());
         let page = read_doc(&path).map(Arc::new).map(Page::Doc)?;
         if let Some(cache) = CACHED_PAGE_FILES.get() {
             if let Ok(mut cache) = cache.write() {

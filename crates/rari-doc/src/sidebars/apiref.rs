@@ -8,7 +8,9 @@ use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::helpers::json_data::{json_data_group, json_data_interface};
 use crate::helpers::subpages::get_sub_pages;
-use crate::html::sidebar::{MetaSidebar, SidebarEntry, SidebarMetaEntry, SidebarMetaEntryContent};
+use crate::html::sidebar::{
+    Details, MetaChildren, MetaSidebar, SidebarMetaEntry, SidebarMetaEntryContent,
+};
 
 pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSidebar, DocError> {
     let static_properties_label = l10n_json_data("Common", "Static_properties", locale)?;
@@ -18,7 +20,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     let constructor_label = l10n_json_data("Common", "Constructor", locale)?;
     let inheritance_label = l10n_json_data("Common", "Inheritance", locale)?;
     let implemented_by_label = l10n_json_data("Common", "Implemented_by", locale)?;
-    let related_labl = l10n_json_data("Common", "Related_pages_wo_group", locale)?;
+    let related_label = l10n_json_data("Common", "Related_pages_wo_group", locale)?;
     let translate_label = l10n_json_data("Common", "[Translate]", locale)?;
     let title_label = l10n_json_data("Common", "TranslationCTA", locale)?;
     let events_label = l10n_json_data("Common", "Events", locale)?;
@@ -54,6 +56,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
             .chain(groups.methods.iter())
             .chain(groups.properties.iter())
             .filter(|s| s.as_str() != main_if)
+            .map(|s| s.as_str())
     }) {
         let mut related = iter.collect::<Vec<_>>();
         related.sort();
@@ -85,7 +88,11 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     let mut inherited = vec![];
 
     let mut interface = main_if;
-    while let Some(inherited_data) = web_api_data.get(interface).map(|data| data.inh.as_str()) {
+    while let Some(inherited_data) = web_api_data
+        .get(interface)
+        .map(|data| data.inh.as_str())
+        .filter(|ihn| !ihn.is_empty())
+    {
         inherited.push(inherited_data);
         interface = inherited_data;
     }
@@ -104,6 +111,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     }
     entries.push(SidebarMetaEntry {
         section: true,
+        code: true,
         content: SidebarMetaEntryContent::Page(Doc::page_from_slug(
             &format!("Web/API/{main_if}"),
             locale,
@@ -111,7 +119,80 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
         ..Default::default()
     });
 
+    build_sublist(&mut entries, &constructors, constructor_label);
+    build_sublist(&mut entries, &static_properties, static_properties_label);
+    build_sublist(
+        &mut entries,
+        &instance_properties,
+        instance_properties_label,
+    );
+    build_sublist(&mut entries, &static_methods, static_methods_label);
+    build_sublist(&mut entries, &instance_methods, instance_methods_label);
+    build_sublist(&mut entries, &events, events_label);
+
+    build_interface_list(&mut entries, &inherited, inheritance_label);
+    build_interface_list(&mut entries, &related, related_label);
+
     Ok(MetaSidebar { entries })
+}
+
+fn build_sublist(entries: &mut Vec<SidebarMetaEntry>, sub_pages: &[Page], label: &str) {
+    if !sub_pages.is_empty() {
+        entries.push(SidebarMetaEntry {
+            details: Details::Open,
+            content: SidebarMetaEntryContent::Link {
+                link: None,
+                title: Some(label.to_string()),
+            },
+            children: MetaChildren::Children(
+                sub_pages
+                    .iter()
+                    .map(|page| SidebarMetaEntry {
+                        code: true,
+                        content: SidebarMetaEntryContent::Link {
+                            title: None,
+                            link: page
+                                .clone()
+                                .url()
+                                .strip_prefix("/en-US/docs")
+                                .map(String::from),
+                        },
+                        ..Default::default()
+                    })
+                    .collect(),
+            ),
+            ..Default::default()
+        })
+    }
+}
+
+fn build_interface_list(entries: &mut Vec<SidebarMetaEntry>, interfaces: &[&str], label: &str) {
+    if !interfaces.is_empty() {
+        entries.push(SidebarMetaEntry {
+            details: Details::Open,
+            content: SidebarMetaEntryContent::Link {
+                link: None,
+                title: Some(label.to_string()),
+            },
+            children: MetaChildren::Children(
+                interfaces
+                    .iter()
+                    .map(|interface| SidebarMetaEntry {
+                        code: true,
+                        content: SidebarMetaEntryContent::Link {
+                            title: None,
+                            link: Some(format!(
+                                "/Web/API/{}",
+                                interface.replace("()", "").replace('.', "/")
+                            )),
+                        },
+                        ..Default::default()
+                    })
+                    .collect(),
+            ),
+            ..Default::default()
+        })
+    }
 }
 
 fn api_page_title(page: &Page) -> &str {
