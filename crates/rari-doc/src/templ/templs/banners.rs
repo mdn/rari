@@ -49,11 +49,11 @@ pub fn see_compat_table() -> Result<String, DocError> {
     let copy = rari_l10n::l10n_json_data("Template", "see_compat_table_copy", env.locale)?;
 
     Ok([
-        r#"<div class="notecard experimental"><strong>"#,
+        r#"<div class="notecard experimental"><p><strong>"#,
         title,
         ":</strong> ",
         copy,
-        "</div>",
+        "</p></div>",
     ]
     .join(""))
 }
@@ -64,11 +64,11 @@ pub fn secure_context_header() -> Result<String, DocError> {
     let copy = rari_l10n::l10n_json_data("Template", "secure_context_header_copy", env.locale)?;
 
     Ok([
-        r#"<div class="notecard secure"><strong>"#,
+        r#"<div class="notecard secure"><p><strong>"#,
         &html_escape::encode_double_quoted_attribute(title),
         ":</strong> ",
         copy,
-        "</div>",
+        "</p></div>",
     ]
     .join(""))
 }
