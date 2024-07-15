@@ -9,6 +9,7 @@ pub mod links;
 pub mod listsubpages;
 pub mod livesample;
 pub mod quick_links_with_subpages;
+pub mod secure_context;
 pub mod seecompattable;
 pub mod specification;
 
@@ -44,6 +45,8 @@ pub fn invoke(
         "optional_inline" => badges::optional_any,
         "readonlyinline" => badges::readonly_any,
         "seecompattable" => seecompattable::see_compat_table_any,
+        "securecontext_header" => secure_context::secure_context_header_any,
+        "securecontext_inline" => secure_context::secure_context_inline_any,
 
         // links
         "csp" => links::csp::csp_any,
