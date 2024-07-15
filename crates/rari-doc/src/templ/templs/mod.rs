@@ -1,5 +1,6 @@
 pub mod apiref;
 pub mod badges;
+pub mod banners;
 pub mod compat;
 pub mod cssinfo;
 pub mod csssyntax;
@@ -10,7 +11,6 @@ pub mod listsubpages;
 pub mod livesample;
 pub mod quick_links_with_subpages;
 pub mod secure_context;
-pub mod seecompattable;
 pub mod specification;
 
 use rari_types::globals::deny_warnings;
@@ -44,9 +44,13 @@ pub fn invoke(
         "deprecated_inline" => badges::deprecated_any,
         "optional_inline" => badges::optional_any,
         "readonlyinline" => badges::readonly_any,
-        "seecompattable" => seecompattable::see_compat_table_any,
-        "securecontext_header" => secure_context::secure_context_header_any,
         "securecontext_inline" => secure_context::secure_context_inline_any,
+
+        //banners
+        "seecompattable" => banners::see_compat_table_any,
+        "securecontext_header" => banners::secure_context_header_any,
+        "availableinworkers" => banners::available_in_workers_any,
+        "deprecated_header" => banners::deprecated_header_any,
 
         // links
         "csp" => links::csp::csp_any,
