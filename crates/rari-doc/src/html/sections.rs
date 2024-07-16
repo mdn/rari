@@ -31,7 +31,7 @@ pub struct Splitted<'a> {
 pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
     let root_children = html.root_element().children();
     let raw_sections = root_children;
-    let summary_selector = Selector::parse("p").unwrap();
+    let summary_selector = Selector::parse("html > p").unwrap();
     let summary = html.select(&summary_selector).find_map(|s| {
         let text = s.text().collect::<String>();
         if !text.is_empty() {

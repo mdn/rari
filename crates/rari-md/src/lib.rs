@@ -3,7 +3,7 @@ use comrak::{parse_document, Arena, ComrakOptions};
 use rari_types::locale::Locale;
 
 use crate::error::MarkdownError;
-use crate::p::{fix_p, is_empty_p, is_ksp};
+use crate::p::{fix_p, is_empty_p, is_escaped_templ_p};
 
 pub mod anchor;
 pub mod bq;
@@ -43,9 +43,9 @@ pub fn m2h(input: &str, locale: Locale) -> Result<String, MarkdownError> {
     let root = parse_document(&arena, input, &options);
 
     iter_nodes(root, &|node| {
-        let (dl, li, ksp, empty_p) = match node.data.borrow().value {
+        let (dl, li, templs_p, empty_p) = match node.data.borrow().value {
             NodeValue::List(_) => (is_dl(node), true, false, false),
-            NodeValue::Paragraph => (false, false, is_ksp(node), is_empty_p(node)),
+            NodeValue::Paragraph => (false, false, is_escaped_templ_p(node), is_empty_p(node)),
             _ => (false, false, false, false),
         };
         if dl {
@@ -53,7 +53,7 @@ pub fn m2h(input: &str, locale: Locale) -> Result<String, MarkdownError> {
         } else if li {
             remove_p(node);
         }
-        if ksp || empty_p {
+        if templs_p || empty_p {
             fix_p(node)
         }
     });

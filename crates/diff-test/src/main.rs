@@ -168,6 +168,7 @@ const IGNORE: &[&str] = &[
     "doc.source.github_url",
     "doc.source.last_commit_url",
     "doc.sidebarHTML",
+    "doc.sidebarMacro",
     "doc.hasMathML",
     "doc.other_translations",
 ];
