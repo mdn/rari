@@ -6,12 +6,14 @@ pub mod cssinfo;
 pub mod csssyntax;
 pub mod embedinteractiveexample;
 pub mod glossary;
+pub mod inheritance_diagram;
+pub mod inline_labels;
 pub mod links;
 pub mod listsubpages;
 pub mod livesample;
 pub mod quick_links_with_subpages;
-pub mod secure_context;
 pub mod specification;
+pub mod web_ext_examples;
 
 use rari_types::globals::deny_warnings;
 use rari_types::{Arg, RariEnv};
@@ -37,14 +39,18 @@ pub fn invoke(
         "embedlivesample" => livesample::live_sample_any,
         "cssinfo" => cssinfo::cssinfo_any,
         "quicklinkswithsubpages" => quick_links_with_subpages::quick_links_with_subpages_any,
+        "inheritancediagram" => inheritance_diagram::inheritance_diagram_any,
+        "webextexamples" => web_ext_examples::web_ext_examples_any,
 
         // badges
         "experimentalbadge" | "experimental_inline" => badges::experimental_any,
         "nonstandardbadge" | "non-standard_inline" => badges::non_standard_any,
         "deprecated_inline" => badges::deprecated_any,
         "optional_inline" => badges::optional_any,
-        "readonlyinline" => badges::readonly_any,
-        "securecontext_inline" => secure_context::secure_context_inline_any,
+
+        //inline labels
+        "readonlyinline" => inline_labels::readonly_inline_any,
+        "securecontext_inline" => inline_labels::secure_context_inline_any,
 
         //banners
         "seecompattable" => banners::see_compat_table_any,

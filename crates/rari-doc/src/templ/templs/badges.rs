@@ -25,12 +25,6 @@ pub fn deprecated() -> Result<String, DocError> {
 }
 
 #[rari_f]
-pub fn readonly() -> Result<String, DocError> {
-    let mut out = String::new();
-    write_readonly(&mut out, env.locale)?;
-    Ok(out)
-}
-#[rari_f]
 pub fn optional() -> Result<String, DocError> {
     let str = rari_l10n::l10n_json_data("Template", "optional", env.locale)?;
     Ok(format!(
@@ -60,14 +54,6 @@ pub fn write_deprecated(out: &mut impl std::fmt::Write, locale: Locale) -> Resul
         rari_l10n::l10n_json_data("Template", "deprecated_badge_abbreviation", locale)?;
 
     Ok(write_badge(out, title, abbreviation, "deprecated")?)
-}
-
-pub fn write_readonly(out: &mut impl std::fmt::Write, locale: Locale) -> Result<(), DocError> {
-    let title = rari_l10n::l10n_json_data("Template", "readonly_badge_title", locale)?;
-    let abbreviation =
-        rari_l10n::l10n_json_data("Template", "readonly_badge_abbreviation", locale)?;
-
-    Ok(write_badge(out, title, abbreviation, "readonly")?)
 }
 
 pub fn write_badge(

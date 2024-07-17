@@ -13,7 +13,8 @@ pub fn domxref(
     anchor: Option<String>,
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
-    let mut display_with_fallback = Cow::Borrowed(display.as_deref().unwrap_or(api_name.as_str()));
+    let display = display.as_deref().filter(|s| !s.is_empty());
+    let mut display_with_fallback = Cow::Borrowed(display.unwrap_or(api_name.as_str()));
     let api = api_name
         .replace(' ', "_")
         .replace("()", "")
@@ -48,7 +49,7 @@ pub fn domxref(
         None,
         Some(&display_with_fallback),
         code,
-        display.as_deref(),
+        display,
         false,
     )
 }

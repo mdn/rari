@@ -13,11 +13,11 @@ pub fn deprecated_header(version: Option<AnyArg>) -> Result<String, DocError> {
     let copy = rari_l10n::l10n_json_data("Template", "deprecated_header_copy", env.locale)?;
 
     Ok([
-        r#"<div class="notecard deprecated"><strong>"#,
+        r#"<div class="notecard deprecated"><p><strong>"#,
         title,
         ":</strong> ",
         copy,
-        "</div>",
+        "</p></div>",
     ]
     .join(""))
 }

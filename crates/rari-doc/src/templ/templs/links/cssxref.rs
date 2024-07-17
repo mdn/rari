@@ -9,15 +9,11 @@ use crate::templ::api::RariApi;
 #[rari_f]
 pub fn cssxref(
     name: String,
-    display_name: Option<String>,
+    display: Option<String>,
     anchor: Option<String>,
 ) -> Result<String, DocError> {
-    cssxref_internal(
-        &name,
-        display_name.as_deref(),
-        anchor.as_deref(),
-        env.locale,
-    )
+    let display = display.as_deref().filter(|s| !s.is_empty());
+    cssxref_internal(&name, display, anchor.as_deref(), env.locale)
 }
 
 pub fn cssxref_internal(

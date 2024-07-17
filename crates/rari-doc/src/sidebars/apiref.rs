@@ -6,7 +6,8 @@ use tracing::error;
 use crate::docs::doc::Doc;
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
-use crate::helpers::json_data::{json_data_group, json_data_interface};
+use crate::helpers::api_inheritance::inheritance;
+use crate::helpers::json_data::json_data_group;
 use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::helpers::titles::api_page_title;
 use crate::html::sidebar::{
@@ -37,7 +38,6 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
         return Err(DocError::InvalidSlugForX(slug.to_string()));
     }
 
-    let web_api_data = json_data_interface();
     let web_api_groups = group.and_then(|group| json_data_group().get(group));
 
     let main_if_pages = get_sub_pages(
@@ -82,17 +82,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
         v.push(page);
     }
 
-    let mut inherited = vec![];
-
-    let mut interface = main_if;
-    while let Some(inherited_data) = web_api_data
-        .get(interface)
-        .map(|data| data.inh.as_str())
-        .filter(|ihn| !ihn.is_empty())
-    {
-        inherited.push(inherited_data);
-        interface = inherited_data;
-    }
+    let inherited = inheritance(main_if);
 
     let mut entries = vec![];
 

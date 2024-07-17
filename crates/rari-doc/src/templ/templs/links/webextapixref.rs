@@ -13,7 +13,8 @@ pub fn webextapixref(
     anchor: Option<String>,
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
-    let mut display = display.map(Cow::Owned).unwrap_or(Cow::Borrowed(&api));
+    let display = display.as_deref().filter(|s| !s.is_empty());
+    let mut display = display.map(Cow::Borrowed).unwrap_or(Cow::Borrowed(&api));
     let mut url = format!(
         "/{}/docs/Mozilla/Add-ons/WebExtensions/API/{}",
         env.locale.as_url_str(),

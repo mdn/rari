@@ -94,6 +94,18 @@ mod test {
         );
         Ok(())
     }
+
+    #[test]
+    fn dt() -> Result<(), anyhow::Error> {
+        let out = m2h("{{foo}} bar", Locale::EnUs)?;
+        assert_eq!(out, "<p>{{foo}} bar</p>\n");
+        let out = m2h("- {{foo}}\n  - : bar", Locale::EnUs)?;
+        assert_eq!(
+            out,
+            "<dl>\n<dt id=\"foo\" data-add-link>{{foo}}</dt>\n<dd>\n<p>bar</p>\n</dd>\n</dl>\n"
+        );
+        Ok(())
+    }
     #[test]
     fn code_macro() -> Result<(), anyhow::Error> {
         let out = m2h(r#"`{{foo}}` bar"#, Locale::EnUs)?;
@@ -104,7 +116,7 @@ mod test {
     #[test]
     fn macro_nl() -> Result<(), anyhow::Error> {
         let out = m2h("{{bar}}{{foo}}", Locale::EnUs)?;
-        assert_eq!(out, "{{bar}}{{foo}}");
+        assert_eq!(out, "<p>{{bar}}{{foo}}</p>\n");
         Ok(())
     }
 

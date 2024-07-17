@@ -600,7 +600,7 @@ impl<'o> HtmlFormatter<'o> {
                     let raw_id = String::from_utf8(text_content).unwrap();
                     let is_templ = raw_id.starts_with("!::::");
                     if is_templ {
-                        write!(self.output, "<dt id=\"---update-id\"")?;
+                        write!(self.output, "<dt data-update-id")?;
                     } else {
                         let id = self.anchorizer.anchorize(raw_id);
                         write!(self.output, "<dt id=\"{}\"", id)?;
