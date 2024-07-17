@@ -4,6 +4,7 @@ pub mod banners;
 pub mod compat;
 pub mod cssinfo;
 pub mod csssyntax;
+pub mod embedghlivesample;
 pub mod embedinteractiveexample;
 pub mod glossary;
 pub mod inheritance_diagram;
@@ -34,6 +35,7 @@ pub fn invoke(
         "glossary" => glossary::glossary_any,
         "csssyntax" => csssyntax::csssyntax_any,
         "embedinteractiveexample" => embedinteractiveexample::embed_interactive_example_any,
+        "embedghlivesample" => embedghlivesample::embed_gh_live_sample_any,
         "listsubpages" => listsubpages::list_sub_pages_any,
         "listsubpagesgrouped" => listsubpages::list_sub_pages_grouped_any,
         "embedlivesample" => livesample::live_sample_any,
