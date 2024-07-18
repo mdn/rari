@@ -36,6 +36,8 @@ pub struct GroupData {
     pub properties: Vec<String>,
     #[serde(default)]
     pub events: Vec<String>,
+    #[serde(default)]
+    pub tutorial: Vec<String>,
 }
 
 pub static JSON_DATA_GROUP: OnceCell<HashMap<String, GroupData>> = OnceCell::new();

@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use rari_types::fm_types::FeatureStatus;
 use rari_types::locale::Locale;
+use tracing::warn;
 
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
@@ -79,39 +80,49 @@ pub fn render_link_via_page(
         } else {
             Cow::Borrowed(link)
         };
-        let page = RariApi::get_page(&url)?;
-        let url = page.url();
-        let content = content.unwrap_or(page.short_title().unwrap_or(page.title()));
-        render_internal_link(
-            out,
-            url,
-            content,
-            title,
-            &LinkModifier {
-                badges: if with_badges { page.status() } else { &[] },
-                badge_locale: locale.unwrap_or(page.locale()),
-                code,
-                only_en_us: page.locale() != locale.unwrap_or_default(),
-            },
-        )?;
-    } else {
-        out.push_str("<a href=\"");
-        let url = link;
-        let content = html_escape::encode_safe(content.unwrap_or(link));
-        out.push_str(url);
-        if let Some(title) = title {
-            out.push_str("\" title=\"");
-            out.push_str(title);
+        match RariApi::get_page(&url) {
+            Ok(page) => {
+                let url = page.url();
+                let content = content.unwrap_or(page.short_title().unwrap_or(page.title()));
+                return render_internal_link(
+                    out,
+                    url,
+                    content,
+                    title,
+                    &LinkModifier {
+                        badges: if with_badges { page.status() } else { &[] },
+                        badge_locale: locale.unwrap_or(page.locale()),
+                        code,
+                        only_en_us: page.locale() != locale.unwrap_or_default(),
+                    },
+                );
+            }
+            Err(e) => {
+                warn!("Link via page not found for {url}: {e}",)
+            }
         }
-        out.push_str("\">");
-        if code {
-            out.push_str("<code>");
-        }
-        out.push_str(&content);
-        if code {
-            out.push_str("</code>");
-        }
-        out.push_str("</a>");
     }
+
+    out.push_str("<a href=\"");
+    let url = link;
+    let content = if link.starts_with('/') {
+        &link[link.rfind('/').unwrap_or(0)..]
+    } else {
+        &html_escape::encode_safe(content.unwrap_or(link))
+    };
+    out.push_str(url);
+    if let Some(title) = title {
+        out.push_str("\" title=\"");
+        out.push_str(title);
+    }
+    out.push_str("\">");
+    if code {
+        out.push_str("<code>");
+    }
+    out.push_str(content);
+    if code {
+        out.push_str("</code>");
+    }
+    out.push_str("</a>");
     Ok(())
 }

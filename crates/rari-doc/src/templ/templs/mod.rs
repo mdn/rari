@@ -28,8 +28,9 @@ pub fn invoke(
     ident: &str,
     args: Vec<Option<Arg>>,
 ) -> Result<(String, bool), DocError> {
-    let is_sidebar = matches!(ident.to_lowercase().as_str(), "apiref");
-    let f = match ident.to_lowercase().as_str() {
+    let name = ident.to_lowercase();
+    let is_sidebar = matches!(name.as_str(), "apiref" | "defaultapisidebar");
+    let f = match name.as_str() {
         "compat" => compat::compat_any,
         "specifications" => specification::specification_any,
         "glossary" => glossary::glossary_any,
@@ -74,6 +75,7 @@ pub fn invoke(
 
         // sidebars
         "apiref" => apiref::apiref_any,
+        "defaultapisidebar" => apiref::default_api_sidebar_any,
 
         // ignore
         "cssref" | "glossarysidebar" | "jsref" => return Ok(Default::default()),

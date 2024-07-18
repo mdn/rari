@@ -93,6 +93,8 @@ pub enum DocError {
     MustHaveAtRule,
     #[error("Invalid slug for templ/sidebar: {0}")]
     InvalidSlugForX(String),
+    #[error("Invalid group for templ/sidebar: {0}")]
+    InvalidGroupForX(String),
 }
 
 impl<T> From<PoisonError<T>> for DocError {

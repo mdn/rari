@@ -86,7 +86,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
 
     let mut entries = vec![];
 
-    if let Some([ref overview]) = web_api_groups.map(|group| group.overview.as_slice()) {
+    if let Some([ref overview, ..]) = web_api_groups.map(|group| group.overview.as_slice()) {
         entries.push(SidebarMetaEntry {
             section: true,
             content: SidebarMetaEntryContent::Page(Doc::page_from_slug(
