@@ -12,6 +12,7 @@ pub mod inline_labels;
 pub mod links;
 pub mod listsubpages;
 pub mod livesample;
+pub mod previous_menu_next;
 pub mod quick_links_with_subpages;
 pub mod specification;
 pub mod web_ext_examples;
@@ -44,6 +45,7 @@ pub fn invoke(
         "quicklinkswithsubpages" => quick_links_with_subpages::quick_links_with_subpages_any,
         "inheritancediagram" => inheritance_diagram::inheritance_diagram_any,
         "webextexamples" => web_ext_examples::web_ext_examples_any,
+        "previousmenunext" => previous_menu_next::previous_menu_next_any,
 
         // badges
         "experimentalbadge" | "experimental_inline" => badges::experimental_any,
