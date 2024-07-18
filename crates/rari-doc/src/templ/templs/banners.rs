@@ -72,3 +72,19 @@ pub fn secure_context_header() -> Result<String, DocError> {
     ]
     .join(""))
 }
+
+#[rari_f]
+pub fn non_standard_header() -> Result<String, DocError> {
+    let title =
+        rari_l10n::l10n_json_data("Template", "non_standard_badge_abbreviation", env.locale)?;
+    let copy = rari_l10n::l10n_json_data("Template", "non_standard_header_copy", env.locale)?;
+
+    Ok([
+        r#"<div class="notecard nonstadard"><p><strong>"#,
+        title,
+        ":</strong> ",
+        copy,
+        "</p></div>",
+    ]
+    .join(""))
+}

@@ -62,11 +62,11 @@ pub fn invoke(
         "securecontext_header" => banners::secure_context_header_any,
         "availableinworkers" => banners::available_in_workers_any,
         "deprecated_header" => banners::deprecated_header_any,
+        "non-standard_header" => banners::non_standard_header_any,
 
         // links
         "csp" => links::csp::csp_any,
         "rfc" => links::rfc::rfc_any,
-        "httpheader" => links::http_header::http_header_any,
         "cssxref" => links::cssxref::cssxref_any,
         "jsxref" => links::jsxref::jsxref_any,
         "domxref" => links::domxref::domxref_any,
@@ -74,6 +74,9 @@ pub fn invoke(
         "svgelement" => links::svgxref::svgxref_any,
         "svgattr" => links::svgattr::svgattr_any,
         "webextapiref" => links::webextapixref::webextapixref_any,
+        "httpstatus" => links::http::http_status_any,
+        "httpheader" => links::http::http_header_any,
+        "httpmethod" => links::http::http_method_any,
 
         // sidebars
         "apiref" => apiref::apiref_any,
