@@ -4,14 +4,12 @@ pub mod banners;
 pub mod compat;
 pub mod cssinfo;
 pub mod csssyntax;
-pub mod embedghlivesample;
-pub mod embedinteractiveexample;
+pub mod embeds;
 pub mod glossary;
 pub mod inheritance_diagram;
 pub mod inline_labels;
 pub mod links;
 pub mod listsubpages;
-pub mod livesample;
 pub mod previous_menu_next;
 pub mod quick_links_with_subpages;
 pub mod specification;
@@ -36,16 +34,27 @@ pub fn invoke(
         "specifications" => specification::specification_any,
         "glossary" => glossary::glossary_any,
         "csssyntax" => csssyntax::csssyntax_any,
-        "embedinteractiveexample" => embedinteractiveexample::embed_interactive_example_any,
-        "embedghlivesample" => embedghlivesample::embed_gh_live_sample_any,
         "listsubpages" => listsubpages::list_sub_pages_any,
         "listsubpagesgrouped" => listsubpages::list_sub_pages_grouped_any,
-        "embedlivesample" => livesample::live_sample_any,
         "cssinfo" => cssinfo::cssinfo_any,
         "quicklinkswithsubpages" => quick_links_with_subpages::quick_links_with_subpages_any,
         "inheritancediagram" => inheritance_diagram::inheritance_diagram_any,
         "webextexamples" => web_ext_examples::web_ext_examples_any,
-        "previousmenunext" => previous_menu_next::previous_menu_next_any,
+
+        // prev menu next
+        "previousmenunext" => previous_menu_next::previous_next_menu_any,
+        "previousnext" => previous_menu_next::previous_next_any,
+        "previousmenu" => previous_menu_next::previous_menu_any,
+        "previous" => previous_menu_next::previous_any,
+        "nextmenu" => previous_menu_next::next_menu_any,
+        "next" => previous_menu_next::next_any,
+
+        // embeds
+        "embedinteractiveexample" => embeds::embedinteractiveexample::embed_interactive_example_any,
+        "embedghlivesample" => embeds::embedghlivesample::embed_gh_live_sample_any,
+        "embedlivesample" => embeds::livesample::live_sample_any,
+        "embedyoutube" => embeds::embedyoutube::embed_youtube_any,
+        "jsfiddleembed" => embeds::jsfiddleembed::embded_jsfiddle_any,
 
         // badges
         "experimentalbadge" | "experimental_inline" => badges::experimental_any,
@@ -77,6 +86,7 @@ pub fn invoke(
         "httpstatus" => links::http::http_status_any,
         "httpheader" => links::http::http_header_any,
         "httpmethod" => links::http::http_method_any,
+        "mathmlelement" => links::mathmlxref::mathmlxref_any,
 
         // sidebars
         "apiref" => apiref::apiref_any,

@@ -4,6 +4,7 @@ pub mod domxref;
 pub mod htmlxref;
 pub mod http;
 pub mod jsxref;
+pub mod mathmlxref;
 pub mod rfc;
 pub mod svgattr;
 pub mod svgxref;
