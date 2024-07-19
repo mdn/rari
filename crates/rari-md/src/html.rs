@@ -21,9 +21,9 @@ use once_cell::sync::Lazy;
 use rari_types::locale::Locale;
 
 use crate::anchor;
-use crate::bq::{is_callout, NoteCard};
 use crate::ctype::isspace;
 use crate::ext::Flag;
+use crate::node_card::{is_callout, NoteCard};
 
 /// Formats an AST as HTML, modified by the given options.
 pub fn format_document<'a>(
@@ -523,19 +523,19 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                             self.output.write_all(b"<div class=\"callout\"")?;
                             self.render_sourcepos(node)?;
                             self.output.write_all(b">\n")?;
-                            return Ok((false, Flag::Card(NoteCard::Callout)));
+                            return Ok((false, Flag::Card));
                         }
                         Some(NoteCard::Note) => {
                             self.output.write_all(b"<div class=\"notecard note\"")?;
                             self.render_sourcepos(node)?;
                             self.output.write_all(b">\n")?;
-                            return Ok((false, Flag::Card(NoteCard::Note)));
+                            return Ok((false, Flag::Card));
                         }
                         Some(NoteCard::Warning) => {
                             self.output.write_all(b"<div class=\"notecard warning\"")?;
                             self.render_sourcepos(node)?;
                             self.output.write_all(b">\n")?;
-                            return Ok((false, Flag::Card(NoteCard::Warning)));
+                            return Ok((false, Flag::Card));
                         }
                         None => {
                             self.output.write_all(b"<blockquote")?;
@@ -543,7 +543,7 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                             self.output.write_all(b">\n")?;
                         }
                     };
-                } else if let Flag::Card(_) = flag {
+                } else if let Flag::Card = flag {
                     self.output.write_all(b"</div>\n")?;
                 } else {
                     self.output.write_all(b"</blockquote>\n")?;

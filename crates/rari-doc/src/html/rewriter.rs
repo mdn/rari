@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use lol_html::html_content::ContentType;
 use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings};
-use rari_md::bq::NoteCard;
+use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 use url::Url;
