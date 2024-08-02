@@ -120,7 +120,10 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     build_interface_list(&mut entries, &inherited, inheritance_label);
     build_interface_list(&mut entries, &related, related_label);
 
-    Ok(MetaSidebar { entries })
+    Ok(MetaSidebar {
+        entries,
+        ..Default::default()
+    })
 }
 
 fn build_sublist(entries: &mut Vec<SidebarMetaEntry>, sub_pages: &[Page], label: &str) {

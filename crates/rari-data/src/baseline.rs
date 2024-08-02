@@ -3,7 +3,6 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::path::Path;
 
-use chrono::NaiveDate;
 use rari_utils::io::read_to_string;
 use serde::de::{self, value, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -11,6 +10,7 @@ use url::Url;
 
 use crate::error::Error;
 
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct WebFeatures {
     pub features: BTreeMap<String, FeatureData>,
 }
@@ -18,9 +18,7 @@ pub struct WebFeatures {
 impl WebFeatures {
     pub fn from_file(path: &Path) -> Result<Self, Error> {
         let json_str = read_to_string(path)?;
-        Ok(Self {
-            features: serde_json::from_str(&json_str)?,
-        })
+        Ok(serde_json::from_str(&json_str)?)
     }
 
     pub fn feature_status(&self, features: &[&str]) -> Option<&SupportStatus> {
@@ -45,13 +43,6 @@ impl WebFeatures {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct FeatureData {
-    /** Alias identifier */
-    #[serde(
-        deserialize_with = "t_or_vec",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
-    pub alias: Vec<String>,
     /** Specification */
     #[serde(
         deserialize_with = "t_or_vec",
@@ -76,9 +67,6 @@ pub struct FeatureData {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub compat_features: Vec<String>,
-    /** Usage stats */
-    #[serde(deserialize_with = "t_or_vec", default)]
-    pub usage_stats: Vec<Url>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -109,10 +97,10 @@ pub struct SupportStatus {
     pub baseline: Option<BaselineHighLow>,
     /// Date the feature achieved Baseline low status
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub baseline_low_date: Option<NaiveDate>,
+    pub baseline_low_date: Option<String>,
     /// Date the feature achieved Baseline high status
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub baseline_high_date: Option<NaiveDate>,
+    pub baseline_high_date: Option<String>,
     /// Browser versions that most-recently introduced the feature
     pub support: BTreeMap<BrowserIdentifier, String>,
 }

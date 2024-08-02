@@ -126,18 +126,41 @@ pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(transparent)]
-pub struct Sidebar {
-    pub entries: Vec<SidebarEntry>,
+pub struct SidebarL10n {
+    l10n: HashMap<Locale, HashMap<String, String>>,
 }
 
-#[derive(Debug)]
+impl SidebarL10n {
+    pub fn lookup<'a, 'b: 'a>(&'b self, key: &'a str, locale: Locale) -> &'a str {
+        let s = self.l10n.get(&locale).and_then(|l| l.get(key));
+        if locale == Default::default() || s.is_some() {
+            return s.map(|s| s.as_str()).unwrap_or(key);
+        }
+        self.l10n
+            .get(&Default::default())
+            .and_then(|l| l.get(key))
+            .map(|s| s.as_str())
+            .unwrap_or(key)
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct Sidebar {
+    pub sidebar: Vec<SidebarEntry>,
+    #[serde(default)]
+    pub l10n: SidebarL10n,
+}
+
+#[derive(Debug, Default)]
 pub struct MetaSidebar {
     pub entries: Vec<SidebarMetaEntry>,
+    pub l10n: SidebarL10n,
 }
 impl From<Sidebar> for MetaSidebar {
     fn from(value: Sidebar) -> Self {
         MetaSidebar {
-            entries: value.entries.into_iter().map(Into::into).collect(),
+            entries: value.sidebar.into_iter().map(Into::into).collect(),
+            l10n: value.l10n,
         }
     }
 }
@@ -147,7 +170,7 @@ impl MetaSidebar {
         let mut out = String::new();
         out.push_str("<ol>");
         for entry in &self.entries {
-            entry.render(&mut out, locale)?;
+            entry.render(&mut out, locale, &self.l10n)?;
         }
         out.push_str("</ol>");
         Ok(out)
@@ -342,7 +365,12 @@ impl From<SidebarEntry> for SidebarMetaEntry {
 }
 
 impl SidebarMetaEntry {
-    pub fn render(&self, out: &mut String, locale: Locale) -> Result<(), DocError> {
+    pub fn render(
+        &self,
+        out: &mut String,
+        locale: Locale,
+        l10n: &SidebarL10n,
+    ) -> Result<(), DocError> {
         out.push_str("<li");
         if self.section {
             out.push_str(" class=\"section\"");
@@ -363,21 +391,15 @@ impl SidebarMetaEntry {
                 link: Some(link),
                 title,
             } => {
-                render_link_via_page(
-                    out,
-                    link,
-                    Some(locale),
-                    title.as_deref(),
-                    self.code,
-                    None,
-                    true,
-                )?;
+                let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));
+                render_link_via_page(out, link, Some(locale), title, self.code, None, true)?;
             }
             SidebarMetaEntryContent::Link { link: None, title } => {
+                let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));
                 if self.code {
                     out.push_str("<code>");
                 }
-                out.push_str(title.as_deref().unwrap_or_default());
+                out.push_str(title.unwrap_or_default());
                 if self.code {
                     out.push_str("</code>");
                 }
@@ -406,7 +428,7 @@ impl SidebarMetaEntry {
         match &self.children {
             MetaChildren::Children(children) => {
                 for child in children {
-                    child.render(out, locale)?;
+                    child.render(out, locale, l10n)?;
                 }
             }
             MetaChildren::ListSubPages(url, page_types) => {

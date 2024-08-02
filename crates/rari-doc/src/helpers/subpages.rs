@@ -9,7 +9,9 @@ use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
 
 use super::titles::api_page_title;
-use crate::docs::page::{Page, PageLike, PageReader};
+use crate::docs::page::{
+    url_path_to_page_with_other_locale_and_fallback, Page, PageLike, PageReader,
+};
 use crate::error::DocError;
 use crate::redirects::resolve_redirect;
 use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
@@ -60,14 +62,19 @@ impl SubPagesSorter {
 
 pub fn write_li_with_badges(
     out: &mut impl Write,
-    page: &impl PageLike,
+    page: &Page,
     locale: Locale,
 ) -> Result<(), DocError> {
+    let locale_page = if locale != Default::default() {
+        &url_path_to_page_with_other_locale_and_fallback(page.url(), Some(locale))?
+    } else {
+        page
+    };
     write!(
         out,
         "<li><a href=\"{}\">{}</a>",
-        page.url(),
-        html_escape::encode_safe(page.short_title().unwrap_or(page.title()))
+        locale_page.url(),
+        html_escape::encode_safe(locale_page.short_title().unwrap_or(locale_page.title()))
     )?;
     if page.status().contains(&FeatureStatus::Experimental) {
         write_experimental(out, locale)?;

@@ -61,7 +61,10 @@ pub fn sidebar(group: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         APILink::from_event,
     );
 
-    Ok(MetaSidebar { entries })
+    Ok(MetaSidebar {
+        entries,
+        ..Default::default()
+    })
 }
 
 struct APILink {

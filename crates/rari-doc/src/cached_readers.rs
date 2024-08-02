@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use once_cell::sync::{Lazy, OnceCell};
-use rari_types::globals::{blog_root, cache_content, curriculum_root};
+use rari_types::globals::{blog_root, cache_content, content_root, curriculum_root};
 use rari_types::locale::Locale;
 use rari_utils::io::read_to_string;
 use tracing::error;
@@ -15,7 +15,7 @@ use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::html::sidebar::{MetaSidebar, Sidebar};
 use crate::sidebars::jsref;
-use crate::utils::{root_for_locale, split_fm};
+use crate::utils::split_fm;
 use crate::walker::{read_docs_parallel, walk_builder};
 
 pub static STATIC_PAGE_FILES: OnceCell<HashMap<PathBuf, Page>> = OnceCell::new();
@@ -50,9 +50,8 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
                     return Ok(sidebar.clone());
                 }
             }
-            let mut file = root_for_locale(locale)?.to_path_buf();
+            let mut file = content_root().to_path_buf();
             file.push("sidebars");
-            file.push(locale.as_folder_str());
             file.push(name);
             file.set_extension("yaml");
             let raw = read_to_string(&file)?;

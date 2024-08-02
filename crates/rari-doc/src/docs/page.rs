@@ -100,10 +100,18 @@ fn doc_from_path_and_locale(path: &Path, locale: Locale) -> Result<Page, DocErro
 }
 
 pub fn url_path_to_page(url_path: &str) -> Result<Page, DocError> {
+    url_path_to_page_with_other_locale_and_fallback(url_path, None)
+}
+
+pub fn url_path_to_page_with_other_locale_and_fallback(
+    url_path: &str,
+    locale: Option<Locale>,
+) -> Result<Page, DocError> {
     if let Some(dummy) = Dummy::from_url(url_path) {
         return Ok(dummy);
     }
-    let (path, locale, typ) = url_path_to_path_buf(url_path)?;
+    let (path, locale_from_url, typ) = url_path_to_path_buf(url_path)?;
+    let locale = locale.unwrap_or(locale_from_url);
     match typ {
         PageCategory::Doc => {
             let doc = doc_from_path_and_locale(&path, locale);

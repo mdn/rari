@@ -148,7 +148,10 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         }
     }
 
-    Ok(MetaSidebar { entries })
+    Ok(MetaSidebar {
+        entries,
+        ..Default::default()
+    })
 }
 
 #[derive(Debug, Default)]

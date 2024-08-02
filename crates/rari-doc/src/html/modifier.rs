@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+use std::collections::HashSet;
+
 use ego_tree::NodeId;
 use html5ever::{namespace_url, ns, QualName};
 use rari_md::anchor::anchorize;
@@ -33,6 +36,13 @@ pub fn remove_attribute(html: &mut Html, node_id: NodeId, key: &str) {
 }
 
 pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
+    let selector = Selector::parse("*[id]").unwrap();
+    let mut ids = html
+        .select(&selector)
+        .filter_map(|el| el.attr("id"))
+        .map(Cow::Borrowed)
+        .collect::<HashSet<_>>();
+
     let selector = Selector::parse("*[data-update-id], h2:not([id]), h3:not([id])").unwrap();
     let subs =
         html.select(&selector)
@@ -45,6 +55,25 @@ pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
                     el.text().collect::<String>()
                 };
                 let id = anchorize(&text);
+                if ids.contains(id.as_str()) {
+                    let (prefix, mut count) = if let Some((prefix, counter)) = id.rsplit_once('_') {
+                        if counter.chars().all(|c| c.is_ascii_digit()) {
+                            let count = counter.parse::<i64>().unwrap_or_default() + 1;
+                            (prefix, count)
+                        } else {
+                            (id.as_str(), 2)
+                        }
+                    } else {
+                        (id.as_str(), 2)
+                    };
+                    let mut id = format!("{prefix}_{count}");
+                    while ids.contains(id.as_str()) && count < 666 {
+                        count += 1;
+                        id = format!("{prefix}_{count}");
+                    }
+                }
+
+                ids.insert(Cow::Owned(id.clone()));
                 (el.id(), id)
             })
             .collect::<Vec<_>>();

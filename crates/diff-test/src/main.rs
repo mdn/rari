@@ -7,6 +7,7 @@ use std::path::Path;
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
+use htmldiff::htmldiff;
 use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
 use itertools::Itertools;
@@ -157,7 +158,7 @@ fn make_key(path: &[PathIndex]) -> String {
 }
 
 fn is_html(s: &str) -> bool {
-    s.starts_with('<') && s.ends_with('>')
+    s.trim_start().starts_with('<') && s.trim_end().ends_with('>')
 }
 
 const IGNORE: &[&str] = &[
@@ -249,7 +250,7 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
                             //    .to_string(),
                         );
                     } else {
-                        diff.insert(key, "differs".into());
+                        diff.insert(key, htmldiff(&lhs, &rhs));
                     }
                 }
             }

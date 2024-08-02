@@ -8,7 +8,7 @@ static WEB_FEATURES: Lazy<Option<WebFeatures>> = Lazy::new(|| {
         &data_dir()
             .join("web-features")
             .join("package")
-            .join("index.json"),
+            .join("data.json"),
     );
     match web_features {
         Ok(web_features) => Some(web_features),

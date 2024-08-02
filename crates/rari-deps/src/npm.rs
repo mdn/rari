@@ -52,7 +52,7 @@ pub fn get_package(
             let current_version = package_json["version"]
                 .as_str()
                 .ok_or(DepsError::WebRefMissingVersionError)?;
-            current_version == latest_version
+            current_version != latest_version
         } else {
             true
         };
