@@ -109,7 +109,6 @@ pub struct JsonDoc {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
     pub title: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub toc: Vec<TocEntry>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline: Option<&'static SupportStatus>,

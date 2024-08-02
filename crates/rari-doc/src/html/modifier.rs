@@ -43,7 +43,8 @@ pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
         .map(Cow::Borrowed)
         .collect::<HashSet<_>>();
 
-    let selector = Selector::parse("*[data-update-id], h2:not([id]), h3:not([id])").unwrap();
+    let selector =
+        Selector::parse("*[data-update-id], h2:not([id]), h3:not([id]), dt:not([id])").unwrap();
     let subs =
         html.select(&selector)
             .map(|el| {

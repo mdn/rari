@@ -79,7 +79,7 @@ mod test {
     #[test]
     fn basic() -> Result<(), anyhow::Error> {
         let out = m2h("{{foo-bar}}", Locale::EnUs)?;
-        assert_eq!(out, "{{foo-bar}}");
+        assert_eq!(out, "<p>{{foo-bar}}</p>\n");
         Ok(())
     }
 

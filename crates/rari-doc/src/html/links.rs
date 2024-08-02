@@ -19,12 +19,17 @@ pub struct LinkModifier<'a> {
 pub fn render_internal_link(
     out: &mut String,
     url: &str,
+    anchor: Option<&str>,
     content: &str,
     title: Option<&str>,
     modifier: &LinkModifier,
 ) -> Result<(), DocError> {
     out.push_str("<a href=\"");
     out.push_str(url);
+    if let Some(anchor) = anchor {
+        out.push('#');
+        out.push_str(anchor);
+    }
     if let Some(title) = title {
         out.push_str("\" title=\"");
         out.push_str(title);
@@ -36,7 +41,8 @@ pub fn render_internal_link(
     if modifier.code {
         out.push_str("<code>");
     }
-    let content = html_escape::encode_safe(content);
+    let content = html_escape::decode_html_entities(content);
+    let content = html_escape::encode_safe(&content);
     out.push_str(&content);
     if modifier.code {
         out.push_str("</code>");
@@ -62,7 +68,7 @@ pub fn render_link_from_page(
     modifier: &LinkModifier,
 ) -> Result<(), DocError> {
     let content = html_escape::encode_safe(page.short_title().unwrap_or(page.title()));
-    render_internal_link(out, page.url(), &content, None, modifier)
+    render_internal_link(out, page.url(), None, &content, None, modifier)
 }
 
 pub fn render_link_via_page(
@@ -74,19 +80,24 @@ pub fn render_link_via_page(
     title: Option<&str>,
     with_badges: bool,
 ) -> Result<(), DocError> {
+    let mut url = Cow::Borrowed(link);
     if link.starts_with('/') {
-        let url = if let Some(locale) = locale {
-            Cow::Owned(format!("/{}/docs{link}", locale.as_url_str()))
-        } else {
-            Cow::Borrowed(link)
+        if let Some(locale) = locale {
+            url = Cow::Owned(format!("/{}/docs{link}", locale.as_url_str()));
         };
-        match RariApi::get_page(&url) {
+        let (url, anchor) = url.split_once('#').unwrap_or((&url, ""));
+        match RariApi::get_page(url) {
             Ok(page) => {
                 let url = page.url();
                 let content = content.unwrap_or(page.short_title().unwrap_or(page.title()));
                 return render_internal_link(
                     out,
                     url,
+                    if anchor.is_empty() {
+                        None
+                    } else {
+                        Some(anchor)
+                    },
                     content,
                     title,
                     &LinkModifier {
@@ -104,13 +115,12 @@ pub fn render_link_via_page(
     }
 
     out.push_str("<a href=\"");
-    let url = link;
-    let content = if link.starts_with('/') {
-        &link[link.rfind('/').unwrap_or(0)..]
-    } else {
-        &html_escape::encode_safe(content.unwrap_or(link))
+    let content = match content {
+        Some(content) => &html_escape::encode_safe(content),
+        None if url.starts_with('/') => &url[url.rfind('/').unwrap_or(0)..],
+        _ => &html_escape::encode_safe(&url),
     };
-    out.push_str(url);
+    out.push_str(&url);
     if let Some(title) = title {
         out.push_str("\" title=\"");
         out.push_str(title);

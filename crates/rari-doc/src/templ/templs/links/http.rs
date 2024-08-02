@@ -27,7 +27,7 @@ pub fn http_header(
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let url = format!(
-        "/{}/docs/Web/HTTP/Header/{}",
+        "/{}/docs/Web/HTTP/Headers/{}",
         env.locale.as_url_str(),
         status
     );
@@ -42,7 +42,7 @@ pub fn http_method(
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let url = format!(
-        "/{}/docs/Web/HTTP/Method/{}",
+        "/{}/docs/Web/HTTP/Methods/{}",
         env.locale.as_url_str(),
         status
     );

@@ -95,7 +95,7 @@ fn to_arg(pair: Pair<'_, Rule>) -> Option<Arg> {
     }
 }
 
-pub(crate) fn parse(input: &str) -> Result<Vec<Token>, DocError> {
+pub fn parse(input: &str) -> Result<Vec<Token>, DocError> {
     let mut p =
         RariTempl::parse(Rule::doc, input).map_err(|e| DocError::PestError(e.to_string()))?;
     let tokens = p

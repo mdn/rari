@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 use lol_html::html_content::ContentType;
 use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings};
+use rari_l10n::l10n_json_data;
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
@@ -151,7 +152,7 @@ pub fn post_process_html<T: PageLike>(
                             if class.is_empty() { "" } else { " " }
                         ),
                     )?;
-                    el.set_attribute("title", "This is a link to an unwritten page")?;
+                    el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
                 }
                 el.set_attribute(
                     "href",

@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use rari_types::globals::deny_warnings;
-use rari_types::RariEnv;
+use rari_types::{AnyArg, RariEnv};
 use tracing::{span, warn, Level};
 
 use super::parser::{parse, Token};
@@ -12,6 +12,46 @@ pub struct Rendered {
     pub content: String,
     pub templs: Vec<String>,
     pub sidebars: Vec<String>,
+}
+
+pub fn render_for_summary(input: &str) -> Result<String, DocError> {
+    let tokens = parse(input)?;
+    let mut out = String::with_capacity(input.len());
+    for token in tokens {
+        match token {
+            Token::Text(text) => {
+                let slice = &input[text.start..text.end];
+                push_text(&mut out, slice);
+            }
+            Token::Macro(mac) => {
+                if let Some(s) = match mac.ident.to_ascii_lowercase().as_str() {
+                    "apiref"
+                    | "jsref"
+                    | "compat"
+                    | "page"
+                    | "deprecated_header"
+                    | "previous"
+                    | "previousmenu"
+                    | "previousnext"
+                    | "previousmenunext"
+                    | "quicklinkswithsubpages" => None,
+                    "glossary" => mac
+                        .args
+                        .first()
+                        .and_then(|f| f.clone())
+                        .map(|arg| AnyArg::try_from(arg).unwrap().to_string()),
+                    _ => mac
+                        .args
+                        .first()
+                        .and_then(|f| f.clone())
+                        .map(|arg| format!("<code>{}</code>", AnyArg::try_from(arg).unwrap())),
+                } {
+                    out.push_str(&s)
+                }
+            }
+        }
+    }
+    Ok(out)
 }
 
 pub fn render(env: &RariEnv, input: &str) -> Result<Rendered, DocError> {
@@ -81,12 +121,7 @@ pub fn render_tokens(env: &RariEnv, tokens: Vec<Token>, input: &str) -> Result<R
         match token {
             Token::Text(text) => {
                 let slice = &input[text.start..text.end];
-                let mut last = 0;
-                for (i, _) in slice.match_indices("\\{{") {
-                    out.push_str(&slice[last..i]);
-                    last = i + 1;
-                }
-                out.push_str(&slice[last..])
+                push_text(&mut out, slice);
             }
             Token::Macro(mac) => {
                 let ident = &mac.ident;
@@ -115,4 +150,13 @@ pub fn render_tokens(env: &RariEnv, tokens: Vec<Token>, input: &str) -> Result<R
         templs,
         sidebars,
     })
+}
+
+fn push_text(out: &mut String, slice: &str) {
+    let mut last = 0;
+    for (i, _) in slice.match_indices("\\{{") {
+        out.push_str(&slice[last..i]);
+        last = i + 1;
+    }
+    out.push_str(&slice[last..]);
 }

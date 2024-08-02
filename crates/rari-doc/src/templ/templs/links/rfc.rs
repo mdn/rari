@@ -24,7 +24,7 @@ pub fn rfc(
         (Some(content), None) => (format!(": {content}"), Default::default()),
         (Some(content), Some(anchor)) => (
             format!(
-                ": {content}, {} {anchor}",
+                ", {} {anchor}: {content}",
                 l10n_json_data("Common", "section", env.locale)?
             ),
             format!("#section-{anchor}"),

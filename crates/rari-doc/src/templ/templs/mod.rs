@@ -6,6 +6,7 @@ pub mod csssyntax;
 pub mod embeds;
 pub mod firefox_for_developers;
 pub mod glossary;
+pub mod glossarydisambiguation;
 pub mod inheritance_diagram;
 pub mod inline_labels;
 pub mod js_property_attributes;
@@ -30,12 +31,17 @@ pub fn invoke(
     ident: &str,
     args: Vec<Option<Arg>>,
 ) -> Result<(String, bool), DocError> {
-    let name = ident.to_lowercase();
+    let name = ident.to_ascii_lowercase();
 
     // TODO: improve sidebar handling
     let is_sidebar = matches!(
         name.as_str(),
-        "apiref" | "defaultapisidebar" | "jsref" | "cssref" | "glossarysidebar"
+        "apiref"
+            | "defaultapisidebar"
+            | "jsref"
+            | "cssref"
+            | "glossarysidebar"
+            | "quicklinkswithsubpages"
     );
     let f = match name.as_str() {
         "compat" => compat::compat_any,
@@ -45,12 +51,14 @@ pub fn invoke(
         "listsubpages" => listsubpages::list_sub_pages_any,
         "listsubpagesgrouped" => listsubpages::list_sub_pages_grouped_any,
         "cssinfo" => cssinfo::cssinfo_any,
-        "quicklinkswithsubpages" => quick_links_with_subpages::quick_links_with_subpages_any,
         "inheritancediagram" => inheritance_diagram::inheritance_diagram_any,
         "webextexamples" => web_ext_examples::web_ext_examples_any,
         "firefox_for_developers" => firefox_for_developers::firefox_for_developers_any,
         "js_property_attributes" => js_property_attributes::js_property_attributes_any,
         "svginfo" => svginfo::svginfo_any,
+
+        // hacky
+        "glossarydisambiguation" => glossarydisambiguation::glossarydisambiguation_any,
 
         // prev menu next
         "previousmenunext" => previous_menu_next::previous_next_menu_any,
@@ -105,6 +113,7 @@ pub fn invoke(
         "jsref" => sidebars::jsref_any,
         "cssref" => sidebars::cssref_any,
         "glossarysidebar" => sidebars::glossarysidebar_any,
+        "quicklinkswithsubpages" => quick_links_with_subpages::quick_links_with_subpages_any,
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),

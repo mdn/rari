@@ -88,11 +88,11 @@ impl Display for AnyArg {
     }
 }
 
-impl TryInto<AnyArg> for Arg {
+impl TryFrom<Arg> for AnyArg {
     type Error = ArgError;
 
-    fn try_into(self) -> Result<AnyArg, Self::Error> {
-        Ok(AnyArg { value: self })
+    fn try_from(value: Arg) -> Result<Self, Self::Error> {
+        Ok(AnyArg { value })
     }
 }
 

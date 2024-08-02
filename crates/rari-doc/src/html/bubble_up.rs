@@ -62,7 +62,7 @@ mod test {
         bubble_up_curriculum_page(&mut fragment)?;
 
         assert_eq!(
-            r#"<html><p>foo</p><p class="curriculum-resources"><span class="curriculum-resources">resources:</span></p><ul><li>42</li></ul></html>"#,
+            r#"<html><p>foo</p><p><span class="curriculum-resources">resources:</span></p><ul><li>42</li></ul></html>"#,
             fragment.html()
         );
         Ok(())
