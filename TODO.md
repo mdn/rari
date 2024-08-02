@@ -10,3 +10,4 @@
 - [ ] unify link rendering
 - [ ] locale compare for sidebar?!
 - [ ] l10n for jsref
+- [ ] deal with summary() in templs

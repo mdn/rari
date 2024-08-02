@@ -2283,7 +2283,9 @@ dependencies = [
 name = "rari-l10n"
 version = "0.0.1"
 dependencies = [
+ "once_cell",
  "rari-types",
+ "serde_json",
  "thiserror",
 ]
 

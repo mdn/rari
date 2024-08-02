@@ -6,6 +6,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 
 use crate::error::EnvError;
+use crate::locale::Locale;
 use crate::settings::Settings;
 use crate::{HistoryEntry, Popularities};
 
@@ -83,47 +84,47 @@ pub fn json_spec_data_lookup() -> &'static JsonSpecDataLookup {
     })
 }
 
-pub type JsonL10nFile = HashMap<String, HashMap<String, String>>;
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum SVGDataDescription {
+    Copy(String),
+    L10n(HashMap<Locale, String>),
+}
 
-pub static JSON_L10N_FILES: OnceCell<HashMap<String, JsonL10nFile>> = OnceCell::new();
+#[derive(Debug, Deserialize)]
+pub struct SVGDataContent {
+    pub description: SVGDataDescription,
+    #[serde(default)]
+    pub elements: Vec<String>,
+}
 
-pub fn json_l10n_files() -> &'static HashMap<String, JsonL10nFile> {
-    JSON_L10N_FILES.get_or_init(|| {
-        content_root()
-            .join("jsondata")
-            .read_dir()
-            .expect("unable to read jsondata dir")
-            .filter_map(|f| {
-                if let Ok(f) = f {
-                    if f.path().is_file()
-                        && f.path()
-                            .extension()
-                            .map_or(false, |ext| ext.eq_ignore_ascii_case("json"))
-                        && f.path()
-                            .file_stem()
-                            .and_then(|s| s.to_str())
-                            .map_or(false, |s| s.starts_with("L10n-"))
-                    {
-                        return Some(f.path());
-                    }
-                }
-                None
-            })
-            .map(|f| {
-                let typ = f
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or_default()
-                    .strip_prefix("L10n-")
-                    .unwrap_or_default();
-                let json_str = fs::read_to_string(&f).expect("unable to read l10n json");
-                let l10n_json: JsonL10nFile =
-                    serde_json::from_str(&json_str).expect("unable to parse l10n json");
-                (typ.into(), l10n_json)
-            })
-            .collect()
+#[derive(Debug, Deserialize)]
+pub struct SVGData {
+    pub categories: Vec<String>,
+    pub content: SVGDataContent,
+    pub attributes: Vec<String>,
+    pub interfaces: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SVGDataContainer {
+    elements: HashMap<String, SVGData>,
+}
+
+pub type JsonSVGDataLookup = HashMap<String, SVGData>;
+
+pub static JSON_SVG_DATA_FILE: OnceCell<JsonSVGDataLookup> = OnceCell::new();
+
+pub fn json_svg_data_lookup() -> &'static JsonSVGDataLookup {
+    JSON_SVG_DATA_FILE.get_or_init(|| {
+        let json_str = fs::read_to_string(content_root().join("jsondata/SVGData.json"))
+            .expect("unable to read SVGData.json");
+        let data: SVGDataContainer =
+            serde_json::from_str(&json_str).expect("unabeld to parse SVGData.json");
+        data.elements
     })
 }
+
 pub static GIT_HISTORY: Lazy<HashMap<PathBuf, HistoryEntry>> = Lazy::new(|| {
     let f = content_root().join("en-US").join("_history.json");
     if let Ok(json_str) = fs::read_to_string(f) {

@@ -8,12 +8,14 @@ pub mod firefox_for_developers;
 pub mod glossary;
 pub mod inheritance_diagram;
 pub mod inline_labels;
+pub mod js_property_attributes;
 pub mod links;
 pub mod listsubpages;
 pub mod previous_menu_next;
 pub mod quick_links_with_subpages;
 pub mod sidebars;
 pub mod specification;
+pub mod svginfo;
 pub mod web_ext_examples;
 
 use rari_types::globals::deny_warnings;
@@ -47,6 +49,8 @@ pub fn invoke(
         "inheritancediagram" => inheritance_diagram::inheritance_diagram_any,
         "webextexamples" => web_ext_examples::web_ext_examples_any,
         "firefox_for_developers" => firefox_for_developers::firefox_for_developers_any,
+        "js_property_attributes" => js_property_attributes::js_property_attributes_any,
+        "svginfo" => svginfo::svginfo_any,
 
         // prev menu next
         "previousmenunext" => previous_menu_next::previous_next_menu_any,

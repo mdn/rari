@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::fs;
 
-use rari_types::globals::json_l10n_files;
+use once_cell::sync::OnceCell;
+use rari_types::globals::content_root;
 use rari_types::locale::Locale;
 use thiserror::Error;
 
@@ -30,4 +32,45 @@ pub fn get_for_locale<T>(locale: Locale, lookup: &HashMap<String, T>) -> Option<
     } else {
         None
     }
+}
+pub type JsonL10nFile = HashMap<String, HashMap<String, String>>;
+
+pub static JSON_L10N_FILES: OnceCell<HashMap<String, JsonL10nFile>> = OnceCell::new();
+
+pub fn json_l10n_files() -> &'static HashMap<String, JsonL10nFile> {
+    JSON_L10N_FILES.get_or_init(|| {
+        content_root()
+            .join("jsondata")
+            .read_dir()
+            .expect("unable to read jsondata dir")
+            .filter_map(|f| {
+                if let Ok(f) = f {
+                    if f.path().is_file()
+                        && f.path()
+                            .extension()
+                            .map_or(false, |ext| ext.eq_ignore_ascii_case("json"))
+                        && f.path()
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .map_or(false, |s| s.starts_with("L10n-"))
+                    {
+                        return Some(f.path());
+                    }
+                }
+                None
+            })
+            .map(|f| {
+                let typ = f
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or_default()
+                    .strip_prefix("L10n-")
+                    .unwrap_or_default();
+                let json_str = fs::read_to_string(&f).expect("unable to read l10n json");
+                let l10n_json: JsonL10nFile =
+                    serde_json::from_str(&json_str).expect("unable to parse l10n json");
+                (typ.into(), l10n_json)
+            })
+            .collect()
+    })
 }
