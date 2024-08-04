@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::iter::once;
+use std::sync::LazyLock;
 
-use once_cell::sync::Lazy;
 use rari_l10n::l10n_json_data;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
@@ -298,7 +298,7 @@ const ERROR: &[Cow<'static, str>] = &[
 
 // Related pages
 fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, str>> {
-    static GROUP_DATA: Lazy<Vec<&[Cow<'static, str>]>> = Lazy::new(|| {
+    static GROUP_DATA: LazyLock<Vec<&[Cow<'static, str>]>> = LazyLock::new(|| {
         vec![
             ERROR,
             &INTL_SUBPAGES,
@@ -333,7 +333,7 @@ fn inheritance_data(obj: &str) -> Option<&str> {
     }
 }
 
-static INTL_SUBPAGES: Lazy<Vec<Cow<'static, str>>> = Lazy::new(|| {
+static INTL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> = LazyLock::new(|| {
     once(Cow::Borrowed("Intl"))
         .chain(
             get_sub_pages(

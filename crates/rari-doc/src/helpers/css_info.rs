@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Write;
+use std::sync::OnceLock;
 
 use itertools::Itertools;
-use once_cell::sync::OnceCell;
 use rari_l10n::l10n_json_data;
 use rari_types::globals::data_dir;
 use rari_types::locale::Locale;
@@ -41,7 +41,7 @@ impl MDNDataFiles {
     }
 }
 
-pub static MDN_DATA_FILES: OnceCell<MDNDataFiles> = OnceCell::new();
+pub static MDN_DATA_FILES: OnceLock<MDNDataFiles> = OnceLock::new();
 
 pub fn mdn_data_files() -> &'static MDNDataFiles {
     MDN_DATA_FILES.get_or_init(|| match MDNDataFiles::init() {

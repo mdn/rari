@@ -9,6 +9,7 @@ use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 use std::str;
+use std::sync::LazyLock;
 
 use comrak::adapters::HeadingMeta;
 use comrak::nodes::{
@@ -17,7 +18,6 @@ use comrak::nodes::{
 };
 use comrak::{ComrakOptions, ComrakPlugins, Options};
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use rari_types::locale::Locale;
 
 use crate::anchor;
@@ -308,7 +308,7 @@ pub fn escape(output: &mut dyn Write, buffer: &[u8]) -> io::Result<()> {
 /// the string "a b", rather than "?q=a%2520b", a search for the literal
 /// string "a%20b".
 pub fn escape_href(output: &mut dyn Write, buffer: &[u8]) -> io::Result<()> {
-    static HREF_SAFE: Lazy<[bool; 256]> = Lazy::new(|| {
+    static HREF_SAFE: LazyLock<[bool; 256]> = LazyLock::new(|| {
         let mut a = [false; 256];
         for &c in b"-_.+!*(),%#@?=;:/,+$~abcdefghijklmnopqrstuvwxyz".iter() {
             a[c as usize] = true;

@@ -1,9 +1,8 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, LazyLock, OnceLock, RwLock};
 
-use once_cell::sync::{Lazy, OnceCell};
 use rari_types::globals::{blog_root, cache_content, content_root, curriculum_root};
 use rari_types::locale::Locale;
 use rari_utils::io::read_to_string;
@@ -18,12 +17,12 @@ use crate::sidebars::jsref;
 use crate::utils::split_fm;
 use crate::walker::{read_docs_parallel, walk_builder};
 
-pub static STATIC_PAGE_FILES: OnceCell<HashMap<PathBuf, Page>> = OnceCell::new();
-pub static CACHED_PAGE_FILES: OnceCell<Arc<RwLock<HashMap<PathBuf, Page>>>> = OnceCell::new();
+pub static STATIC_PAGE_FILES: OnceLock<HashMap<PathBuf, Page>> = OnceLock::new();
+pub static CACHED_PAGE_FILES: OnceLock<Arc<RwLock<HashMap<PathBuf, Page>>>> = OnceLock::new();
 type SidebarFilesCache = Arc<RwLock<HashMap<(String, Locale), Arc<MetaSidebar>>>>;
-pub static CACHED_SIDEBAR_FILES: Lazy<SidebarFilesCache> =
-    Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
-pub static CACHED_CURRICULUM: OnceCell<CurriculumFiles> = OnceCell::new();
+pub static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
+    LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
+pub static CACHED_CURRICULUM: OnceLock<CurriculumFiles> = OnceLock::new();
 
 #[derive(Debug, Default, Clone)]
 pub struct BlogFiles {
@@ -31,7 +30,7 @@ pub struct BlogFiles {
     pub authors: HashMap<String, Arc<Author>>,
     pub sorted_meta: Vec<BlogPostBuildMeta>,
 }
-pub static BLOG_FILES: OnceCell<BlogFiles> = OnceCell::new();
+pub static BLOG_FILES: OnceLock<BlogFiles> = OnceLock::new();
 
 #[derive(Debug, Default, Clone)]
 pub struct CurriculumFiles {

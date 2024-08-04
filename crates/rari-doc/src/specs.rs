@@ -1,4 +1,5 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
 use rari_data::specs::{BCDSpecUrls, WebSpecs};
 use rari_types::globals::{data_dir, json_spec_data_lookup};
 use serde::Serialize;
@@ -12,7 +13,7 @@ pub struct SpecsData {
     pub bcd_spec_urls: BCDSpecUrls,
 }
 
-pub static SPECS: Lazy<SpecsData> = Lazy::new(|| {
+pub static SPECS: LazyLock<SpecsData> = LazyLock::new(|| {
     let web_specs = WebSpecs::from_file(&data_dir().join("web-specs/package/index.json"))
         .map_err(|e| {
             warn!("{e:?}");

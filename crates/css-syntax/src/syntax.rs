@@ -2,19 +2,19 @@ use std::cmp::{max, min, Ordering};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
 use std::fs;
+use std::sync::LazyLock;
 
 use css_definition_syntax::generate::{self, GenerateOptions};
 use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
 use css_definition_syntax::walk::{walk, WalkOptions};
 use css_syntax_types::{Css, CssValueType, CssValuesItem};
-use once_cell::sync::Lazy;
 #[cfg(all(feature = "rari", not(test)))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
 
 use crate::error::SyntaxError;
 
-static CSS_REF: Lazy<BTreeMap<String, Css>> = Lazy::new(|| {
+static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
     #[cfg(test)]
     {
         let package_path = std::path::Path::new("package");
@@ -64,7 +64,7 @@ pub struct Flattened {
 // This relies on the ordered names of CSS_REF.
 // "css-values-5" comes after "css-values" and therefore the updated
 // overlapping values in "css-values-5" are ignored.
-static FLATTENED: Lazy<Flattened> = Lazy::new(|| {
+static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
     let mut all = Flattened::default();
     let mut entries = CSS_REF.iter().collect::<Vec<_>>();
     entries.sort_by(|a, b| {
@@ -746,7 +746,7 @@ fn get_nodes_for_syntaxes(
 mod test {
     use super::*;
 
-    static TOOLTIPS: Lazy<HashMap<LinkedToken, String>> = Lazy::new(|| {
+    static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
         [(LinkedToken::Asterisk, "Asterisk: the entity may occur zero, one or several times".to_string()),
     (LinkedToken::Plus, "Plus: the entity may occur one or several times".to_string()),
     (LinkedToken::QuestionMark, "Question mark: the entity is optional".to_string()),

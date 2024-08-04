@@ -1,6 +1,6 @@
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
-use once_cell::sync::OnceCell;
 use rari_types::globals::content_root;
 use rari_utils::io::read_to_string;
 use serde::Deserialize;
@@ -10,7 +10,7 @@ pub struct InterfaceData {
     pub inh: String,
 }
 
-pub static JSON_DATA_INTERFACE: OnceCell<HashMap<String, InterfaceData>> = OnceCell::new();
+pub static JSON_DATA_INTERFACE: OnceLock<HashMap<String, InterfaceData>> = OnceLock::new();
 
 pub fn json_data_interface() -> &'static HashMap<String, InterfaceData> {
     JSON_DATA_INTERFACE.get_or_init(|| {
@@ -40,7 +40,7 @@ pub struct GroupData {
     pub tutorial: Vec<String>,
 }
 
-pub static JSON_DATA_GROUP: OnceCell<HashMap<String, GroupData>> = OnceCell::new();
+pub static JSON_DATA_GROUP: OnceLock<HashMap<String, GroupData>> = OnceLock::new();
 
 pub fn json_data_group() -> &'static HashMap<String, GroupData> {
     JSON_DATA_GROUP.get_or_init(|| {

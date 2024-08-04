@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
+use std::sync::OnceLock;
 
-use once_cell::sync::OnceCell;
 use rari_types::globals::content_root;
 use rari_types::locale::Locale;
 use thiserror::Error;
@@ -35,7 +35,7 @@ pub fn get_for_locale<T>(locale: Locale, lookup: &HashMap<String, T>) -> Option<
 }
 pub type JsonL10nFile = HashMap<String, HashMap<String, String>>;
 
-pub static JSON_L10N_FILES: OnceCell<HashMap<String, JsonL10nFile>> = OnceCell::new();
+pub static JSON_L10N_FILES: OnceLock<HashMap<String, JsonL10nFile>> = OnceLock::new();
 
 pub fn json_l10n_files() -> &'static HashMap<String, JsonL10nFile> {
     JSON_L10N_FILES.get_or_init(|| {

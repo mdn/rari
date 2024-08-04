@@ -4,15 +4,15 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
-use once_cell::sync::Lazy;
 use rari_types::globals::{content_root, content_translated_root};
 use rari_types::locale::Locale;
 use tracing::error;
 
 use crate::error::DocError;
 
-static REDIRECTS: Lazy<HashMap<String, String>> = Lazy::new(|| {
+static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     let mut map = HashMap::new();
     if let Some(ctr) = content_translated_root() {
         for locale in ctr

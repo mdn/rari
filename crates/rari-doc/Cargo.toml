@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 thiserror = "1"
@@ -16,7 +17,6 @@ pest = "2"
 pest_derive = "2"
 regex = "1"
 validator = { version = "0.18", features = ["derive"] }
-once_cell = "1"
 scraper = { version = "0.19", features = ["deterministic"] }
 chrono = { version = "0.4", features = ["serde"] }
 lol_html = "1"

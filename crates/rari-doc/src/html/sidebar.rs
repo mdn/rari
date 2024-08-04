@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 pub use std::ops::Deref;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, LazyLock, RwLock};
 
-use once_cell::sync::Lazy;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
 use rari_types::locale::Locale;
@@ -31,7 +30,8 @@ fn cache_side_bar(sidebar: &str) -> bool {
 
 type SidebarCache = Arc<RwLock<HashMap<Locale, HashMap<String, String>>>>;
 
-static SIDEBAR_CACHE: Lazy<SidebarCache> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
+static SIDEBAR_CACHE: LazyLock<SidebarCache> =
+    LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
 
 pub fn expand_details_and_mark_current_for_inline_sidebar(
     html: &mut Html,

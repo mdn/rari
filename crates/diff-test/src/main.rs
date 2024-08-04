@@ -4,6 +4,7 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::sync::LazyLock;
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
@@ -12,7 +13,6 @@ use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
 use itertools::Itertools;
 use jsonpath_lib::Compiled;
-use once_cell::sync::Lazy;
 use prettydiff::diff_words;
 use regex::Regex;
 use serde_json::Value;
@@ -174,8 +174,10 @@ const IGNORE: &[&str] = &[
     "doc.other_translations",
 ];
 
-static WS_DIFF: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
-static DATA_FLAW_SRC: Lazy<Regex> = Lazy::new(|| Regex::new(r#" data-flaw-src="[^"]+""#).unwrap());
+static WS_DIFF: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
+static DATA_FLAW_SRC: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#" data-flaw-src="[^"]+""#).unwrap());
 
 fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<String, String>) {
     if path.len() == 1 {

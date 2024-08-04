@@ -1,8 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
-use once_cell::sync::Lazy;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::curriculum_root;
 use rari_types::locale::Locale;
@@ -122,8 +121,9 @@ impl PageReader for CurriculumPage {
     }
 }
 
-static TITLE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"^[\w\n]*#\s+(.*)\n"#).unwrap());
-static SLUG_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(\d+-|\.md$|\/0?-?README)"#).unwrap());
+static TITLE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^[\w\n]*#\s+(.*)\n"#).unwrap());
+static SLUG_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"(\d+-|\.md$|\/0?-?README)"#).unwrap());
 
 fn curriculum_file_to_slug(file: &Path) -> String {
     SLUG_RE.replace_all(&file.to_string_lossy(), "").to_string()

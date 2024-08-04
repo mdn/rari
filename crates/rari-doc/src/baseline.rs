@@ -1,9 +1,10 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
 use rari_data::baseline::{SupportStatus, WebFeatures};
 use rari_types::globals::data_dir;
 use tracing::warn;
 
-static WEB_FEATURES: Lazy<Option<WebFeatures>> = Lazy::new(|| {
+static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
     let web_features = WebFeatures::from_file(
         &data_dir()
             .join("web-features")

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
-use once_cell::sync::Lazy;
 use rari_types::globals::data_dir;
 use rari_utils::io::read_to_string;
 use serde::Deserialize;
@@ -20,7 +20,7 @@ pub struct WebExtExamplesData {
     pub by_module_and_api: HashMap<&'static str, Vec<&'static WebExtExample>>,
 }
 
-pub static WEB_EXT_EXAMPLES_JSON: Lazy<Vec<WebExtExample>> = Lazy::new(|| {
+pub static WEB_EXT_EXAMPLES_JSON: LazyLock<Vec<WebExtExample>> = LazyLock::new(|| {
     match read_to_string(data_dir().join("web_ext_examples/data.json"))
         .map_err(DocError::from)
         .and_then(|s| serde_json::from_str(&s).map_err(DocError::from))
@@ -37,7 +37,7 @@ pub fn web_ext_examples_json() -> &'static [WebExtExample] {
     &WEB_EXT_EXAMPLES_JSON
 }
 
-pub static WEB_EXT_EXAMPLES_DATA: Lazy<WebExtExamplesData> = Lazy::new(|| {
+pub static WEB_EXT_EXAMPLES_DATA: LazyLock<WebExtExamplesData> = LazyLock::new(|| {
     let mut by_module = HashMap::new();
     for example in web_ext_examples_json() {
         for js_api in &example.javascript_apis {

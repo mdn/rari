@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::{LazyLock, OnceLock};
 use std::{env, fs};
 
-use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 
 use crate::error::EnvError;
@@ -49,7 +49,7 @@ pub fn cache_content() -> bool {
     settings().cache_content
 }
 
-pub static DATA_DIR: OnceCell<PathBuf> = OnceCell::new();
+pub static DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 pub fn data_dir() -> &'static Path {
     DATA_DIR.get_or_init(|| {
@@ -59,7 +59,7 @@ pub fn data_dir() -> &'static Path {
     })
 }
 
-pub static SETTINGS: OnceCell<Settings> = OnceCell::new();
+pub static SETTINGS: OnceLock<Settings> = OnceLock::new();
 
 pub fn settings() -> &'static Settings {
     SETTINGS.get_or_init(|| Settings::new().expect("error generating settings"))
@@ -72,7 +72,7 @@ pub struct JsonSpecData {
 
 pub type JsonSpecDataLookup = HashMap<String, String>;
 
-pub static JSON_SPEC_DATA_FILE: OnceCell<JsonSpecDataLookup> = OnceCell::new();
+pub static JSON_SPEC_DATA_FILE: OnceLock<JsonSpecDataLookup> = OnceLock::new();
 
 pub fn json_spec_data_lookup() -> &'static JsonSpecDataLookup {
     JSON_SPEC_DATA_FILE.get_or_init(|| {
@@ -113,7 +113,7 @@ struct SVGDataContainer {
 
 pub type JsonSVGDataLookup = HashMap<String, SVGData>;
 
-pub static JSON_SVG_DATA_FILE: OnceCell<JsonSVGDataLookup> = OnceCell::new();
+pub static JSON_SVG_DATA_FILE: OnceLock<JsonSVGDataLookup> = OnceLock::new();
 
 pub fn json_svg_data_lookup() -> &'static JsonSVGDataLookup {
     JSON_SVG_DATA_FILE.get_or_init(|| {
@@ -125,7 +125,7 @@ pub fn json_svg_data_lookup() -> &'static JsonSVGDataLookup {
     })
 }
 
-pub static GIT_HISTORY: Lazy<HashMap<PathBuf, HistoryEntry>> = Lazy::new(|| {
+pub static GIT_HISTORY: LazyLock<HashMap<PathBuf, HistoryEntry>> = LazyLock::new(|| {
     let f = content_root().join("en-US").join("_history.json");
     if let Ok(json_str) = fs::read_to_string(f) {
         serde_json::from_str(&json_str).expect("unable to parse l10n json")
@@ -137,7 +137,7 @@ pub fn git_history() -> &'static HashMap<PathBuf, HistoryEntry> {
     &GIT_HISTORY
 }
 
-pub static POPULARITIES: Lazy<Popularities> = Lazy::new(|| {
+pub static POPULARITIES: LazyLock<Popularities> = LazyLock::new(|| {
     let f = content_root().join("en-US").join("popularities.json");
     if let Ok(json_str) = fs::read_to_string(f) {
         serde_json::from_str(&json_str).expect("unable to parse l10n json")
@@ -149,7 +149,7 @@ pub fn popularities() -> &'static Popularities {
     &POPULARITIES
 }
 
-pub static CONTENT_BRANCH: OnceCell<String> = OnceCell::new();
+pub static CONTENT_BRANCH: OnceLock<String> = OnceLock::new();
 pub fn content_branch() -> &'static str {
     CONTENT_BRANCH.get_or_init(|| env::var("CONTENT_BRANCH").unwrap_or("main".to_string()))
 }
