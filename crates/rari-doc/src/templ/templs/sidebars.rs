@@ -28,3 +28,8 @@ pub fn cssref() -> Result<String, DocError> {
 pub fn glossarysidebar() -> Result<String, DocError> {
     sidebar::render_sidebar("glossarysidebar", env.slug, env.locale)
 }
+
+#[rari_f]
+pub fn addonsidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("addonsidebar", env.slug, env.locale)
+}

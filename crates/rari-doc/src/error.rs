@@ -97,6 +97,8 @@ pub enum DocError {
     InvalidGroupForX(String),
     #[error(transparent)]
     RariIoError(#[from] rari_utils::error::RariIoError),
+    #[error("Slug required for SidebarEntry")]
+    SlugRequiredForSidebarEntry,
 }
 
 impl<T> From<PoisonError<T>> for DocError {

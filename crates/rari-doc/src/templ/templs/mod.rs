@@ -42,6 +42,7 @@ pub fn invoke(
             | "cssref"
             | "glossarysidebar"
             | "quicklinkswithsubpages"
+            | "addonsidebar"
     );
     let f = match name.as_str() {
         "compat" => compat::compat_any,
@@ -114,6 +115,7 @@ pub fn invoke(
         "cssref" => sidebars::cssref_any,
         "glossarysidebar" => sidebars::glossarysidebar_any,
         "quicklinkswithsubpages" => quick_links_with_subpages::quick_links_with_subpages_any,
+        "addonsidebar" => sidebars::addonsidebar_any,
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),

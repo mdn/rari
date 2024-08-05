@@ -5,3 +5,4 @@ pub mod subpages;
 pub mod summary_hack;
 pub mod titles;
 pub mod web_ext_examples;
+pub mod webextapi;

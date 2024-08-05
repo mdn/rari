@@ -6,10 +6,10 @@ use rari_types::globals::content_root;
 use rari_types::locale::Locale;
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Clone, Copy, Error)]
+#[derive(Debug, PartialEq, Clone, Error)]
 pub enum L10nError {
-    #[error("Invalid key for L10n json data")]
-    InvalidKey,
+    #[error("Invalid key for L10n json data: {0}")]
+    InvalidKey(String),
     #[error("EnUS missing in L10n json data")]
     NoEnUs,
 }
@@ -20,7 +20,7 @@ pub fn l10n_json_data(typ: &str, key: &str, locale: Locale) -> Result<&'static s
             .map(|s| s.as_str())
             .ok_or(L10nError::NoEnUs)
     } else {
-        Err(L10nError::InvalidKey)
+        Err(L10nError::InvalidKey(key.to_string()))
     }
 }
 

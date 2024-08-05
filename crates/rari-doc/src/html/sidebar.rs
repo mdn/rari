@@ -15,17 +15,12 @@ use crate::cached_readers::read_sidebar;
 use crate::docs::doc::Doc;
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
+use crate::helpers;
 use crate::helpers::subpages::{list_sub_pages_grouped_internal, list_sub_pages_internal};
 use crate::utils::t_or_vec;
 
 fn cache_side_bar(sidebar: &str) -> bool {
-    cache_content()
-        && match sidebar {
-            "cssref" => true,
-            "jsref" => false,
-            "glossarysidebar" => true,
-            _ => false,
-        }
+    cache_content() && matches!(sidebar, "cssref" | "glossarysidebar")
 }
 
 type SidebarCache = Arc<RwLock<HashMap<Locale, HashMap<String, String>>>>;
@@ -84,8 +79,7 @@ pub fn postprocess_sidebar<T: PageLike>(
 }
 
 pub fn render_sidebar(s: &str, slug: &str, locale: Locale) -> Result<String, DocError> {
-    let cache = cache_side_bar(s);
-    if cache {
+    let rendered_sidebar = if cache_side_bar(s) {
         if let Some(sb) = SIDEBAR_CACHE
             .read()
             .map_err(|_| DocError::SidebarCachePoisoned)?
@@ -94,10 +88,8 @@ pub fn render_sidebar(s: &str, slug: &str, locale: Locale) -> Result<String, Doc
         {
             return Ok::<_, DocError>(sb.to_string());
         }
-    }
-    let sidebar = read_sidebar(s, locale, slug)?;
-    let rendered_sidebar = sidebar.render(locale)?;
-    if cache {
+        let sidebar = read_sidebar(s, locale, slug)?;
+        let rendered_sidebar = sidebar.render(locale)?;
         SIDEBAR_CACHE
             .write()
             .map_err(|_| DocError::SidebarCachePoisoned)?
@@ -105,7 +97,11 @@ pub fn render_sidebar(s: &str, slug: &str, locale: Locale) -> Result<String, Doc
             .or_default()
             .entry(s.to_string())
             .or_insert(rendered_sidebar.clone());
-    }
+        rendered_sidebar
+    } else {
+        let sidebar = read_sidebar(s, locale, slug)?;
+        sidebar.render_with_slug(slug, locale)?
+    };
     Ok::<_, DocError>(rendered_sidebar)
 }
 
@@ -170,7 +166,16 @@ impl MetaSidebar {
         let mut out = String::new();
         out.push_str("<ol>");
         for entry in &self.entries {
-            entry.render(&mut out, locale, &self.l10n)?;
+            entry.render(&mut out, locale, None, &self.l10n)?;
+        }
+        out.push_str("</ol>");
+        Ok(out)
+    }
+    pub fn render_with_slug(&self, slug: &str, locale: Locale) -> Result<String, DocError> {
+        let mut out = String::new();
+        out.push_str("<ol>");
+        for entry in &self.entries {
+            entry.render(&mut out, locale, Some(slug), &self.l10n)?;
         }
         out.push_str("</ol>");
         Ok(out)
@@ -200,6 +205,12 @@ pub struct SubPageEntry {
     pub details: bool,
 }
 
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub struct WebExtApiEntry {
+    pub title: String,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SidebarEntry {
@@ -207,6 +218,7 @@ pub enum SidebarEntry {
     Details(BasicEntry),
     ListSubPages(SubPageEntry),
     ListSubPagesGrouped(SubPageEntry),
+    WebExtApi(WebExtApiEntry),
     #[serde(untagged)]
     Default(BasicEntry),
     #[serde(untagged)]
@@ -218,6 +230,7 @@ pub enum MetaChildren {
     Children(Vec<SidebarMetaEntry>),
     ListSubPages(String, Vec<PageType>),
     ListSubPagesGrouped(String, Vec<PageType>),
+    WebExtApi,
     #[default]
     None,
 }
@@ -360,6 +373,16 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 },
                 children: MetaChildren::None,
             },
+            SidebarEntry::WebExtApi(WebExtApiEntry { title }) => SidebarMetaEntry {
+                section: false,
+                code: false,
+                details: Details::Closed,
+                content: SidebarMetaEntryContent::Link {
+                    link: None,
+                    title: Some(title),
+                },
+                children: MetaChildren::WebExtApi,
+            },
         }
     }
 }
@@ -369,8 +392,10 @@ impl SidebarMetaEntry {
         &self,
         out: &mut String,
         locale: Locale,
+        slug: Option<&str>,
         l10n: &SidebarL10n,
     ) -> Result<(), DocError> {
+        #[allow(clippy::single_match)]
         out.push_str("<li");
         if self.section {
             out.push_str(" class=\"section\"");
@@ -428,7 +453,7 @@ impl SidebarMetaEntry {
         match &self.children {
             MetaChildren::Children(children) => {
                 for child in children {
-                    child.render(out, locale, l10n)?;
+                    child.render(out, locale, slug, l10n)?;
                 }
             }
             MetaChildren::ListSubPages(url, page_types) => {
@@ -436,6 +461,15 @@ impl SidebarMetaEntry {
             }
             MetaChildren::ListSubPagesGrouped(url, page_types) => {
                 list_sub_pages_grouped_internal(out, url, locale, None, page_types)?
+            }
+            MetaChildren::WebExtApi => {
+                let children = &helpers::webextapi::children(
+                    slug.ok_or(DocError::SlugRequiredForSidebarEntry)?,
+                    locale,
+                )?;
+                for child in children {
+                    child.render(out, locale, slug, l10n)?;
+                }
             }
             MetaChildren::None => {}
         }
