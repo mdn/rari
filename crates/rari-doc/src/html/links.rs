@@ -81,9 +81,11 @@ pub fn render_link_via_page(
     with_badges: bool,
 ) -> Result<(), DocError> {
     let mut url = Cow::Borrowed(link);
-    if link.starts_with('/') {
+    if let Some(link) = link.strip_prefix('/') {
         if let Some(locale) = locale {
-            url = Cow::Owned(format!("/{}/docs{link}", locale.as_url_str()));
+            if !link.starts_with(Locale::default().as_url_str()) {
+                url = Cow::Owned(format!("/{}/docs/{link}", locale.as_url_str()));
+            }
         };
         let (url, anchor) = url.split_once('#').unwrap_or((&url, ""));
         match RariApi::get_page(url) {
@@ -109,7 +111,9 @@ pub fn render_link_via_page(
                 );
             }
             Err(e) => {
-                warn!("Link via page not found for {url}: {e}",)
+                if !Page::ignore(url) {
+                    warn!("Link via page not found for {url}: {e}")
+                }
             }
         }
     }

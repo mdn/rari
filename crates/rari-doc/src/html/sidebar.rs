@@ -20,7 +20,19 @@ use crate::helpers::subpages::{list_sub_pages_grouped_internal, list_sub_pages_i
 use crate::utils::t_or_vec;
 
 fn cache_side_bar(sidebar: &str) -> bool {
-    cache_content() && matches!(sidebar, "cssref" | "glossarysidebar")
+    cache_content()
+        && matches!(
+            sidebar,
+            "cssref"
+                | "glossarysidebar"
+                | "learnsidebar"
+                | "svgref"
+                | "httpsidebar"
+                | "jssidebar"
+                | "htmlsidebar"
+                | "accessibilitysidebar"
+                | "firefoxsidebar"
+        )
 }
 
 type SidebarCache = Arc<RwLock<HashMap<Locale, HashMap<String, String>>>>;

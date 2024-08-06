@@ -48,6 +48,9 @@ impl Page {
         if url_path.starts_with("/users/") {
             return true;
         }
+        if url_path.starts_with("/en-US/observatory") {
+            return true;
+        }
         if url_path.starts_with("/en-US/plus") {
             return true;
         }

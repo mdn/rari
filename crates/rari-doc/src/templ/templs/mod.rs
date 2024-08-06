@@ -43,6 +43,13 @@ pub fn invoke(
             | "glossarysidebar"
             | "quicklinkswithsubpages"
             | "addonsidebar"
+            | "learnsidebar"
+            | "svgref"
+            | "httpsidebar"
+            | "jssidebar"
+            | "htmlsidebar"
+            | "accessibilitysidebar"
+            | "firefoxsidebar"
     );
     let f = match name.as_str() {
         "compat" => compat::compat_any,
@@ -116,6 +123,13 @@ pub fn invoke(
         "glossarysidebar" => sidebars::glossarysidebar_any,
         "quicklinkswithsubpages" => quick_links_with_subpages::quick_links_with_subpages_any,
         "addonsidebar" => sidebars::addonsidebar_any,
+        "learnsidebar" => sidebars::learnsidebar_any,
+        "svgref" => sidebars::svgref_any,
+        "httpsidebar" => sidebars::httpsidebar_any,
+        "jssidebar" => sidebars::jssidebar_any,
+        "htmlsidebar" => sidebars::htmlsidebar_any,
+        "accessibilitysidebar" => sidebars::accessibilitysidebar_any,
+        "firefoxsidebar" => sidebars::firefoxsidebar_any,
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),

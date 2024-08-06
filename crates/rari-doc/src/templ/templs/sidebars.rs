@@ -33,3 +33,38 @@ pub fn glossarysidebar() -> Result<String, DocError> {
 pub fn addonsidebar() -> Result<String, DocError> {
     sidebar::render_sidebar("addonsidebar", env.slug, env.locale)
 }
+
+#[rari_f]
+pub fn learnsidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("learnsidebar", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn svgref() -> Result<String, DocError> {
+    sidebar::render_sidebar("svgref", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn httpsidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("httpsidebar", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn jssidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("jssidebar", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn htmlsidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("htmlsidebar", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn accessibilitysidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("accessibilitysidebar", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn firefoxsidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("firefoxsidebar", env.slug, env.locale)
+}
