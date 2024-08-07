@@ -64,6 +64,7 @@ pub fn write_li_with_badges(
     out: &mut impl Write,
     page: &Page,
     locale: Locale,
+    closed: bool,
 ) -> Result<(), DocError> {
     let locale_page = if locale != Default::default() {
         &url_path_to_page_with_other_locale_and_fallback(page.url(), Some(locale))?
@@ -85,33 +86,54 @@ pub fn write_li_with_badges(
     if page.status().contains(&FeatureStatus::Deprecated) {
         write_deprecated(out, locale)?;
     }
-    Ok(write!(out, "</li>")?)
+    if closed {
+        write!(out, "</li>")?;
+    }
+    Ok(())
 }
 
-pub fn list_sub_pages_internal(
-    out: &mut impl Write,
+pub fn list_sub_pages_reverse_internal(
+    out: &mut String,
     url: &str,
     locale: Locale,
-    depth: Option<usize>,
-    reverse: bool,
     sorter: Option<SubPagesSorter>,
     page_types: &[PageType],
 ) -> Result<(), DocError> {
-    let sub_pages = get_sub_pages(url, depth, sorter.unwrap_or_default())?;
+    let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
 
-    if reverse {
-        for sub_page in sub_pages.into_iter().rev() {
-            if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
-                continue;
-            }
-            write_li_with_badges(out, &sub_page, locale)?;
+    for sub_page in sub_pages {
+        if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
+            continue;
         }
-    } else {
-        for sub_page in sub_pages {
-            if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
-                continue;
-            }
-            write_li_with_badges(out, &sub_page, locale)?;
+        write_li_with_badges(out, &sub_page, locale, true)?;
+    }
+    Ok(())
+}
+
+pub fn list_sub_pages_internal(
+    out: &mut String,
+    url: &str,
+    locale: Locale,
+    depth: Option<usize>,
+    sorter: Option<SubPagesSorter>,
+    page_types: &[PageType],
+) -> Result<(), DocError> {
+    let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
+
+    let depth = depth.map(|i| i.saturating_sub(1));
+    for sub_page in sub_pages {
+        if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
+            continue;
+        }
+        let sub_sub_pages = get_sub_pages(sub_page.url(), depth, sorter.unwrap_or_default())?;
+        if sub_sub_pages.is_empty() {
+            write_li_with_badges(out, &sub_page, locale, true)?;
+        } else {
+            write_li_with_badges(out, &sub_page, locale, false)?;
+            out.push_str("<ol>");
+            list_sub_pages_internal(out, sub_page.url(), locale, depth, sorter, page_types)?;
+            out.push_str("</ol>");
+            out.push_str("</li>");
         }
     }
     Ok(())
@@ -154,7 +176,7 @@ pub fn list_sub_pages_grouped_internal(
             out.push_str("-*</summary><ol>");
         }
         for sub_page in group {
-            write_li_with_badges(out, sub_page, locale)?;
+            write_li_with_badges(out, sub_page, locale, true)?;
         }
         if keep_group {
             out.push_str("</ol></details></li>");

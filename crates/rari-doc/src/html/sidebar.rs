@@ -32,6 +32,12 @@ fn cache_side_bar(sidebar: &str) -> bool {
                 | "htmlsidebar"
                 | "accessibilitysidebar"
                 | "firefoxsidebar"
+                | "webassemblysidebar"
+                | "xsltsidebar"
+                | "mdnsidebar"
+                | "gamessidebar"
+                | "mathmlref"
+                | "pwasidebar"
         )
 }
 
@@ -203,6 +209,8 @@ pub struct BasicEntry {
     pub code: bool,
     #[serde(default)]
     pub children: Vec<SidebarEntry>,
+    #[serde(default)]
+    pub details: Details,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -214,7 +222,7 @@ pub struct SubPageEntry {
     #[serde(deserialize_with = "t_or_vec", default)]
     pub tags: Vec<PageType>,
     #[serde(default)]
-    pub details: bool,
+    pub details: Details,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -227,7 +235,6 @@ pub struct WebExtApiEntry {
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SidebarEntry {
     Section(BasicEntry),
-    Details(BasicEntry),
     ListSubPages(SubPageEntry),
     ListSubPagesGrouped(SubPageEntry),
     WebExtApi(WebExtApiEntry),
@@ -265,7 +272,8 @@ impl Default for SidebarMetaEntryContent {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub enum Details {
     #[default]
     None,
@@ -280,16 +288,6 @@ impl Details {
 
     pub fn is_open(&self) -> bool {
         matches!(self, Self::Open)
-    }
-}
-
-impl From<bool> for Details {
-    fn from(value: bool) -> Self {
-        if value {
-            Self::Closed
-        } else {
-            Self::None
-        }
     }
 }
 
@@ -310,25 +308,10 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 title,
                 code,
                 children,
+                details,
             }) => SidebarMetaEntry {
                 section: true,
-                details: Details::None,
-                code,
-                content: SidebarMetaEntryContent::Link { link, title },
-                children: if children.is_empty() {
-                    MetaChildren::None
-                } else {
-                    MetaChildren::Children(children.into_iter().map(Into::into).collect())
-                },
-            },
-            SidebarEntry::Details(BasicEntry {
-                link,
-                title,
-                code,
-                children,
-            }) => SidebarMetaEntry {
-                section: false,
-                details: Details::Closed,
+                details,
                 code,
                 content: SidebarMetaEntryContent::Link { link, title },
                 children: if children.is_empty() {
@@ -345,7 +328,7 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 path,
             }) => SidebarMetaEntry {
                 section: false,
-                details: details.into(),
+                details,
                 code: false,
                 content: SidebarMetaEntryContent::Link { link, title },
                 children: MetaChildren::ListSubPages(path, tags),
@@ -358,7 +341,7 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 path,
             }) => SidebarMetaEntry {
                 section: false,
-                details: details.into(),
+                details,
                 code: false,
                 content: SidebarMetaEntryContent::Link { link, title },
                 children: MetaChildren::ListSubPagesGrouped(path, tags),
@@ -368,12 +351,17 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 title,
                 code,
                 children,
+                details,
             }) => SidebarMetaEntry {
                 section: false,
-                details: Details::None,
+                details,
                 code,
                 content: SidebarMetaEntryContent::Link { link, title },
-                children: MetaChildren::Children(children.into_iter().map(Into::into).collect()),
+                children: if children.is_empty() {
+                    MetaChildren::None
+                } else {
+                    MetaChildren::Children(children.into_iter().map(Into::into).collect())
+                },
             },
             SidebarEntry::Link(link) => SidebarMetaEntry {
                 section: false,
@@ -469,7 +457,7 @@ impl SidebarMetaEntry {
                 }
             }
             MetaChildren::ListSubPages(url, page_types) => {
-                list_sub_pages_internal(out, url, locale, Some(1), false, None, page_types)?
+                list_sub_pages_internal(out, url, locale, Some(1), None, page_types)?
             }
             MetaChildren::ListSubPagesGrouped(url, page_types) => {
                 list_sub_pages_grouped_internal(out, url, locale, None, page_types)?
@@ -493,5 +481,17 @@ impl SidebarMetaEntry {
         }
         out.push_str("</li>");
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_details_ser() {
+        let yaml_str = r#"details: closed"#;
+        let entry: BasicEntry = serde_yaml::from_str(yaml_str).unwrap();
+        assert_eq!(entry.details, Details::Closed);
     }
 }

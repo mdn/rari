@@ -15,19 +15,35 @@ pub fn list_sub_pages(
     reverse: Option<AnyArg>,
     ordered: Option<AnyArg>,
 ) -> Result<String, DocError> {
+    let depth = depth.map(|d| d.as_int() as usize).unwrap_or(1);
     let url = url.as_deref().filter(|s| !s.is_empty()).unwrap_or(env.url);
     let ordered = ordered.as_ref().map(AnyArg::as_bool).unwrap_or_default();
     let mut out = String::new();
     out.push_str(if ordered { "<ol>" } else { "<ul>" });
-    subpages::list_sub_pages_internal(
-        &mut out,
-        url,
-        env.locale,
-        Some(depth.map(|d| d.as_int() as usize).unwrap_or(1)),
-        reverse.map(|r| r.as_int() != 0).unwrap_or_default(), // Yes the old marco checks for == 0 not === 0.
-        Some(SubPagesSorter::SlugNatural),
-        &[],
-    )?;
+    if reverse.map(|r| r.as_int() != 0).unwrap_or_default() {
+        // Yes the old marco checks for == 0 not === 0.
+        if depth > 1 {
+            return Err(DocError::InvalidTempl(
+                "listsubpages with reverse set and depth != 1".to_string(),
+            ));
+        }
+        subpages::list_sub_pages_reverse_internal(
+            &mut out,
+            url,
+            env.locale,
+            Some(SubPagesSorter::SlugNatural),
+            &[],
+        )?;
+    } else {
+        subpages::list_sub_pages_internal(
+            &mut out,
+            url,
+            env.locale,
+            Some(depth),
+            Some(SubPagesSorter::SlugNatural),
+            &[],
+        )?;
+    }
     out.push_str(if ordered { "</ol>" } else { "</ul>" });
 
     Ok(out)

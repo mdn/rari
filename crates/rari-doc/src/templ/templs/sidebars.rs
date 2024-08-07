@@ -68,3 +68,33 @@ pub fn accessibilitysidebar() -> Result<String, DocError> {
 pub fn firefoxsidebar() -> Result<String, DocError> {
     sidebar::render_sidebar("firefoxsidebar", env.slug, env.locale)
 }
+
+#[rari_f]
+pub fn webassemblysidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("webassemblysidebar", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn xsltsidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("xsltsidebar", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn mdnsidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("mdnsidebar", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn gamessidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("gamessidebar", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn mathmlref() -> Result<String, DocError> {
+    sidebar::render_sidebar("mathmlref", env.slug, env.locale)
+}
+
+#[rari_f]
+pub fn pwasidebar() -> Result<String, DocError> {
+    sidebar::render_sidebar("pwasidebar", env.slug, env.locale)
+}

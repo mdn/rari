@@ -18,6 +18,7 @@ pub mod sidebars;
 pub mod specification;
 pub mod svginfo;
 pub mod web_ext_examples;
+pub mod xsltref;
 
 use rari_types::globals::deny_warnings;
 use rari_types::{Arg, RariEnv};
@@ -50,6 +51,12 @@ pub fn invoke(
             | "htmlsidebar"
             | "accessibilitysidebar"
             | "firefoxsidebar"
+            | "webassemblysidebar"
+            | "xsltsidebar"
+            | "mdnsidebar"
+            | "gamessidebar"
+            | "mathmlref"
+            | "pwasidebar"
     );
     let f = match name.as_str() {
         "compat" => compat::compat_any,
@@ -64,6 +71,7 @@ pub fn invoke(
         "firefox_for_developers" => firefox_for_developers::firefox_for_developers_any,
         "js_property_attributes" => js_property_attributes::js_property_attributes_any,
         "svginfo" => svginfo::svginfo_any,
+        "xsltref" => xsltref::xsltref_any,
 
         // hacky
         "glossarydisambiguation" => glossarydisambiguation::glossarydisambiguation_any,
@@ -130,6 +138,12 @@ pub fn invoke(
         "htmlsidebar" => sidebars::htmlsidebar_any,
         "accessibilitysidebar" => sidebars::accessibilitysidebar_any,
         "firefoxsidebar" => sidebars::firefoxsidebar_any,
+        "webassemblysidebar" => sidebars::webassemblysidebar_any,
+        "xsltsidebar" => sidebars::xsltsidebar_any,
+        "mdnsidebar" => sidebars::mdnsidebar_any,
+        "gamessidebar" => sidebars::gamessidebar_any,
+        "mathmlref" => sidebars::mathmlref_any,
+        "pwasidebar" => sidebars::pwasidebar_any,
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),
