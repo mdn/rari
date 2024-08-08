@@ -1,12 +1,12 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use once_cell::sync::{Lazy, OnceCell};
 use rari_types::globals::{blog_root, cache_content, curriculum_root};
 use rari_types::locale::Locale;
+use rari_utils::io::read_to_string;
 use tracing::error;
 
 use crate::docs::blog::{Author, AuthorFrontmatter, BlogPost, BlogPostBuildMeta};

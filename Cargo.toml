@@ -9,6 +9,7 @@ authors = ["Florian Dieminger <me@fiji-flo.de>"]
 resolver = "2"
 members = [
     "crates/rari-data",
+    "crates/rari-utils",
     "crates/rari-deps",
     "crates/rari-types",
     "crates/rari-templ-func",

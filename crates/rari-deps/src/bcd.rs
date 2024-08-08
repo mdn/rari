@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use rari_utils::io::read_to_string;
 use serde_json::Value;
 
 use crate::error::DepsError;
@@ -43,7 +44,7 @@ pub fn gather_spec_urls(value: &Value, path: &str, map: &mut HashMap<String, Vec
 }
 
 pub fn extract_spec_urls(package_path: &Path) -> Result<(), DepsError> {
-    let text = fs::read_to_string(package_path.join("package/data.json"))?;
+    let text = read_to_string(package_path.join("package/data.json"))?;
     let json: Value = serde_json::from_str(&text)?;
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
     gather_spec_urls(&json, "", &mut map);

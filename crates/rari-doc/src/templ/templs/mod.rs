@@ -1,10 +1,10 @@
-pub mod apiref;
 pub mod badges;
 pub mod banners;
 pub mod compat;
 pub mod cssinfo;
 pub mod csssyntax;
 pub mod embeds;
+pub mod firefox_for_developers;
 pub mod glossary;
 pub mod inheritance_diagram;
 pub mod inline_labels;
@@ -12,6 +12,7 @@ pub mod links;
 pub mod listsubpages;
 pub mod previous_menu_next;
 pub mod quick_links_with_subpages;
+pub mod sidebars;
 pub mod specification;
 pub mod web_ext_examples;
 
@@ -28,7 +29,12 @@ pub fn invoke(
     args: Vec<Option<Arg>>,
 ) -> Result<(String, bool), DocError> {
     let name = ident.to_lowercase();
-    let is_sidebar = matches!(name.as_str(), "apiref" | "defaultapisidebar");
+
+    // TODO: improve sidebar handling
+    let is_sidebar = matches!(
+        name.as_str(),
+        "apiref" | "defaultapisidebar" | "jsref" | "cssref" | "glossarysidebar"
+    );
     let f = match name.as_str() {
         "compat" => compat::compat_any,
         "specifications" => specification::specification_any,
@@ -40,6 +46,7 @@ pub fn invoke(
         "quicklinkswithsubpages" => quick_links_with_subpages::quick_links_with_subpages_any,
         "inheritancediagram" => inheritance_diagram::inheritance_diagram_any,
         "webextexamples" => web_ext_examples::web_ext_examples_any,
+        "firefox_for_developers" => firefox_for_developers::firefox_for_developers_any,
 
         // prev menu next
         "previousmenunext" => previous_menu_next::previous_next_menu_any,
@@ -89,11 +96,11 @@ pub fn invoke(
         "mathmlelement" => links::mathmlxref::mathmlxref_any,
 
         // sidebars
-        "apiref" => apiref::apiref_any,
-        "defaultapisidebar" => apiref::default_api_sidebar_any,
-
-        // ignore
-        "cssref" | "glossarysidebar" | "jsref" => return Ok(Default::default()),
+        "apiref" => sidebars::apiref_any,
+        "defaultapisidebar" => sidebars::default_api_sidebar_any,
+        "jsref" => sidebars::jsref_any,
+        "cssref" => sidebars::cssref_any,
+        "glossarysidebar" => sidebars::glossarysidebar_any,
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),

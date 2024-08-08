@@ -3,6 +3,7 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Duration, Utc};
+use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 
 use crate::error::DepsError;
@@ -16,7 +17,7 @@ pub fn get_json(name: &str, url: &str, out_path: &Path) -> Result<Option<PathBuf
     let package_path = out_path.join(name);
     let last_check_path = package_path.join("last_check.json");
     let now = Utc::now();
-    let current = fs::read_to_string(last_check_path)
+    let current = read_to_string(last_check_path)
         .ok()
         .and_then(|current| serde_json::from_str::<LastChecked>(&current).ok())
         .unwrap_or_default();

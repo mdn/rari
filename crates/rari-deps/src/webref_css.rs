@@ -3,6 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use css_syntax_types::Css;
+use rari_utils::io::read_to_string;
 use serde_json::Value;
 
 use crate::error::DepsError;
@@ -43,7 +44,7 @@ fn list_all(folder: &Path) -> Result<BTreeMap<String, Css>, DepsError> {
         let file_name = path.file_stem().unwrap().to_string_lossy().to_string();
 
         if path.is_file() && path.extension().unwrap() == "json" && file_name != "package" {
-            let text = fs::read_to_string(&path)?;
+            let text = read_to_string(&path)?;
             let json: Value = serde_json::from_str(&text)?;
             all.push((file_name, json));
         }

@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Write;
-use std::fs::read_to_string;
 
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
@@ -9,6 +8,7 @@ use rari_l10n::l10n_json_data;
 use rari_types::globals::data_dir;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
+use rari_utils::io::read_to_string;
 use serde_json::Value;
 use tracing::warn;
 

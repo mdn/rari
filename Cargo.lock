@@ -2206,6 +2206,7 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "indexmap",
+ "rari-utils",
  "serde",
  "serde_json",
  "thiserror",
@@ -2220,6 +2221,7 @@ dependencies = [
  "css-syntax-types",
  "flate2",
  "once_cell",
+ "rari-utils",
  "reqwest",
  "serde",
  "serde_json",
@@ -2254,6 +2256,7 @@ dependencies = [
  "rari-md",
  "rari-templ-func",
  "rari-types",
+ "rari-utils",
  "rayon",
  "regex",
  "scraper",
@@ -2316,6 +2319,7 @@ dependencies = [
  "csv",
  "once_cell",
  "rari-types",
+ "rari-utils",
  "reqwest",
  "serde",
  "serde_json",
@@ -2337,6 +2341,17 @@ dependencies = [
  "serde_variant",
  "strum",
  "thiserror",
+]
+
+[[package]]
+name = "rari-utils"
+version = "0.0.1"
+dependencies = [
+ "once_cell",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

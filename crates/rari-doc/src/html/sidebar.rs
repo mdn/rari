@@ -83,8 +83,7 @@ pub fn postprocess_sidebar<T: PageLike>(
     Ok::<_, DocError>(post_processed_html)
 }
 
-fn render_sidebar(s: &str, doc: &Doc) -> Result<String, DocError> {
-    let locale = doc.locale();
+pub fn render_sidebar(s: &str, slug: &str, locale: Locale) -> Result<String, DocError> {
     let cache = cache_side_bar(s);
     if cache {
         if let Some(sb) = SIDEBAR_CACHE
@@ -96,7 +95,7 @@ fn render_sidebar(s: &str, doc: &Doc) -> Result<String, DocError> {
             return Ok::<_, DocError>(sb.to_string());
         }
     }
-    let sidebar = read_sidebar(s, locale, doc.slug())?;
+    let sidebar = read_sidebar(s, locale, slug)?;
     let rendered_sidebar = sidebar.render(locale)?;
     if cache {
         SIDEBAR_CACHE
@@ -111,7 +110,7 @@ fn render_sidebar(s: &str, doc: &Doc) -> Result<String, DocError> {
 }
 
 pub fn build_sidebar(s: &str, doc: &Doc) -> Result<String, DocError> {
-    let rendered_sidebar = render_sidebar(s, doc)?;
+    let rendered_sidebar = render_sidebar(s, doc.slug(), doc.locale())?;
     postprocess_sidebar(&rendered_sidebar, doc)
 }
 

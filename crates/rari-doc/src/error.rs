@@ -95,6 +95,8 @@ pub enum DocError {
     InvalidSlugForX(String),
     #[error("Invalid group for templ/sidebar: {0}")]
     InvalidGroupForX(String),
+    #[error(transparent)]
+    RariIoError(#[from] rari_utils::error::RariIoError),
 }
 
 impl<T> From<PoisonError<T>> for DocError {

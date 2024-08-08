@@ -997,13 +997,6 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                     self.output.write_all(b"\" />")?;
                 }
             }
-            #[cfg(feature = "shortcodes")]
-            NodeValue::ShortCode(ref nsc) => {
-                // Nowhere to put sourcepos.
-                if entering {
-                    self.output.write_all(nsc.emoji().as_bytes())?;
-                }
-            }
             NodeValue::Table(..) => {
                 if entering {
                     self.cr()?;

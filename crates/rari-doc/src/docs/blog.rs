@@ -1,4 +1,3 @@
-use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -8,6 +7,7 @@ use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::blog_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
+use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 
 use super::page::{Page, PageCategory, PageLike, PageReader};

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Duration, Utc};
 use flate2::read::GzDecoder;
+use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tar::Archive;
@@ -26,7 +27,7 @@ pub fn get_package(
     let package_path = out_path.join(package);
     let last_check_path = package_path.join("last_check.json");
     let now = Utc::now();
-    let current = fs::read_to_string(last_check_path)
+    let current = read_to_string(last_check_path)
         .ok()
         .and_then(|current| serde_json::from_str::<Current>(&current).ok())
         .unwrap_or_default();
@@ -46,7 +47,7 @@ pub fn get_package(
             .ok_or(DepsError::WebRefMissingTarballError)?;
         let package_json_path = package_path.join("package").join("package.json");
         let download_update = if package_json_path.exists() {
-            let json_str = fs::read_to_string(package_json_path)?;
+            let json_str = read_to_string(package_json_path)?;
             let package_json: Value = serde_json::from_str(&json_str)?;
             let current_version = package_json["version"]
                 .as_str()

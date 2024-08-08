@@ -37,6 +37,7 @@ svg_metadata = "0.5"
 itertools = "0.13"
 memoize = "0.4"
 
+rari-utils = { path = "../rari-utils" }
 rari-types = { path = "../rari-types" }
 rari-md = { path = "../rari-md" }
 rari-data = { path = "../rari-data" }

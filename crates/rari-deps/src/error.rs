@@ -7,6 +7,8 @@ pub enum DepsError {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
+    RariIoError(#[from] rari_utils::error::RariIoError),
+    #[error(transparent)]
     FetchError(#[from] reqwest::Error),
     #[error("no version for webref")]
     WebRefMissingVersionError,

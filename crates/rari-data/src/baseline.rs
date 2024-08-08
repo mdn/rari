@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
+use std::fmt;
 use std::marker::PhantomData;
 use std::path::Path;
-use std::{fmt, fs};
 
 use chrono::NaiveDate;
+use rari_utils::io::read_to_string;
 use serde::de::{self, value, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use url::Url;
@@ -16,7 +17,7 @@ pub struct WebFeatures {
 
 impl WebFeatures {
     pub fn from_file(path: &Path) -> Result<Self, Error> {
-        let json_str = fs::read_to_string(path)?;
+        let json_str = read_to_string(path)?;
         Ok(Self {
             features: serde_json::from_str(&json_str)?,
         })

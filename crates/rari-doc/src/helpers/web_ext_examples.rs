@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use std::fs::read_to_string;
 
 use once_cell::sync::Lazy;
 use rari_types::globals::data_dir;
+use rari_utils::io::read_to_string;
 use serde::Deserialize;
 use tracing::warn;
 

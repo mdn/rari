@@ -1,7 +1,7 @@
-use std::fs;
 use std::path::Path;
 
 use indexmap::IndexMap;
+use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
@@ -66,7 +66,7 @@ pub struct WebSpecs {
 
 impl WebSpecs {
     pub fn from_file(path: &Path) -> Result<Self, Error> {
-        let json_str = fs::read_to_string(path)?;
+        let json_str = read_to_string(path)?;
         let list: Vec<WebSpec> = serde_json::from_str(&json_str)?;
         Ok(Self {
             specs: list
@@ -109,7 +109,7 @@ pub struct BCDSpecUrls {
 
 impl BCDSpecUrls {
     pub fn from_file(path: &Path) -> Result<Self, Error> {
-        let json_str = fs::read_to_string(path)?;
+        let json_str = read_to_string(path)?;
         Ok(Self {
             specs_urls_by_key: serde_json::from_str(&json_str)?,
         })
