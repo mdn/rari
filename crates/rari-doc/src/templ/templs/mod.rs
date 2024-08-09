@@ -11,11 +11,13 @@ pub mod inheritance_diagram;
 pub mod inline_labels;
 pub mod js_property_attributes;
 pub mod links;
+pub mod list_subpages_for_sidebar;
 pub mod listsubpages;
 pub mod previous_menu_next;
 pub mod quick_links_with_subpages;
 pub mod sidebars;
 pub mod specification;
+pub mod subpages_with_summaries;
 pub mod svginfo;
 pub mod web_ext_examples;
 pub mod xsltref;
@@ -75,6 +77,10 @@ pub fn invoke(
 
         // hacky
         "glossarydisambiguation" => glossarydisambiguation::glossarydisambiguation_any,
+        "listsubpagesforsidebar" => list_subpages_for_sidebar::list_subpages_for_sidebar_any,
+        "subpageswithsummaries" | "landingpagelistsubpages" => {
+            subpages_with_summaries::subpages_with_summaries_any
+        }
 
         // prev menu next
         "previousmenunext" => previous_menu_next::previous_next_menu_any,

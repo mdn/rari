@@ -21,7 +21,7 @@ pub fn htmlxref(
             Cow::Borrowed(element_name.as_str())
         } else {
             code = true;
-            Cow::Owned(format!("<{element_name}>"))
+            Cow::Owned(format!("&lt;{element_name}&gt;"))
         }
     });
     let mut url = format!(

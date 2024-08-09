@@ -61,7 +61,7 @@ impl SubPagesSorter {
 }
 
 pub fn write_li_with_badges(
-    out: &mut impl Write,
+    out: &mut String,
     page: &Page,
     locale: Locale,
     closed: bool,
@@ -77,6 +77,14 @@ pub fn write_li_with_badges(
         locale_page.url(),
         html_escape::encode_safe(locale_page.short_title().unwrap_or(locale_page.title()))
     )?;
+    add_inline_badges(out, page, locale)?;
+    if closed {
+        write!(out, "</li>")?;
+    }
+    Ok(())
+}
+
+pub fn add_inline_badges(out: &mut String, page: &Page, locale: Locale) -> Result<(), DocError> {
     if page.status().contains(&FeatureStatus::Experimental) {
         write_experimental(out, locale)?;
     }
@@ -85,9 +93,6 @@ pub fn write_li_with_badges(
     }
     if page.status().contains(&FeatureStatus::Deprecated) {
         write_deprecated(out, locale)?;
-    }
-    if closed {
-        write!(out, "</li>")?;
     }
     Ok(())
 }
@@ -101,11 +106,11 @@ pub fn list_sub_pages_reverse_internal(
 ) -> Result<(), DocError> {
     let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
 
-    for sub_page in sub_pages {
+    for sub_page in sub_pages.iter().rev() {
         if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
             continue;
         }
-        write_li_with_badges(out, &sub_page, locale, true)?;
+        write_li_with_badges(out, sub_page, locale, true)?;
     }
     Ok(())
 }

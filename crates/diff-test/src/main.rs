@@ -4,6 +4,8 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 use std::sync::LazyLock;
 
 use anyhow::{anyhow, Error};
@@ -14,6 +16,7 @@ use ignore::WalkBuilder;
 use itertools::Itertools;
 use jsonpath_lib::Compiled;
 use prettydiff::diff_words;
+use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Value;
 
@@ -172,6 +175,7 @@ const IGNORE: &[&str] = &[
     "doc.sidebarMacro",
     "doc.hasMathML",
     "doc.other_translations",
+    "doc.summary",
 ];
 
 static WS_DIFF: LazyLock<Regex> =
@@ -287,14 +291,14 @@ fn main() -> Result<(), anyhow::Error> {
             let b = gather(&arg.root_b, arg.query.as_deref())?;
 
             let hits = max(a.len(), b.len());
-            let mut same = 0;
+            let same = AtomicUsize::new(0);
             if arg.html {
                 let mut out = Vec::new();
                 out.push("<ul>".to_string());
-                for (k, v) in a.iter() {
+                out.extend(a.par_iter().filter_map(|(k, v)| {
                     if b.get(k) == Some(v) {
-                        same += 1;
-                        continue;
+                        same.fetch_add(1, Relaxed);
+                        return None;
                     }
 
                     if arg.value {
@@ -303,14 +307,14 @@ fn main() -> Result<(), anyhow::Error> {
                         let mut diff = BTreeMap::new();
                         full_diff(left, right, &[], &mut diff);
                         if !diff.is_empty() {
-                            out.push(format!(
+                            return Some(format!(
                                 r#"<li><span>{k}</span><div class="r"><pre><code>{}</code></pre></div></li>"#,
                                 serde_json::to_string_pretty(&diff).unwrap_or_default(),
                             ));
                         } else {
-                            same += 1;
+                            same.fetch_add(1, Relaxed);
                         }
-                        continue;
+                        None
                     } else {
                         let left = &v.as_str().unwrap_or_default();
                         let right = b
@@ -336,24 +340,29 @@ fn main() -> Result<(), anyhow::Error> {
                         let left = left.replace(broken_link, "");
                         if left == right {
                             println!("only broken links differ");
-                            same += 1;
-                            continue;
+                            same.fetch_add(1, Relaxed);
+                            return None;
                         }
                         if arg.inline {
                             println!("{}", diff_words(&left, right));
                         }
-                        out.push(format!(
+                        Some(format!(
                     r#"<li><span>{k}</span><div class="a">{}</div><div class="b">{}</div></li>"#,
                     left, right
                 ))
                     }
                 }
+                ).collect::<Vec<_>>());
                 out.push("</ul>".to_string());
                 let mut file = File::create(&arg.out)?;
                 file.write_all(html(&out.into_iter().collect::<String>()).as_bytes())?;
             }
 
-            println!("Took: {:?} - {same}/{hits}", start.elapsed());
+            println!(
+                "Took: {:?} - {}/{hits}",
+                start.elapsed(),
+                same.load(Relaxed)
+            );
         }
     }
     Ok(())

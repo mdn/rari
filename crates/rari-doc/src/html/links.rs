@@ -41,9 +41,7 @@ pub fn render_internal_link(
     if modifier.code {
         out.push_str("<code>");
     }
-    let content = html_escape::decode_html_entities(content);
-    let content = html_escape::encode_safe(&content);
-    out.push_str(&content);
+    out.push_str(content);
     if modifier.code {
         out.push_str("</code>");
     }
@@ -67,7 +65,14 @@ pub fn render_link_from_page(
     page: &Page,
     modifier: &LinkModifier,
 ) -> Result<(), DocError> {
-    let content = html_escape::encode_safe(page.short_title().unwrap_or(page.title()));
+    let content = page.short_title().unwrap_or(page.title());
+    let decoded_content = html_escape::decode_html_entities(content);
+    let encoded_content = html_escape::encode_safe(&decoded_content);
+    let content = if content != encoded_content {
+        Cow::Owned(encoded_content.into_owned())
+    } else {
+        Cow::Borrowed(content)
+    };
     render_internal_link(out, page.url(), None, &content, None, modifier)
 }
 
@@ -91,7 +96,18 @@ pub fn render_link_via_page(
         match RariApi::get_page(url) {
             Ok(page) => {
                 let url = page.url();
-                let content = content.unwrap_or(page.short_title().unwrap_or(page.title()));
+                let content = if let Some(content) = content {
+                    Cow::Borrowed(content)
+                } else {
+                    let content = page.short_title().unwrap_or(page.title());
+                    let decoded_content = html_escape::decode_html_entities(content);
+                    let encoded_content = html_escape::encode_safe(&decoded_content);
+                    if content != encoded_content {
+                        Cow::Owned(encoded_content.into_owned())
+                    } else {
+                        Cow::Borrowed(content)
+                    }
+                };
                 return render_internal_link(
                     out,
                     url,
@@ -100,7 +116,7 @@ pub fn render_link_via_page(
                     } else {
                         Some(anchor)
                     },
-                    content,
+                    &content,
                     title,
                     &LinkModifier {
                         badges: if with_badges { page.status() } else { &[] },

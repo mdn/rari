@@ -80,7 +80,7 @@ pub fn non_standard_header() -> Result<String, DocError> {
     let copy = rari_l10n::l10n_json_data("Template", "non_standard_header_copy", env.locale)?;
 
     Ok([
-        r#"<div class="notecard nonstadard"><p><strong>"#,
+        r#"<div class="notecard nonstandard"><p><strong>"#,
         title,
         ":</strong> ",
         copy,

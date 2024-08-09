@@ -633,6 +633,7 @@ dependencies = [
  "itertools",
  "jsonpath_lib",
  "prettydiff",
+ "rayon",
  "regex",
  "serde",
  "serde_json",

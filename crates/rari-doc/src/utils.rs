@@ -119,7 +119,7 @@ pub fn locale_and_typ_from_path(path: &Path) -> Result<(Locale, PageCategory), D
     Err(DocError::LocaleError(LocaleError::NoLocaleInPath))
 }
 
-pub fn trim_ws(s: &str) -> String {
+pub fn dedup_ws(s: &str) -> String {
     let mut out = s.trim().to_owned();
     let mut prev = ' ';
     out.retain(|c| {
@@ -188,8 +188,8 @@ mod text {
 
     #[test]
     fn test_trim_ws() {
-        assert_eq!(trim_ws(" foo  bar 20       00    "), "foo bar 20 00");
-        assert_eq!(trim_ws("    "), "");
+        assert_eq!(dedup_ws(" foo  bar 20       00    "), "foo bar 20 00");
+        assert_eq!(dedup_ws("    "), "");
     }
 
     #[test]

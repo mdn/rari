@@ -11,7 +11,7 @@ pub fn svgxref(element_name: String, _: Option<AnyArg>) -> Result<String, DocErr
 }
 
 pub fn svgxref_internal(element_name: &str, locale: Locale) -> Result<String, DocError> {
-    let display = format!("<{element_name}>");
+    let display = format!("&lt;{element_name}&gt;");
     let url = format!(
         "/{}/docs/Web/SVG/Element/{}",
         locale.as_url_str(),

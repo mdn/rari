@@ -84,3 +84,14 @@ pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
     }
     Ok(())
 }
+
+pub fn remove_empty_p(html: &mut Html) -> Result<(), DocError> {
+    let selector = Selector::parse("p:empty").unwrap();
+    let dels = html.select(&selector).map(|el| el.id()).collect::<Vec<_>>();
+
+    for id in dels {
+        html.tree.get_mut(id).unwrap().detach();
+    }
+
+    Ok(())
+}
