@@ -59,6 +59,7 @@ pub fn invoke(
             | "gamessidebar"
             | "mathmlref"
             | "pwasidebar"
+            | "addonsidebarmain"
     );
     let f = match name.as_str() {
         "compat" => compat::compat_any,
@@ -150,6 +151,7 @@ pub fn invoke(
         "gamessidebar" => sidebars::gamessidebar_any,
         "mathmlref" => sidebars::mathmlref_any,
         "pwasidebar" => sidebars::pwasidebar_any,
+        "addonsidebarmain" => sidebars::addonsidebarmain_any,
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),

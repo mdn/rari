@@ -98,3 +98,8 @@ pub fn mathmlref() -> Result<String, DocError> {
 pub fn pwasidebar() -> Result<String, DocError> {
     sidebar::render_sidebar("pwasidebar", env.slug, env.locale)
 }
+
+#[rari_f]
+pub fn addonsidebarmain() -> Result<String, DocError> {
+    sidebar::render_sidebar("addonsidebarmain", env.slug, env.locale)
+}

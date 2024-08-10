@@ -38,6 +38,7 @@ fn cache_side_bar(sidebar: &str) -> bool {
                 | "gamessidebar"
                 | "mathmlref"
                 | "pwasidebar"
+                | "addonsidebarmain"
         )
 }
 
