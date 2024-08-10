@@ -1,14 +1,60 @@
 use rari_templ_func::rari_f;
+use rari_types::fm_types::PageType;
 
+use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
+use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 
 #[rari_f]
 pub fn compat() -> Result<String, DocError> {
-    let multiple = env.browser_compat.len() > 1;
-    Ok(env.browser_compat.iter().map(|query| format!(
-        r#"<div class="bc-data" data-query="{query}" data-depth="1" data-multiple="{multiple}">
-If you're able to see this, something went wrong on this page.
-</div>"#)).collect::<Vec<String>>().join("\n"))
+    Ok(compat_internal(env.browser_compat))
+}
+
+#[rari_f]
+pub fn webextallcompattables() -> Result<String, DocError> {
+    let mut out = String::new();
+    let sub_pages = get_sub_pages(
+        "/en-US/docs/Mozilla/Add-ons/WebExtensions/API",
+        Some(1),
+        SubPagesSorter::default(),
+    )?;
+    for page in sub_pages.iter().filter_map(|page| {
+        if page.page_type() == PageType::WebextensionApi {
+            if let Page::Doc(doc) = page {
+                return Some(doc);
+            }
+        }
+        None
+    }) {
+        for feature_name in &page.meta.browser_compat {
+            out.extend([
+                "<h2>",
+                feature_name
+                    .as_str()
+                    .strip_prefix("webextensions.api.")
+                    .unwrap_or(feature_name.as_str()),
+                "</h2>",
+            ]);
+            out.push_str(&compat_internal(&[feature_name]));
+        }
+    }
+    Ok(out)
+}
+
+fn compat_internal(browser_compat: &[impl AsRef<str>]) -> String {
+    let multiple = browser_compat.len() > 1;
+    browser_compat
+        .iter()
+        .map(|query| {
+            format!(
+                r#"<div class="bc-data" data-query="{}" data-depth="1" data-multiple="{multiple}">
+    If you're able to see this, something went wrong on this page.
+    </div>"#,
+                query.as_ref()
+            )
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 #[cfg(test)]

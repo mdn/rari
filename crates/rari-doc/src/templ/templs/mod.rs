@@ -75,6 +75,7 @@ pub fn invoke(
         "js_property_attributes" => js_property_attributes::js_property_attributes_any,
         "svginfo" => svginfo::svginfo_any,
         "xsltref" => xsltref::xsltref_any,
+        "webextallcompattables" => compat::webextallcompattables_any,
 
         // hacky
         "glossarydisambiguation" => glossarydisambiguation::glossarydisambiguation_any,
@@ -152,6 +153,9 @@ pub fn invoke(
         "mathmlref" => sidebars::mathmlref_any,
         "pwasidebar" => sidebars::pwasidebar_any,
         "addonsidebarmain" => sidebars::addonsidebarmain_any,
+
+        // ignore
+        "xulelem" => return Ok((Default::default(), false)),
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),
