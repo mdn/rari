@@ -1,3 +1,4 @@
+pub mod api_list_alpha;
 pub mod api_list_specs;
 pub mod badges;
 pub mod banners;
@@ -80,6 +81,7 @@ pub fn invoke(
         "webextallcompattables" => compat::webextallcompattables_any,
         "webextallexamples" => webext_all_examples::web_ext_all_examples_any,
         "listgroups" => api_list_specs::api_list_specs_any,
+        "apilistalpha" => api_list_alpha::api_list_alpha_any,
 
         // hacky
         "glossarydisambiguation" => glossarydisambiguation::glossarydisambiguation_any,
