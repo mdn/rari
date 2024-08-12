@@ -1,3 +1,4 @@
+pub mod api_list_specs;
 pub mod badges;
 pub mod banners;
 pub mod compat;
@@ -20,6 +21,7 @@ pub mod specification;
 pub mod subpages_with_summaries;
 pub mod svginfo;
 pub mod web_ext_examples;
+pub mod webext_all_examples;
 pub mod xsltref;
 
 use rari_types::globals::deny_warnings;
@@ -76,6 +78,8 @@ pub fn invoke(
         "svginfo" => svginfo::svginfo_any,
         "xsltref" => xsltref::xsltref_any,
         "webextallcompattables" => compat::webextallcompattables_any,
+        "webextallexamples" => webext_all_examples::web_ext_all_examples_any,
+        "listgroups" => api_list_specs::api_list_specs_any,
 
         // hacky
         "glossarydisambiguation" => glossarydisambiguation::glossarydisambiguation_any,

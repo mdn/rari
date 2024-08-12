@@ -9,5 +9,6 @@
 - [ ] blog order uses inverse title compare as fallback
 - [ ] unify link rendering
 - [ ] locale compare for sidebar?!
-- [ ] l10n for jsref
-- [ ] deal with summary() in templs
+- [x] l10n for jsref
+- [x] deal with summary() in templs
+- [ ] list groups badges and titles
