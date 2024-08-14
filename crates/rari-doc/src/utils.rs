@@ -232,3 +232,21 @@ thread_local! {
         TEMPL_RECORDER_SENDER.get().cloned()
     };
 }
+
+pub fn trim_after<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
+    if let Some(pat) = pat {
+        if let Some(i) = input.find(pat) {
+            return &input[..=i];
+        }
+    }
+    input
+}
+
+pub fn trim_fefore<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
+    if let Some(pat) = pat {
+        if let Some(i) = input.find(pat) {
+            return &input[i..];
+        }
+    }
+    input
+}

@@ -6,6 +6,7 @@ use crate::docs::page::{
 };
 use crate::error::DocError;
 use crate::helpers::subpages::{add_inline_badges, get_sub_pages, SubPagesSorter};
+use crate::utils::{trim_after, trim_fefore};
 
 /// List sub pages for sidebar
 #[rari_f]
@@ -36,12 +37,8 @@ pub fn list_subpages_for_sidebar(
             &page
         };
         let title = locale_page.short_title().unwrap_or(locale_page.title());
-        let title = &title[title
-            .find(title_only_after.as_deref().unwrap_or_default())
-            .unwrap_or(0)..];
-        let title = &title[..=title
-            .find(title_only_before.as_deref().unwrap_or_default())
-            .unwrap_or(title.len())];
+        let title = trim_fefore(title, title_only_after.as_deref());
+        let title = trim_after(title, title_only_before.as_deref());
         out.extend([
             r#"<li><a href=""#,
             locale_page.url(),

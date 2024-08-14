@@ -1,12 +1,9 @@
 use rari_templ_func::rari_f;
 use rari_types::fm_types::PageType;
 
-use super::badges::write_badge;
 use crate::docs::page::PageLike;
 use crate::error::DocError;
-use crate::helpers::subpages::{
-    add_inline_badges, get_sub_pages, write_li_with_badges, SubPagesSorter,
-};
+use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::templ::api::RariApi;
 
 #[rari_f]

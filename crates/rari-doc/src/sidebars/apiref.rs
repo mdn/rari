@@ -1,7 +1,8 @@
+use std::borrow::Cow;
+
 use rari_l10n::l10n_json_data;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
-use tracing::error;
 
 use crate::docs::doc::Doc;
 use crate::docs::page::{Page, PageLike};
@@ -21,22 +22,17 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     let instance_methods_label = l10n_json_data("Common", "Instance_methods", locale)?;
     let constructor_label = l10n_json_data("Common", "Constructor", locale)?;
     let inheritance_label = l10n_json_data("Common", "Inheritance", locale)?;
-    let related_label = l10n_json_data("Common", "Related_pages_wo_group", locale)?;
+    let related_label = if let Some(group) = group {
+        Cow::Owned(l10n_json_data("Common", "Related_pages", locale)?.replace("$1", group))
+    } else {
+        Cow::Borrowed(l10n_json_data("Common", "Related_pages_wo_group", locale)?)
+    };
     let events_label = l10n_json_data("Common", "Events", locale)?;
 
     let main_if = slug
         .strip_prefix("Web/API/")
         .map(|s| &s[..s.find('/').unwrap_or(s.len())])
         .ok_or_else(|| DocError::InvalidSlugForX(slug.to_string()))?;
-    if !main_if
-        .chars()
-        .next()
-        .map(|c| c.is_uppercase())
-        .unwrap_or_default()
-    {
-        error!("Slugs for Web/API/* must start with uppercase letter got {slug}");
-        return Err(DocError::InvalidSlugForX(slug.to_string()));
-    }
 
     let web_api_groups = group.and_then(|group| json_data_group().get(group));
 
@@ -118,7 +114,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     build_sublist(&mut entries, &events, events_label);
 
     build_interface_list(&mut entries, &inherited, inheritance_label);
-    build_interface_list(&mut entries, &related, related_label);
+    build_interface_list(&mut entries, &related, &related_label);
 
     Ok(MetaSidebar {
         entries,
