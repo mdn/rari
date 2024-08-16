@@ -21,19 +21,21 @@ impl WebFeatures {
         Ok(serde_json::from_str(&json_str)?)
     }
 
-    pub fn feature_status(&self, features: &[&str]) -> Option<&SupportStatus> {
-        if features.is_empty() {
-            return None;
-        }
-
+    pub fn feature_status(&self, bcd_key: &str) -> Option<&SupportStatusWithByKey> {
         self.features.values().find_map(|feature_data| {
             if let Some(ref status) = feature_data.status {
                 if feature_data
                     .compat_features
                     .iter()
-                    .any(|key| features.contains(&key.as_str()))
+                    .any(|key| key == bcd_key)
                 {
-                    return Some(status);
+                    if let Some(by_key) = &status.by_compat_key {
+                        if let Some(key_status) = by_key.get(bcd_key) {
+                            if key_status.baseline == status.baseline {
+                                return Some(status);
+                            }
+                        }
+                    }
                 }
             }
             None
@@ -59,7 +61,7 @@ pub struct FeatureData {
     pub caniuse: Vec<String>,
     /** Whether a feature is considered a "baseline" web platform feature and when it achieved that status */
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<SupportStatus>,
+    pub status: Option<SupportStatusWithByKey>,
     /** Sources of support data for this feature */
     #[serde(
         deserialize_with = "t_or_vec",
@@ -67,6 +69,21 @@ pub struct FeatureData {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub compat_features: Vec<String>,
+    pub description: String,
+    pub description_html: String,
+    #[serde(
+        deserialize_with = "t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub group: Vec<String>,
+    pub name: String,
+    #[serde(
+        deserialize_with = "t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub snapshot: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -81,7 +98,7 @@ pub enum BrowserIdentifier {
     SafariIos,
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BaselineHighLow {
     High,
@@ -103,6 +120,23 @@ pub struct SupportStatus {
     pub baseline_high_date: Option<String>,
     /// Browser versions that most-recently introduced the feature
     pub support: BTreeMap<BrowserIdentifier, String>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct SupportStatusWithByKey {
+    /// Whether the feature is Baseline (low substatus), Baseline (high substatus), or not (false)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline: Option<BaselineHighLow>,
+    /// Date the feature achieved Baseline low status
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_low_date: Option<String>,
+    /// Date the feature achieved Baseline high status
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_high_date: Option<String>,
+    /// Browser versions that most-recently introduced the feature
+    pub support: BTreeMap<BrowserIdentifier, String>,
+    #[serde(default, skip_serializing)]
+    pub by_compat_key: Option<BTreeMap<String, SupportStatus>>,
 }
 
 pub fn t_or_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>

@@ -10,8 +10,12 @@ pub enum DepsError {
     RariIoError(#[from] rari_utils::error::RariIoError),
     #[error(transparent)]
     FetchError(#[from] reqwest::Error),
+    #[error(transparent)]
+    HeaderError(#[from] reqwest::header::ToStrError),
     #[error("no version for webref")]
     WebRefMissingVersionError,
     #[error("no tarball for webref")]
     WebRefMissingTarballError,
+    #[error("Invalid github version")]
+    InvalidGitHubVersion,
 }

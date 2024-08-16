@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use chrono::NaiveDateTime;
-use rari_data::baseline::SupportStatus;
+use rari_data::baseline::SupportStatusWithByKey;
 use rari_types::locale::{Locale, Native};
 use serde::Serialize;
 
@@ -111,7 +111,7 @@ pub struct JsonDoc {
     pub title: String,
     pub toc: Vec<TocEntry>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub baseline: Option<&'static SupportStatus>,
+    pub baseline: Option<&'static SupportStatusWithByKey>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
     pub browser_compat: Vec<String>,
 }
