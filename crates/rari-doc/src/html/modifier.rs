@@ -55,7 +55,7 @@ pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
                 } else {
                     el.text().collect::<String>()
                 };
-                let id = anchorize(&text);
+                let mut id = anchorize(&text);
                 if ids.contains(id.as_str()) {
                     let (prefix, mut count) = if let Some((prefix, counter)) = id.rsplit_once('_') {
                         if counter.chars().all(|c| c.is_ascii_digit()) {
@@ -67,11 +67,12 @@ pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
                     } else {
                         (id.as_str(), 2)
                     };
-                    let mut id = format!("{prefix}_{count}");
-                    while ids.contains(id.as_str()) && count < 666 {
+                    let mut new_id = format!("{prefix}_{count}");
+                    while ids.contains(new_id.as_str()) && count < 666 {
                         count += 1;
-                        id = format!("{prefix}_{count}");
+                        new_id = format!("{prefix}_{count}");
                     }
+                    id = new_id;
                 }
 
                 ids.insert(Cow::Owned(id.clone()));

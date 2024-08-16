@@ -18,6 +18,6 @@ pub fn anchorize(content: &str) -> String {
     if !id.is_empty() {
         id
     } else {
-        "sect1".to_string()
+        "sect".to_string()
     }
 }
