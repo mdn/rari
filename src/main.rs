@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::io::Write;
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, RwLock};
@@ -14,7 +15,7 @@ use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_doc::walker::read_docs_parallel;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
-use rari_types::globals::SETTINGS;
+use rari_types::globals::{build_out_root, SETTINGS};
 use rari_types::settings::Settings;
 use tabwriter::TabWriter;
 use tracing_log::AsTrace;
@@ -68,6 +69,8 @@ struct BuildArgs {
     skip_blog: bool,
     #[arg(long)]
     skip_curriculum: bool,
+    #[arg(long)]
+    skip_sitemap: bool,
     #[arg(long)]
     templ_stats: bool,
 }
@@ -163,21 +166,36 @@ fn main() -> Result<(), anyhow::Error> {
                     )
                     .unwrap();
             }
-            println!("Took: {:?} for {}", start.elapsed(), docs.len());
+            println!("Took: {: >10.3?} for {}", start.elapsed(), docs.len());
+            let mut urls = Vec::new();
             if !args.skip_content {
                 let start = std::time::Instant::now();
-                build_docs(docs)?;
-                println!("Took: {:?} to build content", start.elapsed());
+                urls.extend(build_docs(&docs)?);
+                println!("Took: {: >10.3?} to build content", start.elapsed());
             }
             if !args.skip_curriculum && args.files.is_empty() {
                 let start = std::time::Instant::now();
-                build_curriculum_pages()?;
-                println!("Took: {:?} to build curriculum", start.elapsed());
+                urls.extend(build_curriculum_pages()?);
+                println!("Took: {: >10.3?} to build curriculum", start.elapsed());
             }
             if !args.skip_blog && args.files.is_empty() {
                 let start = std::time::Instant::now();
-                build_blog_pages()?;
-                println!("Took: {:?} to build blog", start.elapsed());
+                urls.extend(build_blog_pages()?);
+                println!("Took: {: >10.3?} to build blog", start.elapsed());
+            }
+            if !args.skip_sitemap && args.files.is_empty() && !urls.is_empty() {
+                let start = std::time::Instant::now();
+                let out_path = build_out_root()?;
+                fs::create_dir_all(out_path).unwrap();
+                let out_file = out_path.join("sitemap.txt");
+                let file = File::create(out_file).unwrap();
+                let mut buffed = BufWriter::new(file);
+                urls.sort();
+                for url in urls {
+                    buffed.write_all(url.as_bytes())?;
+                    buffed.write_all(b"\n")?;
+                }
+                println!("Took: {: >10.3?} to write sitemap.txt", start.elapsed());
             }
             if let Some((recorder_handler, tx)) = templ_stats {
                 tx.send("∞".to_string())?;

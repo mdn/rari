@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fs::{self, File};
 use std::io::BufWriter;
 use std::iter::once;
@@ -42,25 +43,35 @@ pub fn build_single_page(page: &Page) {
     }
 }
 
-pub fn build_docs(docs: Vec<Page>) -> Result<(), DocError> {
-    docs.into_par_iter()
-        .for_each(|page| build_single_page(&page));
-    Ok(())
+pub fn build_docs(docs: &[Page]) -> Result<Vec<Cow<'_, str>>, DocError> {
+    Ok(docs
+        .into_par_iter()
+        .map(|page| {
+            build_single_page(page);
+            Cow::Borrowed(page.url())
+        })
+        .collect())
 }
 
-pub fn build_curriculum_pages() -> Result<(), DocError> {
-    curriculum_files()
+pub fn build_curriculum_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+    Ok(curriculum_files()
         .by_path
-        .iter()
-        .for_each(|(_, page)| build_single_page(page));
-    Ok(())
+        .values()
+        .map(|page| {
+            build_single_page(page);
+            Cow::Owned(page.url().to_string())
+        })
+        .collect())
 }
 
-pub fn build_blog_pages() -> Result<(), DocError> {
-    blog_files()
+pub fn build_blog_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+    Ok(blog_files()
         .posts
         .values()
         .chain(once(&Dummy::from_url("/en-US/blog/").unwrap()))
-        .for_each(build_single_page);
-    Ok(())
+        .map(|page| {
+            build_single_page(page);
+            Cow::Owned(page.url().to_string())
+        })
+        .collect())
 }
