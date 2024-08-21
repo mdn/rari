@@ -56,27 +56,27 @@ pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
                     el.text().collect::<String>()
                 };
                 let mut id = anchorize(&text);
-                if ids.contains(id.as_str()) {
+                if ids.contains(id.as_ref()) {
                     let (prefix, mut count) = if let Some((prefix, counter)) = id.rsplit_once('_') {
                         if counter.chars().all(|c| c.is_ascii_digit()) {
                             let count = counter.parse::<i64>().unwrap_or_default() + 1;
                             (prefix, count)
                         } else {
-                            (id.as_str(), 2)
+                            (id.as_ref(), 2)
                         }
                     } else {
-                        (id.as_str(), 2)
+                        (id.as_ref(), 2)
                     };
                     let mut new_id = format!("{prefix}_{count}");
                     while ids.contains(new_id.as_str()) && count < 666 {
                         count += 1;
                         new_id = format!("{prefix}_{count}");
                     }
-                    id = new_id;
+                    id = Cow::Owned(new_id);
                 }
-
-                ids.insert(Cow::Owned(id.clone()));
-                (el.id(), id)
+                let id_ = id.to_string();
+                ids.insert(Cow::Owned(id.into_owned()));
+                (el.id(), id_)
             })
             .collect::<Vec<_>>();
     for (el_id, id) in subs {

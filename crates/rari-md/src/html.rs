@@ -116,24 +116,24 @@ impl Anchorizer {
     /// assert_eq!("ticks-arent-in".to_string(), anchorizer.anchorize(source.to_string()));
     /// ```
     pub fn anchorize(&mut self, header: String) -> String {
-        let mut id = anchor::anchorize(&header);
+        let id = anchor::anchorize(&header);
 
         let mut uniq = 0;
-        id = loop {
+        let id = loop {
             let anchor = if uniq == 0 {
-                Cow::from(&id)
+                Cow::from(id.as_ref())
             } else {
                 Cow::from(format!("{}_{}", id, uniq + 1))
             };
 
             if !self.0.contains(&*anchor) {
-                break anchor.into_owned();
+                break anchor;
             }
 
             uniq += 1;
         };
-        self.0.insert(id.clone());
-        id
+        self.0.insert(id.to_string());
+        id.to_string()
     }
 }
 

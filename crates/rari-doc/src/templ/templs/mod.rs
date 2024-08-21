@@ -3,6 +3,7 @@ pub mod api_list_specs;
 pub mod badges;
 pub mod banners;
 pub mod compat;
+pub mod css_ref;
 pub mod cssinfo;
 pub mod csssyntax;
 pub mod embeds;
@@ -82,6 +83,7 @@ pub fn invoke(
         "webextallexamples" => webext_all_examples::web_ext_all_examples_any,
         "listgroups" => api_list_specs::api_list_specs_any,
         "apilistalpha" => api_list_alpha::api_list_alpha_any,
+        "css_ref" => css_ref::css_ref_any,
 
         // hacky
         "glossarydisambiguation" => glossarydisambiguation::glossarydisambiguation_any,

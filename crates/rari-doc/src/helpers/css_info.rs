@@ -1,8 +1,8 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::fmt::Write;
 use std::sync::OnceLock;
 
+use indexmap::IndexMap;
 use itertools::Itertools;
 use rari_l10n::l10n_json_data;
 use rari_types::globals::data_dir;
@@ -20,9 +20,13 @@ use crate::templ::templs::links::cssxref::cssxref_internal;
 // mdn/data is deprecated so we do a least effort integration here.
 #[derive(Debug, Default)]
 pub struct MDNDataFiles {
-    pub css_properties: HashMap<String, Value>,
-    pub css_at_rules: HashMap<String, Value>,
-    pub css_l10n: HashMap<String, Value>,
+    pub css_properties: IndexMap<String, Value>,
+    pub css_at_rules: IndexMap<String, Value>,
+    pub css_types: IndexMap<String, Value>,
+    pub css_l10n: IndexMap<String, Value>,
+    pub css_syntaxes: IndexMap<String, Value>,
+    pub css_seclectors: IndexMap<String, Value>,
+    pub css_units: IndexMap<String, Value>,
 }
 
 impl MDNDataFiles {
@@ -36,6 +40,18 @@ impl MDNDataFiles {
             )?)?,
             css_l10n: serde_json::from_str(&read_to_string(
                 data_dir().join("mdn-data/package/l10n/css.json"),
+            )?)?,
+            css_types: serde_json::from_str(&read_to_string(
+                data_dir().join("mdn-data/package/css/types.json"),
+            )?)?,
+            css_syntaxes: serde_json::from_str(&read_to_string(
+                data_dir().join("mdn-data/package/css/syntaxes.json"),
+            )?)?,
+            css_seclectors: serde_json::from_str(&read_to_string(
+                data_dir().join("mdn-data/package/css/selectors.json"),
+            )?)?,
+            css_units: serde_json::from_str(&read_to_string(
+                data_dir().join("mdn-data/package/css/units.json"),
             )?)?,
         })
     }

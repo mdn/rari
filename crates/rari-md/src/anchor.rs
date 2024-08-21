@@ -1,8 +1,9 @@
+use std::borrow::Cow;
 use std::sync::LazyLock;
 
 use regex::Regex;
 
-pub fn anchorize(content: &str) -> String {
+pub fn anchorize(content: &str) -> Cow<'_, str> {
     static REJECTED_CHARS: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r#"[<>"$#%&+,/:;=?@\[\]^`{|}~')(\\]"#).unwrap());
 
@@ -16,8 +17,12 @@ pub fn anchorize(content: &str) -> String {
     });
     let id = id.replace(' ', "_");
     if !id.is_empty() {
-        id
+        if id == content {
+            Cow::Borrowed(content)
+        } else {
+            Cow::Owned(id)
+        }
     } else {
-        "sect".to_string()
+        Cow::Borrowed("sect")
     }
 }

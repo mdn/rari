@@ -36,6 +36,8 @@ imagesize = "0.13"
 svg_metadata = "0.5"
 itertools = "0.13"
 memoize = "0.4"
+concat-in-place = "1"
+indexmap = "2"
 
 rari-utils = { path = "../rari-utils" }
 rari-types = { path = "../rari-types" }

@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use rari_md::anchor::anchorize;
 use rari_types::fm_types::FeatureStatus;
 use rari_types::locale::Locale;
 use tracing::warn;
@@ -28,7 +29,7 @@ pub fn render_internal_link(
     out.push_str(url);
     if let Some(anchor) = anchor {
         out.push('#');
-        out.push_str(anchor);
+        out.push_str(&anchorize(anchor));
     }
     if let Some(title) = title {
         out.push_str("\" title=\"");
@@ -136,9 +137,17 @@ pub fn render_link_via_page(
 
     out.push_str("<a href=\"");
     let content = match content {
-        Some(content) => &html_escape::encode_safe(content),
-        None if url.starts_with('/') => &url[url.rfind('/').unwrap_or(0)..],
-        _ => &html_escape::encode_safe(&url),
+        Some(content) => {
+            let decoded_content = html_escape::decode_html_entities(content);
+            let encoded_content = html_escape::encode_safe(&decoded_content);
+            if content != encoded_content {
+                Cow::Owned(encoded_content.into_owned())
+            } else {
+                Cow::Borrowed(content)
+            }
+        }
+        None if url.starts_with('/') => Cow::Borrowed(&url[url.rfind('/').unwrap_or(0)..]),
+        _ => html_escape::encode_safe(&url),
     };
     out.push_str(&url);
     if let Some(title) = title {
@@ -149,7 +158,7 @@ pub fn render_link_via_page(
     if code {
         out.push_str("<code>");
     }
-    out.push_str(content);
+    out.push_str(&content);
     if code {
         out.push_str("</code>");
     }

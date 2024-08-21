@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use percent_encoding::utf8_percent_encode;
 use rari_md::anchor::anchorize;
 use rari_types::globals::{deny_warnings, settings};
@@ -11,7 +13,7 @@ use crate::redirects::resolve_redirect;
 
 pub struct RariApi {}
 impl RariApi {
-    pub fn anchorize(content: &str) -> String {
+    pub fn anchorize(content: &str) -> Cow<'_, str> {
         anchorize(content)
     }
 
