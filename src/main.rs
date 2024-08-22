@@ -11,6 +11,7 @@ use rari_doc::build::{build_blog_pages, build_curriculum_pages, build_docs};
 use rari_doc::cached_readers::{CACHED_PAGE_FILES, STATIC_PAGE_FILES};
 use rari_doc::docs::doc::Doc;
 use rari_doc::docs::page::PageLike;
+use rari_doc::translations::init_translations_from_static_docs;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_doc::walker::read_docs_parallel;
 use rari_tools::history::gather_history;
@@ -165,6 +166,7 @@ fn main() -> Result<(), anyhow::Error> {
                             .collect(),
                     )
                     .unwrap();
+                init_translations_from_static_docs()
             }
             println!("Took: {: >10.3?} for {}", start.elapsed(), docs.len());
             let mut urls = Vec::new();

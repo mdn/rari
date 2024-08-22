@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use thiserror::Error;
 
-#[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default)]
+#[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord)]
 pub enum Native {
     #[default]
     #[serde(rename = "English (US)")]
@@ -54,7 +54,9 @@ pub enum LocaleError {
     IOError(#[from] std::io::Error),
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Deserialize, Serialize, Default, Hash)]
+#[derive(
+    PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Deserialize, Serialize, Default, Hash,
+)]
 pub enum Locale {
     #[default]
     #[serde(rename = "en-US")]

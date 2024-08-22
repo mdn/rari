@@ -34,6 +34,7 @@ pub struct Parent {
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Translation {
     pub locale: Locale,
+    pub title: String,
     pub native: Native,
 }
 

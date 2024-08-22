@@ -14,7 +14,7 @@ use super::doc::{render_md_to_html, Doc};
 use super::dummy::Dummy;
 use super::json::{
     BuiltDocy, Compat, JsonBlogPost, JsonBlogPostDoc, JsonCurriculum, JsonDoADoc, JsonDoc, Prose,
-    Section, Source, SpecificationSection, TocEntry,
+    Section, Source, SpecificationSection, TocEntry, Translation,
 };
 use super::page::PageLike;
 use super::parents::parents;
@@ -30,6 +30,7 @@ use crate::html::sidebar::{
 };
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
+use crate::translations::get_translations_for;
 
 impl<'a> From<BuildSection<'a>> for Section {
     fn from(value: BuildSection) -> Self {
@@ -241,6 +242,14 @@ pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
     );
 
     let popularity = popularities().popularities.get(doc.url()).cloned();
+    let other_translations = get_translations_for(doc.slug(), doc.locale())
+        .into_iter()
+        .map(|(locale, title)| Translation {
+            native: locale.into(),
+            locale,
+            title,
+        })
+        .collect();
 
     Ok(BuiltDocy::Doc(Box::new(JsonDoADoc {
         doc: JsonDoc {
@@ -269,6 +278,7 @@ pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
                 last_commit_url,
             },
             browser_compat: doc.meta.browser_compat.clone(),
+            other_translations,
             ..Default::default()
         },
         url: doc.meta.url.clone(),
