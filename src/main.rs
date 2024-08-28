@@ -16,6 +16,7 @@ use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_doc::walker::read_docs_parallel;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
+use rari_tools::r#move::r#move;
 use rari_types::globals::{build_out_root, SETTINGS};
 use rari_types::settings::Settings;
 use tabwriter::TabWriter;
@@ -36,6 +37,8 @@ struct Cli {
     no_cache: bool,
     #[arg(long)]
     skip_updates: bool,
+    #[arg(short = 'y', long, help = "Assume yes to all prompts")]
+    assume_yes: bool,
     #[command(subcommand)]
     command: Commands,
 }
@@ -47,7 +50,23 @@ enum Commands {
     Serve(ServeArgs),
     GitHistory,
     Popularities,
+    #[command(subcommand)]
+    Content(ContentSubcommand),
 }
+
+#[derive(Subcommand)]
+enum ContentSubcommand {
+    /// Moves content from one slug to another
+    Move(MoveArgs),
+}
+
+#[derive(Args)]
+struct MoveArgs {
+    old_slug: String,
+    new_slug: String,
+    locale: Option<String>,
+}
+
 #[derive(Args)]
 struct ServeArgs {
     #[arg(short, long)]
@@ -214,7 +233,7 @@ fn main() -> Result<(), anyhow::Error> {
             serve::serve()?
         }
         Commands::GitHistory => {
-            println!("Gathering histroy 📜");
+            println!("Gathering history 📜");
             let start = std::time::Instant::now();
             gather_history();
             println!("Took: {:?}", start.elapsed());
@@ -225,6 +244,16 @@ fn main() -> Result<(), anyhow::Error> {
             update_popularities(20000);
             println!("Took: {:?}", start.elapsed());
         }
+        Commands::Content(content_subcommand) => match content_subcommand {
+            ContentSubcommand::Move(args) => {
+                r#move(
+                    &args.old_slug,
+                    &args.new_slug,
+                    args.locale.as_deref(),
+                    cli.assume_yes,
+                )?;
+            }
+        },
     }
     Ok(())
 }

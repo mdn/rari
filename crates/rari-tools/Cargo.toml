@@ -9,6 +9,7 @@ rust-version.workspace = true
 [dependencies]
 rari-types = { path = "../rari-types" }
 rari-utils = { path = "../rari-utils" }
+rari-doc = { path = "../rari-doc" }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -17,14 +18,14 @@ chrono = { version = "0.4", features = ["serde"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 reqwest = { version = "0.12", default-features = false, features = [
-    "blocking",
-    "json",
-    "rustls-tls",
-    "gzip",
+  "blocking",
+  "json",
+  "rustls-tls",
+  "gzip",
 ] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 reqwest = { version = "0.12", default-features = false, features = [
-    "json",
-    "gzip",
+  "json",
+  "gzip",
 ] }

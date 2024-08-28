@@ -2332,6 +2332,7 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "csv",
+ "rari-doc",
  "rari-types",
  "rari-utils",
  "reqwest",
