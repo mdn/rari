@@ -16,5 +16,5 @@ pub enum ToolError {
     DocError(#[from] DocError),
 
     #[error("Unknonwn error")]
-    Unknown,
+    Unknown(String),
 }

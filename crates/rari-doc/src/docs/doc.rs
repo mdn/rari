@@ -12,11 +12,13 @@ use serde_yaml::Value;
 use tracing::debug;
 use validator::Validate;
 
-use super::page::{Page, PageCategory, PageLike, PageReader};
+use super::page::{to_absolute_path, Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::cached_readers::{page_from_static_files, CACHED_PAGE_FILES};
 use crate::error::DocError;
 use crate::resolve::{build_url, url_to_path_buf};
-use crate::utils::{locale_and_typ_from_path, root_for_locale, split_fm, t_or_vec};
+use crate::utils::{
+    locale_and_typ_from_path, root_for_locale, serialize_t_or_vec, split_fm, t_or_vec,
+};
 
 /*
   "attribute-order": [
@@ -35,22 +37,45 @@ use crate::utils::{locale_and_typ_from_path, root_for_locale, split_fm, t_or_vec
 pub struct FrontMatter {
     #[validate(length(max = 120))]
     pub title: String,
-    #[serde(rename = "short-title")]
+    #[serde(rename = "short-title", skip_serializing_if = "Option::is_none")]
     #[validate(length(max = 60))]
     pub short_title: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     pub slug: String,
     #[serde(rename = "page-type")]
     pub page_type: PageType,
-    #[serde(deserialize_with = "t_or_vec", default)]
+    #[serde(
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub status: Vec<FeatureStatus>,
-    #[serde(rename = "browser-compat", deserialize_with = "t_or_vec", default)]
+    #[serde(
+        rename = "browser-compat",
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub browser_compat: Vec<String>,
-    #[serde(rename = "spec-urls", deserialize_with = "t_or_vec", default)]
+    #[serde(
+        rename = "spec-urls",
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub spec_urls: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub original_slug: Option<String>,
-    #[serde(deserialize_with = "t_or_vec", default)]
+    #[serde(
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub sidebar: Vec<String>,
     #[serde(flatten)]
     pub other: HashMap<String, Value>,
@@ -116,6 +141,13 @@ impl PageReader for Doc {
             }
         }
         Ok(page)
+    }
+}
+
+impl PageWriter for Doc {
+    fn write(&self) -> Result<(), DocError> {
+        write_doc(&self);
+        return Ok(());
     }
 }
 
@@ -234,6 +266,39 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
         raw,
         content_start,
     })
+}
+
+fn write_doc(doc: &Doc) -> Result<(), DocError> {
+    let path = doc.path();
+    let locale = doc.meta.locale;
+    let file_path = to_absolute_path(&path, locale)?;
+    let fm = split_fm(&doc.raw);
+    let (fm, _content_start) = split_fm(&doc.raw);
+    let fm = fm.ok_or(DocError::NoFrontmatter)?;
+    // Read original frontmatter to pass additional fields along,
+    // overwrite fields from meta
+    let mut frontmatter: FrontMatter = serde_yaml::from_str(fm)?;
+    frontmatter = FrontMatter {
+        title: doc.meta.title.clone(),
+        short_title: doc.meta.short_title.clone(),
+        tags: doc.meta.tags.clone(),
+        slug: doc.meta.slug.clone(),
+        page_type: doc.meta.page_type,
+        status: doc.meta.status.clone(),
+        browser_compat: doc.meta.browser_compat.clone(),
+        spec_urls: doc.meta.spec_urls.clone(),
+        original_slug: doc.meta.original_slug.clone(),
+        sidebar: doc.meta.sidebar.clone(),
+        ..frontmatter
+    };
+
+    let frontmatter_encoded = serde_yaml::to_string(&frontmatter)?;
+
+    let mut out = String::new();
+    out.push_str(&frontmatter_encoded);
+    println!("out: {out}");
+
+    Ok(())
 }
 
 pub fn render_md_to_html(input: &str, locale: Locale) -> Result<String, DocError> {
