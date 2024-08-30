@@ -2,7 +2,6 @@ use console::{style, Style};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 
 use rari_doc::{
-    build,
     docs::page::{self, Page, PageCategory, PageLike, PageWriter},
     helpers::subpages::get_sub_pages,
     resolve::build_url,
@@ -83,11 +82,10 @@ fn do_move(
 ) -> Result<Vec<(String, String)>, ToolError> {
     let old_url = build_url(old_slug, locale, PageCategory::Doc);
     let doc = page::Page::page_from_url_path(&old_url)?;
-    // return Ok(vec![]);
 
     let new_parent_slug = parent_slug(new_slug)?;
     let real_old_slug = doc.slug();
-    println!("new_parent_slug: {new_parent_slug} real_old_slug: {real_old_slug}");
+    // println!("new_parent_slug: {new_parent_slug} real_old_slug: {real_old_slug}");
     let subpages = get_sub_pages(&old_url, None, Default::default())?;
     // println!("subpages: {subpages:?}");
     let pairs = vec![doc.clone()]
@@ -127,7 +125,7 @@ fn do_move(
     // fs.renameSync(old_path, new_path);
     // }
 
-    Ok(vec![])
+    Ok(pairs)
 }
 
 fn parent_slug(slug: &str) -> Result<&str, ToolError> {

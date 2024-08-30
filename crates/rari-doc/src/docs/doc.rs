@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -146,8 +148,7 @@ impl PageReader for Doc {
 
 impl PageWriter for Doc {
     fn write(&self) -> Result<(), DocError> {
-        write_doc(&self);
-        return Ok(());
+        write_doc(&self)
     }
 }
 
@@ -269,11 +270,10 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
 }
 
 fn write_doc(doc: &Doc) -> Result<(), DocError> {
-    let path = doc.path();
+    let path = doc.path().strip_prefix("/")?.to_path_buf();
     let locale = doc.meta.locale;
     let file_path = to_absolute_path(&path, locale)?;
-    let fm = split_fm(&doc.raw);
-    let (fm, _content_start) = split_fm(&doc.raw);
+    let (fm, content_start) = split_fm(&doc.raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     // Read original frontmatter to pass additional fields along,
     // overwrite fields from meta
@@ -295,9 +295,19 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     let frontmatter_encoded = serde_yaml::to_string(&frontmatter)?;
 
     let mut out = String::new();
+    out.push_str("---\n");
     out.push_str(&frontmatter_encoded);
-    println!("out: {out}");
+    out.push_str("---\n");
 
+    out.push_str(&doc.raw[content_start..]);
+
+    if let Some(parent) = file_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut file = fs::File::create(&file_path)?;
+    file.write_all(out.as_bytes())?;
+
+    println!("Wrote to: {:?}", file_path);
     Ok(())
 }
 
