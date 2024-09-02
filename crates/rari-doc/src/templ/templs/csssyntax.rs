@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 
 use css_syntax::syntax::{write_formal_syntax, CssType, LinkedToken};
 use rari_templ_func::rari_f;
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::error::DocError;
 
@@ -30,17 +30,22 @@ pub fn csssyntax() -> Result<String, DocError> {
         rari_types::fm_types::PageType::CssAtRuleDescriptor => {
             CssType::AtRuleDescriptor(name, slug_rev_iter.next().unwrap())
         }
-        rari_types::fm_types::PageType::CssCombinator => todo!(),
         rari_types::fm_types::PageType::CssFunction => CssType::Function(name),
-        rari_types::fm_types::PageType::CssKeyword => todo!(),
-        rari_types::fm_types::PageType::CssMediaFeature => todo!(),
-        rari_types::fm_types::PageType::CssModule => todo!(),
         rari_types::fm_types::PageType::CssProperty => CssType::Property(name),
-        rari_types::fm_types::PageType::CssPseudoClass => todo!(),
-        rari_types::fm_types::PageType::CssPseudoElement => todo!(),
-        rari_types::fm_types::PageType::CssSelector => todo!(),
         rari_types::fm_types::PageType::CssShorthandProperty => CssType::ShorthandProperty(name),
         rari_types::fm_types::PageType::CssType => CssType::Type(name),
+        rari_types::fm_types::PageType::CssCombinator
+        | rari_types::fm_types::PageType::CssKeyword
+        | rari_types::fm_types::PageType::CssMediaFeature
+        | rari_types::fm_types::PageType::CssModule
+        | rari_types::fm_types::PageType::CssPseudoClass
+        | rari_types::fm_types::PageType::CssPseudoElement
+        | rari_types::fm_types::PageType::CssSelector => {
+            warn!("CSS syntax not supported for {:?}", page_type);
+            return Err(DocError::CssSyntaxError(
+                css_syntax::error::SyntaxError::NoSyntaxFound,
+            ));
+        }
         _ => {
             error!("No Css Page: {}", env.slug);
             return Err(DocError::CssPageTypeRequired);

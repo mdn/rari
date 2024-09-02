@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 
 use rari_types::locale::Locale;
 
-use crate::cached_readers::STATIC_PAGE_FILES;
+use crate::cached_readers::{STATIC_DOC_PAGE_FILES, STATIC_DOC_PAGE_TRANSLATED_FILES};
 use crate::docs::page::PageLike;
 
 pub type TranslationsOf<'a> = BTreeMap<Locale, &'a str>;
@@ -15,12 +15,14 @@ pub static TRANSLATIONS_BY_SLUG: OnceLock<AllTranslationsOf> = OnceLock::new();
 pub fn init_translations_from_static_docs() {
     let mut all = HashMap::new();
 
-    if let Some(static_pages) = STATIC_PAGE_FILES.get() {
-        for page in static_pages.values() {
-            let entry: &mut TranslationsOf<'static> = all.entry(page.slug()).or_default();
-            entry.insert(page.locale(), page.title());
-        }
-    };
+    for cache in [&STATIC_DOC_PAGE_FILES, &STATIC_DOC_PAGE_TRANSLATED_FILES] {
+        if let Some(static_pages) = cache.get() {
+            for page in static_pages.values() {
+                let entry: &mut TranslationsOf<'static> = all.entry(page.slug()).or_default();
+                entry.insert(page.locale(), page.title());
+            }
+        };
+    }
 
     TRANSLATIONS_BY_SLUG.set(all).unwrap();
 }

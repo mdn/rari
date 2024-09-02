@@ -6,6 +6,7 @@ pub mod error;
 pub mod helpers;
 pub mod html;
 pub mod percent;
+pub mod reader;
 pub mod redirects;
 pub mod resolve;
 pub mod sidebars;

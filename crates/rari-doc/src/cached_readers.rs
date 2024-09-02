@@ -3,22 +3,28 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, OnceLock, RwLock};
 
-use rari_types::globals::{blog_root, cache_content, content_root, curriculum_root};
+use rari_types::globals::{
+    blog_root, cache_content, content_root, content_translated_root, curriculum_root,
+};
 use rari_types::locale::Locale;
 use rari_utils::io::read_to_string;
 use tracing::error;
 
 use crate::docs::blog::{Author, AuthorFrontmatter, BlogPost, BlogPostBuildMeta};
 use crate::docs::curriculum::{CurriculumIndexEntry, CurriculumPage};
+use crate::docs::doc::Doc;
 use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::html::sidebar::{MetaSidebar, Sidebar};
+use crate::reader::read_docs_parallel;
 use crate::sidebars::jsref;
+use crate::translations::init_translations_from_static_docs;
 use crate::utils::split_fm;
-use crate::walker::{read_docs_parallel, walk_builder};
+use crate::walker::walk_builder;
 
-pub static STATIC_PAGE_FILES: OnceLock<HashMap<PathBuf, Page>> = OnceLock::new();
-pub static CACHED_PAGE_FILES: OnceLock<Arc<RwLock<HashMap<PathBuf, Page>>>> = OnceLock::new();
+pub static STATIC_DOC_PAGE_FILES: OnceLock<HashMap<PathBuf, Page>> = OnceLock::new();
+pub static STATIC_DOC_PAGE_TRANSLATED_FILES: OnceLock<HashMap<PathBuf, Page>> = OnceLock::new();
+pub static CACHED_DOC_PAGE_FILES: OnceLock<Arc<RwLock<HashMap<PathBuf, Page>>>> = OnceLock::new();
 type SidebarFilesCache = Arc<RwLock<HashMap<(String, Locale), Arc<MetaSidebar>>>>;
 pub static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
     LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
@@ -65,8 +71,13 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
     Ok(sidebar)
 }
 
-pub fn page_from_static_files(path: &Path) -> Option<Result<Page, DocError>> {
-    STATIC_PAGE_FILES.get().map(|static_files| {
+pub fn doc_page_from_static_files(path: &Path) -> Option<Result<Page, DocError>> {
+    let cache = if path.starts_with(content_root()) {
+        &STATIC_DOC_PAGE_FILES
+    } else {
+        &STATIC_DOC_PAGE_TRANSLATED_FILES
+    };
+    cache.get().map(|static_files| {
         if let Some(page) = static_files.get(path) {
             return Ok(page.clone());
         }
@@ -236,4 +247,31 @@ pub fn curriculum_from_url(url: &str) -> Option<Page> {
 pub fn curriculum_from_path(path: &Path) -> Option<Page> {
     let _ = curriculum_root()?;
     curriculum_files().by_path.get(path).cloned()
+}
+
+pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
+    let mut docs = read_docs_parallel::<Doc>(&[content_root()], None)?;
+    STATIC_DOC_PAGE_FILES
+        .set(
+            docs.iter()
+                .cloned()
+                .map(|doc| (doc.full_path().to_owned(), doc))
+                .collect(),
+        )
+        .unwrap();
+    if let Some(translated_root) = content_translated_root() {
+        let transted_docs = read_docs_parallel::<Doc>(&[translated_root], None)?;
+        STATIC_DOC_PAGE_TRANSLATED_FILES
+            .set(
+                transted_docs
+                    .iter()
+                    .cloned()
+                    .map(|doc| (doc.full_path().to_owned(), doc))
+                    .collect(),
+            )
+            .unwrap();
+        docs.extend(transted_docs)
+    }
+    init_translations_from_static_docs();
+    Ok(docs)
 }

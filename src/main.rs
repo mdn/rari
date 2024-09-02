@@ -8,15 +8,13 @@ use std::thread::spawn;
 
 use clap::{Args, Parser, Subcommand};
 use rari_doc::build::{build_blog_pages, build_curriculum_pages, build_docs};
-use rari_doc::cached_readers::{CACHED_PAGE_FILES, STATIC_PAGE_FILES};
+use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
 use rari_doc::docs::doc::Doc;
-use rari_doc::docs::page::PageLike;
-use rari_doc::translations::init_translations_from_static_docs;
+use rari_doc::reader::read_docs_parallel;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
-use rari_doc::walker::read_docs_parallel;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
-use rari_types::globals::{build_out_root, SETTINGS};
+use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
 use rari_types::settings::Settings;
 use tabwriter::TabWriter;
 use tracing_log::AsTrace;
@@ -150,24 +148,24 @@ fn main() -> Result<(), anyhow::Error> {
             };
 
             if matches!(cache, Cache::Dynamic) {
-                CACHED_PAGE_FILES
+                CACHED_DOC_PAGE_FILES
                     .set(Arc::new(RwLock::new(HashMap::new())))
                     .unwrap();
             }
             println!("Building everything 🛠️");
             let start = std::time::Instant::now();
-            let docs = read_docs_parallel::<Doc>(&args.files, None)?;
-            if matches!(cache, Cache::Static) {
-                STATIC_PAGE_FILES
-                    .set(
-                        docs.iter()
-                            .cloned()
-                            .map(|doc| (doc.full_path().to_owned(), doc))
-                            .collect(),
-                    )
-                    .unwrap();
-                init_translations_from_static_docs()
-            }
+            let docs = if !args.files.is_empty() {
+                read_docs_parallel::<Doc>(&args.files, None)?
+            } else if !args.cache_content {
+                let files: &[_] = if let Some(translated_root) = content_translated_root() {
+                    &[content_root(), translated_root]
+                } else {
+                    &[content_root()]
+                };
+                read_docs_parallel::<Doc>(files, None)?
+            } else {
+                read_and_cache_doc_pages()?
+            };
             println!("Took: {: >10.3?} for {}", start.elapsed(), docs.len());
             let mut urls = Vec::new();
             if !args.skip_content {
