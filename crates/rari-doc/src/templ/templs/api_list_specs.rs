@@ -3,10 +3,10 @@ use std::collections::BTreeMap;
 use itertools::Itertools;
 use rari_templ_func::rari_f;
 
-use crate::docs::doc::Doc;
 use crate::error::DocError;
 use crate::helpers::json_data::json_data_group;
 use crate::helpers::subpages::write_li_with_badges;
+use crate::pages::types::doc::Doc;
 
 #[rari_f]
 pub fn api_list_specs() -> Result<String, DocError> {

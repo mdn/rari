@@ -10,11 +10,10 @@ use rari_utils::io::read_to_string;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use super::json::Parent;
-use super::page::{Page, PageLike, PageReader};
-use super::types::{PrevNextBlog, PrevNextCurriculum, UrlNTitle};
 use crate::cached_readers::{curriculum_files, curriculum_from_path};
 use crate::error::DocError;
+use crate::pages::json::{Parent, PrevNextBlog, PrevNextCurriculum, UrlNTitle};
+use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::utils::{as_null, split_fm};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -96,7 +95,6 @@ pub struct CurriculumMeta {
     pub summary: Option<String>,
     pub template: Template,
     pub topic: Topic,
-    pub filename: PathBuf,
     pub sidebar: Vec<CurriculumIndexEntry>,
     pub modules: Vec<CurriculumIndexEntry>,
     pub parents: Vec<Parent>,
@@ -111,7 +109,7 @@ pub struct CurriculumPage {
 }
 
 impl PageReader for CurriculumPage {
-    fn read(path: impl Into<PathBuf>) -> Result<Page, DocError> {
+    fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
 
         let page = read_curriculum_page(path)
@@ -155,7 +153,7 @@ pub fn relative_file_to_curriculum_page(
     let path = fs::canonicalize(path)?;
     curriculum_from_path(&path).ok_or(DocError::PageNotFound(
         path.to_string_lossy().to_string(),
-        super::page::PageCategory::Curriculum,
+        PageCategory::Curriculum,
     ))
 }
 

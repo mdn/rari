@@ -2,8 +2,8 @@ use rari_l10n::l10n_json_data;
 use rari_templ_func::rari_f;
 use rari_types::locale::Locale;
 
-use crate::docs::page::PageLike;
 use crate::error::DocError;
+use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
 #[rari_f]

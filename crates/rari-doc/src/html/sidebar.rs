@@ -12,11 +12,11 @@ use super::links::{render_link_from_page, render_link_via_page, LinkModifier};
 use super::modifier::add_attribute;
 use super::rewriter::post_process_html;
 use crate::cached_readers::read_sidebar;
-use crate::docs::doc::Doc;
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::helpers;
 use crate::helpers::subpages::{list_sub_pages_grouped_internal, list_sub_pages_internal};
+use crate::pages::page::{Page, PageLike};
+use crate::pages::types::doc::Doc;
 use crate::utils::t_or_vec;
 
 fn cache_side_bar(sidebar: &str) -> bool {

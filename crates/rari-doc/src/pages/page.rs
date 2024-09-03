@@ -7,12 +7,14 @@ use rari_types::globals::blog_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 
-use super::curriculum::CurriculumPage;
-use super::doc::Doc;
-use super::dummy::Dummy;
+use super::types::contributors::contributor_spotlight_from_url;
 use crate::cached_readers::{blog_from_url, curriculum_from_url};
-use crate::docs::blog::BlogPost;
 use crate::error::DocError;
+use crate::pages::types::blog::BlogPost;
+use crate::pages::types::contributors::ContributorSpotlight;
+use crate::pages::types::curriculum::CurriculumPage;
+use crate::pages::types::doc::Doc;
+use crate::pages::types::dummy::Dummy;
 use crate::resolve::{strip_locale_from_url, url_path_to_path_buf};
 use crate::utils::{locale_and_typ_from_path, root_for_locale};
 
@@ -23,6 +25,7 @@ pub enum Page {
     BlogPost(Arc<BlogPost>),
     Dummy(Arc<Dummy>),
     Curriculum(Arc<CurriculumPage>),
+    ContributorSpotlight(Arc<ContributorSpotlight>),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -31,6 +34,7 @@ pub enum PageCategory {
     BlogPost,
     Dummy,
     Curriculum,
+    ContributorSpotlight,
 }
 
 impl Page {
@@ -82,14 +86,15 @@ impl Page {
 }
 
 impl PageReader for Page {
-    fn read(path: impl Into<PathBuf>) -> Result<Page, DocError> {
+    fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
         let (_, typ) = locale_and_typ_from_path(&path)?;
         match typ {
-            PageCategory::Doc => Doc::read(path),
-            PageCategory::BlogPost => BlogPost::read(path),
-            PageCategory::Dummy => Dummy::read(path),
-            PageCategory::Curriculum => CurriculumPage::read(path),
+            PageCategory::Doc => Doc::read(path, locale),
+            PageCategory::BlogPost => BlogPost::read(path, locale),
+            PageCategory::Dummy => Dummy::read(path, locale),
+            PageCategory::Curriculum => CurriculumPage::read(path, locale),
+            PageCategory::ContributorSpotlight => ContributorSpotlight::read(path, locale),
         }
     }
 }
@@ -99,7 +104,7 @@ fn doc_from_path_and_locale(path: &Path, locale: Locale) -> Result<Page, DocErro
     file.push(locale.as_folder_str());
     file.push(path);
     file.push("index.md");
-    Doc::read(file)
+    Doc::read(file, Some(locale))
 }
 
 pub fn url_path_to_page(url_path: &str) -> Result<Page, DocError> {
@@ -131,6 +136,11 @@ pub fn url_path_to_page_with_other_locale_and_fallback(
         PageCategory::Curriculum => curriculum_from_url(&url_path.to_ascii_lowercase()).ok_or(
             DocError::PageNotFound(url_path.to_string(), PageCategory::Curriculum),
         ),
+        PageCategory::ContributorSpotlight => contributor_spotlight_from_url(url_path, locale)
+            .ok_or(DocError::PageNotFound(
+                url_path.to_string(),
+                PageCategory::ContributorSpotlight,
+            )),
         _ => unreachable!(),
     }
 }
@@ -217,5 +227,5 @@ impl<T: PageLike> PageLike for Arc<T> {
 }
 
 pub trait PageReader {
-    fn read(path: impl Into<PathBuf>) -> Result<Page, DocError>;
+    fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError>;
 }

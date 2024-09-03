@@ -3,9 +3,9 @@ use std::str::FromStr;
 
 use rari_types::locale::Locale;
 
-use crate::docs::dummy::Dummy;
-use crate::docs::page::{PageCategory, PageLike};
 use crate::error::UrlError;
+use crate::pages::page::{PageCategory, PageLike};
+use crate::pages::types::dummy::Dummy;
 
 pub fn url_to_path_buf(slug: &str) -> PathBuf {
     PathBuf::from(
@@ -35,6 +35,10 @@ pub fn url_path_to_path_buf(url_path: &str) -> Result<(PathBuf, Locale, PageCate
         Some("docs") => PageCategory::Doc,
         Some("blog") => PageCategory::BlogPost,
         Some("curriculum") => PageCategory::Curriculum,
+        Some("community") => match split.next() {
+            Some(slug) if slug.starts_with("spotlight/") => PageCategory::ContributorSpotlight,
+            _ => return Err(UrlError::InvalidUrl),
+        },
         _ => return Err(UrlError::InvalidUrl),
     };
     let path = url_to_path_buf(split.last().unwrap_or_default());
@@ -47,6 +51,9 @@ pub fn build_url(slug: &str, locale: &Locale, typ: PageCategory) -> String {
         PageCategory::BlogPost => format!("/{}/blog/{}/", locale.as_url_str(), slug),
         PageCategory::Dummy => Dummy::from_sulg(slug, *locale).url().to_owned(),
         PageCategory::Curriculum => format!("/{}/curriculum/{}/", locale.as_url_str(), slug),
+        PageCategory::ContributorSpotlight => {
+            format!("/{}/community/spotlight/{}", locale.as_url_str(), slug)
+        }
     }
 }
 

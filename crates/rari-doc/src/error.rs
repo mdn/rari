@@ -9,7 +9,7 @@ use rari_types::locale::LocaleError;
 use rari_types::ArgError;
 use thiserror::Error;
 
-use crate::docs::page::PageCategory;
+use crate::pages::page::PageCategory;
 
 #[derive(Debug, Error)]
 pub enum DocError {

@@ -6,13 +6,13 @@ use rari_l10n::l10n_json_data;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 
-use crate::docs::doc::Doc;
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::helpers::subpages::get_sub_pages;
 use crate::html::sidebar::{
     Details, MetaChildren, MetaSidebar, SidebarMetaEntry, SidebarMetaEntryContent,
 };
+use crate::pages::page::{Page, PageLike};
+use crate::pages::types::doc::Doc;
 
 static BASE: &str = "%Base%";
 

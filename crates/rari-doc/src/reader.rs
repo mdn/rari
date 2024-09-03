@@ -2,8 +2,8 @@ use std::path::Path;
 
 use tracing::error;
 
-use crate::docs::page::{Page, PageReader};
 use crate::error::DocError;
+use crate::pages::page::{Page, PageReader};
 use crate::walker::walk_builder;
 
 pub fn read_docs_parallel<T: PageReader>(
@@ -18,7 +18,7 @@ pub fn read_docs_parallel<T: PageReader>(
             if let Ok(f) = result {
                 if f.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
                     let p = f.into_path();
-                    match T::read(p) {
+                    match T::read(p, None) {
                         Ok(doc) => {
                             tx.send(Ok(doc)).unwrap();
                         }

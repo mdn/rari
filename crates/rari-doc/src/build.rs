@@ -8,10 +8,13 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, span, Level};
 
 use crate::cached_readers::{blog_files, curriculum_files};
-use crate::docs::build::{build_blog_post, build_curriculum, build_doc, build_dummy};
-use crate::docs::dummy::Dummy;
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
+use crate::pages::build::{
+    build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_dummy,
+    copy_additional_files,
+};
+use crate::pages::page::{Page, PageLike};
+use crate::pages::types::dummy::Dummy;
 use crate::resolve::url_to_path_buf;
 
 pub fn build_single_page(page: &Page) {
@@ -24,6 +27,7 @@ pub fn build_single_page(page: &Page) {
         Page::BlogPost(post) => build_blog_post(post),
         Page::Dummy(dummy) => build_dummy(dummy),
         Page::Curriculum(curriculum) => build_curriculum(curriculum),
+        Page::ContributorSpotlight(cs) => build_contributor_spotlight(cs),
     };
     match built_page {
         Ok(built_page) => {
@@ -36,6 +40,10 @@ pub fn build_single_page(page: &Page) {
             let buffed = BufWriter::new(file);
 
             serde_json::to_writer(buffed, &built_page).unwrap();
+
+            if let Some(in_path) = page.full_path().parent() {
+                copy_additional_files(in_path, &out_path).unwrap();
+            }
         }
         Err(e) => {
             error!("Error: {e}");

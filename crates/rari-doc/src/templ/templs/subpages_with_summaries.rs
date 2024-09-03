@@ -1,9 +1,9 @@
 use rari_templ_func::rari_f;
 
-use crate::docs::page::PageLike;
 use crate::error::DocError;
 use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::helpers::summary_hack::{get_hacky_summary_md, strip_paragraph_unckecked};
+use crate::pages::page::PageLike;
 
 #[rari_f]
 pub fn subpages_with_summaries() -> Result<String, DocError> {

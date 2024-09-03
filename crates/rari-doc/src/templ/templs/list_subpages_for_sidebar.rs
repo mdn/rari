@@ -1,11 +1,11 @@
 use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
-use crate::docs::page::{
-    url_path_to_page, url_path_to_page_with_other_locale_and_fallback, PageLike,
-};
 use crate::error::DocError;
 use crate::helpers::subpages::{add_inline_badges, get_sub_pages, SubPagesSorter};
+use crate::pages::page::{
+    url_path_to_page, url_path_to_page_with_other_locale_and_fallback, PageLike,
+};
 use crate::utils::{trim_after, trim_fefore};
 
 /// List sub pages for sidebar

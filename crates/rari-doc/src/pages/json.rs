@@ -3,12 +3,12 @@ use std::path::PathBuf;
 use chrono::NaiveDateTime;
 use rari_data::baseline::SupportStatusWithByKey;
 use rari_types::locale::{Locale, Native};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use super::blog::BlogMeta;
-use super::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
-use super::dummy::BlogIndex;
-use super::types::PrevNextCurriculum;
+use super::types::contributors::Usernames;
+use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
+use crate::pages::types::blog::BlogMeta;
+use crate::pages::types::dummy::BlogIndex;
 use crate::specs::Specification;
 use crate::utils::modified_dt;
 
@@ -121,6 +121,7 @@ pub struct JsonDoc {
 #[serde(untagged)]
 pub enum HyData {
     BlogIndex(BlogIndex),
+    ContributorSpotlight(ContributorSpotlightHyData),
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -167,6 +168,7 @@ pub struct JsonCurriculumDoc {
     pub prev_next: Option<PrevNextCurriculum>,
     pub template: Template,
 }
+
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct JsonCurriculum {
     pub doc: JsonCurriculumDoc,
@@ -211,9 +213,67 @@ pub struct JsonBlogPost {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct ContributorSpotlightHyData {
+    pub sections: Vec<Section>,
+    #[serde(rename = "contributorName")]
+    pub contributor_name: String,
+    #[serde(rename = "folderName")]
+    pub folder_name: String,
+    #[serde(rename = "isFeatured")]
+    pub is_featured: bool,
+    #[serde(rename = "profileImg")]
+    pub profile_img: String,
+    #[serde(rename = "profileImgAlt")]
+    pub profile_img_alt: String,
+    pub usernames: Usernames,
+    pub quote: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct JsonContributorSpotlight {
+    pub url: String,
+    #[serde(rename = "pageTitle")]
+    pub page_title: String,
+    #[serde(rename = "hyData")]
+    pub hy_data: HyData,
+}
+#[derive(Debug, Clone, Serialize)]
 #[serde(untagged)]
 pub enum BuiltDocy {
     Doc(Box<JsonDoADoc>),
     Curriculum(Box<JsonCurriculum>),
     BlogPost(Box<JsonBlogPost>),
+    ContributorSpotlight(Box<JsonContributorSpotlight>),
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct PrevNextBlog {
+    pub previous: Option<SlugNTitle>,
+    pub next: Option<SlugNTitle>,
+}
+
+impl PrevNextBlog {
+    pub fn is_none(&self) -> bool {
+        self.previous.is_none() && self.next.is_none()
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct SlugNTitle {
+    pub title: String,
+    pub slug: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct PrevNextCurriculum {
+    pub prev: Option<UrlNTitle>,
+    pub next: Option<UrlNTitle>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct UrlNTitle {
+    pub title: String,
+    pub url: String,
 }

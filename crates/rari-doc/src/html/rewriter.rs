@@ -9,9 +9,9 @@ use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 use url::Url;
 
-use crate::docs::curriculum::relative_file_to_curriculum_page;
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
+use crate::pages::page::{Page, PageLike};
+use crate::pages::types::curriculum::relative_file_to_curriculum_page;
 use crate::redirects::resolve_redirect;
 use crate::resolve::strip_locale_from_url;
 

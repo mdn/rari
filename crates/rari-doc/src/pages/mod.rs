@@ -1,8 +1,4 @@
-pub mod blog;
 pub mod build;
-pub mod curriculum;
-pub mod doc;
-pub mod dummy;
 pub mod json;
 pub mod page;
 pub mod parents;

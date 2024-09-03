@@ -1,24 +1,21 @@
 use std::borrow::Cow;
+use std::fs;
+use std::path::Path;
 
 use rari_types::fm_types::PageType;
 use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
 use scraper::Html;
 
-use super::blog::BlogPost;
-use super::curriculum::{
-    build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
-    prev_next_modules, prev_next_overview, CurriculumPage, Template,
-};
-use super::doc::{render_md_to_html, Doc};
-use super::dummy::Dummy;
 use super::json::{
-    BuiltDocy, Compat, JsonBlogPost, JsonBlogPostDoc, JsonCurriculum, JsonDoADoc, JsonDoc, Prose,
-    Section, Source, SpecificationSection, TocEntry, Translation,
+    BuiltDocy, Compat, ContributorSpotlightHyData, HyData, JsonBlogPost, JsonBlogPostDoc,
+    JsonCurriculum, JsonDoADoc, JsonDoc, Prose, Section, Source, SpecificationSection, TocEntry,
+    Translation,
 };
 use super::page::PageLike;
 use super::parents::parents;
 use super::title::{page_title, transform_title};
+use super::types::contributors::ContributorSpotlight;
 use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::html::bubble_up::bubble_up_curriculum_page;
@@ -28,6 +25,14 @@ use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Spli
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
+use crate::pages::json::JsonContributorSpotlight;
+use crate::pages::types::blog::BlogPost;
+use crate::pages::types::curriculum::{
+    build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
+    prev_next_modules, prev_next_overview, CurriculumPage, Template,
+};
+use crate::pages::types::doc::{render_md_to_html, Doc};
+use crate::pages::types::dummy::Dummy;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
 use crate::translations::get_translations_for;
@@ -356,4 +361,39 @@ pub fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocErr
         page_title: page_title(curriculum, false)?,
         locale: curriculum.locale(),
     })))
+}
+
+pub fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDocy, DocError> {
+    let PageContent { body, .. } = build_content(cs)?;
+    let hy_data = ContributorSpotlightHyData {
+        sections: body,
+        contributor_name: cs.meta.contributor_name.clone(),
+        folder_name: cs.meta.folder_name.clone(),
+        is_featured: cs.meta.is_featured,
+        profile_img: cs.meta.img.clone(),
+        profile_img_alt: cs.meta.img_alt.clone(),
+        usernames: cs.meta.usernames.clone(),
+        quote: cs.meta.quote.clone(),
+    };
+    Ok(BuiltDocy::ContributorSpotlight(Box::new(
+        JsonContributorSpotlight {
+            url: cs.meta.url.clone(),
+            page_title: cs.meta.title.clone(),
+            hy_data: HyData::ContributorSpotlight(hy_data),
+        },
+    )))
+}
+
+pub fn copy_additional_files(from: &Path, to: &Path) -> Result<(), DocError> {
+    for from in fs::read_dir(from)?
+        .filter_map(Result::ok)
+        .map(|f| f.path())
+        .filter(|p| p.is_file())
+    {
+        if let Some(filename) = from.file_name() {
+            let to = to.to_path_buf().join(filename);
+            fs::copy(&from, to)?;
+        }
+    }
+    Ok(())
 }

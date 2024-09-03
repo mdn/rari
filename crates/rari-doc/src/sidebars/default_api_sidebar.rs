@@ -1,12 +1,12 @@
 use rari_l10n::l10n_json_data;
 use rari_types::locale::Locale;
 
-use crate::docs::doc::Doc;
 use crate::error::DocError;
 use crate::helpers::json_data::json_data_group;
 use crate::html::sidebar::{
     Details, MetaChildren, MetaSidebar, SidebarMetaEntry, SidebarMetaEntryContent,
 };
+use crate::pages::types::doc::Doc;
 
 pub fn sidebar(group: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
     let properties_label = l10n_json_data("Common", "Properties", locale)?;

@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 use rari_types::locale::Locale;
 
 use crate::cached_readers::{STATIC_DOC_PAGE_FILES, STATIC_DOC_PAGE_TRANSLATED_FILES};
-use crate::docs::page::PageLike;
+use crate::pages::page::PageLike;
 
 pub type TranslationsOf<'a> = BTreeMap<Locale, &'a str>;
 

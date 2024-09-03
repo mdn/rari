@@ -10,12 +10,12 @@ use rari_types::locale::Locale;
 use rari_utils::io::read_to_string;
 use tracing::error;
 
-use crate::docs::blog::{Author, AuthorFrontmatter, BlogPost, BlogPostBuildMeta};
-use crate::docs::curriculum::{CurriculumIndexEntry, CurriculumPage};
-use crate::docs::doc::Doc;
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::html::sidebar::{MetaSidebar, Sidebar};
+use crate::pages::page::{Page, PageLike};
+use crate::pages::types::blog::{Author, AuthorFrontmatter, BlogPost, BlogPostBuildMeta};
+use crate::pages::types::curriculum::{CurriculumIndexEntry, CurriculumPage};
+use crate::pages::types::doc::Doc;
 use crate::reader::read_docs_parallel;
 use crate::sidebars::jsref;
 use crate::translations::init_translations_from_static_docs;

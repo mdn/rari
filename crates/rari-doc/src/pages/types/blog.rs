@@ -10,10 +10,10 @@ use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 
-use super::page::{Page, PageCategory, PageLike, PageReader};
-use super::types::{PrevNextBlog, SlugNTitle};
 use crate::cached_readers::{blog_auhtor_by_name, blog_files};
 use crate::error::DocError;
+use crate::pages::json::{PrevNextBlog, SlugNTitle};
+use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::resolve::build_url;
 use crate::utils::{locale_and_typ_from_path, modified_dt, readtime, split_fm};
 
@@ -204,7 +204,7 @@ pub struct BlogPost {
 }
 
 impl PageReader for BlogPost {
-    fn read(path: impl Into<PathBuf>) -> Result<Page, DocError> {
+    fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         read_blog_post(path).map(Arc::new).map(Page::BlogPost)
     }
 }

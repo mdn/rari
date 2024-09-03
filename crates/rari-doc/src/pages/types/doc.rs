@@ -12,9 +12,9 @@ use serde_yaml::Value;
 use tracing::debug;
 use validator::Validate;
 
-use super::page::{Page, PageCategory, PageLike, PageReader};
 use crate::cached_readers::{doc_page_from_static_files, CACHED_DOC_PAGE_FILES};
 use crate::error::DocError;
+use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::resolve::{build_url, url_to_path_buf};
 use crate::utils::{locale_and_typ_from_path, root_for_locale, split_fm, t_or_vec};
 
@@ -92,7 +92,7 @@ impl Doc {
         file.push(locale.as_folder_str());
         file.push(path);
         file.push("index.md");
-        Doc::read(file)
+        Doc::read(file, None)
     }
 
     fn copy_meta_from_super(&mut self, super_doc: &Doc) {
@@ -108,7 +108,7 @@ impl Doc {
 }
 
 impl PageReader for Doc {
-    fn read(path: impl Into<PathBuf>) -> Result<Page, DocError> {
+    fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
         if let Some(doc) = doc_page_from_static_files(&path) {
             return doc;

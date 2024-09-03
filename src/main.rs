@@ -9,7 +9,7 @@ use std::thread::spawn;
 use clap::{Args, Parser, Subcommand};
 use rari_doc::build::{build_blog_pages, build_curriculum_pages, build_docs};
 use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
-use rari_doc::docs::doc::Doc;
+use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_tools::history::gather_history;

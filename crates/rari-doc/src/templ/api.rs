@@ -5,9 +5,9 @@ use rari_md::anchor::anchorize;
 use rari_types::globals::{deny_warnings, settings};
 use rari_types::locale::Locale;
 
-use crate::docs::page::Page;
 use crate::error::DocError;
 use crate::html::links::render_link_via_page;
+use crate::pages::page::Page;
 use crate::percent::PATH_SEGMENT;
 use crate::redirects::resolve_redirect;
 

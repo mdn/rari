@@ -1,7 +1,9 @@
 use anyhow::Error;
-use rari_doc::docs::build::{build_blog_post, build_curriculum, build_doc, build_dummy};
-use rari_doc::docs::json::BuiltDocy;
-use rari_doc::docs::page::{Page, PageLike};
+use rari_doc::pages::build::{
+    build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_dummy,
+};
+use rari_doc::pages::json::BuiltDocy;
+use rari_doc::pages::page::{Page, PageLike};
 use serde_json::Value;
 use tiny_http::{Response, Server};
 use tracing::{error, span, Level};
@@ -18,6 +20,7 @@ fn get_json(url: &str) -> Result<BuiltDocy, Error> {
         Page::BlogPost(post) => build_blog_post(&post)?,
         Page::Dummy(dummy) => build_dummy(&dummy)?,
         Page::Curriculum(curriculim) => build_curriculum(&curriculim)?,
+        Page::ContributorSpotlight(cs) => build_contributor_spotlight(&cs)?,
     };
     Ok(json)
 }

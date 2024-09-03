@@ -5,8 +5,8 @@ use rari_types::fm_types::FeatureStatus;
 use rari_types::locale::Locale;
 use tracing::warn;
 
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
+use crate::pages::page::{Page, PageLike};
 use crate::templ::api::RariApi;
 use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 

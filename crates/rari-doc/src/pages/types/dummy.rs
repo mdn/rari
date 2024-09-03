@@ -6,12 +6,12 @@ use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use serde::Serialize;
 
-use super::blog::BlogMeta;
-use super::json::{BuiltDocy, HyData, JsonBlogPost, JsonBlogPostDoc};
-use super::page::{Page, PageLike, PageReader};
-use super::title::page_title;
 use crate::cached_readers::blog_files;
 use crate::error::DocError;
+use crate::pages::json::{BuiltDocy, HyData, JsonBlogPost, JsonBlogPostDoc};
+use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
+use crate::pages::title::page_title;
+use crate::pages::types::blog::BlogMeta;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BlogIndex {
@@ -93,16 +93,13 @@ impl Dummy {
                 page_title: self.title().to_owned(),
                 ..Default::default()
             }))),
-            url => Err(DocError::PageNotFound(
-                url.to_string(),
-                super::page::PageCategory::Dummy,
-            )),
+            url => Err(DocError::PageNotFound(url.to_string(), PageCategory::Dummy)),
         }
     }
 }
 
 impl PageReader for Dummy {
-    fn read(_: impl Into<PathBuf>) -> Result<Page, DocError> {
+    fn read(_: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         todo!()
     }
 }

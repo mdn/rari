@@ -11,6 +11,7 @@ pub struct Settings {
     pub build_out_root: Option<PathBuf>,
     pub blog_root: Option<PathBuf>,
     pub curriculum_root: Option<PathBuf>,
+    pub contributor_spotlight_root: Option<PathBuf>,
     pub deny_warnings: bool,
     pub cache_content: bool,
     pub base_url: String,
