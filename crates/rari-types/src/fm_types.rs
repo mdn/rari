@@ -111,5 +111,5 @@ pub enum PageType {
     Curriculum,
 
     #[serde(other)]
-    Dummy,
+    SPA,
 }

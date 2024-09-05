@@ -367,6 +367,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "constcat"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f2e5af989b1955b092db01462980c0a286217f86817e12b2c09aea46bd03651"
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2249,6 +2255,7 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "concat-in-place",
+ "constcat",
  "crossbeam-channel",
  "css-syntax",
  "ego-tree",
@@ -2266,6 +2273,8 @@ dependencies = [
  "percent-encoding",
  "pest",
  "pest_derive",
+ "phf 0.11.2",
+ "phf_macros 0.11.2",
  "rari-data",
  "rari-l10n",
  "rari-md",

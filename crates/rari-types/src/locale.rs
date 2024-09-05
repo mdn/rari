@@ -86,7 +86,7 @@ impl Display for Locale {
 }
 
 impl Locale {
-    pub fn as_url_str(&self) -> &str {
+    pub const fn as_url_str(&self) -> &str {
         match *self {
             Self::EnUs => "en-US",
             Self::Es => "es",
@@ -99,7 +99,7 @@ impl Locale {
             Self::ZhTw => "zh-TW",
         }
     }
-    pub fn as_folder_str(&self) -> &str {
+    pub const fn as_folder_str(&self) -> &str {
         match *self {
             Self::EnUs => "en-us",
             Self::ZhCn => "zh-cn",

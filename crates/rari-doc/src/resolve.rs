@@ -3,9 +3,9 @@ use std::str::FromStr;
 
 use rari_types::locale::Locale;
 
-use crate::error::UrlError;
+use crate::error::{DocError, UrlError};
 use crate::pages::page::{PageCategory, PageLike};
-use crate::pages::types::dummy::Dummy;
+use crate::pages::types::spa::SPA;
 
 pub fn url_to_path_buf(slug: &str) -> PathBuf {
     PathBuf::from(
@@ -26,35 +26,50 @@ pub fn strip_locale_from_url(url: &str) -> (Option<Locale>, &str) {
     (locale, &url[i..])
 }
 
-pub fn url_path_to_path_buf(url_path: &str) -> Result<(PathBuf, Locale, PageCategory), UrlError> {
+pub fn url_path_to_path_buf(
+    url_path: &str,
+) -> Result<(PathBuf, &str, Locale, PageCategory), UrlError> {
     let mut split = url_path[..url_path.find('#').unwrap_or(url_path.len())]
         .splitn(4, '/')
         .skip(1);
     let locale: Locale = Locale::from_str(split.next().unwrap_or_default())?;
-    let typ = match split.next() {
-        Some("docs") => PageCategory::Doc,
-        Some("blog") => PageCategory::BlogPost,
-        Some("curriculum") => PageCategory::Curriculum,
-        Some("community") => match split.next() {
-            Some(slug) if slug.starts_with("spotlight/") => PageCategory::ContributorSpotlight,
-            _ => return Err(UrlError::InvalidUrl),
-        },
-        _ => return Err(UrlError::InvalidUrl),
+    let tail: Vec<_> = split.collect();
+    let (typ, slug) = match tail.as_slice() {
+        ["docs", tail] => (PageCategory::Doc, *tail),
+        ["blog"] if locale == Default::default() => (PageCategory::SPA, Default::default()),
+        ["blog", tail] if locale == Default::default() => (PageCategory::BlogPost, *tail),
+        ["curriculum", tail] if locale == Default::default() => (PageCategory::Curriculum, *tail),
+        ["community", tail] if locale == Default::default() && tail.starts_with("spotlight") => {
+            (PageCategory::ContributorSpotlight, *tail)
+        }
+        ["community", ..] => return Err(UrlError::InvalidUrl),
+        _ => {
+            let (_, slug) = strip_locale_from_url(url_path);
+            let slug = slug.strip_prefix('/').unwrap_or(slug);
+            if SPA::is_spa(slug, locale) {
+                (PageCategory::SPA, slug)
+            } else {
+                return Err(UrlError::InvalidUrl);
+            }
+        }
     };
-    let path = url_to_path_buf(split.last().unwrap_or_default());
-    Ok((path, locale, typ))
+    let path = url_to_path_buf(slug);
+    Ok((path, slug, locale, typ))
 }
 
-pub fn build_url(slug: &str, locale: &Locale, typ: PageCategory) -> String {
-    match typ {
+pub fn build_url(slug: &str, locale: &Locale, typ: PageCategory) -> Result<String, DocError> {
+    Ok(match typ {
         PageCategory::Doc => format!("/{}/docs/{}", locale.as_url_str(), slug),
         PageCategory::BlogPost => format!("/{}/blog/{}/", locale.as_url_str(), slug),
-        PageCategory::Dummy => Dummy::from_sulg(slug, *locale).url().to_owned(),
+        PageCategory::SPA => SPA::from_slug(slug, *locale)
+            .ok_or(DocError::PageNotFound(slug.to_string(), PageCategory::SPA))?
+            .url()
+            .to_owned(),
         PageCategory::Curriculum => format!("/{}/curriculum/{}/", locale.as_url_str(), slug),
         PageCategory::ContributorSpotlight => {
             format!("/{}/community/spotlight/{}", locale.as_url_str(), slug)
         }
-    }
+    })
 }
 
 #[cfg(test)]
@@ -64,9 +79,10 @@ mod test {
     #[test]
     fn test_url_to_path() -> Result<(), UrlError> {
         let url = "/en-US/docs/Web/HTML";
-        let (path, locale, _typ) = url_path_to_path_buf(url)?;
+        let (path, slug, locale, _typ) = url_path_to_path_buf(url)?;
         assert_eq!(locale, Locale::EnUs);
         assert_eq!(path, PathBuf::from("web/html"));
+        assert_eq!(slug, "web/html");
         Ok(())
     }
 

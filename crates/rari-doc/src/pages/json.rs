@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::types::contributors::Usernames;
 use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
 use crate::pages::types::blog::BlogMeta;
-use crate::pages::types::dummy::BlogIndex;
+use crate::pages::types::spa::BlogIndex;
 use crate::specs::Specification;
 use crate::utils::modified_dt;
 
@@ -244,6 +244,7 @@ pub enum BuiltDocy {
     Curriculum(Box<JsonCurriculum>),
     BlogPost(Box<JsonBlogPost>),
     ContributorSpotlight(Box<JsonContributorSpotlight>),
+    BasicSPA(Box<JsonBasicSPA>),
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -275,5 +276,16 @@ pub struct PrevNextCurriculum {
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct UrlNTitle {
     pub title: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonBasicSPA {
+    pub slug: &'static str,
+    pub page_title: &'static str,
+    pub page_description: &'static str,
+    pub only_follow: bool,
+    pub no_indexing: bool,
     pub url: String,
 }

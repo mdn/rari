@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use concat_in_place::strcat;
+use constcat::concat;
 use rari_md::m2h;
 use rari_types::error::EnvError;
 use rari_types::fm_types::{FeatureStatus, PageType};
@@ -205,7 +206,7 @@ impl PageLike for ContributorSpotlight {
     }
 
     fn base_slug(&self) -> &str {
-        "/en-US/"
+        concat!("/", Locale::EnUs.as_url_str(), "/")
     }
 
     fn trailing_slash(&self) -> bool {

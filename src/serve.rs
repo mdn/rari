@@ -1,6 +1,6 @@
 use anyhow::Error;
 use rari_doc::pages::build::{
-    build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_dummy,
+    build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_spa,
 };
 use rari_doc::pages::json::BuiltDocy;
 use rari_doc::pages::page::{Page, PageLike};
@@ -18,10 +18,11 @@ fn get_json(url: &str) -> Result<BuiltDocy, Error> {
     let json = match page {
         Page::Doc(doc) => build_doc(&doc)?,
         Page::BlogPost(post) => build_blog_post(&post)?,
-        Page::Dummy(dummy) => build_dummy(&dummy)?,
+        Page::SPA(spa) => build_spa(&spa)?,
         Page::Curriculum(curriculim) => build_curriculum(&curriculim)?,
         Page::ContributorSpotlight(cs) => build_contributor_spotlight(&cs)?,
     };
+    tracing::info!("{url}");
     Ok(json)
 }
 

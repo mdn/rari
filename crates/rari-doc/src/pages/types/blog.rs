@@ -160,7 +160,7 @@ impl BlogPostBuildMeta {
         } = fm;
         let (locale, _) = locale_and_typ_from_path(&full_path)
             .unwrap_or((Default::default(), PageCategory::BlogPost));
-        let url = build_url(&slug, &locale, PageCategory::BlogPost);
+        let url = build_url(&slug, &locale, PageCategory::BlogPost)?;
         let path = full_path
             .strip_prefix(blog_root().ok_or(DocError::NoBlogRoot)?)?
             .to_path_buf();

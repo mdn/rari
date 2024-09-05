@@ -202,7 +202,7 @@ impl PageLike for Doc {
     }
 
     fn base_slug(&self) -> &str {
-        "/docs"
+        self.meta.url.split_inclusive("/docs").next().unwrap_or("/")
     }
 
     fn trailing_slash(&self) -> bool {
@@ -229,7 +229,7 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
         sidebar,
         ..
     } = serde_yaml::from_str(fm)?;
-    let url = build_url(&slug, &locale, PageCategory::Doc);
+    let url = build_url(&slug, &locale, PageCategory::Doc)?;
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?
         .to_path_buf();

@@ -32,7 +32,7 @@ use crate::pages::types::curriculum::{
     prev_next_modules, prev_next_overview, CurriculumPage, Template,
 };
 use crate::pages::types::doc::{render_md_to_html, Doc};
-use crate::pages::types::dummy::Dummy;
+use crate::pages::types::spa::SPA;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
 use crate::translations::get_translations_for;
@@ -319,8 +319,8 @@ pub fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
     })))
 }
 
-pub fn build_dummy(dummy: &Dummy) -> Result<BuiltDocy, DocError> {
-    dummy.as_built_doc()
+pub fn build_spa(spa: &SPA) -> Result<BuiltDocy, DocError> {
+    spa.as_built_doc()
 }
 
 pub fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> {

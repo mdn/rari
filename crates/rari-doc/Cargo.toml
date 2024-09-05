@@ -38,6 +38,9 @@ itertools = "0.13"
 memoize = "0.4"
 concat-in-place = "1"
 indexmap = "2"
+constcat = "0.5"
+phf_macros = "0.11"
+phf = "0.11"
 
 rari-utils = { path = "../rari-utils" }
 rari-types = { path = "../rari-types" }

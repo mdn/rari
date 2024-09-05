@@ -14,7 +14,7 @@ use crate::pages::types::blog::BlogPost;
 use crate::pages::types::contributors::ContributorSpotlight;
 use crate::pages::types::curriculum::CurriculumPage;
 use crate::pages::types::doc::Doc;
-use crate::pages::types::dummy::Dummy;
+use crate::pages::types::spa::SPA;
 use crate::resolve::{strip_locale_from_url, url_path_to_path_buf};
 use crate::utils::{locale_and_typ_from_path, root_for_locale};
 
@@ -23,7 +23,7 @@ use crate::utils::{locale_and_typ_from_path, root_for_locale};
 pub enum Page {
     Doc(Arc<Doc>),
     BlogPost(Arc<BlogPost>),
-    Dummy(Arc<Dummy>),
+    SPA(Arc<SPA>),
     Curriculum(Arc<CurriculumPage>),
     ContributorSpotlight(Arc<ContributorSpotlight>),
 }
@@ -32,7 +32,7 @@ pub enum Page {
 pub enum PageCategory {
     Doc,
     BlogPost,
-    Dummy,
+    SPA,
     Curriculum,
     ContributorSpotlight,
 }
@@ -92,7 +92,7 @@ impl PageReader for Page {
         match typ {
             PageCategory::Doc => Doc::read(path, locale),
             PageCategory::BlogPost => BlogPost::read(path, locale),
-            PageCategory::Dummy => Dummy::read(path, locale),
+            PageCategory::SPA => SPA::read(path, locale),
             PageCategory::Curriculum => CurriculumPage::read(path, locale),
             PageCategory::ContributorSpotlight => ContributorSpotlight::read(path, locale),
         }
@@ -115,12 +115,13 @@ pub fn url_path_to_page_with_other_locale_and_fallback(
     url_path: &str,
     locale: Option<Locale>,
 ) -> Result<Page, DocError> {
-    if let Some(dummy) = Dummy::from_url(url_path) {
-        return Ok(dummy);
-    }
-    let (path, locale_from_url, typ) = url_path_to_path_buf(url_path)?;
+    let (path, slug, locale_from_url, typ) = url_path_to_path_buf(url_path)?;
     let locale = locale.unwrap_or(locale_from_url);
     match typ {
+        PageCategory::SPA => SPA::from_slug(slug, locale).ok_or(DocError::PageNotFound(
+            url_path.to_string(),
+            PageCategory::SPA,
+        )),
         PageCategory::Doc => {
             let doc = doc_from_path_and_locale(&path, locale);
             if doc.is_err() && locale != Default::default() {
@@ -141,7 +142,6 @@ pub fn url_path_to_page_with_other_locale_and_fallback(
                 url_path.to_string(),
                 PageCategory::ContributorSpotlight,
             )),
-        _ => unreachable!(),
     }
 }
 

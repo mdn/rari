@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
+use constcat::concat;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::curriculum_root;
 use rari_types::locale::Locale;
@@ -251,7 +252,7 @@ impl PageLike for CurriculumPage {
     }
 
     fn base_slug(&self) -> &str {
-        "/en-US/"
+        concat!("/", Locale::EnUs.as_url_str(), "/")
     }
 
     fn trailing_slash(&self) -> bool {
