@@ -8,6 +8,7 @@ use rari_types::locale::Locale;
 use rari_types::RariEnv;
 
 use super::types::contributors::contributor_spotlight_from_url;
+use super::types::generic::GenericPage;
 use crate::cached_readers::{blog_from_url, curriculum_from_url};
 use crate::error::DocError;
 use crate::pages::types::blog::BlogPost;
@@ -26,6 +27,7 @@ pub enum Page {
     SPA(Arc<SPA>),
     Curriculum(Arc<CurriculumPage>),
     ContributorSpotlight(Arc<ContributorSpotlight>),
+    GenericPage(Arc<GenericPage>),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -35,6 +37,7 @@ pub enum PageCategory {
     SPA,
     Curriculum,
     ContributorSpotlight,
+    GenericPage,
 }
 
 impl Page {
@@ -95,6 +98,7 @@ impl PageReader for Page {
             PageCategory::SPA => SPA::read(path, locale),
             PageCategory::Curriculum => CurriculumPage::read(path, locale),
             PageCategory::ContributorSpotlight => ContributorSpotlight::read(path, locale),
+            PageCategory::GenericPage => GenericPage::read(path, locale),
         }
     }
 }
@@ -142,6 +146,9 @@ pub fn url_path_to_page_with_other_locale_and_fallback(
                 url_path.to_string(),
                 PageCategory::ContributorSpotlight,
             )),
+        PageCategory::GenericPage => GenericPage::from_slug(slug, locale).ok_or(
+            DocError::PageNotFound(url_path.to_string(), PageCategory::GenericPage),
+        ),
     }
 }
 

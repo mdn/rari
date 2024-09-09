@@ -7,11 +7,11 @@ use rari_types::globals::build_out_root;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, span, Level};
 
-use crate::cached_readers::{blog_files, curriculum_files};
+use crate::cached_readers::{blog_files, curriculum_files, generic_pages_files};
 use crate::error::DocError;
 use crate::pages::build::{
-    build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_spa,
-    copy_additional_files,
+    build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_generic_page,
+    build_spa, copy_additional_files,
 };
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::spa::SPA;
@@ -28,6 +28,7 @@ pub fn build_single_page(page: &Page) {
         Page::SPA(spa) => build_spa(spa),
         Page::Curriculum(curriculum) => build_curriculum(curriculum),
         Page::ContributorSpotlight(cs) => build_contributor_spotlight(cs),
+        Page::GenericPage(generic) => build_generic_page(generic),
     };
     match built_page {
         Ok(built_page) => {
@@ -77,6 +78,16 @@ pub fn build_blog_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
         .posts
         .values()
         .chain(once(&SPA::from_url("/en-US/blog/").unwrap()))
+        .map(|page| {
+            build_single_page(page);
+            Cow::Owned(page.url().to_string())
+        })
+        .collect())
+}
+
+pub fn build_generic_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+    Ok(generic_pages_files()
+        .values()
         .map(|page| {
             build_single_page(page);
             Cow::Owned(page.url().to_string())

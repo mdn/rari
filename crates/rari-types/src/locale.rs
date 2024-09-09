@@ -107,6 +107,20 @@ impl Locale {
             _ => self.as_url_str(),
         }
     }
+
+    pub const fn all() -> &'static [Self] {
+        &[
+            Self::EnUs,
+            Self::Es,
+            Self::Fr,
+            Self::Ja,
+            Self::Ko,
+            Self::PtBr,
+            Self::Ru,
+            Self::ZhCn,
+            Self::ZhTw,
+        ]
+    }
 }
 
 impl FromStr for Locale {

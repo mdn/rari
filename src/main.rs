@@ -7,7 +7,7 @@ use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 
 use clap::{Args, Parser, Subcommand};
-use rari_doc::build::{build_blog_pages, build_curriculum_pages, build_docs};
+use rari_doc::build::{build_blog_pages, build_curriculum_pages, build_docs, build_generic_pages};
 use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
@@ -68,6 +68,8 @@ struct BuildArgs {
     skip_blog: bool,
     #[arg(long)]
     skip_curriculum: bool,
+    #[arg(long)]
+    skip_spas: bool,
     #[arg(long)]
     skip_sitemap: bool,
     #[arg(long)]
@@ -168,6 +170,11 @@ fn main() -> Result<(), anyhow::Error> {
             };
             println!("Took: {: >10.3?} for {}", start.elapsed(), docs.len());
             let mut urls = Vec::new();
+            if !args.skip_spas {
+                let start = std::time::Instant::now();
+                urls.extend(build_generic_pages()?);
+                println!("Took: {: >10.3?} to build spas", start.elapsed());
+            }
             if !args.skip_content {
                 let start = std::time::Instant::now();
                 urls.extend(build_docs(&docs)?);

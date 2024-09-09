@@ -13,7 +13,7 @@ use serde::Serialize;
 use crate::cached_readers::blog_files;
 use crate::error::DocError;
 use crate::pages::json::{BuiltDocy, HyData, JsonBasicSPA, JsonBlogPost, JsonBlogPostDoc};
-use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
+use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::title::page_title;
 use crate::pages::types::blog::BlogMeta;
 

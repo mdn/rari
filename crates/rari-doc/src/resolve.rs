@@ -5,6 +5,7 @@ use rari_types::locale::Locale;
 
 use crate::error::{DocError, UrlError};
 use crate::pages::page::{PageCategory, PageLike};
+use crate::pages::types::generic::GenericPage;
 use crate::pages::types::spa::SPA;
 
 pub fn url_to_path_buf(slug: &str) -> PathBuf {
@@ -46,8 +47,11 @@ pub fn url_path_to_path_buf(
         _ => {
             let (_, slug) = strip_locale_from_url(url_path);
             let slug = slug.strip_prefix('/').unwrap_or(slug);
+            println!("{slug}");
             if SPA::is_spa(slug, locale) {
                 (PageCategory::SPA, slug)
+            } else if GenericPage::is_generic(slug, locale) {
+                (PageCategory::GenericPage, slug)
             } else {
                 return Err(UrlError::InvalidUrl);
             }
@@ -69,6 +73,7 @@ pub fn build_url(slug: &str, locale: &Locale, typ: PageCategory) -> Result<Strin
         PageCategory::ContributorSpotlight => {
             format!("/{}/community/spotlight/{}", locale.as_url_str(), slug)
         }
+        PageCategory::GenericPage => format!("/{}/{}", locale.as_url_str(), slug),
     })
 }
 

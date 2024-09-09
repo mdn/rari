@@ -21,6 +21,10 @@ pub fn blog_root() -> Option<&'static Path> {
 }
 
 #[inline(always)]
+pub fn generic_pages_root() -> Option<&'static Path> {
+    settings().generic_pages_root.as_deref()
+}
+#[inline(always)]
 pub fn curriculum_root() -> Option<&'static Path> {
     settings().curriculum_root.as_deref()
 }

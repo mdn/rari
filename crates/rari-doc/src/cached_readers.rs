@@ -5,6 +5,7 @@ use std::sync::{Arc, LazyLock, OnceLock, RwLock};
 
 use rari_types::globals::{
     blog_root, cache_content, content_root, content_translated_root, curriculum_root,
+    generic_pages_root,
 };
 use rari_types::locale::Locale;
 use rari_utils::io::read_to_string;
@@ -16,6 +17,7 @@ use crate::pages::page::{Page, PageLike};
 use crate::pages::types::blog::{Author, AuthorFrontmatter, BlogPost, BlogPostBuildMeta};
 use crate::pages::types::curriculum::{CurriculumIndexEntry, CurriculumPage};
 use crate::pages::types::doc::Doc;
+use crate::pages::types::generic::GenericPage;
 use crate::reader::read_docs_parallel;
 use crate::sidebars::jsref;
 use crate::translations::init_translations_from_static_docs;
@@ -29,6 +31,7 @@ type SidebarFilesCache = Arc<RwLock<HashMap<(String, Locale), Arc<MetaSidebar>>>
 pub static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
     LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
 pub static CACHED_CURRICULUM: OnceLock<CurriculumFiles> = OnceLock::new();
+pub static GENERIC_PAGES_FILES: OnceLock<GenericPagesFiles> = OnceLock::new();
 
 #[derive(Debug, Default, Clone)]
 pub struct BlogFiles {
@@ -94,6 +97,30 @@ pub fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
             .collect())
     } else {
         Err(DocError::NoBlogRoot)
+    }
+}
+
+pub fn gather_generic_pages() -> Result<HashMap<String, Page>, DocError> {
+    if let Some(root) = generic_pages_root() {
+        Ok(read_docs_parallel::<GenericPage>(&[root], Some("*.md"))?
+            .into_iter()
+            .filter_map(|page| {
+                if let Page::GenericPage(generic) = page {
+                    Some(generic)
+                } else {
+                    None
+                }
+            })
+            .flat_map(|generic| {
+                Locale::all()
+                    .iter()
+                    .map(|locale| Page::GenericPage(Arc::new(generic.as_locale(*locale))))
+                    .collect::<Vec<_>>()
+            })
+            .map(|page| (page.url().to_ascii_lowercase(), page))
+            .collect())
+    } else {
+        Err(DocError::NoGenericPagesRoot)
     }
 }
 
@@ -274,4 +301,20 @@ pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
     }
     init_translations_from_static_docs();
     Ok(docs)
+}
+
+pub type GenericPagesFiles = HashMap<String, Page>;
+
+pub fn generic_pages_files() -> Cow<'static, GenericPagesFiles> {
+    fn gather() -> GenericPagesFiles {
+        gather_generic_pages().unwrap_or_else(|e| {
+            error!("{e}");
+            Default::default()
+        })
+    }
+    if cache_content() {
+        Cow::Borrowed(GENERIC_PAGES_FILES.get_or_init(gather))
+    } else {
+        Cow::Owned(gather())
+    }
 }

@@ -109,6 +109,7 @@ pub enum PageType {
     // Synthetic
     BlogPost,
     Curriculum,
+    GenericPage,
 
     #[serde(other)]
     SPA,

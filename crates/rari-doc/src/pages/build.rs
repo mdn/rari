@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fs;
 use std::path::Path;
 
+use concat_in_place::strcat;
 use rari_types::fm_types::PageType;
 use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
@@ -9,13 +10,14 @@ use scraper::Html;
 
 use super::json::{
     BuiltDocy, Compat, ContributorSpotlightHyData, HyData, JsonBlogPost, JsonBlogPostDoc,
-    JsonCurriculum, JsonDoADoc, JsonDoc, Prose, Section, Source, SpecificationSection, TocEntry,
-    Translation,
+    JsonCurriculum, JsonDoADoc, JsonDoc, JsonGenericHyData, JsonGenericPage, Prose, Section,
+    Source, SpecificationSection, TocEntry, Translation,
 };
 use super::page::PageLike;
 use super::parents::parents;
 use super::title::{page_title, transform_title};
 use super::types::contributors::ContributorSpotlight;
+use super::types::generic::GenericPage;
 use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::html::bubble_up::bubble_up_curriculum_page;
@@ -316,6 +318,19 @@ pub fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
             post.meta.image.file
         )),
         ..Default::default()
+    })))
+}
+
+pub fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
+    let PageContent { body, toc, .. } = build_content(page)?;
+    Ok(BuiltDocy::GenericPage(Box::new(JsonGenericPage {
+        hy_data: JsonGenericHyData {
+            sections: body,
+            title: page.meta.title.clone(),
+            toc,
+        },
+        page_title: strcat!(page.meta.title.as_str() " | " page.meta.title_suffix.as_str()),
+        url: page.meta.url.clone(),
     })))
 }
 

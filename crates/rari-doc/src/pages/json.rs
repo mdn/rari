@@ -245,6 +245,7 @@ pub enum BuiltDocy {
     BlogPost(Box<JsonBlogPost>),
     ContributorSpotlight(Box<JsonContributorSpotlight>),
     BasicSPA(Box<JsonBasicSPA>),
+    GenericPage(Box<JsonGenericPage>),
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -287,5 +288,21 @@ pub struct JsonBasicSPA {
     pub page_description: &'static str,
     pub only_follow: bool,
     pub no_indexing: bool,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonGenericHyData {
+    pub sections: Vec<Section>,
+    pub title: String,
+    pub toc: Vec<TocEntry>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonGenericPage {
+    pub hy_data: JsonGenericHyData,
+    pub page_title: String,
     pub url: String,
 }

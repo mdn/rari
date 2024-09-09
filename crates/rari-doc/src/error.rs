@@ -23,6 +23,8 @@ pub enum DocError {
     NoSuchPrefix(#[from] StripPrefixError),
     #[error("No curricm root set")]
     NoCurriculumRoot,
+    #[error("No generic pages roots set")]
+    NoGenericPagesRoot,
     #[error("No H1 found")]
     NoH1,
     #[error(transparent)]
