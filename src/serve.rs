@@ -10,6 +10,7 @@ use tiny_http::{Response, Server};
 use tracing::{error, span, Level};
 
 fn get_json(url: &str) -> Result<BuiltDocy, Error> {
+    let url = url.strip_suffix("index.json").unwrap_or(url);
     let page = Page::page_from_url_path(url)?;
 
     let slug = &page.slug();

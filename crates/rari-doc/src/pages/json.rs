@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use rari_data::baseline::SupportStatusWithByKey;
 use rari_types::locale::{Locale, Native};
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use super::types::contributors::Usernames;
 use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
 use crate::pages::types::blog::BlogMeta;
-use crate::pages::types::spa::BlogIndex;
 use crate::specs::Specification;
 use crate::utils::modified_dt;
 
@@ -115,6 +114,11 @@ pub struct JsonDoc {
     pub baseline: Option<&'static SupportStatusWithByKey>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
     pub browser_compat: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BlogIndex {
+    pub posts: Vec<BlogMeta>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -246,6 +250,7 @@ pub enum BuiltDocy {
     ContributorSpotlight(Box<JsonContributorSpotlight>),
     BasicSPA(Box<JsonBasicSPA>),
     GenericPage(Box<JsonGenericPage>),
+    HomePageSPA(Box<JsonHomePageSPA>),
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -285,10 +290,70 @@ pub struct UrlNTitle {
 pub struct JsonBasicSPA {
     pub slug: &'static str,
     pub page_title: &'static str,
-    pub page_description: &'static str,
+    pub page_description: Option<&'static str>,
     pub only_follow: bool,
     pub no_indexing: bool,
     pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HomePageFeaturedArticle {
+    pub mdn_url: String,
+    pub summay: String,
+    pub title: String,
+    pub tag: Option<Parent>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HomePageFeaturedContributor {
+    pub contributor_name: String,
+    pub url: String,
+    pub quote: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct NameUrl {
+    pub name: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HomePageLatestNewsItem {
+    pub url: String,
+    pub title: String,
+    pub author: Option<String>,
+    pub source: NameUrl,
+    pub published_at: NaiveDate,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HomePageRecentContribution {
+    pub number: i64,
+    pub title: String,
+    pub updated_at: DateTime<Utc>,
+    pub url: String,
+    pub repo: NameUrl,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ItemContainer<T>
+where
+    T: Clone + Serialize,
+{
+    pub items: Vec<T>,
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonHomePageSPA {
+    pub slug: &'static str,
+    pub page_title: &'static str,
+    pub page_description: Option<&'static str>,
+    pub featured_articles: Vec<HomePageFeaturedArticle>,
+    pub featured_contributor: Option<HomePageFeaturedContributor>,
+    pub latest_news: ItemContainer<HomePageLatestNewsItem>,
+    pub recent_contributions: ItemContainer<HomePageRecentContribution>,
 }
 
 #[derive(Debug, Clone, Serialize)]

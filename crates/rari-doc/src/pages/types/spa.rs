@@ -6,25 +6,33 @@ use concat_in_place::strcat;
 use constcat::concat;
 use phf::{phf_map, Map};
 use rari_types::fm_types::{FeatureStatus, PageType};
+use rari_types::globals::content_translated_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
-use serde::Serialize;
 
+use super::spa_homepage::{
+    featured_articles, featured_contributor, lastet_news, recent_contributions,
+};
 use crate::cached_readers::blog_files;
 use crate::error::DocError;
-use crate::pages::json::{BuiltDocy, HyData, JsonBasicSPA, JsonBlogPost, JsonBlogPostDoc};
+use crate::pages::json::{
+    BlogIndex, BuiltDocy, HyData, ItemContainer, JsonBasicSPA, JsonBlogPost, JsonBlogPostDoc,
+    JsonHomePageSPA,
+};
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::title::page_title;
 use crate::pages::types::blog::BlogMeta;
 
-#[derive(Debug, Clone, Serialize)]
-pub struct BlogIndex {
-    pub posts: Vec<BlogMeta>,
+#[derive(Debug, Clone, Copy)]
+pub struct BasicSPA {
+    pub only_follow: bool,
+    pub no_indexing: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum SPAData {
-    BlogIndex(BlogIndex),
+    BlogIndex,
+    HomePage,
     BasicSPA(BasicSPA),
 }
 
@@ -35,8 +43,9 @@ pub struct SPA {
     pub url: String,
     pub locale: Locale,
     pub page_type: PageType,
-    pub typ: SPAData,
+    pub data: SPAData,
     pub base_slug: Cow<'static, str>,
+    pub page_description: Option<&'static str>,
 }
 impl SPA {
     pub fn from_url(url: &str) -> Option<Page> {
@@ -45,50 +54,46 @@ impl SPA {
             _ => None,
         }
     }
+
     pub fn from_slug(slug: &str, locale: Locale) -> Option<Page> {
-        if let Some(basic_spa) = BASIC_SPAS.get(slug) {
-            return Some(Page::SPA(Arc::new(SPA {
-                page_title: basic_spa.page_title,
-                slug: basic_spa.slug,
-                url: strcat!("/" locale.as_url_str() basic_spa.slug),
+        BASIC_SPAS.get(slug).and_then(|build_spa| {
+            if build_spa.en_us_only && locale != Locale::EnUs { None } else {
+            Some(Page::SPA(Arc::new(SPA {
+                page_title: build_spa.page_title,
+                slug: build_spa.slug,
+                url: strcat!("/" locale.as_url_str() "/" build_spa.slug if build_spa.trailing_slash { "/" } else { "" }),
                 locale,
                 page_type: PageType::SPA,
-                typ: SPAData::BasicSPA(*basic_spa),
+                data: build_spa.data,
                 base_slug: Cow::Owned(strcat!("/" locale.as_url_str() "/")),
-            })));
-        }
-        match (slug, locale) {
-            ("blog" | "blog/", Locale::EnUs) => Some(Page::SPA(Arc::new(SPA {
-                page_title: "MDN Blog",
-                slug: "blog",
-                url: "/en-US/blog/".to_string(),
-                locale: Locale::EnUs,
-                page_type: PageType::SPA,
-                typ: SPAData::BlogIndex(BlogIndex {
-                    posts: blog_files()
-                        .sorted_meta
-                        .iter()
-                        .rev()
-                        .map(BlogMeta::from)
-                        .map(|mut m| {
-                            m.links = Default::default();
-                            m
-                        })
-                        .collect(),
-                }),
-                base_slug: Cow::Borrowed(concat!("/", Locale::EnUs.as_url_str(), "/")),
-            }))),
-            _ => None,
-        }
+                page_description: build_spa.page_description,
+            })))}
+        })
     }
 
     pub fn is_spa(slug: &str, locale: Locale) -> bool {
-        BASIC_SPAS.contains_key(slug) || matches!((slug, locale), ("blog" | "blog/", Locale::EnUs))
+        BASIC_SPAS
+            .get(slug)
+            .map(|build_spa| locale == Default::default() || !build_spa.en_us_only)
+            .unwrap_or_default()
+    }
+
+    pub fn all() -> Vec<(&'static &'static str, Locale)> {
+        BASIC_SPAS
+            .entries()
+            .flat_map(|(slug, build_spa)| {
+                if build_spa.en_us_only || content_translated_root().is_none() {
+                    vec![(slug, Locale::EnUs)]
+                } else {
+                    Locale::all().iter().map(|locale| (slug, *locale)).collect()
+                }
+            })
+            .collect()
     }
 
     pub fn as_built_doc(&self) -> Result<BuiltDocy, DocError> {
-        match &self.typ {
-            SPAData::BlogIndex(b) => Ok(BuiltDocy::BlogPost(Box::new(JsonBlogPost {
+        match &self.data {
+            SPAData::BlogIndex => Ok(BuiltDocy::BlogPost(Box::new(JsonBlogPost {
                 doc: JsonBlogPostDoc {
                     title: self.title().to_string(),
                     mdn_url: self.url().to_owned(),
@@ -100,17 +105,54 @@ impl SPA {
                 url: self.url().to_owned(),
                 locale: self.locale(),
                 blog_meta: None,
-                hy_data: Some(HyData::BlogIndex(b.clone())),
+                hy_data: Some(HyData::BlogIndex(BlogIndex {
+                    posts: blog_files()
+                        .sorted_meta
+                        .iter()
+                        .rev()
+                        .map(BlogMeta::from)
+                        .map(|mut m| {
+                            m.links = Default::default();
+                            m
+                        })
+                        .collect(),
+                })),
                 page_title: self.title().to_owned(),
                 ..Default::default()
             }))),
             SPAData::BasicSPA(basic_spa) => Ok(BuiltDocy::BasicSPA(Box::new(JsonBasicSPA {
                 slug: self.slug,
                 page_title: self.page_title,
-                page_description: basic_spa.page_description,
+                page_description: self.page_description,
                 only_follow: basic_spa.only_follow,
                 no_indexing: basic_spa.no_indexing,
                 url: strcat!(self.base_slug.as_ref() self.slug),
+            }))),
+            SPAData::HomePage => Ok(BuiltDocy::HomePageSPA(Box::new(JsonHomePageSPA {
+                slug: self.slug,
+                page_title: self.page_title,
+                page_description: self.page_description,
+                featured_articles: featured_articles(
+                    &[
+                        "/en-US/blog/mdn-scrimba-partnership/",
+                        "/en-US/blog/learn-javascript-console-methods/",
+                        "/en-US/blog/introduction-to-web-sustainability/",
+                        "/en-US/docs/Web/API/CSS_Custom_Highlight_API",
+                    ],
+                    self.locale,
+                )?,
+                featured_contributor: featured_contributor(self.locale)?,
+                latest_news: ItemContainer {
+                    items: lastet_news(&[
+                        "/en-US/blog/mdn-scrimba-partnership/",
+                        "/en-US/blog/mdn-http-observatory-launch/",
+                        "/en-US/blog/mdn-curriculum-launch/",
+                        "/en-US/blog/baseline-evolution-on-mdn/",
+                    ])?,
+                },
+                recent_contributions: ItemContainer {
+                    items: recent_contributions()?,
+                },
             }))),
         }
     }
@@ -184,115 +226,136 @@ impl PageLike for SPA {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct BasicSPA {
+#[derive(Debug, Clone, Copy)]
+pub struct BuildSPA {
     pub slug: &'static str,
     pub page_title: &'static str,
-    pub page_description: &'static str,
-    pub only_follow: bool,
-    pub no_indexing: bool,
+    pub page_description: Option<&'static str>,
+    pub trailing_slash: bool,
+    pub en_us_only: bool,
+    pub data: SPAData,
 }
 
-const DEFAULT_BASIC_SPA: BasicSPA = BasicSPA {
+const DEFAULT_BASIC_SPA: BuildSPA = BuildSPA {
     slug: "",
     page_title: "",
-    page_description: "",
-    only_follow: false,
-    no_indexing: false,
+    page_description: None,
+    trailing_slash: false,
+    en_us_only: false,
+    data: SPAData::BasicSPA(BasicSPA {
+        only_follow: false,
+        no_indexing: false,
+    }),
 };
 
 const MDN_PLUS_TITLE: &str = "MDN Plus";
 const OBSERVATORY_TITLE_FULL: &str = "HTTP Observatory | MDN";
 
-const OBSERVATORY_DESCRIPTION: &str =
-"Test your site’s HTTP headers, including CSP and HSTS, to find security problems and get actionable recommendations to make your website more secure. Test other websites to see how you compare.";
+const OBSERVATORY_DESCRIPTION: Option<&str> =
+Some("Test your site’s HTTP headers, including CSP and HSTS, to find security problems and get actionable recommendations to make your website more secure. Test other websites to see how you compare.");
 
-static BASIC_SPAS: Map<&'static str, BasicSPA> = phf_map!(
-    "play" => BasicSPA {
+static BASIC_SPAS: Map<&'static str, BuildSPA> = phf_map!(
+    "" => BuildSPA {
+        slug: "",
+        page_title: "MDN Web Docs",
+        page_description: None,
+        trailing_slash: true,
+        data: SPAData::HomePage,
+        ..DEFAULT_BASIC_SPA
+    },
+    "blog" => BuildSPA {
+        slug: "blog",
+        page_title: "MDN Blog",
+        page_description: None,
+        trailing_slash: true,
+        en_us_only: true,
+        data: SPAData::BlogIndex
+    },
+    "play" => BuildSPA {
         slug: "play",
         page_title: "Playground | MDN",
         ..DEFAULT_BASIC_SPA
     },
-    "observatory" => BasicSPA {
+    "observatory" => BuildSPA {
         slug: "observatory",
         page_title: concat!("HTTP Header Security Test - ", OBSERVATORY_TITLE_FULL),
         page_description: OBSERVATORY_DESCRIPTION,
         ..DEFAULT_BASIC_SPA
     },
-    "observatory/analyze" => BasicSPA {
+    "observatory/analyze" => BuildSPA {
         slug: "observatory/analyze",
         page_title: concat!("Scan results - ", OBSERVATORY_TITLE_FULL),
         page_description: OBSERVATORY_DESCRIPTION,
-        no_indexing: true,
+        data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
         ..DEFAULT_BASIC_SPA
     },
-    "observatory/docs/tests_and_scoring" => BasicSPA {
+    "observatory/docs/tests_and_scoring" => BuildSPA {
         slug: "observatory/docs/tests_and_scoring",
         page_title: concat!("Tests & Scoring - ", OBSERVATORY_TITLE_FULL),
         page_description: OBSERVATORY_DESCRIPTION,
         ..DEFAULT_BASIC_SPA
     },
-    "observatory/docs/faq" => BasicSPA {
+    "observatory/docs/faq" => BuildSPA {
         slug: "observatory/docs/faq",
         page_title: concat!("FAQ - ", OBSERVATORY_TITLE_FULL),
         page_description: OBSERVATORY_DESCRIPTION,
         ..DEFAULT_BASIC_SPA
     },
-    "search" => BasicSPA {
+    "search" => BuildSPA {
         slug: "search",
         page_title: "Search",
-        only_follow: true,
+        data: SPAData::BasicSPA(BasicSPA { only_follow: true, no_indexing: false }),
         ..DEFAULT_BASIC_SPA
     },
-    "plus" => BasicSPA {
+    "plus" => BuildSPA {
         slug: "plus",
         page_title: MDN_PLUS_TITLE,
         ..DEFAULT_BASIC_SPA
     },
-    "plus/ai-help" => BasicSPA {
+    "plus/ai-help" => BuildSPA {
         slug: "plus/ai-help",
         page_title: concat!("AI Help | ", MDN_PLUS_TITLE),
         ..DEFAULT_BASIC_SPA
     },
-    "plus/collections" => BasicSPA {
+    "plus/collections" => BuildSPA {
         slug: "plus/collections",
         page_title: concat!("Collections | ", MDN_PLUS_TITLE),
-        no_indexing: true,
+        data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
         ..DEFAULT_BASIC_SPA
     },
-    "plus/collections/frequently_viewed" => BasicSPA {
+    "plus/collections/frequently_viewed" => BuildSPA {
         slug: "plus/collections/frequently_viewed",
         page_title: concat!("Frequently viewed articles | ", MDN_PLUS_TITLE),
-        no_indexing: true,
+        data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
         ..DEFAULT_BASIC_SPA
     },
-    "plus/updates" => BasicSPA {
+    "plus/updates" => BuildSPA {
         slug: "plus/updates",
         page_title: concat!("Updates | ", MDN_PLUS_TITLE),
         ..DEFAULT_BASIC_SPA
     },
-    "plus/settings" => BasicSPA {
+    "plus/settings" => BuildSPA {
         slug: "plus/settings",
         page_title: concat!("Settings | ", MDN_PLUS_TITLE),
-        no_indexing: true,
+        data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
         ..DEFAULT_BASIC_SPA
     },
-    "about" => BasicSPA {
+    "about" => BuildSPA {
         slug: "about",
         page_title: "About MDN",
         ..DEFAULT_BASIC_SPA
     },
-    "community" => BasicSPA {
+    "community" => BuildSPA {
         slug: "community",
         page_title: "Contribute to MDN",
         ..DEFAULT_BASIC_SPA
     },
-    "advertising" => BasicSPA {
+    "advertising" => BuildSPA {
         slug: "advertising",
         page_title: "Advertise with us",
         ..DEFAULT_BASIC_SPA
     },
-    "newsletter" => BasicSPA {
+    "newsletter" => BuildSPA {
         slug: "newsletter",
         page_title: "Stay Informed with MDN",
         ..DEFAULT_BASIC_SPA

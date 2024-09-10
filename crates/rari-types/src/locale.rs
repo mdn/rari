@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use thiserror::Error;
 
+use crate::globals::content_translated_root;
+
 #[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord)]
 pub enum Native {
     #[default]
@@ -108,18 +110,22 @@ impl Locale {
         }
     }
 
-    pub const fn all() -> &'static [Self] {
-        &[
-            Self::EnUs,
-            Self::Es,
-            Self::Fr,
-            Self::Ja,
-            Self::Ko,
-            Self::PtBr,
-            Self::Ru,
-            Self::ZhCn,
-            Self::ZhTw,
-        ]
+    pub fn all() -> &'static [Self] {
+        if content_translated_root().is_some() {
+            &[
+                Self::EnUs,
+                Self::Es,
+                Self::Fr,
+                Self::Ja,
+                Self::Ko,
+                Self::PtBr,
+                Self::Ru,
+                Self::ZhCn,
+                Self::ZhTw,
+            ]
+        } else {
+            &[Self::EnUs]
+        }
     }
 }
 

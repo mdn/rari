@@ -92,14 +92,14 @@ impl GenericPage {
     }
 
     pub fn as_locale(&self, locale: Locale) -> Self {
-        let GenericPage {
+        let Self {
             mut meta,
             raw,
             content_start,
         } = self.clone();
         meta.locale = locale;
         meta.url = strcat!("/" locale.as_url_str() "/" meta.slug.as_str());
-        GenericPage {
+        Self {
             meta,
             raw,
             content_start,

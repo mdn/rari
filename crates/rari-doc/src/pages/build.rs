@@ -157,6 +157,7 @@ pub fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     let encoded_html = render_md_to_html(&ks_rendered_doc, page.locale())?;
     let html = decode_ref(&encoded_html, &templs)?;
     let post_processed_html = post_process_html(&html, page, false)?;
+
     let mut fragment = Html::parse_fragment(&post_processed_html);
     if page.page_type() == PageType::Curriculum {
         bubble_up_curriculum_page(&mut fragment)?;
@@ -322,7 +323,8 @@ pub fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
 }
 
 pub fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
-    let PageContent { body, toc, .. } = build_content(page)?;
+    let built = build_content(page);
+    let PageContent { body, toc, .. } = built?;
     Ok(BuiltDocy::GenericPage(Box::new(JsonGenericPage {
         hy_data: JsonGenericHyData {
             sections: body,
@@ -399,11 +401,11 @@ pub fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDoc
     )))
 }
 
-pub fn copy_additional_files(from: &Path, to: &Path) -> Result<(), DocError> {
+pub fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<(), DocError> {
     for from in fs::read_dir(from)?
         .filter_map(Result::ok)
         .map(|f| f.path())
-        .filter(|p| p.is_file())
+        .filter(|p| p.is_file() && p != ignore)
     {
         if let Some(filename) = from.file_name() {
             let to = to.to_path_buf().join(filename);

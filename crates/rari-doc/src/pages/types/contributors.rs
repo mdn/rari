@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use concat_in_place::strcat;
-use constcat::concat;
 use rari_md::m2h;
 use rari_types::error::EnvError;
 use rari_types::fm_types::{FeatureStatus, PageType};
@@ -135,6 +134,23 @@ pub struct ContributorSpotlight {
     content_start: usize,
 }
 
+impl ContributorSpotlight {
+    pub fn as_locale(&self, locale: Locale) -> Self {
+        let Self {
+            mut meta,
+            raw,
+            content_start,
+        } = self.clone();
+        meta.locale = locale;
+        meta.url = strcat!("/" locale.as_url_str() "/community/" meta.slug.as_str());
+        Self {
+            meta,
+            raw,
+            content_start,
+        }
+    }
+}
+
 impl PageReader for ContributorSpotlight {
     fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError> {
         read_contributor_spotlight(path, locale.unwrap_or_default())
@@ -206,7 +222,7 @@ impl PageLike for ContributorSpotlight {
     }
 
     fn base_slug(&self) -> &str {
-        concat!("/", Locale::EnUs.as_url_str(), "/")
+        "/en-US/"
     }
 
     fn trailing_slash(&self) -> bool {

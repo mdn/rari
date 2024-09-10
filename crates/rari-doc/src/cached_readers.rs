@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, OnceLock, RwLock};
 
 use rari_types::globals::{
-    blog_root, cache_content, content_root, content_translated_root, curriculum_root,
-    generic_pages_root,
+    blog_root, cache_content, content_root, content_translated_root, contributor_spotlight_root,
+    curriculum_root, generic_pages_root,
 };
 use rari_types::locale::Locale;
 use rari_utils::io::read_to_string;
@@ -15,6 +15,7 @@ use crate::error::DocError;
 use crate::html::sidebar::{MetaSidebar, Sidebar};
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::blog::{Author, AuthorFrontmatter, BlogPost, BlogPostBuildMeta};
+use crate::pages::types::contributors::ContributorSpotlight;
 use crate::pages::types::curriculum::{CurriculumIndexEntry, CurriculumPage};
 use crate::pages::types::doc::Doc;
 use crate::pages::types::generic::GenericPage;
@@ -31,7 +32,8 @@ type SidebarFilesCache = Arc<RwLock<HashMap<(String, Locale), Arc<MetaSidebar>>>
 pub static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
     LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
 pub static CACHED_CURRICULUM: OnceLock<CurriculumFiles> = OnceLock::new();
-pub static GENERIC_PAGES_FILES: OnceLock<GenericPagesFiles> = OnceLock::new();
+pub static GENERIC_PAGES_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
+pub static CONTRIBUTOR_SPOTLIGHT_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
 
 #[derive(Debug, Default, Clone)]
 pub struct BlogFiles {
@@ -177,6 +179,30 @@ pub fn gather_curriculum() -> Result<CurriculumFiles, DocError> {
     }
 }
 
+pub fn gather_contributre_spotlight() -> Result<HashMap<String, Page>, DocError> {
+    if let Some(root) = contributor_spotlight_root() {
+        Ok(read_docs_parallel::<ContributorSpotlight>(&[root], None)?
+            .into_iter()
+            .filter_map(|page| {
+                if let Page::ContributorSpotlight(cs) = page {
+                    Some(cs)
+                } else {
+                    None
+                }
+            })
+            .flat_map(|cs| {
+                Locale::all()
+                    .iter()
+                    .map(|locale| Page::ContributorSpotlight(Arc::new(cs.as_locale(*locale))))
+                    .collect::<Vec<_>>()
+            })
+            .map(|page| (page.url().to_ascii_lowercase(), page))
+            .collect())
+    } else {
+        Err(DocError::NoGenericPagesRoot)
+    }
+}
+
 pub fn curriculum_files() -> Cow<'static, CurriculumFiles> {
     if cache_content() {
         Cow::Borrowed(CACHED_CURRICULUM.get_or_init(|| {
@@ -303,10 +329,10 @@ pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
     Ok(docs)
 }
 
-pub type GenericPagesFiles = HashMap<String, Page>;
+pub type UrlToPageMap = HashMap<String, Page>;
 
-pub fn generic_pages_files() -> Cow<'static, GenericPagesFiles> {
-    fn gather() -> GenericPagesFiles {
+pub fn generic_pages_files() -> Cow<'static, UrlToPageMap> {
+    fn gather() -> UrlToPageMap {
         gather_generic_pages().unwrap_or_else(|e| {
             error!("{e}");
             Default::default()
@@ -314,6 +340,20 @@ pub fn generic_pages_files() -> Cow<'static, GenericPagesFiles> {
     }
     if cache_content() {
         Cow::Borrowed(GENERIC_PAGES_FILES.get_or_init(gather))
+    } else {
+        Cow::Owned(gather())
+    }
+}
+
+pub fn contributor_spotlight_files() -> Cow<'static, UrlToPageMap> {
+    fn gather() -> UrlToPageMap {
+        gather_contributre_spotlight().unwrap_or_else(|e| {
+            error!("{e}");
+            Default::default()
+        })
+    }
+    if cache_content() {
+        Cow::Borrowed(CONTRIBUTOR_SPOTLIGHT_FILES.get_or_init(gather))
     } else {
         Cow::Owned(gather())
     }

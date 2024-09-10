@@ -37,7 +37,7 @@ pub fn url_path_to_path_buf(
     let tail: Vec<_> = split.collect();
     let (typ, slug) = match tail.as_slice() {
         ["docs", tail] => (PageCategory::Doc, *tail),
-        ["blog"] if locale == Default::default() => (PageCategory::SPA, Default::default()),
+        ["blog"] | ["blog", ""] if locale == Default::default() => (PageCategory::SPA, "blog"),
         ["blog", tail] if locale == Default::default() => (PageCategory::BlogPost, *tail),
         ["curriculum", tail] if locale == Default::default() => (PageCategory::Curriculum, *tail),
         ["community", tail] if locale == Default::default() && tail.starts_with("spotlight") => {
@@ -47,7 +47,6 @@ pub fn url_path_to_path_buf(
         _ => {
             let (_, slug) = strip_locale_from_url(url_path);
             let slug = slug.strip_prefix('/').unwrap_or(slug);
-            println!("{slug}");
             if SPA::is_spa(slug, locale) {
                 (PageCategory::SPA, slug)
             } else if GenericPage::is_generic(slug, locale) {

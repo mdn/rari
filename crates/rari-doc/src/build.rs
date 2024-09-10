@@ -7,7 +7,9 @@ use rari_types::globals::build_out_root;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, span, Level};
 
-use crate::cached_readers::{blog_files, curriculum_files, generic_pages_files};
+use crate::cached_readers::{
+    blog_files, contributor_spotlight_files, curriculum_files, generic_pages_files,
+};
 use crate::error::DocError;
 use crate::pages::build::{
     build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_generic_page,
@@ -43,7 +45,7 @@ pub fn build_single_page(page: &Page) {
             serde_json::to_writer(buffed, &built_page).unwrap();
 
             if let Some(in_path) = page.full_path().parent() {
-                copy_additional_files(in_path, &out_path).unwrap();
+                copy_additional_files(in_path, &out_path, page.full_path()).unwrap();
             }
         }
         Err(e) => {
@@ -90,6 +92,27 @@ pub fn build_generic_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
         .values()
         .map(|page| {
             build_single_page(page);
+            Cow::Owned(page.url().to_string())
+        })
+        .collect())
+}
+
+pub fn build_contributor_spotlight_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+    Ok(contributor_spotlight_files()
+        .values()
+        .map(|page| {
+            build_single_page(page);
+            Cow::Owned(page.url().to_string())
+        })
+        .collect())
+}
+
+pub fn build_spas() -> Result<Vec<Cow<'static, str>>, DocError> {
+    Ok(SPA::all()
+        .iter()
+        .filter_map(|(slug, locale)| SPA::from_slug(slug, *locale))
+        .map(|page| {
+            build_single_page(&page);
             Cow::Owned(page.url().to_string())
         })
         .collect())
