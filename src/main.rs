@@ -14,6 +14,7 @@ use rari_doc::build::{
 use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
+use rari_doc::search_index::build_search_index;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
@@ -69,6 +70,8 @@ struct BuildArgs {
     skip_content: bool,
     #[arg(long)]
     skip_contributors: bool,
+    #[arg(long)]
+    skip_search_index: bool,
     #[arg(long)]
     skip_blog: bool,
     #[arg(long)]
@@ -188,6 +191,11 @@ fn main() -> Result<(), anyhow::Error> {
                 let start = std::time::Instant::now();
                 urls.extend(build_docs(&docs)?);
                 println!("Took: {: >10.3?} to build content", start.elapsed());
+            }
+            if !args.skip_search_index && args.files.is_empty() {
+                let start = std::time::Instant::now();
+                build_search_index(&docs)?;
+                println!("Took: {: >10.3?} to build search index", start.elapsed());
             }
             if !args.skip_curriculum && args.files.is_empty() {
                 let start = std::time::Instant::now();
