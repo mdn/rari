@@ -8,6 +8,7 @@ use std::sync::LazyLock;
 
 use rari_types::globals::{content_root, content_translated_root};
 use rari_types::locale::Locale;
+use rari_utils::error::RariIoError;
 use tracing::error;
 
 use crate::error::DocError;
@@ -48,7 +49,7 @@ static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     if let Err(e) = read_redirects(
         &content_root()
             .to_path_buf()
-            .join("en-us")
+            .join(Locale::EnUs.as_folder_str())
             .join("_redirects.txt"),
         &mut map,
     ) {
@@ -70,11 +71,14 @@ fn read_redirects(path: &Path, map: &mut HashMap<String, String>) -> Result<(), 
     Ok(())
 }
 
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+fn read_lines<P>(filename: P) -> Result<io::Lines<io::BufReader<File>>, RariIoError>
 where
     P: AsRef<Path>,
 {
-    let file = File::open(filename)?;
+    let file = File::open(filename.as_ref()).map_err(|e| RariIoError {
+        source: e,
+        path: filename.as_ref().to_path_buf(),
+    })?;
     Ok(io::BufReader::new(file).lines())
 }
 
