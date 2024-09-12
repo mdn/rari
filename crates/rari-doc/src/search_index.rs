@@ -19,7 +19,9 @@ pub struct SearchItem<'a> {
 }
 
 pub fn build_search_index(docs: &[Page]) -> Result<(), DocError> {
-    let in_file = content_root().join("en-US").join("popularities.json");
+    let in_file = content_root()
+        .join(Locale::EnUs.as_folder_str())
+        .join("popularities.json");
     let json_str = read_to_string(in_file)?;
     let popularities: Popularities = serde_json::from_str(&json_str)?;
 
