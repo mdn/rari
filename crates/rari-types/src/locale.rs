@@ -104,6 +104,7 @@ impl Locale {
     pub const fn as_folder_str(&self) -> &str {
         match *self {
             Self::EnUs => "en-us",
+            Self::PtBr => "pt-br",
             Self::ZhCn => "zh-cn",
             Self::ZhTw => "zh-tw",
             _ => self.as_url_str(),

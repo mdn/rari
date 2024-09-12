@@ -6,6 +6,7 @@ use std::io::BufWriter;
 use rari_types::globals::{build_out_root, content_root};
 use rari_types::locale::Locale;
 use rari_types::Popularities;
+use rari_utils::error::RariIoError;
 use rari_utils::io::read_to_string;
 use serde::Serialize;
 
@@ -55,7 +56,10 @@ pub fn build_search_index(docs: &[Page]) -> Result<(), DocError> {
             let out_file = build_out_root()?
                 .join(locale.as_folder_str())
                 .join("search-index.json");
-            let file = File::create(out_file)?;
+            let file = File::create(&out_file).map_err(|e| RariIoError {
+                source: e,
+                path: out_file,
+            })?;
             let buffed = BufWriter::new(file);
 
             serde_json::to_writer(buffed, &out)?;

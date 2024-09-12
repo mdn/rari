@@ -61,6 +61,9 @@ static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
 fn read_redirects(path: &Path, map: &mut HashMap<String, String>) -> Result<(), DocError> {
     let lines = read_lines(path)?;
     map.extend(lines.map_while(Result::ok).filter_map(|line| {
+        if line.starts_with('#') {
+            return None;
+        }
         let mut from_to = line.splitn(2, '\t');
         if let (Some(from), Some(to)) = (from_to.next(), from_to.next()) {
             Some((from.to_lowercase(), to.into()))
