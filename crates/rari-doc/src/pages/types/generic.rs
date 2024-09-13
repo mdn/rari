@@ -28,6 +28,7 @@ pub struct GenericPageMeta {
     pub full_path: PathBuf,
     pub path: PathBuf,
     pub title_suffix: String,
+    pub page: String,
 }
 
 impl GenericPageMeta {
@@ -38,8 +39,9 @@ impl GenericPageMeta {
         locale: Locale,
         slug: String,
         title_suffix: &str,
-        url: String,
+        page: String,
     ) -> Result<Self, DocError> {
+        let url = strcat!("/" locale.as_url_str() "/" slug.as_str() "/" page.as_str());
         Ok(GenericPageMeta {
             title: fm.title,
             locale,
@@ -48,6 +50,7 @@ impl GenericPageMeta {
             path,
             full_path,
             title_suffix: title_suffix.to_string(),
+            page,
         })
     }
 }
@@ -195,7 +198,6 @@ fn read_generic_page(
     let path = full_path.strip_prefix(root)?.to_path_buf();
     let page = path.with_extension("");
     let page = page.to_string_lossy();
-    let url = strcat!("/" locale.as_url_str() "/" slug "/" page.as_ref());
     let slug = strcat!(slug "/" page.as_ref());
 
     Ok(GenericPage {
@@ -206,7 +208,7 @@ fn read_generic_page(
             locale,
             slug.to_string(),
             title_suffix,
-            url,
+            page.to_string(),
         )?,
         raw,
         content_start,

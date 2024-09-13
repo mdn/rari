@@ -259,6 +259,9 @@ pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
         })
         .collect();
 
+    let no_indexing =
+        doc.meta.slug == "MDN/Kitchensink" || doc.is_orphaned() || doc.is_conflicting();
+
     Ok(BuiltDocy::Doc(Box::new(JsonDoADoc {
         doc: JsonDoc {
             title: doc.title().to_string(),
@@ -278,6 +281,7 @@ pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
             modified,
             summary,
             popularity,
+            no_indexing,
             sidebar_macro: doc.meta.sidebar.first().cloned(),
             source: Source {
                 folder,
@@ -287,7 +291,6 @@ pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
             },
             browser_compat: doc.meta.browser_compat.clone(),
             other_translations,
-            ..Default::default()
         },
         url: doc.meta.url.clone(),
         ..Default::default()
@@ -333,6 +336,7 @@ pub fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
         },
         page_title: strcat!(page.meta.title.as_str() " | " page.meta.title_suffix.as_str()),
         url: page.meta.url.clone(),
+        id: page.meta.page.clone(),
     })))
 }
 

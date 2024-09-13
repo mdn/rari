@@ -348,6 +348,7 @@ where
 #[serde(rename_all = "camelCase")]
 pub struct JsonHomePageSPA {
     pub slug: &'static str,
+    pub url: String,
     pub page_title: &'static str,
     pub page_description: Option<&'static str>,
     pub featured_articles: Vec<HomePageFeaturedArticle>,
@@ -370,4 +371,5 @@ pub struct JsonGenericPage {
     pub hy_data: JsonGenericHyData,
     pub page_title: String,
     pub url: String,
+    pub id: String,
 }

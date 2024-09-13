@@ -105,6 +105,14 @@ impl Doc {
         meta.original_slug = super_doc.meta.original_slug.clone();
         meta.sidebar = super_doc.meta.sidebar.clone();
     }
+
+    pub fn is_orphaned(&self) -> bool {
+        self.meta.slug.starts_with("orphaned/")
+    }
+
+    pub fn is_conflicting(&self) -> bool {
+        self.meta.slug.starts_with("orphaned/")
+    }
 }
 
 impl PageReader for Doc {
@@ -122,7 +130,7 @@ impl PageReader for Doc {
         debug!("reading doc: {}", &path.display());
         let mut doc = read_doc(&path)?;
 
-        if doc.meta.locale != Default::default() {
+        if doc.meta.locale != Default::default() && !doc.is_conflicting() && !doc.is_orphaned() {
             let super_doc = Doc::page_from_slug(&doc.meta.slug, Default::default())?;
             if let Page::Doc(super_doc) = super_doc {
                 doc.copy_meta_from_super(&super_doc);

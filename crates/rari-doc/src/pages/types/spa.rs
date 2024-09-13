@@ -130,6 +130,7 @@ impl SPA {
             }))),
             SPAData::HomePage => Ok(BuiltDocy::HomePageSPA(Box::new(JsonHomePageSPA {
                 slug: self.slug,
+                url: strcat!("/" self.locale().as_url_str() "/" self.slug),
                 page_title: self.page_title,
                 page_description: self.page_description,
                 featured_articles: featured_articles(

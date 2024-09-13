@@ -223,11 +223,15 @@ fn main() -> Result<(), anyhow::Error> {
                 let file = File::create(out_file).unwrap();
                 let mut buffed = BufWriter::new(file);
                 urls.sort();
-                for url in urls {
+                for url in &urls {
                     buffed.write_all(url.as_bytes())?;
                     buffed.write_all(b"\n")?;
                 }
-                println!("Took: {: >10.3?} to write sitemap.txt", start.elapsed());
+                println!(
+                    "Took: {: >10.3?} to write sitemap.txt ({})",
+                    start.elapsed(),
+                    urls.len()
+                );
             }
             if let Some((recorder_handler, tx)) = templ_stats {
                 tx.send("∞".to_string())?;

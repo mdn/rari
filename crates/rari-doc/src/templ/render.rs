@@ -8,6 +8,9 @@ use super::parser::{parse, Token};
 use super::templs::invoke;
 use crate::error::DocError;
 
+static DELIM_START: &str = ";!::::";
+static DELIM_END: &str = ";!::::";
+
 pub struct Rendered {
     pub content: String,
     pub templs: Vec<String>,
@@ -59,7 +62,7 @@ pub fn render(env: &RariEnv, input: &str) -> Result<Rendered, DocError> {
     render_tokens(env, tokens, input)
 }
 fn encode_ref(index: usize, out: &mut String) -> Result<(), DocError> {
-    Ok(write!(out, "!::::{index}::::!",)?)
+    Ok(write!(out, "{DELIM_START}{index}{DELIM_END}",)?)
 }
 
 pub fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
@@ -71,13 +74,13 @@ pub fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocEr
 
 pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocError> {
     let mut decoded = String::with_capacity(input.len());
-    if !input.contains("!::::") {
+    if !input.contains(";!::::") {
         return Ok(input.to_string());
     }
     let mut frags = vec![];
-    for frag in input.split("!::::") {
-        let has_ks = frag.contains("::::!");
-        for (i, sub_frag) in frag.splitn(2, "::::!").enumerate() {
+    for frag in input.split(DELIM_START) {
+        let has_ks = frag.contains(DELIM_END);
+        for (i, sub_frag) in frag.splitn(2, DELIM_END).enumerate() {
             if i == 0 && has_ks {
                 frags.push(sub_frag);
                 //decode_macro(sub_frag, &mut decoded)?;
