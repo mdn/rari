@@ -261,6 +261,11 @@ pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
 
     let no_indexing =
         doc.meta.slug == "MDN/Kitchensink" || doc.is_orphaned() || doc.is_conflicting();
+    let parents = if !doc.is_conflicting() && !doc.is_orphaned() {
+        parents(doc)
+    } else {
+        Default::default()
+    };
 
     Ok(BuiltDocy::Doc(Box::new(JsonDoADoc {
         doc: JsonDoc {
@@ -272,7 +277,7 @@ pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
             is_translated: doc.meta.locale != Locale::default(),
             short_title,
             is_active: true,
-            parents: parents(doc),
+            parents,
             page_title: page_title(doc, true)?,
             body,
             sidebar_html,

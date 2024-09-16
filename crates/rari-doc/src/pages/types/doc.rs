@@ -111,7 +111,7 @@ impl Doc {
     }
 
     pub fn is_conflicting(&self) -> bool {
-        self.meta.slug.starts_with("orphaned/")
+        self.meta.slug.starts_with("conflicting/")
     }
 }
 
@@ -131,9 +131,19 @@ impl PageReader for Doc {
         let mut doc = read_doc(&path)?;
 
         if doc.meta.locale != Default::default() && !doc.is_conflicting() && !doc.is_orphaned() {
-            let super_doc = Doc::page_from_slug(&doc.meta.slug, Default::default())?;
-            if let Page::Doc(super_doc) = super_doc {
-                doc.copy_meta_from_super(&super_doc);
+            match Doc::page_from_slug(&doc.meta.slug, Default::default()) {
+                Ok(Page::Doc(super_doc)) => {
+                    doc.copy_meta_from_super(&super_doc);
+                }
+                Err(DocError::PageNotFound(path, _)) => {
+                    tracing::error!(
+                        "Super doc not found for {}:{} (looked for {})",
+                        doc.meta.locale.as_url_str(),
+                        doc.meta.slug,
+                        path
+                    );
+                }
+                _ => {}
             }
         }
 
