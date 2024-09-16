@@ -346,15 +346,20 @@ where
 }
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct JsonHomePageSPA {
-    pub slug: &'static str,
-    pub url: String,
-    pub page_title: &'static str,
+pub struct JsonHomePageSPAHyData {
     pub page_description: Option<&'static str>,
     pub featured_articles: Vec<HomePageFeaturedArticle>,
     pub featured_contributor: Option<HomePageFeaturedContributor>,
     pub latest_news: ItemContainer<HomePageLatestNewsItem>,
     pub recent_contributions: ItemContainer<HomePageRecentContribution>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonHomePageSPA {
+    pub hy_data: JsonHomePageSPAHyData,
+    pub page_title: &'static str,
+    pub url: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

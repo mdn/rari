@@ -17,7 +17,7 @@ use crate::cached_readers::blog_files;
 use crate::error::DocError;
 use crate::pages::json::{
     BlogIndex, BuiltDocy, HyData, ItemContainer, JsonBasicSPA, JsonBlogPost, JsonBlogPostDoc,
-    JsonHomePageSPA,
+    JsonHomePageSPA, JsonHomePageSPAHyData,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::title::page_title;
@@ -129,30 +129,31 @@ impl SPA {
                 url: strcat!(self.base_slug.as_ref() self.slug),
             }))),
             SPAData::HomePage => Ok(BuiltDocy::HomePageSPA(Box::new(JsonHomePageSPA {
-                slug: self.slug,
                 url: strcat!("/" self.locale().as_url_str() "/" self.slug),
                 page_title: self.page_title,
-                page_description: self.page_description,
-                featured_articles: featured_articles(
-                    &[
-                        "/en-US/blog/mdn-scrimba-partnership/",
-                        "/en-US/blog/learn-javascript-console-methods/",
-                        "/en-US/blog/introduction-to-web-sustainability/",
-                        "/en-US/docs/Web/API/CSS_Custom_Highlight_API",
-                    ],
-                    self.locale,
-                )?,
-                featured_contributor: featured_contributor(self.locale)?,
-                latest_news: ItemContainer {
-                    items: lastet_news(&[
-                        "/en-US/blog/mdn-scrimba-partnership/",
-                        "/en-US/blog/mdn-http-observatory-launch/",
-                        "/en-US/blog/mdn-curriculum-launch/",
-                        "/en-US/blog/baseline-evolution-on-mdn/",
-                    ])?,
-                },
-                recent_contributions: ItemContainer {
-                    items: recent_contributions()?,
+                hy_data: JsonHomePageSPAHyData {
+                    page_description: self.page_description,
+                    featured_articles: featured_articles(
+                        &[
+                            "/en-US/blog/mdn-scrimba-partnership/",
+                            "/en-US/blog/learn-javascript-console-methods/",
+                            "/en-US/blog/introduction-to-web-sustainability/",
+                            "/en-US/docs/Web/API/CSS_Custom_Highlight_API",
+                        ],
+                        self.locale,
+                    )?,
+                    featured_contributor: featured_contributor(self.locale)?,
+                    latest_news: ItemContainer {
+                        items: lastet_news(&[
+                            "/en-US/blog/mdn-scrimba-partnership/",
+                            "/en-US/blog/mdn-http-observatory-launch/",
+                            "/en-US/blog/mdn-curriculum-launch/",
+                            "/en-US/blog/baseline-evolution-on-mdn/",
+                        ])?,
+                    },
+                    recent_contributions: ItemContainer {
+                        items: recent_contributions()?,
+                    },
                 },
             }))),
         }
