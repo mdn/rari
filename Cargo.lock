@@ -2340,6 +2340,7 @@ name = "rari-tools"
 version = "0.0.1"
 dependencies = [
  "chrono",
+ "concat-in-place",
  "csv",
  "rari-types",
  "rari-utils",
@@ -2347,6 +2348,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
