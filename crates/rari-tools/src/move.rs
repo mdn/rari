@@ -3,7 +3,10 @@ use dialoguer::{theme::ColorfulTheme, Confirm};
 
 use rari_doc::{
     helpers::subpages::get_sub_pages,
-    pages::page::{self, Page, PageCategory, PageLike, PageWriter},
+    pages::{
+        page::{self, Page, PageCategory, PageLike, PageWriter},
+        types::doc,
+    },
     resolve::build_url,
 };
 use rari_types::locale::Locale;
@@ -102,19 +105,62 @@ fn do_move(
         return Ok(pairs);
     }
 
-    if let Page::Doc(doc) = doc {
-        if let Ok(mut doc) = Arc::try_unwrap(doc) {
-            doc.meta.slug = new_slug.to_string();
-            doc.meta.path = build_url(new_slug, locale, PageCategory::Doc)?.into();
-            println!(
-                "doc.meta.slug: {} doc.meta.path: {:?}",
-                doc.meta.slug, doc.meta.path
-            );
-            doc.write()?;
-        } else {
-            return Err(ToolError::Unknown("Failed to unwrap Arc".to_string()));
-        }
-    }
+    // from update function in yari:
+    // get some meta data from the docs, find out if the
+    // slug is different. If it is, write the new frontmatter
+    // to all affected documents (root + children).
+    // Then, in a strange twist of events, we use the git command
+    // to move the whole directory to a new location. This will move
+    // all children as well and makes sure we get a proper
+    // git move in the history.
+
+    vec![doc.clone()]
+        .iter()
+        .chain(&subpages)
+        .try_for_each(|doc| {
+            if let Page::Doc(doc) = doc {
+                let mut cloned_doc = doc.clone();
+                let doc = Arc::make_mut(&mut cloned_doc);
+                doc.meta.slug = new_slug.to_string();
+                println!(
+                    "Writing to file path: {:?} for slug {}",
+                    doc.path(),
+                    doc.slug()
+                );
+            } else {
+                return Err(ToolError::Unknown(
+                    "Failed create doc page type".to_string(),
+                ));
+            }
+            Ok(())
+            // let slug = page_ref.slug().to_owned();
+            // let new_slug = slug.replace(&real_old_slug, new_slug);
+            // let new_url = build_url(&new_slug, locale, PageCategory::Doc)?;
+            // let new_path = page_ref.path().with_file_name(&new_url);
+            // println!("Moving from {:?} to {:?}", page_ref.path(), new_path);
+            // // fs.renameSync(page_ref.path(), new_path);
+            // // await update(oldUrl, doc.rawBody, doc.metadata);
+            // Ok(())
+        })?;
+
+    // if let Page::Doc(doc) = doc {
+    //     if let Ok(mut doc) = Arc::try_unwrap(doc) {
+    //         doc.meta.slug = new_slug.to_string();
+    //         // doc.meta.path = build_url(new_slug, locale, PageCategory::Doc)?.into();
+    //         // println!(
+    //         //     "doc.meta.slug: {} doc.meta.path: {:?}",
+    //         //     doc.meta.slug, doc.meta.path
+    //         // );
+    //         println!(
+    //             "Writing to file path: {:?} for slug {}",
+    //             doc.path(),
+    //             doc.slug()
+    //         );
+    //         // doc.write()?;
+    //     } else {
+    //         return Err(ToolError::Unknown("Failed to unwrap Arc".to_string()));
+    //     }
+    // }
     // await update(oldUrl, doc.rawBody, doc.metadata);
     // test writing to file
     // Now, go through the pairs and move the files
