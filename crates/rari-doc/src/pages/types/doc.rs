@@ -15,7 +15,7 @@ use tracing::debug;
 use validator::Validate;
 
 use super::page::{to_absolute_path, Page, PageCategory, PageLike, PageReader, PageWriter};
-use crate::cached_readers::{page_from_static_files, CACHED_PAGE_FILES};
+use crate::cached_readers::{doc_page_from_static_files, CACHED_DOC_PAGE_FILES};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::resolve::{build_url, url_to_path_buf};

@@ -2378,9 +2378,11 @@ name = "rari-tools"
 version = "0.0.1"
 dependencies = [
  "chrono",
- "console",
  "concat-in-place",
+ "console",
  "csv",
+ "dialoguer",
+ "rari-doc",
  "rari-types",
  "rari-utils",
  "reqwest",
