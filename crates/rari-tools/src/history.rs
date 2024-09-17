@@ -42,7 +42,7 @@ fn modification_times(//path: &Path,
     let mut parents = BTreeMap::new();
     let mut date = "";
     let mut hash = "";
-    for line in output_str.split(|c| c == '\0' || c == '\n') {
+    for line in output_str.split(['\0', '\n']) {
         if line.trim().is_empty() {
             continue;
         }

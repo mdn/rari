@@ -17,8 +17,8 @@ use serde::de::{self, value, SeqAccess, Visitor};
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::docs::page::PageCategory;
 use crate::error::DocError;
+use crate::pages::page::PageCategory;
 
 const FM_START_DELIM: &str = "---\n";
 const FM_START_DELIM_LEN: usize = FM_START_DELIM.len();

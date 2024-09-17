@@ -9,10 +9,10 @@ use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
 
 use super::titles::api_page_title;
-use crate::docs::page::{
+use crate::error::DocError;
+use crate::pages::page::{
     url_path_to_page_with_other_locale_and_fallback, Page, PageLike, PageReader,
 };
-use crate::error::DocError;
 use crate::redirects::resolve_redirect;
 use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 use crate::utils::COLLATOR;
@@ -214,7 +214,7 @@ pub fn get_sub_pages(
         let mut sub_pages = sub_folders
             .iter()
             .filter(|f| f.as_path() != full_path)
-            .map(Page::read)
+            .map(|p| Page::read(p, Some(doc.locale())))
             .collect::<Result<Vec<_>, DocError>>()?;
         sub_pages.sort_by(sorter.sorter());
         return Ok(sub_pages);

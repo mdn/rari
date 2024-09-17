@@ -7,11 +7,16 @@ use rari_types::globals::build_out_root;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, span, Level};
 
-use crate::cached_readers::{blog_files, curriculum_files};
-use crate::docs::build::{build_blog_post, build_curriculum, build_doc, build_dummy};
-use crate::docs::dummy::Dummy;
-use crate::docs::page::{Page, PageLike};
+use crate::cached_readers::{
+    blog_files, contributor_spotlight_files, curriculum_files, generic_pages_files,
+};
 use crate::error::DocError;
+use crate::pages::build::{
+    build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_generic_page,
+    build_spa, copy_additional_files,
+};
+use crate::pages::page::{Page, PageLike};
+use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_path_buf;
 
 pub fn build_single_page(page: &Page) {
@@ -22,8 +27,10 @@ pub fn build_single_page(page: &Page) {
     let built_page = match page {
         Page::Doc(doc) => build_doc(doc),
         Page::BlogPost(post) => build_blog_post(post),
-        Page::Dummy(dummy) => build_dummy(dummy),
+        Page::SPA(spa) => build_spa(spa),
         Page::Curriculum(curriculum) => build_curriculum(curriculum),
+        Page::ContributorSpotlight(cs) => build_contributor_spotlight(cs),
+        Page::GenericPage(generic) => build_generic_page(generic),
     };
     match built_page {
         Ok(built_page) => {
@@ -36,6 +43,10 @@ pub fn build_single_page(page: &Page) {
             let buffed = BufWriter::new(file);
 
             serde_json::to_writer(buffed, &built_page).unwrap();
+
+            if let Some(in_path) = page.full_path().parent() {
+                copy_additional_files(in_path, &out_path, page.full_path()).unwrap();
+            }
         }
         Err(e) => {
             error!("Error: {e}");
@@ -68,9 +79,40 @@ pub fn build_blog_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
     Ok(blog_files()
         .posts
         .values()
-        .chain(once(&Dummy::from_url("/en-US/blog/").unwrap()))
+        .chain(once(&SPA::from_url("/en-US/blog/").unwrap()))
         .map(|page| {
             build_single_page(page);
+            Cow::Owned(page.url().to_string())
+        })
+        .collect())
+}
+
+pub fn build_generic_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+    Ok(generic_pages_files()
+        .values()
+        .map(|page| {
+            build_single_page(page);
+            Cow::Owned(page.url().to_string())
+        })
+        .collect())
+}
+
+pub fn build_contributor_spotlight_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+    Ok(contributor_spotlight_files()
+        .values()
+        .map(|page| {
+            build_single_page(page);
+            Cow::Owned(page.url().to_string())
+        })
+        .collect())
+}
+
+pub fn build_spas() -> Result<Vec<Cow<'static, str>>, DocError> {
+    Ok(SPA::all()
+        .iter()
+        .filter_map(|(slug, locale)| SPA::from_slug(slug, *locale))
+        .map(|page| {
+            build_single_page(&page);
             Cow::Owned(page.url().to_string())
         })
         .collect())

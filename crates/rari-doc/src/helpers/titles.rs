@@ -1,6 +1,6 @@
 use rari_types::fm_types::PageType;
 
-use crate::docs::page::{Page, PageLike};
+use crate::pages::page::{Page, PageLike};
 
 pub fn api_page_title(page: &Page) -> &str {
     if let Some(short_title) = page.short_title() {

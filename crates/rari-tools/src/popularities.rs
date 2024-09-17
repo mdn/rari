@@ -3,6 +3,7 @@ use std::io::BufWriter;
 
 use chrono::Utc;
 use rari_types::globals::content_root;
+use rari_types::locale::Locale;
 use rari_types::Popularities;
 use serde::Deserialize;
 
@@ -34,7 +35,9 @@ pub fn update_popularities(limit: usize) -> Popularities {
                 .insert(row.page, row.page_views / max);
         }
     }
-    let out_file = content_root().join("en-US").join("popularities.json");
+    let out_file = content_root()
+        .join(Locale::EnUs.as_folder_str())
+        .join("popularities.json");
     let file = File::create(out_file).unwrap();
     let buffed = BufWriter::new(file);
 

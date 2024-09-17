@@ -5,26 +5,28 @@ use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use thiserror::Error;
 
+use crate::globals::content_translated_root;
+
 #[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord)]
 pub enum Native {
     #[default]
     #[serde(rename = "English (US)")]
     EnUS,
-    #[serde(rename = "es")]
+    #[serde(rename = r#"Español"#)]
     Es,
-    #[serde(rename = "fr")]
+    #[serde(rename = r#"Français"#)]
     Fr,
-    #[serde(rename = "js")]
+    #[serde(rename = r#"日本語"#)]
     Ja,
-    #[serde(rename = "ko")]
+    #[serde(rename = r#"한국어"#)]
     Ko,
-    #[serde(rename = "pt-BR")]
+    #[serde(rename = r#"Português (do Brasil)"#)]
     PtBr,
-    #[serde(rename = "ru")]
+    #[serde(rename = r#"Русский"#)]
     Ru,
-    #[serde(rename = "zh-CN")]
+    #[serde(rename = r#"中文 (简体)"#)]
     ZhCn,
-    #[serde(rename = "zh-TW")]
+    #[serde(rename = r#"正體中文 (繁體)"#)]
     ZhTw,
 }
 
@@ -86,7 +88,7 @@ impl Display for Locale {
 }
 
 impl Locale {
-    pub fn as_url_str(&self) -> &str {
+    pub const fn as_url_str(&self) -> &str {
         match *self {
             Self::EnUs => "en-US",
             Self::Es => "es",
@@ -99,12 +101,31 @@ impl Locale {
             Self::ZhTw => "zh-TW",
         }
     }
-    pub fn as_folder_str(&self) -> &str {
+    pub const fn as_folder_str(&self) -> &str {
         match *self {
             Self::EnUs => "en-us",
+            Self::PtBr => "pt-br",
             Self::ZhCn => "zh-cn",
             Self::ZhTw => "zh-tw",
             _ => self.as_url_str(),
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        if content_translated_root().is_some() {
+            &[
+                Self::EnUs,
+                Self::Es,
+                Self::Fr,
+                Self::Ja,
+                Self::Ko,
+                Self::PtBr,
+                Self::Ru,
+                Self::ZhCn,
+                Self::ZhTw,
+            ]
+        } else {
+            &[Self::EnUs]
         }
     }
 }

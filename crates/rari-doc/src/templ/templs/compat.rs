@@ -1,9 +1,9 @@
 use rari_templ_func::rari_f;
 use rari_types::fm_types::PageType;
 
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
+use crate::pages::page::{Page, PageLike};
 
 #[rari_f]
 pub fn compat() -> Result<String, DocError> {

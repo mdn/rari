@@ -17,6 +17,7 @@ use validator::Validate;
 use super::page::{to_absolute_path, Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::cached_readers::{page_from_static_files, CACHED_PAGE_FILES};
 use crate::error::DocError;
+use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::resolve::{build_url, url_to_path_buf};
 use crate::utils::{
     locale_and_typ_from_path, root_for_locale, serialize_t_or_vec, split_fm, t_or_vec,
@@ -119,25 +120,63 @@ impl Doc {
         file.push(locale.as_folder_str());
         file.push(path);
         file.push("index.md");
-        Doc::read(file)
+        Doc::read(file, None)
+    }
+
+    fn copy_meta_from_super(&mut self, super_doc: &Doc) {
+        let meta = &mut self.meta;
+        meta.tags = super_doc.meta.tags.clone();
+        meta.page_type = super_doc.meta.page_type;
+        meta.status = super_doc.meta.status.clone();
+        meta.browser_compat = super_doc.meta.browser_compat.clone();
+        meta.spec_urls = super_doc.meta.spec_urls.clone();
+        meta.original_slug = super_doc.meta.original_slug.clone();
+        meta.sidebar = super_doc.meta.sidebar.clone();
+    }
+
+    pub fn is_orphaned(&self) -> bool {
+        self.meta.slug.starts_with("orphaned/")
+    }
+
+    pub fn is_conflicting(&self) -> bool {
+        self.meta.slug.starts_with("conflicting/")
     }
 }
 
 impl PageReader for Doc {
-    fn read(path: impl Into<PathBuf>) -> Result<Page, DocError> {
+    fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
-        if let Some(doc) = page_from_static_files(&path) {
+        if let Some(doc) = doc_page_from_static_files(&path) {
             return doc;
         }
 
-        if let Some(cache) = CACHED_PAGE_FILES.get() {
+        if let Some(cache) = CACHED_DOC_PAGE_FILES.get() {
             if let Some(doc) = cache.read()?.get(&path) {
                 return Ok(doc.clone());
             }
         }
         debug!("reading doc: {}", &path.display());
-        let page = read_doc(&path).map(Arc::new).map(Page::Doc)?;
-        if let Some(cache) = CACHED_PAGE_FILES.get() {
+        let mut doc = read_doc(&path)?;
+
+        if doc.meta.locale != Default::default() && !doc.is_conflicting() && !doc.is_orphaned() {
+            match Doc::page_from_slug(&doc.meta.slug, Default::default()) {
+                Ok(Page::Doc(super_doc)) => {
+                    doc.copy_meta_from_super(&super_doc);
+                }
+                Err(DocError::PageNotFound(path, _)) => {
+                    tracing::error!(
+                        "Super doc not found for {}:{} (looked for {})",
+                        doc.meta.locale.as_url_str(),
+                        doc.meta.slug,
+                        path
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        let page = Page::Doc(Arc::new(doc));
+        if let Some(cache) = CACHED_DOC_PAGE_FILES.get() {
             if let Ok(mut cache) = cache.write() {
                 cache.insert(path, page.clone());
             }
@@ -215,7 +254,7 @@ impl PageLike for Doc {
     }
 
     fn base_slug(&self) -> &str {
-        "/docs"
+        self.meta.url.split_inclusive("/docs").next().unwrap_or("/")
     }
 
     fn trailing_slash(&self) -> bool {
@@ -242,7 +281,7 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
         sidebar,
         ..
     } = serde_yaml::from_str(fm)?;
-    let url = build_url(&slug, &locale, PageCategory::Doc);
+    let url = build_url(&slug, &locale, PageCategory::Doc)?;
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?
         .to_path_buf();

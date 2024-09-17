@@ -9,7 +9,7 @@ use rari_types::locale::LocaleError;
 use rari_types::ArgError;
 use thiserror::Error;
 
-use crate::docs::page::PageCategory;
+use crate::pages::page::PageCategory;
 
 #[derive(Debug, Error)]
 pub enum DocError {
@@ -23,6 +23,8 @@ pub enum DocError {
     NoSuchPrefix(#[from] StripPrefixError),
     #[error("No curricm root set")]
     NoCurriculumRoot,
+    #[error("No generic pages roots set")]
+    NoGenericPagesRoot,
     #[error("No H1 found")]
     NoH1,
     #[error(transparent)]

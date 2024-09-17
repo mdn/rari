@@ -4,8 +4,6 @@ use rari_l10n::l10n_json_data;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 
-use crate::docs::doc::Doc;
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
 use crate::helpers::api_inheritance::inheritance;
 use crate::helpers::json_data::json_data_group;
@@ -14,6 +12,8 @@ use crate::helpers::titles::api_page_title;
 use crate::html::sidebar::{
     Details, MetaChildren, MetaSidebar, SidebarMetaEntry, SidebarMetaEntryContent,
 };
+use crate::pages::page::{Page, PageLike};
+use crate::pages::types::doc::Doc;
 
 pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSidebar, DocError> {
     let static_properties_label = l10n_json_data("Common", "Static_properties", locale)?;

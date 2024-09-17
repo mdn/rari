@@ -8,4 +8,6 @@ pub enum EnvError {
     NoTranslatedContent,
     #[error("BUILD_OUT_ROOT must be set")]
     NoBuildOut,
+    #[error("CONTRIBUTOR_SPOTLIGHT_ROOT must be set")]
+    NoContributorSpotlightRoot,
 }

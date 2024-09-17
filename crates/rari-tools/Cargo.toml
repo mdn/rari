@@ -17,6 +17,10 @@ rari-doc = { path = "../rari-doc" }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
+csv = "1"
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+concat-in-place = "1"
 
 [dev-dependencies]
 rari-types = { path = "../rari-types", features = ["testing"] }
@@ -34,3 +38,6 @@ reqwest = { version = "0.12", default-features = false, features = [
   "json",
   "gzip",
 ] }
+
+[dev-dependencies]
+rari-types = { path = "../rari-types", features = ["testing"] }

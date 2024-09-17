@@ -7,17 +7,19 @@ use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 
 use clap::{Args, Parser, Subcommand};
-use rari_doc::build::{build_blog_pages, build_curriculum_pages, build_docs};
-use rari_doc::cached_readers::{CACHED_PAGE_FILES, STATIC_PAGE_FILES};
-use rari_doc::docs::doc::Doc;
-use rari_doc::docs::page::PageLike;
-use rari_doc::translations::init_translations_from_static_docs;
+use rari_doc::build::{
+    build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
+    build_generic_pages, build_spas,
+};
+use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
+use rari_doc::pages::types::doc::Doc;
+use rari_doc::reader::read_docs_parallel;
+use rari_doc::search_index::build_search_index;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
-use rari_doc::walker::read_docs_parallel;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
-use rari_types::globals::{build_out_root, SETTINGS};
+use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
 use rari_types::settings::Settings;
 use tabwriter::TabWriter;
 use tracing_log::AsTrace;
@@ -86,9 +88,15 @@ struct BuildArgs {
     #[arg(long)]
     skip_content: bool,
     #[arg(long)]
+    skip_contributors: bool,
+    #[arg(long)]
+    skip_search_index: bool,
+    #[arg(long)]
     skip_blog: bool,
     #[arg(long)]
     skip_curriculum: bool,
+    #[arg(long)]
+    skip_spas: bool,
     #[arg(long)]
     skip_sitemap: bool,
     #[arg(long)]
@@ -169,30 +177,44 @@ fn main() -> Result<(), anyhow::Error> {
             };
 
             if matches!(cache, Cache::Dynamic) {
-                CACHED_PAGE_FILES
+                CACHED_DOC_PAGE_FILES
                     .set(Arc::new(RwLock::new(HashMap::new())))
                     .unwrap();
             }
-            println!("Building everything 🛠️");
-            let start = std::time::Instant::now();
-            let docs = read_docs_parallel::<Doc>(&args.files, None)?;
-            if matches!(cache, Cache::Static) {
-                STATIC_PAGE_FILES
-                    .set(
-                        docs.iter()
-                            .cloned()
-                            .map(|doc| (doc.full_path().to_owned(), doc))
-                            .collect(),
-                    )
-                    .unwrap();
-                init_translations_from_static_docs()
-            }
-            println!("Took: {: >10.3?} for {}", start.elapsed(), docs.len());
             let mut urls = Vec::new();
+            let mut docs = Vec::new();
+            println!("Building everything 🛠️");
+            if !args.skip_content {
+                let start = std::time::Instant::now();
+                docs = if !args.files.is_empty() {
+                    read_docs_parallel::<Doc>(&args.files, None)?
+                } else if !args.cache_content {
+                    let files: &[_] = if let Some(translated_root) = content_translated_root() {
+                        &[content_root(), translated_root]
+                    } else {
+                        &[content_root()]
+                    };
+                    read_docs_parallel::<Doc>(files, None)?
+                } else {
+                    read_and_cache_doc_pages()?
+                };
+                println!("Took: {: >10.3?} for {}", start.elapsed(), docs.len());
+            }
+            if !args.skip_spas {
+                let start = std::time::Instant::now();
+                urls.extend(build_spas()?);
+                urls.extend(build_generic_pages()?);
+                println!("Took: {: >10.3?} to build spas", start.elapsed());
+            }
             if !args.skip_content {
                 let start = std::time::Instant::now();
                 urls.extend(build_docs(&docs)?);
                 println!("Took: {: >10.3?} to build content", start.elapsed());
+            }
+            if !args.skip_search_index && args.files.is_empty() {
+                let start = std::time::Instant::now();
+                build_search_index(&docs)?;
+                println!("Took: {: >10.3?} to build search index", start.elapsed());
             }
             if !args.skip_curriculum && args.files.is_empty() {
                 let start = std::time::Instant::now();
@@ -204,6 +226,14 @@ fn main() -> Result<(), anyhow::Error> {
                 urls.extend(build_blog_pages()?);
                 println!("Took: {: >10.3?} to build blog", start.elapsed());
             }
+            if !args.skip_contributors && args.files.is_empty() {
+                let start = std::time::Instant::now();
+                urls.extend(build_contributor_spotlight_pages()?);
+                println!(
+                    "Took: {: >10.3?} to build contributor spotlight",
+                    start.elapsed()
+                );
+            }
             if !args.skip_sitemap && args.files.is_empty() && !urls.is_empty() {
                 let start = std::time::Instant::now();
                 let out_path = build_out_root()?;
@@ -212,11 +242,15 @@ fn main() -> Result<(), anyhow::Error> {
                 let file = File::create(out_file).unwrap();
                 let mut buffed = BufWriter::new(file);
                 urls.sort();
-                for url in urls {
+                for url in &urls {
                     buffed.write_all(url.as_bytes())?;
                     buffed.write_all(b"\n")?;
                 }
-                println!("Took: {: >10.3?} to write sitemap.txt", start.elapsed());
+                println!(
+                    "Took: {: >10.3?} to write sitemap.txt ({})",
+                    start.elapsed(),
+                    urls.len()
+                );
             }
             if let Some((recorder_handler, tx)) = templ_stats {
                 tx.send("∞".to_string())?;

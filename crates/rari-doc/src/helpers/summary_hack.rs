@@ -1,6 +1,6 @@
-use crate::docs::doc::render_md_to_html;
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
+use crate::pages::page::{Page, PageLike};
+use crate::pages::types::doc::render_md_to_html;
 use crate::templ::render::render_for_summary;
 
 /// There's a few places were we still tansplant content.

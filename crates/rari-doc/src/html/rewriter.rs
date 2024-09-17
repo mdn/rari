@@ -7,11 +7,12 @@ use rari_l10n::l10n_json_data;
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
+use tracing::warn;
 use url::Url;
 
-use crate::docs::curriculum::relative_file_to_curriculum_page;
-use crate::docs::page::{Page, PageLike};
 use crate::error::DocError;
+use crate::pages::page::{Page, PageLike};
+use crate::pages::types::curriculum::relative_file_to_curriculum_page;
 use crate::redirects::resolve_redirect;
 use crate::resolve::strip_locale_from_url;
 
@@ -85,20 +86,28 @@ pub fn post_process_html<T: PageLike>(
                     el.set_attribute("src", url.path())?;
                     let file = page.full_path().parent().unwrap().join(&src);
                     let (width, height) = if src.ends_with(".svg") {
-                        let meta = svg_metadata::Metadata::parse_file(&file)?;
-                        (
-                            meta.width
-                                .map(|width| width.width)
-                                .or(meta.view_box.map(|vb| vb.width))
-                                .map(|width| format!("{:.0}", width)),
-                            meta.height
-                                .map(|height| height.height)
-                                .or(meta.view_box.map(|vb| vb.height))
-                                .map(|height| format!("{:.0}", height)),
-                        )
-                    } else {
-                        let dim = imagesize::size(&file)?;
+                        match svg_metadata::Metadata::parse_file(&file) {
+                            Ok(meta) => (
+                                meta.width
+                                    .map(|width| width.width)
+                                    .or(meta.view_box.map(|vb| vb.width))
+                                    .map(|width| format!("{:.0}", width)),
+                                meta.height
+                                    .map(|height| height.height)
+                                    .or(meta.view_box.map(|vb| vb.height))
+                                    .map(|height| format!("{:.0}", height)),
+                            ),
+                            Err(e) => {
+                                warn!("Error parsing {}: {e}", file.display());
+                                (None, None)
+                            }
+                        }
+                    } else if let Ok(dim) = imagesize::size(&file)
+                        .inspect_err(|e| warn!("Error opening {}: {e}", file.display()))
+                    {
                         (Some(dim.width.to_string()), Some(dim.height.to_string()))
+                    } else {
+                        (None, None)
                     };
                     if let Some(width) = width {
                         el.set_attribute("width", &width)?;
@@ -143,7 +152,7 @@ pub fn post_process_html<T: PageLike>(
                     el.set_attribute("aria-current", "page")?;
                 }
                 if !Page::exists(resolved_href_no_hash) && !Page::ignore(href) {
-                    tracing::info!("{resolved_href_no_hash} {href}");
+                    tracing::debug!("{resolved_href_no_hash} {href}");
                     let class = el.get_attribute("class").unwrap_or_default();
                     el.set_attribute(
                         "class",
