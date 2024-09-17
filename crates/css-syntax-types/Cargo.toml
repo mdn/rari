@@ -7,7 +7,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-regress = "0.10"
-serde_json = { version = "1", features = ["preserve_order"] }
-serde = { version = "1", features = ["derive"] }
-url = { version = "2", features = ["serde"] }
+serde_json.workspace = true
+serde.workspace = true
+url.workspace = true
+regress.workspace = true

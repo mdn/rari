@@ -223,6 +223,7 @@ pub fn get_sub_pages(
 }
 
 #[memoize(SharedCache)]
+#[allow(non_snake_case)]
 fn read_sub_folders_cached(
     folder: PathBuf,
     depth: Option<usize>,

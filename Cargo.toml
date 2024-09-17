@@ -32,6 +32,35 @@ license = "MPL-2.0"
 authors = ["Florian Dieminger <me@fiji-flo.de>"]
 rust-version = "1.80"
 
+[workspace.dependencies]
+rari-doc = { path = "crates/rari-doc" }
+rari-tools = { path = "crates/rari-tools" }
+rari-deps = { path = "crates/rari-deps" }
+rari-types = { path = "crates/rari-types" }
+rari-utils = { path = "crates/rari-utils" }
+rari-md = { path = "crates/rari-md" }
+rari-data = { path = "crates/rari-data" }
+rari-templ-func = { path = "crates/rari-templ-func" }
+rari-l10n = { path = "crates/rari-l10n" }
+
+tracing = "0.1"
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+url = { version = "2", features = ["serde"] }
+concat-in-place = "1"
+itertools = "0.13"
+constcat = "0.5"
+anyhow = "1"
+indexmap = { version = "2", features = ["serde"] }
+regress = "0.10"
+html-escape = "0.2"
+ignore = "0.4"
+rayon = "1"
+
+
 [dependencies]
 anyhow = "1"
 clap = { version = "4.5.1", features = ["derive"] }

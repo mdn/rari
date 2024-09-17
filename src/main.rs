@@ -181,7 +181,7 @@ fn main() -> Result<(), anyhow::Error> {
                 };
                 println!("Took: {: >10.3?} for {}", start.elapsed(), docs.len());
             }
-            if !args.skip_spas {
+            if !args.skip_spas && args.files.is_empty() {
                 let start = std::time::Instant::now();
                 urls.extend(build_spas()?);
                 urls.extend(build_generic_pages()?);

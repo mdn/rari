@@ -7,4 +7,4 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-thiserror = "1"
+thiserror.workspace = true

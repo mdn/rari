@@ -49,7 +49,7 @@ pub fn featured_articles(
             match url_path_to_page_with_other_locale_and_fallback(url, Some(locale)) {
                 Ok(Page::BlogPost(post)) => Some(Ok(HomePageFeaturedArticle {
                     mdn_url: post.url().to_string(),
-                    summay: post.meta.description.clone(),
+                    summary: post.meta.description.clone(),
                     title: post.title().to_string(),
                     tag: Some(Parent {
                         uri: strcat!("/" Locale::default().as_url_str() "/blog/"),
@@ -58,7 +58,7 @@ pub fn featured_articles(
                 })),
                 Ok(ref page @ Page::Doc(ref doc)) => Some(Ok(HomePageFeaturedArticle {
                     mdn_url: doc.url().to_string(),
-                    summay: get_hacky_summary_md(page).unwrap_or_default(),
+                    summary: get_hacky_summary_md(page).unwrap_or_default(),
                     title: doc.title().to_string(),
                     tag: parents(page).get(1).cloned(),
                 })),

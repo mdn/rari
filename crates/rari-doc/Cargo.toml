@@ -7,22 +7,31 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-thiserror = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+regex.workspace = true
+tracing.workspace = true
+url.workspace = true
+itertools.workspace = true
+concat-in-place.workspace = true
+constcat.workspace = true
+indexmap.workspace = true
+
 serde_yaml = "0.9"
 yaml-rust = "0.4"
 percent-encoding = "2"
 pest = "2"
 pest_derive = "2"
-regex = "1"
 validator = { version = "0.18", features = ["derive"] }
-scraper = { version = "0.19", features = ["deterministic"] }
 chrono = { version = "0.4", features = ["serde"] }
+
+scraper = { version = "0.20", features = ["deterministic"] }
 lol_html = "1"
 html-escape = "0.2"
 html5ever = "0.27"
-tracing = "0.1"
+ego-tree = "0.6"
+
 ignore = "0.4"
 crossbeam-channel = "0.5"
 rayon = "1"
@@ -30,24 +39,19 @@ enum_dispatch = "0.3"
 icu_collator = "1"
 icu_locid = "1"
 strum = { version = "0.26", features = ["derive"] }
-ego-tree = "0.6"
-url = "2"
 imagesize = "0.13"
 svg_metadata = "0.5"
-itertools = "0.13"
 memoize = "0.4"
-concat-in-place = "1"
-indexmap = "2"
-constcat = "0.5"
 phf_macros = "0.11"
 phf = "0.11"
 
-rari-utils = { path = "../rari-utils" }
-rari-types = { path = "../rari-types" }
-rari-md = { path = "../rari-md" }
-rari-data = { path = "../rari-data" }
-rari-templ-func = { path = "../rari-templ-func" }
-rari-l10n = { path = "../rari-l10n" }
+rari-utils.workspace = true
+rari-types.workspace = true
+rari-md.workspace = true
+rari-data.workspace = true
+rari-templ-func.workspace = true
+rari-l10n.workspace = true
+
 css-syntax = { path = "../css-syntax", features = ["rari"] }
 
 [dev-dependencies]

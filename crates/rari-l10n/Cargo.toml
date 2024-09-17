@@ -7,6 +7,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-rari-types = { path = "../rari-types" }
-thiserror = "1"
-serde_json = { version = "1", features = ["preserve_order"] }
+rari-types.workspace = true
+thiserror.workspace = true
+serde_json.workspace = true

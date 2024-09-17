@@ -7,17 +7,18 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-anyhow = "1"
-clap = { version = "4.5.1", features = ["derive"] }
-ignore = "0.4"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+rayon.workspace = true
+anyhow.workspace = true
+ignore.workspace = true
+itertools.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
 jsonpath_lib = "0.3.0"
 prettydiff = "0.7"
 html-minifier = "5"
 ansi-to-html = "0.2"
-itertools = "0.13"
 similar = "2"
-regex = "1"
 htmldiff = "0.1"
-rayon = "1"
+clap = { version = "4.5.1", features = ["derive"] }

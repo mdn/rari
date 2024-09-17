@@ -10,9 +10,10 @@ rust-version.workspace = true
 proc-macro = true
 
 [dependencies]
+rari-types.workspace = true
+
 syn = { version = "2", features = ["full"] }
 quote = "1"
-rari-types = { path = "../rari-types" }
 
 [dev-dependencies]
-anyhow = "1"
+anyhow.workspace = true

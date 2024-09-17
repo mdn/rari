@@ -11,13 +11,15 @@ testing = []
 default = []
 
 [dependencies]
-thiserror = "1"
-serde = { version = "1", features = ["derive"] }
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+chrono.workspace = true
+
+
 serde_variant = "0.1"
-serde_json = { version = "1", features = ["preserve_order"] }
 normalize-path = "0.2"
 strum = { version = "0.26", features = ["derive"] }
 dirs = "5"
 config = { version = "0.14", default-features = false, features = ["toml"] }
-chrono = { version = "0.4", features = ["serde"] }
-indexmap = { version = "2", features = ["serde"] }

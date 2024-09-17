@@ -56,6 +56,9 @@ pub fn root_doc_url(url: &str) -> Option<&str> {
     if url[m[1]..].starts_with("/docs/Web/") {
         return Some(&url[..*m.get(4).unwrap_or(&url.len())]);
     }
+    if url[m[1]..].starts_with("/docs/conflicting/") || url[m[1]..].starts_with("/docs/orphaned/") {
+        return None;
+    }
     Some(&url[..*m.get(3).unwrap_or(&url.len())])
 }
 

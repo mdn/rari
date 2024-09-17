@@ -7,15 +7,16 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-rari-types = { path = "../rari-types" }
-rari-utils = { path = "../rari-utils" }
-thiserror = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+rari-types.workspace = true
+rari-utils.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+concat-in-place.workspace = true
+
 csv = "1"
-chrono = { version = "0.4", features = ["serde"] }
-tracing = "0.1"
-concat-in-place = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 reqwest = { version = "0.12", default-features = false, features = [
@@ -32,4 +33,4 @@ reqwest = { version = "0.12", default-features = false, features = [
 ] }
 
 [dev-dependencies]
-rari-types = { path = "../rari-types", features = ["testing"] }
+rari-types = { workspace = true, features = ["testing"] }
