@@ -105,7 +105,7 @@ impl PageReader for Page {
 
 fn doc_from_path_and_locale(path: &Path, locale: Locale) -> Result<Page, DocError> {
     let file = to_absolute_path(path, locale)?;
-    Doc::read(file)
+    Doc::read(file, Some(locale))
 }
 
 pub fn to_absolute_path(path: &Path, locale: Locale) -> Result<PathBuf, DocError> {

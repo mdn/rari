@@ -2,8 +2,8 @@ use console::{style, Style};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 
 use rari_doc::{
-    docs::page::{self, Page, PageCategory, PageLike, PageWriter},
     helpers::subpages::get_sub_pages,
+    pages::page::{self, Page, PageCategory, PageLike, PageWriter},
     resolve::build_url,
 };
 use rari_types::locale::Locale;
@@ -80,7 +80,7 @@ fn do_move(
     locale: &Locale,
     dry_run: bool,
 ) -> Result<Vec<(String, String)>, ToolError> {
-    let old_url = build_url(old_slug, locale, PageCategory::Doc);
+    let old_url = build_url(old_slug, locale, PageCategory::Doc)?;
     let doc = page::Page::page_from_url_path(&old_url)?;
 
     let new_parent_slug = parent_slug(new_slug)?;
@@ -105,7 +105,7 @@ fn do_move(
     if let Page::Doc(doc) = doc {
         if let Ok(mut doc) = Arc::try_unwrap(doc) {
             doc.meta.slug = new_slug.to_string();
-            doc.meta.path = build_url(new_slug, locale, PageCategory::Doc).into();
+            doc.meta.path = build_url(new_slug, locale, PageCategory::Doc)?.into();
             println!(
                 "doc.meta.slug: {} doc.meta.path: {:?}",
                 doc.meta.slug, doc.meta.path
