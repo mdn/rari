@@ -1,8 +1,9 @@
 name: ship binaries
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - v[0-9]+.*
 
 jobs:
   upload-assets:
