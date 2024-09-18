@@ -49,7 +49,6 @@ edition = "2021"
 license = "MPL-2.0"
 authors = ["Florian Dieminger <me@fiji-flo.de>"]
 rust-version = "1.80"
-publish = false
 
 [workspace.dependencies]
 rari-doc = { path = "crates/rari-doc" }
