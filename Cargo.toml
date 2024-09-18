@@ -44,7 +44,6 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
 edition = "2021"
 license = "MPL-2.0"
 authors = ["Florian Dieminger <me@fiji-flo.de>"]
