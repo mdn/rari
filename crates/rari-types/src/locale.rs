@@ -10,6 +10,8 @@ use crate::globals::content_translated_root;
 #[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord)]
 pub enum Native {
     #[default]
+    #[serde(rename = "Deutsch")]
+    De,
     #[serde(rename = "English (US)")]
     EnUS,
     #[serde(rename = r#"Español"#)]
@@ -33,6 +35,7 @@ pub enum Native {
 impl From<Locale> for Native {
     fn from(value: Locale) -> Self {
         match value {
+            Locale::De => Self::De,
             Locale::EnUs => Self::EnUS,
             Locale::Es => Self::Es,
             Locale::Fr => Self::Fr,
@@ -61,6 +64,8 @@ pub enum LocaleError {
 )]
 pub enum Locale {
     #[default]
+    #[serde(rename = "de")]
+    De,
     #[serde(rename = "en-US")]
     EnUs,
     #[serde(rename = "es")]
@@ -90,6 +95,7 @@ impl Display for Locale {
 impl Locale {
     pub const fn as_url_str(&self) -> &str {
         match *self {
+            Self::De => "de",
             Self::EnUs => "en-US",
             Self::Es => "es",
             Self::Fr => "fr",
@@ -135,6 +141,7 @@ impl FromStr for Locale {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "de" => Ok(Self::De),
             "en-US" | "en-us" => Ok(Self::EnUs),
             "es" => Ok(Self::Es),
             "fr" => Ok(Self::Fr),
