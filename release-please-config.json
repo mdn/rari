@@ -1,0 +1,9 @@
+{
+  "bootstrap-sha": "eefc5a8d6dd623b6928fd99dc5681095a29cb633",
+  "bump-minor-pre-major": true,
+  "packages": {
+    ".": {
+      "release-type": "rust"
+    }
+  }
+}
