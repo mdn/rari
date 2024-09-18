@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 
+use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
@@ -20,6 +21,7 @@ use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
 use rari_types::settings::Settings;
+use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
 use tracing_log::AsTrace;
 use tracing_subscriber::filter;
@@ -49,7 +51,15 @@ enum Commands {
     Serve(ServeArgs),
     GitHistory,
     Popularities,
+    Update(UpdateArgs),
 }
+
+#[derive(Args)]
+struct UpdateArgs {
+    #[arg(long)]
+    version: Option<String>,
+}
+
 #[derive(Args)]
 struct ServeArgs {
     #[arg(short, long)]
@@ -90,7 +100,7 @@ enum Cache {
     None,
 }
 
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> Result<(), Error> {
     let cli = Cli::parse();
     if !cli.skip_updates {
         rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;
@@ -259,6 +269,78 @@ fn main() -> Result<(), anyhow::Error> {
             update_popularities(20000);
             println!("Took: {:?}", start.elapsed());
         }
+        Commands::Update(args) => update(args.version)?,
     }
+    Ok(())
+}
+
+fn update(version: Option<String>) -> Result<(), Error> {
+    let mut rel_builder = self_update::backends::github::ReleaseList::configure();
+    rel_builder.repo_owner("mdn");
+
+    let releases = rel_builder.repo_name("rari").build()?.fetch()?;
+
+    let mut update_builder = self_update::backends::github::Update::configure();
+    update_builder
+        .repo_owner("mdn")
+        .repo_name("rari")
+        .bin_name("rari")
+        .show_output(false)
+        .no_confirm(true)
+        .show_download_progress(true)
+        .current_version(cargo_crate_version!());
+    let target_release = if let Some(version) = version {
+        if let Some(release) = releases.iter().find(|release| release.version == version) {
+            update_builder.target_version_tag(&release.name);
+            Some(release)
+        } else {
+            return Err(anyhow!("No version {version}"));
+        }
+    } else {
+        None
+    };
+    let update = update_builder.build()?;
+    let latest = update.get_latest_release().ok();
+
+    let target_version = match (&latest, &target_release) {
+        (None, None) => return Err(anyhow!("No latest release, specigy a version!")),
+        (None, Some(target)) => {
+            println!("Updating rari to {}", target.version);
+            &target.version
+        }
+        (Some(latest), None) => {
+            println!("Updating rari to {} (latest)", latest.version);
+            &latest.version
+        }
+        (Some(latest), Some(target)) if latest.version == target.version => {
+            println!("Updating rari to {} (latest)", latest.version);
+            &latest.version
+        }
+        (Some(latest), Some(target)) => {
+            println!(
+                "Updating rari to {} (latest {})",
+                target.version, latest.version
+            );
+            &target.version
+        }
+    };
+
+    println!("rari `{target_version}` will be downloaded/extracted.");
+    println!(
+        "The current rari ({}) at version `{}` will be replaced.",
+        update.bin_install_path().to_string_lossy(),
+        update.current_version()
+    );
+    print!("Do you want to continue? [Y/n] ");
+    io::stdout().flush()?;
+
+    let mut s = String::new();
+    io::stdin().read_line(&mut s)?;
+    let s = s.trim().to_lowercase();
+    if !s.is_empty() && s != "y" {
+        return Err(anyhow!("Update aborted"));
+    }
+    let status = update.update()?;
+    println!("\n\nrari updated to `{}`", status.version());
     Ok(())
 }

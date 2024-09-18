@@ -1,0 +1,8 @@
+[workspace]
+release_always = false
+allow_dirty = true
+git_release_enable = true
+git_release_type = "auto"
+git_tag_name = "v{{ version }}"
+publish = false
+semver_check = true
