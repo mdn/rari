@@ -15,5 +15,5 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
-          release-type: rust
           repo-url: mdn/rari
+          manifest-file: .release-please-manifest.json
