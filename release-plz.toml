@@ -1,8 +1,16 @@
 [workspace]
 release_always = false
 allow_dirty = true
+git_release_enable = false
+publish = false
+changelog_update = false
+
+[[package]]
+name = "rari"
+git_tag_name = "v{{ version }}"
+semver_check = true
+publish = false
+git_tag_enable = true
 git_release_enable = true
 git_release_type = "auto"
-git_tag_name = "v{{ version }}"
-publish = false
-semver_check = true
+changelog_update = true         # enable changelog update for `package_a`
