@@ -104,16 +104,11 @@ impl PageReader for Page {
 }
 
 fn doc_from_path_and_locale(path: &Path, locale: Locale) -> Result<Page, DocError> {
-    let file = to_absolute_path(path, locale)?;
-    Doc::read(file, Some(locale))
-}
-
-pub fn to_absolute_path(path: &Path, locale: Locale) -> Result<PathBuf, DocError> {
     let mut file = root_for_locale(locale)?.to_path_buf();
     file.push(locale.as_folder_str());
     file.push(path);
     file.push("index.md");
-    Ok(file)
+    Doc::read(file, Some(locale))
 }
 
 pub fn url_path_to_page(url_path: &str) -> Result<Page, DocError> {

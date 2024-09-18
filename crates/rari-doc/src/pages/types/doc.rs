@@ -16,7 +16,7 @@ use validator::Validate;
 
 use crate::cached_readers::{doc_page_from_static_files, CACHED_DOC_PAGE_FILES};
 use crate::error::DocError;
-use crate::pages::page::{to_absolute_path, Page, PageCategory, PageLike, PageReader, PageWriter};
+use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::resolve::{build_url, url_to_path_buf};
 use crate::utils::{
     locale_and_typ_from_path, root_for_locale, serialize_t_or_vec, split_fm, t_or_vec,
@@ -308,9 +308,12 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
 }
 
 fn write_doc(doc: &Doc) -> Result<(), DocError> {
-    let path = doc.path().strip_prefix("/")?.to_path_buf();
+    let path = doc.path().to_path_buf();
     let locale = doc.meta.locale;
-    let file_path = to_absolute_path(&path, locale)?;
+
+    let mut file_path = root_for_locale(locale)?.to_path_buf();
+    file_path.push(path);
+
     let (fm, content_start) = split_fm(&doc.raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     // Read original frontmatter to pass additional fields along,
@@ -331,7 +334,6 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     };
 
     let frontmatter_encoded = serde_yaml::to_string(&frontmatter)?;
-
     let mut out = String::new();
     out.push_str("---\n");
     out.push_str(&frontmatter_encoded);

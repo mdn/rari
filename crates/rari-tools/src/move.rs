@@ -7,10 +7,11 @@ use rari_doc::{
         page::{self, Page, PageCategory, PageLike, PageWriter},
         types::doc,
     },
-    resolve::build_url,
+    resolve::{build_url, url_path_to_path_buf, url_to_path_buf},
+    utils::root_for_locale,
 };
 use rari_types::locale::Locale;
-use std::{str::FromStr, sync::Arc};
+use std::{path::PathBuf, process::Command, str::FromStr, sync::Arc};
 
 use crate::error::ToolError;
 
@@ -26,7 +27,6 @@ pub fn r#move(
     } else {
         Locale::default()
     };
-    // println!("Locale: {:?}", locale);
 
     // Make a dry run to give some feedback on what would be done
     let green = Style::new().green();
@@ -85,12 +85,18 @@ fn do_move(
 ) -> Result<Vec<(String, String)>, ToolError> {
     let old_url = build_url(old_slug, locale, PageCategory::Doc)?;
     let doc = page::Page::page_from_url_path(&old_url)?;
-
-    let new_parent_slug = parent_slug(new_slug)?;
     let real_old_slug = doc.slug();
-    // println!("new_parent_slug: {new_parent_slug} real_old_slug: {real_old_slug}");
+
+    let _new_parent_slug = parent_slug(new_slug)?;
     let subpages = get_sub_pages(&old_url, None, Default::default())?;
-    // println!("subpages: {subpages:?}");
+
+    let is_new_slug = real_old_slug != new_slug;
+
+    // Return early if we move onto ourselves.
+    if !is_new_slug {
+        return Ok(vec![]);
+    }
+
     let pairs = vec![doc.clone()]
         .iter()
         .chain(&subpages)
@@ -100,77 +106,84 @@ fn do_move(
             (slug, new_slug)
         })
         .collect::<Vec<_>>();
-    // println!("pairs: {:?}", &pairs);
+
+    // Return early for a dry run.
     if dry_run {
         return Ok(pairs);
     }
 
-    // from update function in yari:
-    // get some meta data from the docs, find out if the
-    // slug is different. If it is, write the new frontmatter
-    // to all affected documents (root + children).
-    // Then, in a strange twist of events, we use the git command
-    // to move the whole directory to a new location. This will move
-    // all children as well and makes sure we get a proper
-    // git move in the history.
-
-    vec![doc.clone()]
+    // No dry run, so build a vec of pairs of `(old_page, Option<new_doc>)`.
+    let dv = vec![doc.clone()];
+    let doc_pairs = dv
         .iter()
         .chain(&subpages)
-        .try_for_each(|doc| {
-            if let Page::Doc(doc) = doc {
+        .map(|page_ref| {
+            let slug = page_ref.slug().to_owned();
+            let new_slug = slug.replace(&real_old_slug, new_slug);
+            let new_page = page_ref.clone();
+            if let Page::Doc(doc) = new_page {
                 let mut cloned_doc = doc.clone();
                 let doc = Arc::make_mut(&mut cloned_doc);
                 doc.meta.slug = new_slug.to_string();
-                println!(
-                    "Writing to file path: {:?} for slug {}",
-                    doc.path(),
-                    doc.slug()
-                );
+                println!("{}", doc.meta.slug);
+                (page_ref, Some(doc.to_owned()))
             } else {
-                return Err(ToolError::Unknown(
-                    "Failed create doc page type".to_string(),
-                ));
+                println!("This does not look like a doc type");
+                (page_ref, None)
             }
-            Ok(())
-            // let slug = page_ref.slug().to_owned();
-            // let new_slug = slug.replace(&real_old_slug, new_slug);
-            // let new_url = build_url(&new_slug, locale, PageCategory::Doc)?;
-            // let new_path = page_ref.path().with_file_name(&new_url);
-            // println!("Moving from {:?} to {:?}", page_ref.path(), new_path);
-            // // fs.renameSync(page_ref.path(), new_path);
-            // // await update(oldUrl, doc.rawBody, doc.metadata);
-            // Ok(())
-        })?;
+        })
+        .collect::<Vec<_>>();
 
-    // if let Page::Doc(doc) = doc {
-    //     if let Ok(mut doc) = Arc::try_unwrap(doc) {
-    //         doc.meta.slug = new_slug.to_string();
-    //         // doc.meta.path = build_url(new_slug, locale, PageCategory::Doc)?.into();
-    //         // println!(
-    //         //     "doc.meta.slug: {} doc.meta.path: {:?}",
-    //         //     doc.meta.slug, doc.meta.path
-    //         // );
-    //         println!(
-    //             "Writing to file path: {:?} for slug {}",
-    //             doc.path(),
-    //             doc.slug()
-    //         );
-    //         // doc.write()?;
-    //     } else {
-    //         return Err(ToolError::Unknown("Failed to unwrap Arc".to_string()));
-    //     }
-    // }
-    // await update(oldUrl, doc.rawBody, doc.metadata);
-    // test writing to file
-    // Now, go through the pairs and move the files
-    // for (old_slug, new_slug) in pairs {
-    // let old_path = urlToFilePath(old_slug);
-    // let new_path = urlToFilePath(new_slug);
-    // println!("old_path: {old_path} new_path: {new_path}");
-    // fs.renameSync(old_path, new_path);
-    // }
+    // Now iterate through the vec and write the new frontmatter
+    // (the changed slug) to all affected documents (root + children).
+    // The docs are all still in their old location at this time.
+    doc_pairs.iter().try_for_each(|(_page_ref, new_doc)| {
+        if let Some(new_doc) = new_doc {
+            new_doc.write()?;
+        }
+        Ok::<(), ToolError>(())
+    })?;
 
+    // Now we use the git command to move the whole parent directory
+    // to a new location. This will move all children as well and
+    // makes sure that we get a proper "file moved" in the git history.
+
+    let mut old_folder_path = PathBuf::new();
+    old_folder_path.push(locale.as_folder_str());
+    let url = build_url(real_old_slug, locale, PageCategory::Doc)?;
+    let (path, _, _, _) = url_path_to_path_buf(&url)?;
+    old_folder_path.push(path);
+
+    let mut new_folder_path = PathBuf::new();
+    new_folder_path.push(locale.as_folder_str());
+    let url = build_url(new_slug, locale, PageCategory::Doc)?;
+    let (path, _, _, _) = url_path_to_path_buf(&url)?;
+    new_folder_path.push(path);
+
+    println!(
+        "cd {} && git mv {} {}",
+        root_for_locale(*locale)?.to_string_lossy(),
+        // locale.as_folder_str(),
+        old_folder_path.to_string_lossy(),
+        new_folder_path.to_string_lossy()
+    );
+
+    let output = Command::new("git")
+        .args([
+            "mv",
+            &old_folder_path.to_string_lossy(),
+            &new_folder_path.to_string_lossy(),
+        ])
+        .current_dir(root_for_locale(*locale)?)
+        .output()
+        .expect("failed to execute process");
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    println!("output_str: {}", output_str);
+
+    // Update the redirect map.
+
+    // finally, return the pairs of old and new slugs
     Ok(pairs)
 }
 
