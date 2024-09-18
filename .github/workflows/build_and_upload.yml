@@ -1,9 +1,11 @@
 name: ship binaries
 
+permissions:
+  contents: write
+
 on:
-  push:
-    tags:
-      - v[0-9]+.*
+  release:
+    types: [created]
 
 jobs:
   upload-assets:
