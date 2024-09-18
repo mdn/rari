@@ -1,8 +1,8 @@
-name: Release
+name: ship binaries
 
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   upload-assets:
