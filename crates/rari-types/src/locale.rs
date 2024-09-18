@@ -120,6 +120,7 @@ impl Locale {
     pub fn all() -> &'static [Self] {
         if content_translated_root().is_some() {
             &[
+                Self::De,
                 Self::EnUs,
                 Self::Es,
                 Self::Fr,
