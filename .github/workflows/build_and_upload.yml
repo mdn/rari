@@ -2,11 +2,11 @@ name: Release
 
 on:
   release:
-    types: [created]
+    types:
+      - created
 
 jobs:
   upload-assets:
-    needs: create-release
     strategy:
       matrix:
         include:

@@ -4,13 +4,13 @@ allow_dirty = true
 git_release_enable = false
 publish = false
 changelog_update = false
+semver_check = false
 
 [[package]]
 name = "rari"
 git_tag_name = "v{{ version }}"
-semver_check = true
 publish = false
 git_tag_enable = true
 git_release_enable = true
 git_release_type = "auto"
-changelog_update = true         # enable changelog update for `package_a`
+changelog_update = true
