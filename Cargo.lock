@@ -501,14 +501,14 @@ dependencies = [
 
 [[package]]
 name = "css-definition-syntax"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "css-syntax"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "css-definition-syntax",
@@ -525,7 +525,7 @@ dependencies = [
 
 [[package]]
 name = "css-syntax-types"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "regress",
  "serde",
@@ -738,7 +738,7 @@ checksum = "339544cc9e2c4dc3fc7149fd630c5f22263a4fdf18a98afd0075784968b5cf00"
 
 [[package]]
 name = "diff-test"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ansi-to-html",
  "anyhow",
@@ -2532,7 +2532,7 @@ dependencies = [
 
 [[package]]
 name = "rari"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2552,7 +2552,7 @@ dependencies = [
 
 [[package]]
 name = "rari-data"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "chrono",
  "indexmap",
@@ -2565,7 +2565,7 @@ dependencies = [
 
 [[package]]
 name = "rari-deps"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "chrono",
  "css-syntax-types",
@@ -2580,7 +2580,7 @@ dependencies = [
 
 [[package]]
 name = "rari-doc"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "chrono",
  "concat-in-place",
@@ -2627,7 +2627,7 @@ dependencies = [
 
 [[package]]
 name = "rari-l10n"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "rari-types",
  "serde_json",
@@ -2636,14 +2636,14 @@ dependencies = [
 
 [[package]]
 name = "rari-linter"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "rari-md"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "base64",
@@ -2656,7 +2656,7 @@ dependencies = [
 
 [[package]]
 name = "rari-templ-func"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "quote",
@@ -2666,7 +2666,7 @@ dependencies = [
 
 [[package]]
 name = "rari-tools"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "chrono",
  "concat-in-place",
@@ -2682,7 +2682,7 @@ dependencies = [
 
 [[package]]
 name = "rari-types"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "chrono",
  "config",
@@ -2698,7 +2698,7 @@ dependencies = [
 
 [[package]]
 name = "rari-utils"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "serde",
  "serde_json",
