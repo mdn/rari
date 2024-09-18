@@ -3,17 +3,14 @@ use dialoguer::{theme::ColorfulTheme, Confirm};
 
 use rari_doc::{
     helpers::subpages::get_sub_pages,
-    pages::{
-        page::{self, Page, PageCategory, PageLike, PageWriter},
-        types::doc,
-    },
-    resolve::{build_url, url_path_to_path_buf, url_to_path_buf},
+    pages::page::{self, Page, PageCategory, PageLike, PageWriter},
+    resolve::{build_url, url_path_to_path_buf},
     utils::root_for_locale,
 };
 use rari_types::locale::Locale;
 use std::{path::PathBuf, process::Command, str::FromStr, sync::Arc};
 
-use crate::error::ToolError;
+use crate::{error::ToolError, wikihistory::update_wiki_history};
 
 pub fn r#move(
     old_slug: &str,
@@ -69,7 +66,6 @@ pub fn r#move(
             bold.apply_to(moved.len()),
             green.apply_to("documents"),
         );
-        println!("Done");
     } else {
         return Ok(());
     }
@@ -125,10 +121,9 @@ fn do_move(
                 let mut cloned_doc = doc.clone();
                 let doc = Arc::make_mut(&mut cloned_doc);
                 doc.meta.slug = new_slug.to_string();
-                println!("{}", doc.meta.slug);
                 (page_ref, Some(doc.to_owned()))
             } else {
-                println!("This does not look like a doc type");
+                println!("This does not look like a document");
                 (page_ref, None)
             }
         })
@@ -160,14 +155,6 @@ fn do_move(
     let (path, _, _, _) = url_path_to_path_buf(&url)?;
     new_folder_path.push(path);
 
-    println!(
-        "cd {} && git mv {} {}",
-        root_for_locale(*locale)?.to_string_lossy(),
-        // locale.as_folder_str(),
-        old_folder_path.to_string_lossy(),
-        new_folder_path.to_string_lossy()
-    );
-
     let output = Command::new("git")
         .args([
             "mv",
@@ -178,8 +165,14 @@ fn do_move(
         .output()
         .expect("failed to execute process");
 
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    println!("output_str: {}", output_str);
+    // let output_str = String::from_utf8_lossy(&output.stdout);
+    // let err_str = String::from_utf8_lossy(&output.stderr);
+    // println!(
+    //     "output_str: {} err_str: {} status: {}",
+    //     output_str, err_str, output.status
+    // );
+
+    update_wiki_history(locale, &pairs)?;
 
     // Update the redirect map.
 

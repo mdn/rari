@@ -17,6 +17,10 @@ pub enum ToolError {
     EnvError(#[from] EnvError),
     #[error(transparent)]
     UrlError(#[from] UrlError),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    JsonError(#[from] serde_json::Error),
 
     #[error("Unknonwn error")]
     Unknown(String),

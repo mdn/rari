@@ -347,7 +347,6 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     let mut file = fs::File::create(&file_path)?;
     file.write_all(out.as_bytes())?;
 
-    println!("Wrote to: {:?}", file_path);
     Ok(())
 }
 
