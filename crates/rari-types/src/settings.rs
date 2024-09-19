@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
 
+use crate::locale::Locale;
+
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
 pub struct Settings {
@@ -19,11 +21,15 @@ pub struct Settings {
     pub live_samples_base_url: String,
     pub legacy_live_samples_base_url: String,
     pub interactive_examples_base_url: String,
+    pub active_locales: Option<Vec<Locale>>,
 }
 
 impl Settings {
     #[cfg(not(target_arch = "wasm32"))]
     fn validate(mut self) -> Self {
+        use std::iter::once;
+        use std::str::FromStr;
+
         self.content_root =
             std::fs::canonicalize(self.content_root).expect("CONTENT_ROOT is not a valid path");
 
@@ -32,7 +38,30 @@ impl Settings {
                 std::fs::canonicalize(translated_content_root)
                     .expect("CONTENT_TRANSLATED_ROOT is not a valid path")
             });
-
+        if self.active_locales.is_none() {
+            if let Some(content_translated_root) = &self.content_translated_root {
+                self.active_locales = Some(
+                    once(Locale::EnUs)
+                        .chain(
+                            std::fs::read_dir(content_translated_root)
+                                .expect("Unable to read CONTENT_TRANSLATED_ROOT")
+                                .filter_map(|f| f.ok())
+                                .filter_map(|f| {
+                                    f.file_type().ok().and_then(|ft| {
+                                        if ft.is_dir() {
+                                            Locale::from_str(&f.file_name().to_string_lossy()).ok()
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                }),
+                        )
+                        .collect(),
+                )
+            } else {
+                self.active_locales = Some(vec![Locale::EnUs]);
+            }
+        }
         self
     }
 
