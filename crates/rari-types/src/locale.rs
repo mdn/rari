@@ -5,15 +5,15 @@ use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use thiserror::Error;
 
-use crate::globals::content_translated_root;
+use crate::globals::settings;
 
 #[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord)]
 pub enum Native {
     #[default]
-    #[serde(rename = "Deutsch")]
-    De,
     #[serde(rename = "English (US)")]
     EnUS,
+    #[serde(rename = "Deutsch")]
+    De,
     #[serde(rename = r#"Español"#)]
     Es,
     #[serde(rename = r#"Français"#)]
@@ -35,8 +35,8 @@ pub enum Native {
 impl From<Locale> for Native {
     fn from(value: Locale) -> Self {
         match value {
-            Locale::De => Self::De,
             Locale::EnUs => Self::EnUS,
+            Locale::De => Self::De,
             Locale::Es => Self::Es,
             Locale::Fr => Self::Fr,
             Locale::Ja => Self::Ja,
@@ -64,10 +64,10 @@ pub enum LocaleError {
 )]
 pub enum Locale {
     #[default]
-    #[serde(rename = "de")]
-    De,
     #[serde(rename = "en-US")]
     EnUs,
+    #[serde(rename = "de")]
+    De,
     #[serde(rename = "es")]
     Es,
     #[serde(rename = "fr")]
@@ -95,8 +95,8 @@ impl Display for Locale {
 impl Locale {
     pub const fn as_url_str(&self) -> &str {
         match *self {
-            Self::De => "de",
             Self::EnUs => "en-US",
+            Self::De => "de",
             Self::Es => "es",
             Self::Fr => "fr",
             Self::Ja => "ja",
@@ -118,22 +118,10 @@ impl Locale {
     }
 
     pub fn all() -> &'static [Self] {
-        if content_translated_root().is_some() {
-            &[
-                Self::De,
-                Self::EnUs,
-                Self::Es,
-                Self::Fr,
-                Self::Ja,
-                Self::Ko,
-                Self::PtBr,
-                Self::Ru,
-                Self::ZhCn,
-                Self::ZhTw,
-            ]
-        } else {
-            &[Self::EnUs]
-        }
+        settings()
+            .active_locales
+            .as_deref()
+            .unwrap_or([Locale::EnUs].as_slice())
     }
 }
 
@@ -142,8 +130,8 @@ impl FromStr for Locale {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "de" => Ok(Self::De),
             "en-US" | "en-us" => Ok(Self::EnUs),
+            "de" => Ok(Self::De),
             "es" => Ok(Self::Es),
             "fr" => Ok(Self::Fr),
             "ja" => Ok(Self::Ja),
