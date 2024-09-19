@@ -8,7 +8,7 @@ use rari_doc::{
     utils::root_for_locale,
 };
 use rari_types::locale::Locale;
-use std::{path::PathBuf, process::Command, str::FromStr, sync::Arc};
+use std::{fs::create_dir_all, path::PathBuf, process::Command, str::FromStr, sync::Arc};
 
 use crate::{error::ToolError, wikihistory::update_wiki_history};
 
@@ -155,6 +155,17 @@ fn do_move(
     let (path, _, _, _) = url_path_to_path_buf(&url)?;
     new_folder_path.push(path);
 
+    // Make sure the target parent directory exists.
+    if let Some(target_parent_path) = new_folder_path.as_path().parent() {
+        let absolute_target_parent_path = root_for_locale(*locale)?.join(target_parent_path);
+        create_dir_all(absolute_target_parent_path)?;
+    } else {
+        return Err(ToolError::Unknown(
+            "Could not determine parent path for new folder".to_string(),
+        ));
+    }
+
+    // Execute the git move.
     let output = Command::new("git")
         .args([
             "mv",
@@ -165,12 +176,17 @@ fn do_move(
         .output()
         .expect("failed to execute process");
 
-    // let output_str = String::from_utf8_lossy(&output.stdout);
-    // let err_str = String::from_utf8_lossy(&output.stderr);
-    // println!(
-    //     "output_str: {} err_str: {} status: {}",
-    //     output_str, err_str, output.status
-    // );
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let err_str = String::from_utf8_lossy(&output.stderr);
+    println!(
+        "cd {} && git mv {} {}\noutput_str: {} err_str: {} status: {}",
+        root_for_locale(*locale)?.display(),
+        &old_folder_path.to_string_lossy(),
+        &new_folder_path.to_string_lossy(),
+        output_str,
+        err_str,
+        output.status
+    );
 
     update_wiki_history(locale, &pairs)?;
 
@@ -188,15 +204,6 @@ fn parent_slug(slug: &str) -> Result<&str, ToolError> {
         Err(ToolError::InvalidSlug("slug has no parent".to_string()))
     }
 }
-
-// fn find_children(url: &str, recursive: bool) -> Vec<String> {
-//   let locale = url.split("/")[1];
-//   let root = getRoot(locale);
-//   let folder = urlToFolderPath(url);
-
-//   let childPaths = childrenFoldersForPath(root, folder, recursive);
-//   return childPaths.map((folder) => read(folder));
-// }
 
 fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
     if old_slug.is_empty() {

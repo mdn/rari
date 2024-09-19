@@ -54,6 +54,7 @@ enum Commands {
     Serve(ServeArgs),
     GitHistory,
     Popularities,
+    Update(UpdateArgs),
     #[command(subcommand)]
     Content(ContentSubcommand),
 }
@@ -69,7 +70,6 @@ struct MoveArgs {
     old_slug: String,
     new_slug: String,
     locale: Option<String>,
-    Update(UpdateArgs),
 }
 
 #[derive(Args)]
