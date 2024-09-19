@@ -1,9 +1,11 @@
-name: Release
+name: ship binaries
+
+permissions:
+  contents: write
 
 on:
   release:
-    types:
-      - created
+    types: [created]
 
 jobs:
   upload-assets:
