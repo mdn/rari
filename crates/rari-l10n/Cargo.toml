@@ -1,12 +1,12 @@
 [package]
 name = "rari-l10n"
-version.workspace = true
+version = "0.0.6"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-rari-types = { path = "../rari-types" }
-thiserror = "1"
-serde_json = { version = "1", features = ["preserve_order"] }
+rari-types.workspace = true
+thiserror.workspace = true
+serde_json.workspace = true

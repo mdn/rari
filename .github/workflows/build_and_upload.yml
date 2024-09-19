@@ -1,22 +1,14 @@
-name: Release
+name: ship binaries
+
+permissions:
+  contents: write
 
 on:
-  push:
-    tags:
-      - v[0-9]+.*
+  release:
+    types: [created]
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: taiki-e/create-gh-release-action@v1
-        with:
-          allow-missing-changelog: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
   upload-assets:
-    needs: create-release
     strategy:
       matrix:
         include:
@@ -36,4 +28,5 @@ jobs:
           bin: rari
           target: ${{ matrix.target }}
           build-tool: ${{ matrix.build-tool }}
+          profile: release-lto
           token: ${{ secrets.GITHUB_TOKEN }}

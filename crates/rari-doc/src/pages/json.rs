@@ -300,7 +300,7 @@ pub struct JsonBasicSPA {
 #[serde(rename_all = "camelCase")]
 pub struct HomePageFeaturedArticle {
     pub mdn_url: String,
-    pub summay: String,
+    pub summary: String,
     pub title: String,
     pub tag: Option<Parent>,
 }

@@ -1,10 +1,10 @@
 [package]
 name = "css-definition-syntax"
-version.workspace = true
+version = "0.0.6"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-thiserror = "1"
+thiserror.workspace = true

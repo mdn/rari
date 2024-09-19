@@ -1,16 +1,16 @@
 [package]
 name = "rari-data"
-version.workspace = true
+version = "0.0.6"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-rari-utils = { path = "../rari-utils" }
-thiserror = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
-url = { version = "2", features = ["serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-indexmap = { version = "2", features = ["serde"] }
+rari-utils.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+chrono.workspace = true
+indexmap.workspace = true
