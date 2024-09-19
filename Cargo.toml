@@ -76,9 +76,20 @@ regress = "0.10"
 html-escape = "0.2"
 ignore = "0.4"
 rayon = "1"
+reqwest = { version = "0.12", default-features = false, features = [
+    "blocking",
+    "json",
+    "rustls-tls",
+    "gzip",
+] }
 
 
 [dependencies]
+self_update = { version = "0.41", features = [
+    "rustls",
+    "compression-flate2",
+    "compression-zip-deflate",
+] }
 anyhow = "1"
 clap = { version = "4.5.1", features = ["derive"] }
 clap-verbosity-flag = "2"
@@ -92,7 +103,3 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 tracing-log = "0.2"
 tabwriter = "1"
-self_update = { version = "0.41", features = [
-    "compression-flate2",
-    "compression-zip-deflate",
-] }

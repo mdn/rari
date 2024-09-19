@@ -15,22 +15,10 @@ serde_json.workspace = true
 chrono.workspace = true
 tracing.workspace = true
 concat-in-place.workspace = true
+reqwest.workspace = true
 
 csv = "1"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-reqwest = { version = "0.12", default-features = false, features = [
-    "blocking",
-    "json",
-    "rustls-tls",
-    "gzip",
-] }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-reqwest = { version = "0.12", default-features = false, features = [
-    "json",
-    "gzip",
-] }
 
 [dev-dependencies]
 rari-types = { workspace = true, features = ["testing"] }
