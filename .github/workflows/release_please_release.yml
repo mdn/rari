@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
-          skip-github-release: true
+          skip-github-pull-request: true
           repo-url: mdn/rari
           manifest-file: .release-please-manifest.json
           token: ${{ secrets.RELEASE_PLEASE_GITHUB_TOKEN }}
