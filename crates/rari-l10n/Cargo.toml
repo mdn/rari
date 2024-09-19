@@ -1,6 +1,6 @@
 [package]
 name = "rari-l10n"
-version = "0.0.5"
+version = "0.0.6"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
