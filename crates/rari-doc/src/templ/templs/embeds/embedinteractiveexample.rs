@@ -1,7 +1,7 @@
-use rari_l10n::l10n_json_data;
 use rari_templ_func::rari_f;
 
 use crate::error::DocError;
+use crate::helpers::l10n::l10n_json_data;
 use crate::templ::api::RariApi;
 
 /// Embeds a live sample from a interactive-examples.mdn.mozilla.net GitHub page

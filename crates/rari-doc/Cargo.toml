@@ -50,7 +50,6 @@ rari-types.workspace = true
 rari-md.workspace = true
 rari-data.workspace = true
 rari-templ-func.workspace = true
-rari-l10n.workspace = true
 
 css-syntax = { path = "../css-syntax", features = ["rari"] }
 

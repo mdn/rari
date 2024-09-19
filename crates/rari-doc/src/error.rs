@@ -2,13 +2,13 @@ use std::path::{PathBuf, StripPrefixError};
 use std::sync::PoisonError;
 
 use css_syntax::error::SyntaxError;
-use rari_l10n::L10nError;
 use rari_md::error::MarkdownError;
 use rari_types::error::EnvError;
 use rari_types::locale::LocaleError;
 use rari_types::ArgError;
 use thiserror::Error;
 
+use crate::helpers::l10n::L10nError;
 use crate::pages::page::PageCategory;
 
 #[derive(Debug, Error)]

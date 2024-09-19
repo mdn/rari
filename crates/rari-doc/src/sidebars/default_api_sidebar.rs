@@ -1,8 +1,8 @@
-use rari_l10n::l10n_json_data;
 use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::helpers::json_data::json_data_group;
+use crate::helpers::l10n::l10n_json_data;
 use crate::html::sidebar::{
     Details, MetaChildren, MetaSidebar, SidebarMetaEntry, SidebarMetaEntryContent,
 };

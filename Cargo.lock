@@ -2497,7 +2497,6 @@ dependencies = [
  "phf 0.11.2",
  "phf_macros 0.11.2",
  "rari-data",
- "rari-l10n",
  "rari-md",
  "rari-templ-func",
  "rari-types",
@@ -2515,15 +2514,6 @@ dependencies = [
  "url",
  "validator",
  "yaml-rust",
-]
-
-[[package]]
-name = "rari-l10n"
-version = "0.0.8"
-dependencies = [
- "rari-types",
- "serde_json",
- "thiserror",
 ]
 
 [[package]]

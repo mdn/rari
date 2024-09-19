@@ -4,7 +4,6 @@ use std::sync::OnceLock;
 
 use indexmap::IndexMap;
 use itertools::Itertools;
-use rari_l10n::l10n_json_data;
 use rari_types::globals::data_dir;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
@@ -12,6 +11,7 @@ use rari_utils::io::read_to_string;
 use serde_json::Value;
 use tracing::warn;
 
+use super::l10n::l10n_json_data;
 use crate::error::DocError;
 use crate::templ::api::RariApi;
 use crate::templ::render::render_and_decode_ref;
