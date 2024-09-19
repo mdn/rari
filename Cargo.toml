@@ -85,7 +85,7 @@ reqwest = { version = "0.12", default-features = false, features = [
 
 
 [dependencies]
-self_update = { version = "0.41", features = [
+self_update = { version = "0.41", default-features = false, features = [
     "rustls",
     "compression-flate2",
     "compression-zip-deflate",
