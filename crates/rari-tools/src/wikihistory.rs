@@ -5,12 +5,9 @@ use std::{collections::BTreeMap, fs, path::Path};
 
 use crate::error::ToolError;
 
-pub fn update_wiki_history(
-    locale: &Locale,
-    pairs: &Vec<(String, String)>,
-) -> Result<(), ToolError> {
+pub fn update_wiki_history(locale: Locale, pairs: &Vec<(String, String)>) -> Result<(), ToolError> {
     // Construct the path to "_wikihistory.json"
-    let locale_content_root = root_for_locale(*locale)?;
+    let locale_content_root = root_for_locale(locale)?;
     let wiki_history_path = Path::new(locale_content_root)
         .join(locale.as_folder_str())
         .join("_wikihistory.json");

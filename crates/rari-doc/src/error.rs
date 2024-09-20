@@ -101,6 +101,13 @@ pub enum DocError {
     RariIoError(#[from] rari_utils::error::RariIoError),
     #[error("Slug required for SidebarEntry")]
     SlugRequiredForSidebarEntry,
+
+    #[error("Invalid Redirection: {0}")]
+    InvalidRedirectionEntry(String),
+    #[error("Error reading redirects file: {0}")]
+    ReadRedirectsError(String),
+    #[error("Error writing redirects file: {0}")]
+    WriteRedirectsError(String),
 }
 
 impl<T> From<PoisonError<T>> for DocError {

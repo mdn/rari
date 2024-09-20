@@ -4,6 +4,7 @@ use dialoguer::{theme::ColorfulTheme, Confirm};
 use rari_doc::{
     helpers::subpages::get_sub_pages,
     pages::page::{self, Page, PageCategory, PageLike, PageWriter},
+    redirects::add_redirects,
     resolve::{build_url, url_path_to_path_buf},
     utils::root_for_locale,
 };
@@ -29,7 +30,7 @@ pub fn r#move(
     let green = Style::new().green();
     let red = Style::new().red();
     let bold = Style::new().bold();
-    let changes = do_move(old_slug, new_slug, &locale, true)?;
+    let changes = do_move(old_slug, new_slug, locale, true)?;
     if changes.is_empty() {
         println!("{}", style("No changes would be made").green());
         return Ok(());
@@ -59,7 +60,7 @@ pub fn r#move(
             .interact()
             .unwrap()
     {
-        let moved = do_move(old_slug, new_slug, &locale, false)?;
+        let moved = do_move(old_slug, new_slug, locale, false)?;
         println!(
             "{} {} {}",
             green.apply_to("Moved"),
@@ -76,10 +77,10 @@ pub fn r#move(
 fn do_move(
     old_slug: &str,
     new_slug: &str,
-    locale: &Locale,
+    locale: Locale,
     dry_run: bool,
 ) -> Result<Vec<(String, String)>, ToolError> {
-    let old_url = build_url(old_slug, locale, PageCategory::Doc)?;
+    let old_url = build_url(old_slug, &locale, PageCategory::Doc)?;
     let doc = page::Page::page_from_url_path(&old_url)?;
     let real_old_slug = doc.slug();
 
@@ -145,19 +146,19 @@ fn do_move(
 
     let mut old_folder_path = PathBuf::new();
     old_folder_path.push(locale.as_folder_str());
-    let url = build_url(real_old_slug, locale, PageCategory::Doc)?;
+    let url = build_url(real_old_slug, &locale, PageCategory::Doc)?;
     let (path, _, _, _) = url_path_to_path_buf(&url)?;
     old_folder_path.push(path);
 
     let mut new_folder_path = PathBuf::new();
     new_folder_path.push(locale.as_folder_str());
-    let url = build_url(new_slug, locale, PageCategory::Doc)?;
+    let url = build_url(new_slug, &locale, PageCategory::Doc)?;
     let (path, _, _, _) = url_path_to_path_buf(&url)?;
     new_folder_path.push(path);
 
     // Make sure the target parent directory exists.
     if let Some(target_parent_path) = new_folder_path.as_path().parent() {
-        let absolute_target_parent_path = root_for_locale(*locale)?.join(target_parent_path);
+        let absolute_target_parent_path = root_for_locale(locale)?.join(target_parent_path);
         create_dir_all(absolute_target_parent_path)?;
     } else {
         return Err(ToolError::Unknown(
@@ -172,7 +173,7 @@ fn do_move(
             &old_folder_path.to_string_lossy(),
             &new_folder_path.to_string_lossy(),
         ])
-        .current_dir(root_for_locale(*locale)?)
+        .current_dir(root_for_locale(locale)?)
         .output()
         .expect("failed to execute process");
 
@@ -180,7 +181,7 @@ fn do_move(
     let err_str = String::from_utf8_lossy(&output.stderr);
     println!(
         "cd {} && git mv {} {}\noutput_str: {} err_str: {} status: {}",
-        root_for_locale(*locale)?.display(),
+        root_for_locale(locale)?.display(),
         &old_folder_path.to_string_lossy(),
         &new_folder_path.to_string_lossy(),
         output_str,
@@ -191,7 +192,7 @@ fn do_move(
     update_wiki_history(locale, &pairs)?;
 
     // Update the redirect map.
-
+    add_redirects(locale, &pairs)?;
     // finally, return the pairs of old and new slugs
     Ok(pairs)
 }
@@ -257,7 +258,7 @@ mod test {
         let result = do_move(
             "Web/API/ExampleOne",
             "Web/API/ExampleOneNewLocation",
-            &Locale::default(),
+            Locale::default(),
             true,
         );
         println!("result: {:?}", result);
