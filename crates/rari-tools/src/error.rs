@@ -6,8 +6,10 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ToolError {
-    #[error("invalid slug: {0}")]
+    #[error("Invalid slug: {0}")]
     InvalidSlug(String),
+    #[error("Git error: {0}")]
+    GitError(String),
 
     #[error(transparent)]
     LocaleError(#[from] LocaleError),
