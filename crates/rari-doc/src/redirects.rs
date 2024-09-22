@@ -427,12 +427,12 @@ mod tests {
     }
 
     #[test]
-    fn test_separate_case_changes_mixed() {
+    fn test_separate_case_changes() {
         let pairs = vec![
-            (s("/en-us/docs/A"), s("/en-us/docs/a")),      // Case change
-            (s("/en-us/docs/B"), s("/en-us/docs/b.html")), // Proper redirect
-            (s("/en-us/docs/C"), s("/en-us/docs/C")),      // Case change (no actual change)
-            (s("/en-us/docs/D"), s("/en-us/docs/d.html")), // Proper redirect
+            (s("/en-US/docs/A"), s("/en-US/docs/a")),      // Case change
+            (s("/en-US/docs/B"), s("/en-US/docs/b.html")), // Proper redirect
+            (s("/en-US/docs/C"), s("/en-US/docs/C")),      // no actual change
+            (s("/en-US/docs/D"), s("/en-US/docs/d.html")), // Proper redirect
         ];
 
         let (case_changed, proper_redirects) = separate_case_changes(&pairs);
