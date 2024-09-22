@@ -271,14 +271,18 @@ fn fix_redirects_case<'a>(
 mod tests {
     use super::*;
 
+    fn s(s: &str) -> String {
+        s.to_string()
+    }
+
     #[test]
     fn test_remove_conflicting_old_redirects_no_conflicts() {
         let old_pairs = vec![
-            ("/en-US/docs/A".to_string(), "/en-US/docs/B".to_string()),
-            ("/en-US/docs/C".to_string(), "/en-US/docs/D".to_string()),
+            (s("/en-US/docs/A"), s("/en-US/docs/B")),
+            (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ];
 
-        let update_pairs = vec![("/en-US/docs/E".to_string(), "/en-US/docs/F".to_string())];
+        let update_pairs = vec![(s("/en-US/docs/E"), s("/en-US/docs/F"))];
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected_refs: Vec<&(String, String)> = old_pairs.iter().collect();
@@ -288,13 +292,13 @@ mod tests {
     #[test]
     fn test_remove_conflicting_old_redirects_with_conflicts() {
         let old_pairs = vec![
-            ("/en-US/docs/A".to_string(), "/en-US/docs/B".to_string()),
-            ("/en-US/docs/C".to_string(), "/en-US/docs/D".to_string()),
+            (s("/en-US/docs/A"), s("/en-US/docs/B")),
+            (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ];
-        let update_pairs = vec![("/en-US/docs/C".to_string(), "/en-US/docs/A".to_string())];
+        let update_pairs = vec![(s("/en-US/docs/C"), s("/en-US/docs/A"))];
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
-        let expected = vec![("/en-US/docs/C".to_string(), "/en-US/docs/D".to_string())];
+        let expected = vec![(s("/en-US/docs/C"), s("/en-US/docs/D"))];
         let expected_refs: Vec<&(String, String)> = expected.iter().collect();
         let result = remove_conflicting_old_redirects(&old_pairs, &update_pairs_refs);
         assert_eq!(result, expected_refs);
@@ -303,7 +307,7 @@ mod tests {
     #[test]
     fn test_remove_conflicting_old_redirects_empty_old_pairs() {
         let old_pairs: Vec<(String, String)> = vec![];
-        let update_pairs = vec![("/en-US/docs/A".to_string(), "/en-US/docs/B".to_string())];
+        let update_pairs = vec![(s("/en-US/docs/A"), s("/en-US/docs/B"))];
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected: Vec<(String, String)> = vec![];
@@ -315,8 +319,8 @@ mod tests {
     #[test]
     fn test_remove_conflicting_old_redirects_empty_update_pairs() {
         let old_pairs = vec![
-            ("/en-US/docs/A".to_string(), "/en-US/docs/B".to_string()),
-            ("/en-US/docs/C".to_string(), "/en-US/docs/D".to_string()),
+            (s("/en-US/docs/A"), s("/en-US/docs/B")),
+            (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ];
 
         let update_pairs: Vec<(String, String)> = vec![];
@@ -331,13 +335,13 @@ mod tests {
     #[test]
     fn test_remove_conflicting_old_redirects_case_insensitive() {
         let old_pairs = vec![
-            ("/EN-US/docs/A".to_string(), "/en-US/docs/B".to_string()),
-            ("/EN-US/DOCS/C".to_string(), "/EN-US/DOCS/D".to_string()),
+            (s("/EN-US/docs/A"), s("/en-US/docs/B")),
+            (s("/EN-US/DOCS/C"), s("/EN-US/DOCS/D")),
         ];
 
         let update_pairs = vec![
-            ("/en-US/docs/New1".to_string(), "/en-US/docs/a".to_string()),
-            ("/en-US/docs/New2".to_string(), "/en-US/docs/c".to_string()),
+            (s("/en-US/docs/New1"), s("/en-US/docs/a")),
+            (s("/en-US/docs/New2"), s("/en-US/docs/c")),
         ];
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
@@ -347,68 +351,121 @@ mod tests {
         assert_eq!(result, expected_refs);
     }
 
-    // #[test]
-    // fn test_fix_redirects_case_empty_targets() {
-    //     let old_pairs = vec![
-    //         ("/en-US/docs/A".to_string(), "/en-US/docs/B".to_string()),
-    //         ("/en-US/docs/C".to_string(), "/en-US/docs/D".to_string()),
-    //     ];
+    #[test]
+    fn test_fix_redirects_case_empty_targets() {
+        let old_pairs = vec![
+            (s("/en-US/docs/A"), s("/en-US/docs/B")),
+            (s("/en-US/docs/C"), s("/en-US/docs/D")),
+        ];
+        let old_pairs_ref: Vec<&(String, String)> = old_pairs.iter().collect();
 
-    //     let changed_targets = vec![];
+        let changed_targets = HashSet::new();
 
-    //     let expected = vec![
-    //         ("/en-US/docs/A".to_string(), "/en-US/docs/B".to_string()),
-    //         ("/en-US/docs/C".to_string(), "/en-US/docs/D".to_string()),
-    //     ];
-    //     let result = fix_redirects_case(&old_pairs, &changed_targets);
-    //     assert_eq!(result, expected);
-    // }
+        let expected = vec![
+            (s("/en-US/docs/A"), s("/en-US/docs/B")),
+            (s("/en-US/docs/C"), s("/en-US/docs/D")),
+        ];
+        let result = fix_redirects_case(&old_pairs_ref, &changed_targets);
+        assert_eq!(result, expected);
+    }
 
-    // #[test]
-    // fn test_fix_redirects_case_changes() {
-    //     let old_pairs = vec![
-    //         ("/en-US/docs/A".to_string(), "/en-US/docs/B".to_string()),
-    //         ("/en-US/docs/C".to_string(), "/en-US/docs/D".to_string()),
-    //     ];
-    //     let case_changed_targets: Vec<String> =
-    //         vec!["/en-US/DOCS/B".to_string(), "/en-US/DOCS/D".to_string()];
+    #[test]
+    fn test_fix_redirects_case_changes() {
+        let old_pairs = vec![
+            (s("/en-US/docs/A"), s("/en-US/docs/B")),
+            (s("/en-US/docs/C"), s("/en-US/docs/D")),
+        ];
+        let old_pairs_ref: Vec<&(String, String)> = old_pairs.iter().collect();
+        let case_changed_targets = HashSet::from([s("/en-US/DOCS/B"), s("/en-US/DOCS/D")]);
+        let case_changed_targets_ref = case_changed_targets.iter().collect();
 
-    //     let expected = vec![
-    //         ("/en-US/docs/A".to_string(), "/en-US/DOCS/B".to_string()),
-    //         ("/en-US/docs/C".to_string(), "/en-US/DOCS/D".to_string()),
-    //     ];
+        let expected = vec![
+            (s("/en-US/docs/A"), s("/en-US/DOCS/B")),
+            (s("/en-US/docs/C"), s("/en-US/DOCS/D")),
+        ];
 
-    //     let result = fix_redirects_case(&old_pairs, &case_changed_targets);
-    //     assert_eq!(result, expected);
-    // }
+        let result = fix_redirects_case(&old_pairs_ref, &case_changed_targets_ref);
+        assert_eq!(result, expected);
+    }
 
-    // #[test]
-    // fn test_fix_redirects_case_empty_old_pairs() {
-    //     let old_pairs = vec![];
-    //     let case_changed_targets: Vec<String> = vec!["/en-US/DOCS/B".to_string()];
+    #[test]
+    fn test_fix_redirects_case_empty_old_pairs() {
+        let old_pairs = vec![];
+        let case_changed_targets: Vec<String> = vec![s("/en-US/DOCS/B")];
+        let case_changed_targets_ref = case_changed_targets.iter().collect();
 
-    //     let expected = vec![];
-    //     let result = fix_redirects_case(&old_pairs, &case_changed_targets);
-    //     assert_eq!(result, expected);
-    // }
+        let expected = vec![];
+        let result = fix_redirects_case(&old_pairs, &case_changed_targets_ref);
+        assert_eq!(result, expected);
+    }
 
-    // #[test]
-    // fn test_fix_redirects_case_duplicates_in_case_changed_targets() {
-    //     let old_pairs = vec![
-    //         ("/en-US/docs/A".to_string(), "/en-US/docs/B".to_string()),
-    //         ("/en-US/docs/C".to_string(), "/en-US/docs/D".to_string()),
-    //     ];
-    //     let case_changed_targets: Vec<String> = vec![
-    //         "/en-US/DOCS/B".to_string(),
-    //         "/EN-US/DOCS/B".to_string(), // Duplicate target with different case
-    //     ];
+    #[test]
+    fn test_separate_case_changes_no_changes() {
+        let pairs = vec![
+            (s("/en-US/docs/A"), s("/en-US/docs/B")),
+            (s("/en-US/docs/C"), s("/en-US/docs/D")),
+        ];
 
-    //     let expected = vec![
-    //         ("/en-US/docs/A".to_string(), "/EN-US/DOCS/B".to_string()), // last occurrence wins
-    //         ("/en-US/docs/C".to_string(), "/en-US/docs/D".to_string()),
-    //     ];
+        let (case_changed, proper_redirects) = separate_case_changes(&pairs);
 
-    //     let result = fix_redirects_case(&old_pairs, &case_changed_targets);
-    //     assert_eq!(result, expected);
-    // }
+        // All redirects are proper; no case changes.
+        assert!(case_changed.is_empty(), "Expected no case changes");
+
+        // All pairs should be in proper_redirects.
+        assert_eq!(
+            proper_redirects.len(),
+            pairs.len(),
+            "All pairs should be proper redirects"
+        );
+        for pair in &pairs {
+            assert!(
+                proper_redirects.contains(&pair),
+                "Proper redirects should contain {:?}",
+                pair
+            );
+        }
+    }
+
+    #[test]
+    fn test_separate_case_changes_mixed() {
+        let pairs = vec![
+            (s("/en-us/docs/A"), s("/en-us/docs/a")),      // Case change
+            (s("/en-us/docs/B"), s("/en-us/docs/b.html")), // Proper redirect
+            (s("/en-us/docs/C"), s("/en-us/docs/C")),      // Case change (no actual change)
+            (s("/en-us/docs/D"), s("/en-us/docs/d.html")), // Proper redirect
+        ];
+
+        let (case_changed, proper_redirects) = separate_case_changes(&pairs);
+
+        // There should be 2 case changes.
+        assert_eq!(case_changed.len(), 2, "Expected 2 case changed targets");
+
+        assert!(
+            case_changed.contains(&&s("/en-US/docs/a")),
+            "Case changed should contain '/en-US/docs/a'"
+        );
+        assert!(
+            case_changed.contains(&&s("/en-US/docs/C")),
+            "Case changed should contain '/en-US/docs/C'"
+        );
+
+        // There should be 2 proper redirects.
+        assert_eq!(proper_redirects.len(), 2, "Expected 2 proper redirects");
+
+        assert!(
+            proper_redirects.contains(&&(
+                "/en-US/docs/B".to_string(),
+                "/en-US/docs/b.html".to_string()
+            )),
+            "Proper redirects should contain ('/en-US/docs/B', '/en-US/docs/b.html')"
+        );
+
+        assert!(
+            proper_redirects.contains(&&(
+                "/en-US/docs/D".to_string(),
+                "/en-US/docs/d.html".to_string()
+            )),
+            "Proper redirects should contain ('/en-US/docs/D', '/en-US/docs/d.html')"
+        );
+    }
 }
