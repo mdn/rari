@@ -156,6 +156,9 @@ pub fn add_redirects(locale: Locale, pairs: &[(String, String)]) -> Result<(), D
         return Err(DocError::ReadRedirectsError(e.to_string()));
     }
 
+    // short_cut stuff, not used since it is inthe "wrong" package
+    // let simplified_pairs = short_cuts(cleanPairs);
+
     validate_pairs(pairs, &locale)?;
 
     // Separate the pairs into case-only changes and proper redirects
