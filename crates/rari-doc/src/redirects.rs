@@ -251,7 +251,7 @@ fn validate_from_url(url: &str, locale: &Locale) -> Result<(), DocError> {
         )));
     }
 
-    let valid_locales: Vec<String> = Locale::all()
+    let valid_locales: Vec<String> = Locale::for_generic_and_spas()
         .iter()
         .map(|l| l.as_url_str().to_lowercase())
         .collect();
@@ -365,7 +365,7 @@ fn validate_url_locale(url: &str) -> Result<(), DocError> {
     }
 
     let to_locale = parts[1];
-    if !Locale::all()
+    if !Locale::for_generic_and_spas()
         .iter()
         .map(|l| l.as_url_str().to_lowercase())
         .collect::<HashSet<String>>()
@@ -381,7 +381,7 @@ fn validate_url_locale(url: &str) -> Result<(), DocError> {
 }
 
 fn is_vanity_redirect_url(url: &str) -> bool {
-    let locale_urls = Locale::all()
+    let locale_urls = Locale::for_generic_and_spas()
         .iter()
         .map(|l| format!("/{}/", l.as_url_str()))
         .collect::<HashSet<String>>();
