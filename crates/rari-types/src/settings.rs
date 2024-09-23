@@ -47,6 +47,10 @@ impl Settings {
             "CONTENT_ROOT",
             std::env::var("TESTING_CONTENT_ROOT").unwrap(),
         );
+        std::env::set_var(
+            "CONTENT_TRANSLATED_ROOT",
+            std::env::var("TESTING_CONTENT_TRANSLATED_ROOT").unwrap(),
+        );
         Self::new_internal()
     }
     #[cfg(not(feature = "testing"))]

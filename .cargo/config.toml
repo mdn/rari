@@ -1,2 +1,3 @@
 [env]
 TESTING_CONTENT_ROOT = { value = "tests/data/content/files", relative = true }
+TESTING_CONTENT_TRANSLATED_ROOT = { value = "tests/data/translated_content/files", relative = true }

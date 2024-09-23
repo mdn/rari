@@ -262,16 +262,27 @@ mod test {
         assert_eq!(parent_slug("a/b/c/").unwrap(), "a/b");
     }
 
-    // #[test]
-    // fn test_do_move() {
-    //     // Test case where old_slug and new_slug are valid
-    //     let result = do_move(
-    //         "Web/API/ExampleOne",
-    //         "Web/API/ExampleOneNewLocation",
-    //         Locale::default(),
-    //         true,
-    //     );
-    //     println!("result: {:?}", result);
-    //     assert!(result.is_ok())
-    // }
+    #[test]
+    fn test_do_move_dry_run() {
+        // Test case where old_slug and new_slug are valid
+        // only to a cursory dry-run to not mess up git at this point.
+        let result = do_move(
+            "Web/API/ExampleOne",
+            "Web/API/ExampleOneNewLocation",
+            Locale::default(),
+            true,
+        );
+        println!("root: {:?}", root_for_locale(Locale::default()));
+        println!("root-tx: {:?}", root_for_locale(Locale::PtBr));
+        assert!(result.is_ok());
+        if let Ok(pairs) = result {
+            assert_eq!(pairs.len(), 3);
+            assert_eq!(pairs[0].0, "Web/API/ExampleOne");
+            assert_eq!(pairs[0].1, "Web/API/ExampleOneNewLocation");
+            assert_eq!(pairs[1].0, "Web/API/ExampleOne/SubExampleOne");
+            assert_eq!(pairs[1].1, "Web/API/ExampleOneNewLocation/SubExampleOne");
+            assert_eq!(pairs[2].0, "Web/API/ExampleOne/SubExampleTwo");
+            assert_eq!(pairs[2].1, "Web/API/ExampleOneNewLocation/SubExampleTwo");
+        }
+    }
 }
