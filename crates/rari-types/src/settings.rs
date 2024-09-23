@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
 
+use crate::locale::Locale;
+
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
 pub struct Settings {
@@ -19,6 +21,7 @@ pub struct Settings {
     pub live_samples_base_url: String,
     pub legacy_live_samples_base_url: String,
     pub interactive_examples_base_url: String,
+    pub additional_locales_for_generics_and_spas: Vec<Locale>,
 }
 
 impl Settings {
@@ -32,7 +35,6 @@ impl Settings {
                 std::fs::canonicalize(translated_content_root)
                     .expect("CONTENT_TRANSLATED_ROOT is not a valid path")
             });
-
         self
     }
 

@@ -1,6 +1,7 @@
 pub mod api_inheritance;
 pub mod css_info;
 pub mod json_data;
+pub mod l10n;
 pub mod subpages;
 pub mod summary_hack;
 pub mod titles;

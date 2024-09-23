@@ -114,7 +114,7 @@ pub fn gather_generic_pages() -> Result<HashMap<String, Page>, DocError> {
                 }
             })
             .flat_map(|generic| {
-                Locale::all()
+                Locale::for_generic_and_spas()
                     .iter()
                     .map(|locale| Page::GenericPage(Arc::new(generic.as_locale(*locale))))
                     .collect::<Vec<_>>()
@@ -191,7 +191,7 @@ pub fn gather_contributre_spotlight() -> Result<HashMap<String, Page>, DocError>
                 }
             })
             .flat_map(|cs| {
-                Locale::all()
+                Locale::for_generic_and_spas()
                     .iter()
                     .map(|locale| Page::ContributorSpotlight(Arc::new(cs.as_locale(*locale))))
                     .collect::<Vec<_>>()

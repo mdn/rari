@@ -2,11 +2,11 @@ use std::borrow::Cow;
 use std::iter::once;
 use std::sync::LazyLock;
 
-use rari_l10n::l10n_json_data;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 
 use crate::error::DocError;
+use crate::helpers::l10n::l10n_json_data;
 use crate::helpers::subpages::get_sub_pages;
 use crate::html::sidebar::{
     Details, MetaChildren, MetaSidebar, SidebarMetaEntry, SidebarMetaEntryContent,

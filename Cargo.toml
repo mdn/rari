@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.0.6"
+version = "0.0.8"
 edition = "2021"
 license = "MPL-2.0"
 authors = ["Florian Dieminger <me@fiji-flo.de>"]
@@ -35,7 +35,6 @@ members = [
     "crates/rari-md",
     "crates/rari-doc",
     "crates/rari-linter",
-    "crates/rari-l10n",
     "crates/rari-tools",
     "crates/css-syntax",
     "crates/css-syntax-types",
@@ -58,7 +57,6 @@ rari-utils = { path = "crates/rari-utils" }
 rari-md = { path = "crates/rari-md" }
 rari-data = { path = "crates/rari-data" }
 rari-templ-func = { path = "crates/rari-templ-func" }
-rari-l10n = { path = "crates/rari-l10n" }
 
 tracing = "0.1"
 thiserror = "1"
@@ -76,9 +74,20 @@ regress = "0.10"
 html-escape = "0.2"
 ignore = "0.4"
 rayon = "1"
+reqwest = { version = "0.12", default-features = false, features = [
+    "blocking",
+    "json",
+    "rustls-tls",
+    "gzip",
+] }
 
 
 [dependencies]
+self_update = { version = "0.41", default-features = false, features = [
+    "rustls",
+    "compression-flate2",
+    "compression-zip-deflate",
+] }
 anyhow = "1"
 clap = { version = "4.5.1", features = ["derive"] }
 clap-verbosity-flag = "2"
@@ -92,7 +101,3 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 tracing-log = "0.2"
 tabwriter = "1"
-self_update = { version = "0.41", features = [
-    "compression-flate2",
-    "compression-zip-deflate",
-] }

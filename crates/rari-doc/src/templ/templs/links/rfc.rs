@@ -1,8 +1,8 @@
-use rari_l10n::l10n_json_data;
 use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
 use crate::error::DocError;
+use crate::helpers::l10n::l10n_json_data;
 
 #[rari_f]
 pub fn rfc(

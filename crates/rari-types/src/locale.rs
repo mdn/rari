@@ -1,11 +1,12 @@
 use std::fmt::Display;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use thiserror::Error;
 
-use crate::globals::content_translated_root;
+use crate::globals::settings;
 
 #[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord)]
 pub enum Native {
@@ -87,6 +88,25 @@ impl Display for Locale {
     }
 }
 
+static LOCALES_FOR_GENERICS_AND_SPAS: LazyLock<Vec<Locale>> = LazyLock::new(|| {
+    let default_locales = [
+        Locale::EnUs,
+        Locale::Es,
+        Locale::Fr,
+        Locale::Ja,
+        Locale::Ko,
+        Locale::PtBr,
+        Locale::Ru,
+        Locale::ZhCn,
+        Locale::ZhTw,
+    ];
+    default_locales
+        .iter()
+        .chain(settings().additional_locales_for_generics_and_spas.iter())
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>()
+});
+
 impl Locale {
     pub const fn as_url_str(&self) -> &str {
         match *self {
@@ -111,22 +131,8 @@ impl Locale {
         }
     }
 
-    pub fn all() -> &'static [Self] {
-        if content_translated_root().is_some() {
-            &[
-                Self::EnUs,
-                Self::Es,
-                Self::Fr,
-                Self::Ja,
-                Self::Ko,
-                Self::PtBr,
-                Self::Ru,
-                Self::ZhCn,
-                Self::ZhTw,
-            ]
-        } else {
-            &[Self::EnUs]
-        }
+    pub fn for_generic_and_spas() -> &'static [Self] {
+        &LOCALES_FOR_GENERICS_AND_SPAS
     }
 }
 

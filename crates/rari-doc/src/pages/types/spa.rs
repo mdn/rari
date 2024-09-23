@@ -85,7 +85,10 @@ impl SPA {
                 if build_spa.en_us_only || content_translated_root().is_none() {
                     vec![(slug, Locale::EnUs)]
                 } else {
-                    Locale::all().iter().map(|locale| (slug, *locale)).collect()
+                    Locale::for_generic_and_spas()
+                        .iter()
+                        .map(|locale| (slug, *locale))
+                        .collect()
                 }
             })
             .collect()

@@ -1,7 +1,7 @@
-use rari_l10n::l10n_json_data;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 
+use super::l10n::l10n_json_data;
 use crate::error::DocError;
 use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::helpers::titles::api_page_title;

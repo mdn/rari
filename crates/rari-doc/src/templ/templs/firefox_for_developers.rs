@@ -4,6 +4,7 @@ use rari_templ_func::rari_f;
 use rari_types::locale::Locale;
 
 use crate::error::DocError;
+use crate::helpers::l10n::l10n_json_data;
 use crate::html::links::render_link_via_page;
 
 const OLD_VERSIONS: &[&str] = &["3.6", "3.5", "3", "2", "1.5"];
@@ -68,7 +69,7 @@ fn generate_release_link<T: Display>(
     version: T,
     locale: Locale,
 ) -> Result<(), DocError> {
-    let for_developers = rari_l10n::l10n_json_data("Template", "for_developers", locale)?;
+    let for_developers = l10n_json_data("Template", "for_developers", locale)?;
     out.push_str("<li>");
     render_link_via_page(
         out,
