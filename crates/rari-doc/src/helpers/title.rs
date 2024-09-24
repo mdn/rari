@@ -1,5 +1,5 @@
-use super::page::{url_path_to_page, PageLike};
 use crate::error::DocError;
+use crate::pages::page::{url_path_to_page, PageLike};
 
 pub fn transform_title(title: &str) -> &str {
     if title.starts_with('<') {

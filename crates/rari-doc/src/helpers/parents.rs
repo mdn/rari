@@ -1,6 +1,6 @@
-use super::json::Parent;
-use super::page::{Page, PageLike};
 use super::title::transform_title;
+use crate::pages::json::Parent;
+use crate::pages::page::{Page, PageLike};
 
 pub fn parents<T: PageLike>(doc: &T) -> Vec<Parent> {
     let mut url = doc.url();

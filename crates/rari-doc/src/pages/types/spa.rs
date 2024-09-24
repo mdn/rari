@@ -15,12 +15,12 @@ use super::spa_homepage::{
 };
 use crate::cached_readers::blog_files;
 use crate::error::DocError;
+use crate::helpers::title::page_title;
 use crate::pages::json::{
     BlogIndex, BuiltDocy, HyData, ItemContainer, JsonBasicSPA, JsonBlogPost, JsonBlogPostDoc,
     JsonHomePageSPA, JsonHomePageSPAHyData,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
-use crate::pages::title::page_title;
 use crate::pages::types::blog::BlogMeta;
 
 #[derive(Debug, Clone, Copy)]

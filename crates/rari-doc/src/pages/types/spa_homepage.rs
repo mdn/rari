@@ -10,13 +10,13 @@ use regex::Regex;
 
 use crate::cached_readers::contributor_spotlight_files;
 use crate::error::DocError;
+use crate::helpers::parents::parents;
 use crate::helpers::summary_hack::get_hacky_summary_md;
 use crate::pages::json::{
     HomePageFeaturedArticle, HomePageFeaturedContributor, HomePageLatestNewsItem,
     HomePageRecentContribution, NameUrl, Parent,
 };
 use crate::pages::page::{url_path_to_page_with_other_locale_and_fallback, Page, PageLike};
-use crate::pages::parents::parents;
 
 pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
     urls.iter()

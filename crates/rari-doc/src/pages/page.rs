@@ -7,6 +7,7 @@ use rari_types::globals::blog_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 
+use super::json::BuiltDocy;
 use super::types::contributors::contributor_spotlight_from_url;
 use super::types::generic::GenericPage;
 use crate::cached_readers::{blog_from_url, curriculum_from_url};
@@ -235,4 +236,8 @@ impl<T: PageLike> PageLike for Arc<T> {
 
 pub trait PageReader {
     fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError>;
+}
+
+pub trait PageBuilder {
+    fn build(&self) -> Result<BuiltDocy, DocError>;
 }
