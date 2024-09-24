@@ -366,12 +366,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "concat-in-place"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5b80dba65d26e0c4b692ad0312b837f1177e8175031af57fd1de4f3bc36b430"
-
-[[package]]
 name = "config"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2475,7 +2469,6 @@ name = "rari-doc"
 version = "0.0.8"
 dependencies = [
  "chrono",
- "concat-in-place",
  "constcat",
  "crossbeam-channel",
  "css-syntax",
@@ -2551,7 +2544,6 @@ name = "rari-tools"
 version = "0.0.8"
 dependencies = [
  "chrono",
- "concat-in-place",
  "csv",
  "rari-types",
  "rari-utils",

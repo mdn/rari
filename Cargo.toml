@@ -65,7 +65,6 @@ serde_json = { version = "1", features = ["preserve_order"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 url = { version = "2", features = ["serde"] }
-concat-in-place = "1"
 itertools = "0.13"
 constcat = "0.5"
 anyhow = "1"

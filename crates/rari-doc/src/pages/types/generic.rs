@@ -1,11 +1,11 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use concat_in_place::strcat;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::generic_pages_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
+use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::Deserialize;
 
@@ -41,7 +41,14 @@ impl GenericPageMeta {
         title_suffix: &str,
         page: String,
     ) -> Result<Self, DocError> {
-        let url = strcat!("/" locale.as_url_str() "/" slug.as_str() "/" page.as_str());
+        let url = concat_strs!(
+            "/",
+            locale.as_url_str(),
+            "/",
+            slug.as_str(),
+            "/",
+            page.as_str()
+        );
         Ok(GenericPageMeta {
             title: fm.title,
             locale,
@@ -90,7 +97,7 @@ pub struct GenericPage {
 
 impl GenericPage {
     pub fn from_slug(slug: &str, locale: Locale) -> Option<Page> {
-        let url = strcat!("/" locale.as_url_str() "/" slug).to_ascii_lowercase();
+        let url = concat_strs!("/", locale.as_url_str(), "/", slug).to_ascii_lowercase();
         generic_pages_files().get(&url).cloned()
     }
 
@@ -101,7 +108,7 @@ impl GenericPage {
             content_start,
         } = self.clone();
         meta.locale = locale;
-        meta.url = strcat!("/" locale.as_url_str() "/" meta.slug.as_str());
+        meta.url = concat_strs!("/", locale.as_url_str(), "/", meta.slug.as_str());
         Self {
             meta,
             raw,
@@ -110,7 +117,7 @@ impl GenericPage {
     }
 
     pub fn is_generic(slug: &str, locale: Locale) -> bool {
-        let url = strcat!("/" locale.as_url_str() "/" slug).to_ascii_lowercase();
+        let url = concat_strs!("/", locale.as_url_str(), "/", slug).to_ascii_lowercase();
         generic_pages_files().contains_key(&url)
     }
 }
@@ -198,7 +205,7 @@ fn read_generic_page(
     let path = full_path.strip_prefix(root)?.to_path_buf();
     let page = path.with_extension("");
     let page = page.to_string_lossy();
-    let slug = strcat!(slug "/" page.as_ref());
+    let slug = concat_strs!(slug, "/", page.as_ref());
 
     Ok(GenericPage {
         meta: GenericPageMeta::from_fm(

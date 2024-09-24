@@ -1,5 +1,6 @@
 use rari_templ_func::rari_f;
 use rari_types::locale::Locale;
+use rari_utils::concat_strs;
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
@@ -54,11 +55,10 @@ fn previous_next_menu_internal(
     }
     if let Some(menu) = menu {
         let page = RariApi::get_page(&["", locale.as_url_str(), "docs", menu.as_str()].join("/"))?;
-        let title = [
+        let title = concat_strs!(
             l10n_json_data("Template", "prev_next_menu", locale)?,
-            page.title(),
-        ]
-        .join("");
+            page.title()
+        );
         generate_link(&mut out, page.slug(), locale, &title)?;
     }
     if let Some(next) = next {
@@ -68,6 +68,7 @@ fn previous_next_menu_internal(
     out.push_str("</ul>");
     Ok(out)
 }
+
 fn generate_link(
     out: &mut String,
     slug: &str,
