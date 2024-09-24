@@ -16,6 +16,7 @@ serde_json.workspace = true
 chrono.workspace = true
 tracing.workspace = true
 reqwest.workspace = true
+url.workspace = true
 
 console = "0"
 dialoguer = "0"

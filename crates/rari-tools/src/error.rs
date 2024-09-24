@@ -1,8 +1,8 @@
+use thiserror::Error;
+
 use rari_doc::error::{DocError, UrlError};
 use rari_types::{error::EnvError, locale::LocaleError};
-// use rari_types::locale::LocaleError;
-// use rari_types::ArgError;
-use thiserror::Error;
+use rari_utils::error::RariIoError;
 
 #[derive(Debug, Error)]
 pub enum ToolError {
@@ -22,7 +22,20 @@ pub enum ToolError {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
+    RariIoError(#[from] RariIoError),
+    #[error(transparent)]
     JsonError(#[from] serde_json::Error),
+
+    #[error("Invalid Redirection: {0}")]
+    InvalidRedirectionEntry(String),
+    #[error("Error reading redirects file: {0}")]
+    ReadRedirectsError(String),
+    #[error("Error writing redirects file: {0}")]
+    WriteRedirectsError(String),
+    #[error("Invalid 'from' URL for redirect: {0}")]
+    InvalidRedirectFromURL(String),
+    #[error("Invalid 'to' URL for redirect: {0}")]
+    InvalidRedirectToURL(String),
 
     #[error("Unknonwn error")]
     Unknown(String),

@@ -1,17 +1,16 @@
 use console::{style, Style};
 use dialoguer::{theme::ColorfulTheme, Confirm};
+use std::{fs::create_dir_all, path::PathBuf, process::Command, str::FromStr, sync::Arc};
 
 use rari_doc::{
     helpers::subpages::get_sub_pages,
     pages::page::{self, Page, PageCategory, PageLike, PageWriter},
-    redirects::add_redirects,
     resolve::{build_url, url_path_to_path_buf},
     utils::root_for_locale,
 };
 use rari_types::locale::Locale;
-use std::{fs::create_dir_all, path::PathBuf, process::Command, str::FromStr, sync::Arc};
 
-use crate::{error::ToolError, wikihistory::update_wiki_history};
+use crate::{error::ToolError, redirects::add_redirects, wikihistory::update_wiki_history};
 
 pub fn r#move(
     old_slug: &str,
