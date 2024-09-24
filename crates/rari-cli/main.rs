@@ -8,6 +8,7 @@ use std::thread::spawn;
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
+use issues::InMemoryLayer;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas,
@@ -28,6 +29,7 @@ use tracing_subscriber::filter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+mod issues;
 mod serve;
 
 #[derive(Parser)]
@@ -115,8 +117,10 @@ fn main() -> Result<(), Error> {
         .with_target("rari_doc", cli.verbose.log_level_filter().as_trace())
         .with_target("rari", cli.verbose.log_level_filter().as_trace());
 
+    let memory_layer = InMemoryLayer::new();
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer().without_time())
+        .with(memory_layer.clone())
         .with(filter)
         .init();
 
@@ -248,6 +252,13 @@ fn main() -> Result<(), Error> {
                 recorder_handler
                     .join()
                     .expect("unable to close templ recorder");
+            }
+            let events = memory_layer.get_events();
+            let events = events.lock().unwrap();
+
+            // Print the collected events
+            for event in events.iter() {
+                println!("Collected event: {:?}", event);
             }
         }
         Commands::Serve(args) => {
