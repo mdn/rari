@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use rari_md::anchor::anchorize;
 use rari_types::fm_types::FeatureStatus;
 use rari_types::locale::Locale;
+use rari_utils::concat_strs;
 use tracing::warn;
 
 use crate::error::DocError;
@@ -90,7 +91,7 @@ pub fn render_link_via_page(
     if let Some(link) = link.strip_prefix('/') {
         if let Some(locale) = locale {
             if !link.starts_with(Locale::default().as_url_str()) {
-                url = Cow::Owned(format!("/{}/docs/{link}", locale.as_url_str()));
+                url = Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", link));
             }
         };
         let (url, anchor) = url.split_once('#').unwrap_or((&url, ""));

@@ -3,9 +3,9 @@ use std::process::Command;
 use std::sync::LazyLock;
 
 use chrono::{DateTime, Utc};
-use concat_in_place::strcat;
 use rari_types::globals::{content_root, content_translated_root};
 use rari_types::locale::Locale;
+use rari_utils::concat_strs;
 use regex::Regex;
 
 use crate::cached_readers::contributor_spotlight_files;
@@ -27,7 +27,7 @@ pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocErro
                 author: Some(post.meta.author.clone()),
                 source: NameUrl {
                     name: "developer.mozilla.org".to_string(),
-                    url: strcat!("/" Locale::default().as_url_str() "/blog/"),
+                    url: concat_strs!("/", Locale::default().as_url_str(), "/blog/"),
                 },
                 published_at: post.meta.date,
             })),
@@ -52,7 +52,7 @@ pub fn featured_articles(
                     summary: post.meta.description.clone(),
                     title: post.title().to_string(),
                     tag: Some(Parent {
-                        uri: strcat!("/" Locale::default().as_url_str() "/blog/"),
+                        uri: concat_strs!("/", Locale::default().as_url_str(), "/blog/"),
                         title: "Blog".to_string(),
                     }),
                 })),
@@ -122,10 +122,10 @@ fn recent_contributions_from_git(
                         number: pr.as_str().parse::<i64>().unwrap_or_default(),
                         title: msg.as_str().to_string(),
                         updated_at: date.as_str().parse::<DateTime<Utc>>().unwrap_or_default(),
-                        url: strcat!("https://github.com/" repo "/pull/" pr.as_str()),
+                        url: concat_strs!("https://github.com/", repo, "/pull/", pr.as_str()),
                         repo: NameUrl {
                             name: repo.to_string(),
-                            url: strcat!("https://github.com/" repo),
+                            url: concat_strs!("https://github.com/", repo),
                         },
                     }),
                     _ => None,

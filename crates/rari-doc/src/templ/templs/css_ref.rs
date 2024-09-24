@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::LazyLock;
 
-use concat_in_place::strcat;
 use itertools::Itertools;
 use rari_templ_func::rari_f;
+use rari_utils::concat_strs;
 use regex::Regex;
 use serde_json::Value;
 
@@ -25,7 +25,7 @@ fn items_from_syntax(syntax: &str) -> Vec<Cow<'_, str>> {
             if name.starts_with('@') {
                 Cow::Borrowed(name)
             } else {
-                Cow::Owned(strcat!(name "()"))
+                Cow::Owned(concat_strs!(name, "()"))
             }
         })
         .collect()
@@ -55,13 +55,13 @@ pub fn css_ref() -> Result<String, DocError> {
         let entry = index.entry(initial).or_default();
 
         let url_path: Cow<'static, str> = match type_name.as_str() {
-            "color" | "flex" | "position" => Cow::Owned(strcat!(type_name.as_str() "_value")),
+            "color" | "flex" | "position" => Cow::Owned(concat_strs!(type_name.as_str(), "_value")),
             _ => Cow::Borrowed(type_name),
         };
         let label = if type_name.starts_with('<') {
             Cow::Borrowed(type_name.as_str())
         } else {
-            Cow::Owned(strcat!("<" type_name ">"))
+            Cow::Owned(concat_strs!("<", type_name, ">"))
         };
         let (url, label) = adjust_output(url_path, label);
         entry.entry(url).or_insert(label);
@@ -113,8 +113,12 @@ pub fn css_ref() -> Result<String, DocError> {
                 let initial = initial_letter(&syntax_item);
                 let entry = index.entry(initial).or_default();
 
-                let url_path = Cow::Owned(strcat!(at_rule_name.as_str() "/" syntax_item.as_ref()));
-                let label = Cow::Owned(strcat!(syntax_item.as_ref() " (" at_rule_name ")"));
+                let url_path = Cow::Owned(concat_strs!(
+                    at_rule_name.as_str(),
+                    "/",
+                    syntax_item.as_ref()
+                ));
+                let label = Cow::Owned(concat_strs!(syntax_item.as_ref(), " (", at_rule_name, ")"));
                 let (url, label) = adjust_output(url_path, label);
                 entry.entry(url).or_insert(label);
             }
@@ -132,8 +136,8 @@ pub fn css_ref() -> Result<String, DocError> {
                 let initial = initial_letter(d_name);
                 let entry = index.entry(initial).or_default();
 
-                let url_path = Cow::Owned(strcat!(at_rule_name.as_str() "/" d_name));
-                let label = Cow::Owned(strcat!(d_name " (" at_rule_name ")"));
+                let url_path = Cow::Owned(concat_strs!(at_rule_name.as_str(), "/", d_name));
+                let label = Cow::Owned(concat_strs!(d_name, " (", at_rule_name, ")"));
                 let (url, label) = adjust_output(url_path, label);
                 entry.entry(url).or_insert(label);
 
@@ -142,9 +146,13 @@ pub fn css_ref() -> Result<String, DocError> {
                         let initial = initial_letter(&syntax_item);
                         let entry = index.entry(initial).or_default();
 
-                        let url_path = Cow::Owned(
-                            strcat!(at_rule_name.as_str() "/" d_name "#" syntax_item.as_ref()),
-                        );
+                        let url_path = Cow::Owned(concat_strs!(
+                            at_rule_name.as_str(),
+                            "/",
+                            d_name,
+                            "#",
+                            syntax_item.as_ref()
+                        ));
                         let (url, label) = adjust_output(url_path, syntax_item);
                         entry.entry(url).or_insert(label);
                     }
@@ -180,12 +188,12 @@ pub fn css_ref() -> Result<String, DocError> {
         let initial = initial_letter(unit_name);
         let entry = index.entry(initial).or_default();
         let unit_name = match unit["groups"][1].as_str().unwrap_or("---") {
-            "CSS Lengths" => Cow::Owned(strcat!("length#" unit_name)),
-            "CSS Angles" => Cow::Owned(strcat!("angle#" unit_name)),
-            "CSS Flexible Lengths" => Cow::Owned(strcat!("flex_value#" unit_name)),
-            "CSS Frequencies" => Cow::Owned(strcat!("frequency#" unit_name)),
-            "CSS Times" => Cow::Owned(strcat!("time#" unit_name)),
-            "CSS Resolutions" => Cow::Owned(strcat!("resolution#" unit_name)),
+            "CSS Lengths" => Cow::Owned(concat_strs!("length#", unit_name)),
+            "CSS Angles" => Cow::Owned(concat_strs!("angle#", unit_name)),
+            "CSS Flexible Lengths" => Cow::Owned(concat_strs!("flex_value#", unit_name)),
+            "CSS Frequencies" => Cow::Owned(concat_strs!("frequency#", unit_name)),
+            "CSS Times" => Cow::Owned(concat_strs!("time#", unit_name)),
+            "CSS Resolutions" => Cow::Owned(concat_strs!("resolution#", unit_name)),
             _ => Cow::Borrowed(unit_name.as_str()),
         };
         let (url, label) = adjust_output(unit_name.clone(), unit_name);
@@ -222,7 +230,7 @@ pub fn css_ref() -> Result<String, DocError> {
             out.extend([
                 "<li>",
                 &RariApi::link(
-                    &strcat!("/Web/CSS/" url.as_ref()),
+                    &concat_strs!("/Web/CSS/", url.as_ref()),
                     Some(env.locale),
                     Some(&html_escape::encode_text(&label)),
                     true,
@@ -249,16 +257,21 @@ fn initial_letter(s: &str) -> char {
 fn adjust_output<'a>(url: Cow<'a, str>, label: Cow<'a, str>) -> (Cow<'a, str>, Cow<'a, str>) {
     let label = match label.as_ref() {
         // Add alternate name for pseudo-elements (one colon)
-        "::after" | "::before" | "::first-letter" | "::first-line" => {
-            Cow::Owned(strcat!(label.as_ref() " (" label.as_ref().strip_prefix(':').unwrap() ")"))
-        }
+        "::after" | "::before" | "::first-letter" | "::first-line" => Cow::Owned(concat_strs!(
+            label.as_ref(),
+            " (",
+            label.as_ref().strip_prefix(':').unwrap(),
+            ")"
+        )),
         _ => label,
     };
 
     let url = match label.as_ref() {
         // Font-feature-values
         "@annotation" | "@character-variant" | "@historical-forms" | "@ornaments" | "@styleset"
-        | "@stylistic" | "@swash" => Cow::Owned(strcat!("@font-feature-values#" label.as_ref())),
+        | "@stylistic" | "@swash" => {
+            Cow::Owned(concat_strs!("@font-feature-values#", label.as_ref()))
+        }
 
         // Font-variant-alternates
         "annotation()"
@@ -266,31 +279,34 @@ fn adjust_output<'a>(url: Cow<'a, str>, label: Cow<'a, str>) -> (Cow<'a, str>, C
         | "ornaments()"
         | "styleset()"
         | "stylistic()"
-        | "swash()" => Cow::Owned(strcat!("@font-variant-alternates#" label.as_ref())),
+        | "swash()" => Cow::Owned(concat_strs!("@font-variant-alternates#", label.as_ref())),
 
         // Image
         "image()" => Cow::Borrowed("image#The_image()_functional_notation"),
-        "image-set()" | "paint()" => Cow::Owned(strcat!("image/" label.trim_end_matches("()"))),
+        "image-set()" | "paint()" => {
+            Cow::Owned(concat_strs!("image/", label.trim_end_matches("()")))
+        }
 
         // Filter
         "blur()" | "brightness()" | "contrast()" | "drop-shadow()" | "grayscale()"
-        | "hue-rotate()" | "invert()" | "opacity()" | "saturate()" | "sepia()" => {
-            Cow::Owned(strcat!("filter-function/" label.trim_end_matches("()")))
-        }
+        | "hue-rotate()" | "invert()" | "opacity()" | "saturate()" | "sepia()" => Cow::Owned(
+            concat_strs!("filter-function/", label.trim_end_matches("()")),
+        ),
 
         // Transforms
         "matrix()" | "matrix3d()" | "perspective()" | "rotate()" | "rotate3d()" | "rotateX()"
         | "rotateY()" | "rotateZ()" | "scale()" | "scale3d()" | "scaleX()" | "scaleY()"
         | "scaleZ()" | "skew()" | "skewX()" | "skewY()" | "translate()" | "translate3d()"
-        | "translateX()" | "translateY()" | "translateZ()" => {
-            Cow::Owned(strcat!("transform-function/" label.trim_end_matches("()")))
-        }
+        | "translateX()" | "translateY()" | "translateZ()" => Cow::Owned(concat_strs!(
+            "transform-function/",
+            label.trim_end_matches("()")
+        )),
 
         // Colors
         "rgba()" => return (Cow::Borrowed("color_value/rgb"), label),
         "hsla()" => return (Cow::Borrowed("color_value/hsl"), label),
         "rgb()" | "hsl()" | "hwb()" | "lab()" | "lch()" | "light-dark()" | "oklab()"
-        | "oklch()" => Cow::Owned(strcat!("color_value/" label.trim_end_matches("()"))),
+        | "oklch()" => Cow::Owned(concat_strs!("color_value/", label.trim_end_matches("()"))),
 
         // Gradients
         "conic-gradient()"
@@ -299,14 +315,14 @@ fn adjust_output<'a>(url: Cow<'a, str>, label: Cow<'a, str>) -> (Cow<'a, str>, C
         | "repeating-conic-gradient()"
         | "repeating-linear-gradient()"
         | "repeating-radial-gradient()" => {
-            Cow::Owned(strcat!("gradient/" label.trim_end_matches("()")))
+            Cow::Owned(concat_strs!("gradient/", label.trim_end_matches("()")))
         }
 
         // Shapes
         "inset()" | "polygon()" | "circle()" | "ellipse()" => {
-            Cow::Owned(strcat!("basic-shape#" label.as_ref()))
+            Cow::Owned(concat_strs!("basic-shape#", label.as_ref()))
         }
-        "rect()" => Cow::Owned(strcat!("shape#" label.as_ref())),
+        "rect()" => Cow::Owned(concat_strs!("shape#", label.as_ref())),
 
         // @page
         "@top-left-corner"

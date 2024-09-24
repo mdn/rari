@@ -1,5 +1,6 @@
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
+use rari_utils::concat_strs;
 
 use super::l10n::l10n_json_data;
 use crate::error::DocError;
@@ -15,7 +16,7 @@ pub fn entry(slug: &str, locale: Locale) -> Result<Vec<SidebarMetaEntry>, DocErr
     let events_label = l10n_json_data("Common", "Events", locale)?;
 
     let sub_pages = get_sub_pages(
-        &format!("/en-US/docs/{}", slug),
+        &concat_strs!("/en-US/docs/", slug),
         Some(1),
         SubPagesSorter::TitleAPI,
     )?;

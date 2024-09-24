@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use rari_types::locale::Locale;
+use rari_utils::concat_strs;
 
 use crate::error::{DocError, UrlError};
 use crate::pages::page::{PageCategory, PageLike};
@@ -62,17 +63,19 @@ pub fn url_path_to_path_buf(
 
 pub fn build_url(slug: &str, locale: &Locale, typ: PageCategory) -> Result<String, DocError> {
     Ok(match typ {
-        PageCategory::Doc => format!("/{}/docs/{}", locale.as_url_str(), slug),
-        PageCategory::BlogPost => format!("/{}/blog/{}/", locale.as_url_str(), slug),
+        PageCategory::Doc => concat_strs!("/", locale.as_url_str(), "/docs/", slug),
+        PageCategory::BlogPost => concat_strs!("/", locale.as_url_str(), "/blog/", slug, "/"),
         PageCategory::SPA => SPA::from_slug(slug, *locale)
             .ok_or(DocError::PageNotFound(slug.to_string(), PageCategory::SPA))?
             .url()
             .to_owned(),
-        PageCategory::Curriculum => format!("/{}/curriculum/{}/", locale.as_url_str(), slug),
-        PageCategory::ContributorSpotlight => {
-            format!("/{}/community/spotlight/{}", locale.as_url_str(), slug)
+        PageCategory::Curriculum => {
+            concat_strs!("/", locale.as_url_str(), "/curriculum/", slug, "/")
         }
-        PageCategory::GenericPage => format!("/{}/{}", locale.as_url_str(), slug),
+        PageCategory::ContributorSpotlight => {
+            concat_strs!("/", locale.as_url_str(), "/community/spotlight/", slug)
+        }
+        PageCategory::GenericPage => concat_strs!("/", locale.as_url_str(), "/", slug),
     })
 }
 

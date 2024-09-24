@@ -31,8 +31,8 @@ pub fn jsxref(
     if let Ok(_page) = page {
         url.push_str(&slug)
     } else if let Ok(_object_page) = object_page {
-        base_path.push_str(&[global_objects, "/"].join(""));
-        url.push_str(&[global_objects, "/", &slug].join(""));
+        base_path.extend([global_objects, "/"]);
+        url.extend([global_objects, "/", &slug]);
     } else {
         url.push_str(&RariApi::decode_uri_component(&api_name));
     }

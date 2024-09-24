@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use std::fs;
 use std::path::Path;
 
-use concat_in_place::strcat;
 use rari_types::fm_types::PageType;
 use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
+use rari_utils::concat_strs;
 use scraper::Html;
 
 use super::json::{
@@ -339,7 +339,11 @@ pub fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
             title: page.meta.title.clone(),
             toc,
         },
-        page_title: strcat!(page.meta.title.as_str() " | " page.meta.title_suffix.as_str()),
+        page_title: concat_strs!(
+            page.meta.title.as_str(),
+            " | ",
+            page.meta.title_suffix.as_str()
+        ),
         url: page.meta.url.clone(),
         id: page.meta.page.clone(),
     })))

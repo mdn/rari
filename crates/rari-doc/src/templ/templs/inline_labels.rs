@@ -1,4 +1,5 @@
 use rari_templ_func::rari_f;
+use rari_utils::concat_strs;
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
@@ -20,14 +21,13 @@ pub fn readonly_inline() -> Result<String, DocError> {
 }
 
 pub fn write_inline_label(label: &str, copy: &str, typ: &str) -> String {
-    [
+    concat_strs!(
         r#"<span class="badge inline "#,
         typ,
         r#"" title=""#,
         &html_escape::encode_double_quoted_attribute(copy),
         r#"">"#,
         label,
-        "</span>",
-    ]
-    .join("")
+        "</span>"
+    )
 }

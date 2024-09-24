@@ -2,13 +2,13 @@ use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use concat_in_place::strcat;
 use constcat::concat;
 use phf::{phf_map, Map};
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::content_translated_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
+use rari_utils::concat_strs;
 
 use super::spa_homepage::{
     featured_articles, featured_contributor, lastet_news, recent_contributions,
@@ -57,17 +57,26 @@ impl SPA {
 
     pub fn from_slug(slug: &str, locale: Locale) -> Option<Page> {
         BASIC_SPAS.get(slug).and_then(|build_spa| {
-            if build_spa.en_us_only && locale != Locale::EnUs { None } else {
-            Some(Page::SPA(Arc::new(SPA {
-                page_title: build_spa.page_title,
-                slug: build_spa.slug,
-                url: strcat!("/" locale.as_url_str() "/" build_spa.slug if build_spa.trailing_slash { "/" } else { "" }),
-                locale,
-                page_type: PageType::SPA,
-                data: build_spa.data,
-                base_slug: Cow::Owned(strcat!("/" locale.as_url_str() "/")),
-                page_description: build_spa.page_description,
-            })))}
+            if build_spa.en_us_only && locale != Locale::EnUs {
+                None
+            } else {
+                Some(Page::SPA(Arc::new(SPA {
+                    page_title: build_spa.page_title,
+                    slug: build_spa.slug,
+                    url: concat_strs!(
+                        "/",
+                        locale.as_url_str(),
+                        "/",
+                        build_spa.slug,
+                        if build_spa.trailing_slash { "/" } else { "" }
+                    ),
+                    locale,
+                    page_type: PageType::SPA,
+                    data: build_spa.data,
+                    base_slug: Cow::Owned(concat_strs!("/", locale.as_url_str(), "/")),
+                    page_description: build_spa.page_description,
+                })))
+            }
         })
     }
 
@@ -129,10 +138,10 @@ impl SPA {
                 page_description: self.page_description,
                 only_follow: basic_spa.only_follow,
                 no_indexing: basic_spa.no_indexing,
-                url: strcat!(self.base_slug.as_ref() self.slug),
+                url: concat_strs!(self.base_slug.as_ref(), self.slug),
             }))),
             SPAData::HomePage => Ok(BuiltDocy::HomePageSPA(Box::new(JsonHomePageSPA {
-                url: strcat!("/" self.locale().as_url_str() "/" self.slug),
+                url: concat_strs!("/", self.locale().as_url_str(), "/", self.slug),
                 page_title: self.page_title,
                 hy_data: JsonHomePageSPAHyData {
                     page_description: self.page_description,

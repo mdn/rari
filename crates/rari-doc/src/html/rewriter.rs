@@ -6,6 +6,7 @@ use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings}
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
+use rari_utils::concat_strs;
 use tracing::warn;
 use url::Url;
 
@@ -42,8 +43,8 @@ pub fn post_process_html<T: PageLike>(
     let open_dt_a = std::rc::Rc::new(std::cell::RefCell::new(false));
     let options = Url::options();
     let url = page.url();
-    let base = Url::parse(&format!(
-        "http://rari.placeholder{}{}",
+    let base = Url::parse(&concat_strs!(
+        "http://rari.placeholder",
         url,
         if url.ends_with('/') { "" } else { "/" }
     ))?;
@@ -140,7 +141,7 @@ pub fn post_process_html<T: PageLike>(
                     .unwrap_or(&href);
                 let no_locale = strip_locale_from_url(href).0.is_none();
                 let maybe_prefixed_href = if no_locale {
-                    Cow::Owned(format!("/{}{href}", Locale::default().as_url_str()))
+                    Cow::Owned(concat_strs!("/", Locale::default().as_url_str(), href))
                 } else {
                     Cow::Borrowed(href)
                 };
@@ -156,9 +157,10 @@ pub fn post_process_html<T: PageLike>(
                     let class = el.get_attribute("class").unwrap_or_default();
                     el.set_attribute(
                         "class",
-                        &format!(
-                            "{class}{}page-not-created",
-                            if class.is_empty() { "" } else { " " }
+                        &concat_strs!(
+                            &class,
+                            if class.is_empty() { "" } else { " " },
+                            "page-not-created"
                         ),
                     )?;
                     el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
@@ -176,7 +178,7 @@ pub fn post_process_html<T: PageLike>(
                 if !class.split(' ').any(|s| s == "external") {
                     el.set_attribute(
                         "class",
-                        &format!("{class}{}external", if class.is_empty() { "" } else { " " }),
+                        &concat_strs!(&class, if class.is_empty() { "" } else { " " }, "external"),
                     )?;
                 }
                 if !el.has_attribute("target") {
@@ -189,7 +191,7 @@ pub fn post_process_html<T: PageLike>(
         element!("dt[data-add-link]", |el| {
             el.remove_attribute("data-add-link");
             if let Some(id) = el.get_attribute("id") {
-                el.prepend(&format!("<a href=\"#{id}\">"), ContentType::Html);
+                el.prepend(&concat_strs!("<a href=\"#", &id, "\">"), ContentType::Html);
                 let mut s = open_dt_a.borrow_mut();
                 *s = true;
                 let open_dt_a = open_dt_a.clone();
@@ -225,8 +227,8 @@ pub fn post_process_html<T: PageLike>(
                 .unwrap_or_default();
             if !name.is_empty() && name != "plain" {
                 el.before(
-              &format!(
-                r#"<div class="code-example"><div class='example-header'><span class="language-name">{name}</span></div>"#,
+              &concat_strs!(
+                r#"<div class="code-example"><div class='example-header'><span class="language-name">"#, name, "</span></div>"
               ),
               ContentType::Html
             );
@@ -241,9 +243,10 @@ pub fn post_process_html<T: PageLike>(
         }),
         element!("div.notecard.callout > p:first-child", |el| {
             el.prepend(
-                &format!(
-                    "<strong>{}</strong>",
-                    NoteCard::Callout.prefix_for_locale(page.locale())
+                &concat_strs!(
+                    "<strong>",
+                    NoteCard::Callout.prefix_for_locale(page.locale()),
+                    "</strong>"
                 ),
                 ContentType::Html,
             );
@@ -251,9 +254,10 @@ pub fn post_process_html<T: PageLike>(
         }),
         element!("div.notecard.warning > p:first-child", |el| {
             el.prepend(
-                &format!(
-                    "<strong>{}</strong>",
-                    NoteCard::Warning.prefix_for_locale(page.locale())
+                &concat_strs!(
+                    "<strong>",
+                    NoteCard::Warning.prefix_for_locale(page.locale()),
+                    "</strong>"
                 ),
                 ContentType::Html,
             );
@@ -261,9 +265,10 @@ pub fn post_process_html<T: PageLike>(
         }),
         element!("div.notecard.note > p:first-child", |el| {
             el.prepend(
-                &format!(
-                    "<strong>{}</strong>",
-                    NoteCard::Note.prefix_for_locale(page.locale())
+                &concat_strs!(
+                    "<strong>",
+                    NoteCard::Note.prefix_for_locale(page.locale()),
+                    "</strong>"
                 ),
                 ContentType::Html,
             );
@@ -299,7 +304,7 @@ pub fn post_process_html<T: PageLike>(
                     el.set_attribute(
                         "href",
                         &split_href
-                            .map(|s| Cow::Owned(format!("{}#{}", page.url(), s.1)))
+                            .map(|s| Cow::Owned(concat_strs!(page.url(), "#", s.1)))
                             .unwrap_or(Cow::Borrowed(page.url())),
                     )?;
                 }

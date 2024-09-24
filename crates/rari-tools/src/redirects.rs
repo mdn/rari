@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-use concat_in_place::strcat;
 use rari_types::globals::deny_warnings;
+use rari_utils::concat_strs;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
@@ -84,11 +84,11 @@ pub fn short_cuts<'a>(
         if let Some((bare_to, hash)) = to.split_once('#') {
             let bare_to_lc = bare_to.to_lowercase();
             if let Some(redirected_to) = transitive_dag.get(&bare_to_lc) {
-                let new_to = strcat!(redirected_to "#" hash.to_lowercase().as_str());
+                let new_to = concat_strs!(redirected_to, "#", hash.to_lowercase().as_str());
                 let redirected_to_cased = casing
                     .get(redirected_to.as_str())
                     .ok_or(RedirectError::NoCased(redirected_to.clone()))?;
-                let new_to_cased = Cow::Owned(strcat!(redirected_to_cased "#" hash));
+                let new_to_cased = Cow::Owned(concat_strs!(redirected_to_cased, "#", hash));
                 casing.insert(new_to.to_string(), new_to_cased);
                 tracing::info!("Short cutting hashed redirect: {from} -> {new_to}");
                 transitive_dag.insert(from.to_lowercase(), new_to);
