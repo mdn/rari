@@ -223,16 +223,22 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
     // Remove conflicting old redirects based on the new_pairs
     let clean_pairs = remove_conflicting_old_redirects(pairs, &new_pairs);
     // Fix redirect cases based on case_changed_targets
-    let clean_pairs = fix_redirects_case(clean_pairs, &case_changed_targets);
-    println!("clean_pairs: {:?}", clean_pairs);
+    let mut clean_pairs = fix_redirects_case(clean_pairs, &case_changed_targets);
 
-    // let simplified_pairs = short_cuts(
-    //     &clean_pairs
-    //         .iter()
-    //         .map(|(from, to)| (from.as_str(), to.as_str()))
-    //         .collect::<Vec<(&str, &str)>>(),
-    // )?;
-    // println!("simplified_pairs: {:?}", simplified_pairs);
+    // Add the new pairs to the clean_pairs
+    for (from, to) in new_pairs {
+        clean_pairs.insert(from.to_string(), to.to_string());
+    }
+
+    let clean_pairs: HashMap<String, String> = short_cuts(
+        &clean_pairs
+            .iter()
+            .map(|(from, to)| (from.as_str(), to.as_str()))
+            .collect::<Vec<(&str, &str)>>(),
+    )?
+    .into_iter()
+    .collect();
+
     validate_pairs(&clean_pairs, &locale)?;
 
     // Write the updated map back to the redirects file
@@ -325,17 +331,18 @@ fn validate_from_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
 
     check_url_invalid_symbols(&url)?;
 
-    let (path, _, _, _) = url_path_to_path_buf(&url)?;
-    let path = root_for_locale(*locale)?
-        .join(locale.as_folder_str())
-        .join(path);
-    if path.exists() {
-        return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL '{}' resolves to an existing folder at '{}'.",
-            url,
-            path.display()
-        )));
-    }
+    // Check for existing file/folder, commented for now
+    // let (path, _, _, _) = url_path_to_path_buf(&url)?;
+    // let path = root_for_locale(*locale)?
+    //     .join(locale.as_folder_str())
+    //     .join(path);
+    // if path.exists() {
+    //     return Err(ToolError::InvalidRedirectFromURL(format!(
+    //         "From-URL '{}' resolves to an existing folder at '{}'.",
+    //         url,
+    //         path.display()
+    //     )));
+    // }
 
     Ok(())
 }
@@ -655,46 +662,6 @@ fn fix_redirects_case(
         })
         .collect()
 }
-// fn fix_redirects_case(
-//     old_pairs: HashMap<String, String>,
-//     case_changed_targets: &HashSet<String>,
-// ) -> HashMap<String, String> {
-//     if old_pairs.is_empty() {
-//         return old_pairs;
-//     }
-
-//     // Create a HashMap where the key is the lowercase version of the target,
-//     // and the value is the corrected case version of the target.
-//     let new_targets: HashMap<String, &String> = case_changed_targets
-//         .iter()
-//         .map(|target| (target.to_lowercase(), target))
-//         .collect();
-
-//     // Initialize a new HashMap to store fixed redirects
-//     // Preallocate capacity to optimize performance
-//     let mut fixed_redirects = HashMap::with_capacity(old_pairs.len());
-
-//     // Iterate over each (from, to) pair, taking ownership of `from` and `to`
-//     for (from, to) in old_pairs.into_iter() {
-//         let to_lower = to.to_lowercase();
-//         if let Some(corrected_to) = new_targets.get(&to_lower) {
-//             if &to != *corrected_to {
-//                 // Log a warning if the casing has changed
-//                 warn!("Fixing redirect target case: {} -> {}", to, corrected_to);
-//                 // Insert the pair with the corrected 'to'
-//                 fixed_redirects.insert(from, corrected_to.to_string());
-//             } else {
-//                 // Insert the pair as is (no change needed)
-//                 fixed_redirects.insert(from, to);
-//             }
-//         } else {
-//             // Insert the pair as is (no matching target in case_changed_targets)
-//             fixed_redirects.insert(from, to);
-//         }
-//     }
-
-//     fixed_redirects
-// }
 
 fn read_lines<P>(filename: P) -> Result<io::Lines<io::BufReader<File>>, ToolError>
 where
