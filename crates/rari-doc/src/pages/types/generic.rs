@@ -70,11 +70,11 @@ impl PageReader for GenericPage {
         let path = path.into();
         let root = generic_pages_root().ok_or(DocError::NoGenericPagesRoot)?;
         let without_root: &Path = path.strip_prefix(root)?;
-        let (slug, title_suffix, root) = if without_root.starts_with("plus/") {
-            ("plus/docs", "MDN Plus", root.join("plus"))
+        let (slug_prefix, title_suffix, root) = if without_root.starts_with("plus/") {
+            (Some("plus/docs"), "MDN Plus", root.join("plus"))
         } else if without_root.starts_with("observatory/") {
             (
-                "observatory/docs",
+                Some("observatory/docs"),
                 "HTTP Observatory",
                 root.join("observatory"),
             )
@@ -84,8 +84,14 @@ impl PageReader for GenericPage {
                 crate::pages::page::PageCategory::GenericPage,
             ));
         };
-        read_generic_page(path, locale.unwrap_or_default(), slug, title_suffix, &root)
-            .map(|g| Page::GenericPage(Arc::new(g)))
+        read_generic_page(
+            path,
+            locale.unwrap_or_default(),
+            slug_prefix,
+            title_suffix,
+            &root,
+        )
+        .map(|g| Page::GenericPage(Arc::new(g)))
     }
 }
 #[derive(Debug, Clone)]
@@ -193,7 +199,7 @@ impl PageLike for GenericPage {
 fn read_generic_page(
     path: impl Into<PathBuf>,
     locale: Locale,
-    slug: &str,
+    slug_prefix: Option<&str>,
     title_suffix: &str,
     root: &Path,
 ) -> Result<GenericPage, DocError> {
@@ -205,7 +211,11 @@ fn read_generic_page(
     let path = full_path.strip_prefix(root)?.to_path_buf();
     let page = path.with_extension("");
     let page = page.to_string_lossy();
-    let slug = concat_strs!(slug, "/", page.as_ref());
+    let slug = if let Some(slug) = slug_prefix {
+        concat_strs!(slug, "/", page.as_ref())
+    } else {
+        page.to_string()
+    };
 
     Ok(GenericPage {
         meta: GenericPageMeta::from_fm(
