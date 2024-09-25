@@ -1,5 +1,5 @@
 use crate::error::DocError;
-use crate::pages::page::{url_path_to_page, PageLike};
+use crate::pages::page::{Page, PageLike};
 
 pub fn transform_title(title: &str) -> &str {
     if title.starts_with('<') {
@@ -31,7 +31,7 @@ pub fn page_title(doc: &impl PageLike, with_suffix: bool) -> Result<String, DocE
 
     if let Some(root_url) = root_doc_url(doc.url()) {
         if root_url != doc.url() {
-            let root_doc = url_path_to_page(root_url)?;
+            let root_doc = Page::from_url(root_url)?;
             out.push_str(" - ");
             out.push_str(root_doc.title());
         }

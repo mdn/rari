@@ -16,11 +16,11 @@ use crate::pages::json::{
     HomePageFeaturedArticle, HomePageFeaturedContributor, HomePageLatestNewsItem,
     HomePageRecentContribution, NameUrl, Parent,
 };
-use crate::pages::page::{url_path_to_page_with_other_locale_and_fallback, Page, PageLike};
+use crate::pages::page::{Page, PageLike};
 
 pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
     urls.iter()
-        .filter_map(|url| match Page::page_from_url_path(url) {
+        .filter_map(|url| match Page::from_url(url) {
             Ok(Page::BlogPost(post)) => Some(Ok(HomePageLatestNewsItem {
                 url: post.url().to_string(),
                 title: post.title().to_string(),
@@ -45,8 +45,8 @@ pub fn featured_articles(
     locale: Locale,
 ) -> Result<Vec<HomePageFeaturedArticle>, DocError> {
     urls.iter()
-        .filter_map(|url| {
-            match url_path_to_page_with_other_locale_and_fallback(url, Some(locale)) {
+        .filter_map(
+            |url| match Page::from_url_with_other_locale_and_fallback(url, Some(locale)) {
                 Ok(Page::BlogPost(post)) => Some(Ok(HomePageFeaturedArticle {
                     mdn_url: post.url().to_string(),
                     summary: post.meta.description.clone(),
@@ -67,8 +67,8 @@ pub fn featured_articles(
                     tracing::debug!("{x:?}");
                     None
                 }
-            }
-        })
+            },
+        )
         .collect()
 }
 

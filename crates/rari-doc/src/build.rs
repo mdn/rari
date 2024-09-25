@@ -14,7 +14,7 @@ use crate::error::DocError;
 use crate::pages::build::copy_additional_files;
 use crate::pages::page::{Page, PageBuilder, PageLike};
 use crate::pages::types::spa::SPA;
-use crate::resolve::url_to_path_buf;
+use crate::resolve::url_to_folder_path;
 
 pub fn build_single_page(page: &Page) {
     let slug = &page.slug();
@@ -26,7 +26,7 @@ pub fn build_single_page(page: &Page) {
         Ok(built_page) => {
             let out_path = build_out_root()
                 .expect("No BUILD_OUT_ROOT")
-                .join(url_to_path_buf(page.url().trim_start_matches('/')));
+                .join(url_to_folder_path(page.url().trim_start_matches('/')));
             fs::create_dir_all(&out_path).unwrap();
             let out_file = out_path.join("index.json");
             let file = File::create(out_file).unwrap();

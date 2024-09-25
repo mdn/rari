@@ -10,9 +10,7 @@ use rari_types::locale::Locale;
 
 use super::titles::api_page_title;
 use crate::error::DocError;
-use crate::pages::page::{
-    url_path_to_page_with_other_locale_and_fallback, Page, PageLike, PageReader,
-};
+use crate::pages::page::{Page, PageLike, PageReader};
 use crate::redirects::resolve_redirect;
 use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 use crate::utils::COLLATOR;
@@ -67,7 +65,7 @@ pub fn write_li_with_badges(
     closed: bool,
 ) -> Result<(), DocError> {
     let locale_page = if locale != Default::default() {
-        &url_path_to_page_with_other_locale_and_fallback(page.url(), Some(locale))?
+        &Page::from_url_with_other_locale_and_fallback(page.url(), Some(locale))?
     } else {
         page
     };
@@ -206,7 +204,7 @@ pub fn get_sub_pages(
         Some(redirect) => redirect,
         None => url,
     };
-    let doc = Page::page_from_url_path(url)?;
+    let doc = Page::from_url(url)?;
     let full_path = doc.full_path();
     if let Some(folder) = full_path.parent() {
         let sub_folders = read_sub_folders_cached(folder.to_path_buf(), depth)?;

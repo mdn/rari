@@ -32,7 +32,7 @@ pub enum DocError {
     #[error(transparent)]
     JsonError(#[from] serde_json::Error),
     #[error("Page not found (static cache): {0}")]
-    NotFoundInStaticCache(PathBuf),
+    NotFoundInStaticCache(String),
     #[error("File cache broken")]
     FileCacheBroken,
     #[error("File cache poisoned")]

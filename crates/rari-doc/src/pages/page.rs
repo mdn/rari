@@ -10,15 +10,14 @@ use rari_types::RariEnv;
 use super::json::BuiltDocy;
 use super::types::contributors::contributor_spotlight_from_url;
 use super::types::generic::GenericPage;
-use crate::cached_readers::{blog_from_url, curriculum_from_url};
 use crate::error::DocError;
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::contributors::ContributorSpotlight;
 use crate::pages::types::curriculum::CurriculumPage;
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
-use crate::resolve::{strip_locale_from_url, url_path_to_path_buf};
-use crate::utils::{locale_and_typ_from_path, root_for_locale};
+use crate::resolve::{strip_locale_from_url, url_meta_from, UrlMeta};
+use crate::utils::locale_and_typ_from_path;
 
 #[derive(Debug, Clone)]
 #[enum_dispatch]
@@ -42,50 +41,90 @@ pub enum PageCategory {
 }
 
 impl Page {
-    pub fn page_from_url_path(url_path: &str) -> Result<Page, DocError> {
-        url_path_to_page(url_path)
+    pub fn from_url(url: &str) -> Result<Self, DocError> {
+        Self::from_url_with_other_locale_and_fallback(url, None)
     }
 
-    pub fn ignore(url_path: &str) -> bool {
-        if url_path == "/discord" {
+    pub fn from_url_with_other_locale_and_fallback(
+        url: &str,
+        locale: Option<Locale>,
+    ) -> Result<Self, DocError> {
+        let UrlMeta {
+            folder_path,
+            slug,
+            locale: locale_from_url,
+            page_category,
+        } = url_meta_from(url)?;
+        let locale = locale.unwrap_or(locale_from_url);
+        match page_category {
+            PageCategory::SPA => SPA::from_slug(slug, locale)
+                .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA)),
+            PageCategory::Doc => {
+                let doc = Doc::page_from_slug_path(&folder_path, locale);
+                if doc.is_err() && locale != Default::default() {
+                    Doc::page_from_slug_path(&folder_path, Default::default())
+                } else {
+                    doc
+                }
+            }
+            PageCategory::BlogPost => BlogPost::page_from_url(url).ok_or(DocError::PageNotFound(
+                url.to_string(),
+                PageCategory::BlogPost,
+            )),
+            PageCategory::Curriculum => CurriculumPage::page_from_url(url).ok_or(
+                DocError::PageNotFound(url.to_string(), PageCategory::Curriculum),
+            ),
+            PageCategory::ContributorSpotlight => contributor_spotlight_from_url(url, locale)
+                .ok_or(DocError::PageNotFound(
+                    url.to_string(),
+                    PageCategory::ContributorSpotlight,
+                )),
+            PageCategory::GenericPage => GenericPage::from_slug(slug, locale).ok_or(
+                DocError::PageNotFound(url.to_string(), PageCategory::GenericPage),
+            ),
+        }
+    }
+
+    pub fn ignore(url: &str) -> bool {
+        if url == "/discord" {
             return true;
         }
-        if url_path == "/en-US/blog/rss.xml" {
+        if url == "/en-US/blog/rss.xml" {
             return true;
         }
-        if url_path.starts_with("/users/") {
+        if url.starts_with("/users/") {
             return true;
         }
-        if url_path.starts_with("/en-US/observatory") {
+        if url.starts_with("/en-US/observatory") {
             return true;
         }
-        if url_path.starts_with("/en-US/plus") {
+        if url.starts_with("/en-US/plus") {
             return true;
         }
-        if url_path.starts_with("/en-US/play") {
+        if url.starts_with("/en-US/play") {
             return true;
         }
 
         false
     }
-    pub fn exists(url_path: &str) -> bool {
-        if url_path == "/discord" {
+    pub fn exists(url: &str) -> bool {
+        if url == "/discord" {
             return true;
         }
-        if url_path.starts_with("/users/") {
+        if url.starts_with("/users/") {
             return true;
         }
-        if url_path.starts_with("/en-US/blog") && blog_root().is_none() {
+        if url.starts_with("/en-US/blog") && blog_root().is_none() {
             return true;
         }
-        if url_path.starts_with("/en-US/curriculum") {
+        if url.starts_with("/en-US/curriculum") {
             return true;
         }
-        if strip_locale_from_url(url_path).1 == "/" {
+        if strip_locale_from_url(url).1 == "/" {
             return true;
         }
 
-        Page::page_from_url_path(url_path).is_ok()
+        Page::from_url(url).is_ok()
     }
 }
 
@@ -101,55 +140,6 @@ impl PageReader for Page {
             PageCategory::ContributorSpotlight => ContributorSpotlight::read(path, locale),
             PageCategory::GenericPage => GenericPage::read(path, locale),
         }
-    }
-}
-
-fn doc_from_path_and_locale(path: &Path, locale: Locale) -> Result<Page, DocError> {
-    let mut file = root_for_locale(locale)?.to_path_buf();
-    file.push(locale.as_folder_str());
-    file.push(path);
-    file.push("index.md");
-    Doc::read(file, Some(locale))
-}
-
-pub fn url_path_to_page(url_path: &str) -> Result<Page, DocError> {
-    url_path_to_page_with_other_locale_and_fallback(url_path, None)
-}
-
-pub fn url_path_to_page_with_other_locale_and_fallback(
-    url_path: &str,
-    locale: Option<Locale>,
-) -> Result<Page, DocError> {
-    let (path, slug, locale_from_url, typ) = url_path_to_path_buf(url_path)?;
-    let locale = locale.unwrap_or(locale_from_url);
-    match typ {
-        PageCategory::SPA => SPA::from_slug(slug, locale).ok_or(DocError::PageNotFound(
-            url_path.to_string(),
-            PageCategory::SPA,
-        )),
-        PageCategory::Doc => {
-            let doc = doc_from_path_and_locale(&path, locale);
-            if doc.is_err() && locale != Default::default() {
-                doc_from_path_and_locale(&path, Default::default())
-            } else {
-                doc
-            }
-        }
-        PageCategory::BlogPost => blog_from_url(url_path).ok_or(DocError::PageNotFound(
-            url_path.to_string(),
-            PageCategory::BlogPost,
-        )),
-        PageCategory::Curriculum => curriculum_from_url(&url_path.to_ascii_lowercase()).ok_or(
-            DocError::PageNotFound(url_path.to_string(), PageCategory::Curriculum),
-        ),
-        PageCategory::ContributorSpotlight => contributor_spotlight_from_url(url_path, locale)
-            .ok_or(DocError::PageNotFound(
-                url_path.to_string(),
-                PageCategory::ContributorSpotlight,
-            )),
-        PageCategory::GenericPage => GenericPage::from_slug(slug, locale).ok_or(
-            DocError::PageNotFound(url_path.to_string(), PageCategory::GenericPage),
-        ),
     }
 }
 
