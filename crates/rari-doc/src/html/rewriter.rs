@@ -279,6 +279,11 @@ pub fn post_process_html<T: PageLike>(
             el.after("</figure>", ContentType::Html);
             Ok(())
         }),
+        element!("math[display=block]", |el| {
+            el.before("<figure class=\"table-container\">", ContentType::Html);
+            el.after("</figure>", ContentType::Html);
+            Ok(())
+        }),
         element!("*[data-rewriter=em]", |el| {
             el.prepend("<em>", ContentType::Html);
             el.append("</em>", ContentType::Html);
