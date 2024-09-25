@@ -274,7 +274,12 @@ pub fn post_process_html<T: PageLike>(
             );
             Ok(())
         }),
-        element!("table, math[display=block]", |el| {
+        element!("table", |el| {
+            el.before("<figure class=\"table-container\">", ContentType::Html);
+            el.after("</figure>", ContentType::Html);
+            Ok(())
+        }),
+        element!("math[display=block]", |el| {
             el.before("<figure class=\"table-container\">", ContentType::Html);
             el.after("</figure>", ContentType::Html);
             Ok(())
