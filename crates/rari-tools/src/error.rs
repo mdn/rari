@@ -36,7 +36,17 @@ pub enum ToolError {
     InvalidRedirectFromURL(String),
     #[error("Invalid 'to' URL for redirect: {0}")]
     InvalidRedirectToURL(String),
+    #[error(transparent)]
+    RedirectError(#[from] RedirectError),
 
     #[error("Unknonwn error")]
     Unknown(String),
+}
+
+#[derive(Debug, Clone, Error)]
+pub enum RedirectError {
+    #[error("RedirectError: {0}")]
+    Cycle(String),
+    #[error("No cased version {0}")]
+    NoCased(String),
 }
