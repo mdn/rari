@@ -1,3 +1,6 @@
 /target
 .config.toml
 .DS_Store
+tests/data/content/*
+!tests/data/content/files/en-us/basic
+tests/data/translated_content/*
