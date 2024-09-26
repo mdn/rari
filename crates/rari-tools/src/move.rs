@@ -85,9 +85,10 @@ fn do_move(
 
     let new_parent_slug = parent_slug(new_slug)?;
     if !page::Page::exists(&build_url(new_parent_slug, &locale, PageCategory::Doc)?) {
-        return Err(ToolError::InvalidSlug(
-            "new parent slug does not exist".to_string(),
-        ));
+        return Err(ToolError::InvalidSlug(format!(
+            "new parent slug does not exist: {}",
+            new_parent_slug
+        )));
     }
     let subpages = get_sub_pages(&old_url, None, Default::default())?;
 
@@ -170,13 +171,27 @@ fn do_move(
         ));
     }
 
+    // Conditional command for testing. In testing, we do not use git, because the test
+    // fixtures are no under git control. SO instead of `git mv …` we use `mv …`.
+    let command = if cfg!(test) { "mv" } else { "git" };
+    let args: Vec<String> = if cfg!(test) {
+        vec![
+            old_folder_path.to_string_lossy().into(),
+            new_folder_path.to_string_lossy().into(),
+        ]
+    } else {
+        vec![
+            "mv".into(),
+            old_folder_path.to_string_lossy().into(),
+            new_folder_path.to_string_lossy().into(),
+        ]
+    };
+
+    println!("{} {:?}", command, args);
+
     // Execute the git move.
-    let output = Command::new("git")
-        .args([
-            "mv",
-            &old_folder_path.to_string_lossy(),
-            &new_folder_path.to_string_lossy(),
-        ])
+    let output = Command::new(command)
+        .args(args)
         .current_dir(root_for_locale(locale)?)
         .output()
         .expect("failed to execute process");
@@ -246,17 +261,6 @@ mod test {
     use crate::tests::fixtures::docs::DocFixtures;
 
     #[test]
-    fn test_fixturefixture() {
-        let slugs = vec![
-            "Web/API/ExampleOne".to_string(),
-            "Web/API/ExampleOne/SubExampleOne".to_string(),
-            "Web/API/ExampleOne/SubExampleTwo".to_string(),
-        ];
-        let _docs = DocFixtures::new(&slugs, &Locale::EnUs);
-        assert!(true);
-    }
-
-    #[test]
     fn test_validate_args() {
         assert!(validate_args("old", "new").is_ok());
         assert!(validate_args("old", "").is_err());
@@ -275,16 +279,19 @@ mod test {
 
     #[test]
     fn test_do_move_dry_run() {
-        // Test case where old_slug and new_slug are valid
-        // only to a cursory dry-run to not mess up git at this point.
+        let slugs = vec![
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleOne/SubExampleOne".to_string(),
+            "Web/API/ExampleOne/SubExampleTwo".to_string(),
+        ];
+        let _docs = DocFixtures::new(&slugs, &Locale::EnUs);
+
         let result = do_move(
             "Web/API/ExampleOne",
             "Web/API/ExampleOneNewLocation",
-            Locale::default(),
+            Locale::EnUs,
             true,
         );
-        println!("root: {:?}", root_for_locale(Locale::default()));
-        println!("root-tx: {:?}", root_for_locale(Locale::PtBr));
         assert!(result.is_ok());
         if let Ok(pairs) = result {
             assert_eq!(pairs.len(), 3);
@@ -295,5 +302,27 @@ mod test {
             assert_eq!(pairs[2].0, "Web/API/ExampleOne/SubExampleTwo");
             assert_eq!(pairs[2].1, "Web/API/ExampleOneNewLocation/SubExampleTwo");
         }
+    }
+
+    #[test]
+    fn test_do_move() {
+        let slugs = vec![
+            "Burz/API/ExampleOne".to_string(),
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleOne/SubExampleOne".to_string(),
+            "Web/API/ExampleOne/SubExampleTwo".to_string(),
+        ];
+        let _docs = DocFixtures::new(&slugs, &Locale::EnUs);
+
+        let result = do_move(
+            "Web/API/ExampleOne",
+            "Web/API/ExampleOneNewLocation",
+            Locale::EnUs,
+            false,
+        );
+        println!("result: {:?}", result);
+        assert!(result.is_ok());
+
+        assert!(true);
     }
 }

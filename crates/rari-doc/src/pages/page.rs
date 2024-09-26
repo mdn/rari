@@ -83,7 +83,6 @@ impl Page {
         if strip_locale_from_url(url_path).1 == "/" {
             return true;
         }
-
         Page::page_from_url_path(url_path).is_ok()
     }
 }

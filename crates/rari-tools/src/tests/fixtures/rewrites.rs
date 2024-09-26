@@ -1,7 +1,9 @@
+#[allow(dead_code)]
 struct RewriteFixtures {}
 
 impl RewriteFixtures {
-    fn new(slugs: &Vec<String>) -> Self {
+    #[allow(dead_code)]
+    fn new(_slugs: &Vec<String>) -> Self {
         // create fixtures here according to the slugs
         RewriteFixtures {}
     }
@@ -9,6 +11,7 @@ impl RewriteFixtures {
 }
 
 impl Drop for RewriteFixtures {
+    #[allow(dead_code)]
     fn drop(&mut self) {
         // Perform cleanup actions
         println!("Cleaned up rewrite fixtures.");

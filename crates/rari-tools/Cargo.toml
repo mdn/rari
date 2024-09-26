@@ -21,7 +21,8 @@ url.workspace = true
 console = "0"
 dialoguer = "0"
 csv = "1"
-
+fake = "2"
+indoc = "2"
 
 [dev-dependencies]
 rari-types = { workspace = true, features = ["testing"] }
