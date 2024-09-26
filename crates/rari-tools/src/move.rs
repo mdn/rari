@@ -243,6 +243,18 @@ fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
 mod test {
 
     use super::*;
+    use crate::tests::fixtures::docs::DocFixtures;
+
+    #[test]
+    fn test_fixturefixture() {
+        let slugs = vec![
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleOne/SubExampleOne".to_string(),
+            "Web/API/ExampleOne/SubExampleTwo".to_string(),
+        ];
+        let _docs = DocFixtures::new(&slugs, &Locale::EnUs);
+        assert!(true);
+    }
 
     #[test]
     fn test_validate_args() {
