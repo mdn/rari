@@ -1,3 +1,3 @@
 pub mod docs;
-pub mod rewrites;
+pub mod redirects;
 pub mod wikihistory;
