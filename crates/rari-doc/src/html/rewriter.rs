@@ -13,7 +13,7 @@ use url::Url;
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 use crate::pages::page::{Page, PageLike};
-use crate::pages::types::curriculum::relative_file_to_curriculum_page;
+use crate::pages::types::curriculum::CurriculumPage;
 use crate::redirects::resolve_redirect;
 use crate::resolve::strip_locale_from_url;
 
@@ -279,6 +279,11 @@ pub fn post_process_html<T: PageLike>(
             el.after("</figure>", ContentType::Html);
             Ok(())
         }),
+        element!("math[display=block]", |el| {
+            el.before("<figure class=\"table-container\">", ContentType::Html);
+            el.after("</figure>", ContentType::Html);
+            Ok(())
+        }),
         element!("*[data-rewriter=em]", |el| {
             el.prepend("<em>", ContentType::Html);
             el.append("</em>", ContentType::Html);
@@ -297,7 +302,7 @@ pub fn post_process_html<T: PageLike>(
             let mut curriculum_links = vec![element!("a[href^=\".\"]", |el| {
                 let href = el.get_attribute("href").unwrap_or_default();
                 let split_href = href.split_once('#');
-                if let Ok(page) = relative_file_to_curriculum_page(
+                if let Ok(page) = CurriculumPage::page_from_realitve_file(
                     page.full_path(),
                     split_href.map(|s| s.0).unwrap_or(&href),
                 ) {

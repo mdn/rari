@@ -1,30 +1,19 @@
 use anyhow::Error;
-use rari_doc::pages::build::{
-    build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_generic_page,
-    build_spa,
-};
 use rari_doc::pages::json::BuiltDocy;
-use rari_doc::pages::page::{Page, PageLike};
+use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use serde_json::Value;
 use tiny_http::{Response, Server};
 use tracing::{error, span, Level};
 
 fn get_json(url: &str) -> Result<BuiltDocy, Error> {
     let url = url.strip_suffix("index.json").unwrap_or(url);
-    let page = Page::page_from_url_path(url)?;
+    let page = Page::from_url(url)?;
 
     let slug = &page.slug();
     let locale = page.locale();
     let span = span!(Level::ERROR, "page", "{}:{}", locale, slug);
     let _enter = span.enter();
-    let json = match page {
-        Page::Doc(doc) => build_doc(&doc),
-        Page::BlogPost(post) => build_blog_post(&post),
-        Page::SPA(spa) => build_spa(&spa),
-        Page::Curriculum(curriculim) => build_curriculum(&curriculim),
-        Page::ContributorSpotlight(cs) => build_contributor_spotlight(&cs),
-        Page::GenericPage(generic) => build_generic_page(&generic),
-    }?;
+    let json = page.build()?;
     tracing::info!("{url}");
     Ok(json)
 }

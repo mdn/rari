@@ -203,6 +203,13 @@ pub struct BlogPost {
     content_start: usize,
 }
 
+impl BlogPost {
+    pub fn page_from_url(url: &str) -> Option<Page> {
+        let _ = blog_root()?;
+        blog_files().posts.get(&url.to_ascii_lowercase()).cloned()
+    }
+}
+
 impl PageReader for BlogPost {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         read_blog_post(path).map(Arc::new).map(Page::BlogPost)

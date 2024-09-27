@@ -11,32 +11,22 @@ use crate::cached_readers::{
     blog_files, contributor_spotlight_files, curriculum_files, generic_pages_files,
 };
 use crate::error::DocError;
-use crate::pages::build::{
-    build_blog_post, build_contributor_spotlight, build_curriculum, build_doc, build_generic_page,
-    build_spa, copy_additional_files,
-};
-use crate::pages::page::{Page, PageLike};
+use crate::pages::build::copy_additional_files;
+use crate::pages::page::{Page, PageBuilder, PageLike};
 use crate::pages::types::spa::SPA;
-use crate::resolve::url_to_path_buf;
+use crate::resolve::url_to_folder_path;
 
 pub fn build_single_page(page: &Page) {
     let slug = &page.slug();
     let locale = page.locale();
     let span = span!(Level::ERROR, "page", "{}:{}", locale, slug);
     let _enter = span.enter();
-    let built_page = match page {
-        Page::Doc(doc) => build_doc(doc),
-        Page::BlogPost(post) => build_blog_post(post),
-        Page::SPA(spa) => build_spa(spa),
-        Page::Curriculum(curriculum) => build_curriculum(curriculum),
-        Page::ContributorSpotlight(cs) => build_contributor_spotlight(cs),
-        Page::GenericPage(generic) => build_generic_page(generic),
-    };
+    let built_page = page.build();
     match built_page {
         Ok(built_page) => {
             let out_path = build_out_root()
                 .expect("No BUILD_OUT_ROOT")
-                .join(url_to_path_buf(page.url().trim_start_matches('/')));
+                .join(url_to_folder_path(page.url().trim_start_matches('/')));
             fs::create_dir_all(&out_path).unwrap();
             let out_file = out_path.join("index.json");
             let file = File::create(out_file).unwrap();

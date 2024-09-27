@@ -9,7 +9,7 @@ use crate::pages::page::{PageCategory, PageLike};
 use crate::pages::types::generic::GenericPage;
 use crate::pages::types::spa::SPA;
 
-pub fn url_to_path_buf(slug: &str) -> PathBuf {
+pub fn url_to_folder_path(slug: &str) -> PathBuf {
     PathBuf::from(
         slug.replace('*', "_star_")
             .replace("::", "_doublecolon_")
@@ -28,15 +28,20 @@ pub fn strip_locale_from_url(url: &str) -> (Option<Locale>, &str) {
     (locale, &url[i..])
 }
 
-pub fn url_path_to_path_buf(
-    url_path: &str,
-) -> Result<(PathBuf, &str, Locale, PageCategory), UrlError> {
-    let mut split = url_path[..url_path.find('#').unwrap_or(url_path.len())]
+pub struct UrlMeta<'a> {
+    pub folder_path: PathBuf,
+    pub slug: &'a str,
+    pub locale: Locale,
+    pub page_category: PageCategory,
+}
+
+pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, UrlError> {
+    let mut split = url[..url.find('#').unwrap_or(url.len())]
         .splitn(4, '/')
         .skip(1);
     let locale: Locale = Locale::from_str(split.next().unwrap_or_default())?;
     let tail: Vec<_> = split.collect();
-    let (typ, slug) = match tail.as_slice() {
+    let (page_category, slug) = match tail.as_slice() {
         ["docs", tail] => (PageCategory::Doc, *tail),
         ["blog"] | ["blog", ""] if locale == Default::default() => (PageCategory::SPA, "blog"),
         ["blog", tail] if locale == Default::default() => (PageCategory::BlogPost, *tail),
@@ -46,7 +51,7 @@ pub fn url_path_to_path_buf(
         }
         ["community", ..] => return Err(UrlError::InvalidUrl),
         _ => {
-            let (_, slug) = strip_locale_from_url(url_path);
+            let (_, slug) = strip_locale_from_url(url);
             let slug = slug.strip_prefix('/').unwrap_or(slug);
             if SPA::is_spa(slug, locale) {
                 (PageCategory::SPA, slug)
@@ -57,8 +62,13 @@ pub fn url_path_to_path_buf(
             }
         }
     };
-    let path = url_to_path_buf(slug);
-    Ok((path, slug, locale, typ))
+    let folder_path = url_to_folder_path(slug);
+    Ok(UrlMeta {
+        folder_path,
+        slug,
+        locale,
+        page_category,
+    })
 }
 
 pub fn build_url(slug: &str, locale: &Locale, typ: PageCategory) -> Result<String, DocError> {
@@ -86,9 +96,14 @@ mod test {
     #[test]
     fn test_url_to_path() -> Result<(), UrlError> {
         let url = "/en-US/docs/Web/HTML";
-        let (path, slug, locale, _typ) = url_path_to_path_buf(url)?;
+        let UrlMeta {
+            folder_path,
+            slug,
+            locale,
+            ..
+        } = url_meta_from(url)?;
         assert_eq!(locale, Locale::EnUs);
-        assert_eq!(path, PathBuf::from("web/html"));
+        assert_eq!(folder_path, PathBuf::from("web/html"));
         assert_eq!(slug, "web/html");
         Ok(())
     }

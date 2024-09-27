@@ -11,7 +11,7 @@ use rari_utils::io::read_to_string;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::cached_readers::{curriculum_files, curriculum_from_path};
+use crate::cached_readers::curriculum_files;
 use crate::error::DocError;
 use crate::pages::json::{Parent, PrevNextBlog, PrevNextCurriculum, UrlNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
@@ -109,13 +109,79 @@ pub struct CurriculumPage {
     raw_content: String,
 }
 
+impl CurriculumPage {
+    pub fn page_from_url(url: &str) -> Option<Page> {
+        let _ = curriculum_root()?;
+        curriculum_files()
+            .by_url
+            .get(&url.to_ascii_lowercase())
+            .cloned()
+    }
+
+    pub fn page_from_file_path(path: &Path) -> Option<Page> {
+        let _ = curriculum_root()?;
+        curriculum_files().by_path.get(path).cloned()
+    }
+
+    pub fn page_from_realitve_file(
+        base_file: &Path,
+        relative_file: &str,
+    ) -> Result<Page, DocError> {
+        let mut path = base_file
+            .parent()
+            .ok_or(DocError::NoParent(base_file.to_path_buf()))?
+            .to_path_buf()
+            .join(relative_file);
+        if path.is_dir() {
+            path = path.join("0-README.md");
+        }
+        let path = fs::canonicalize(path)?;
+        CurriculumPage::page_from_file_path(&path).ok_or(DocError::PageNotFound(
+            path.to_string_lossy().to_string(),
+            PageCategory::Curriculum,
+        ))
+    }
+}
+
 impl PageReader for CurriculumPage {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
-        let path = path.into();
+        let full_path = path.into();
+        let raw = read_to_string(&full_path)?;
+        let (fm, content_start) = split_fm(&raw);
+        let fm = fm.ok_or(DocError::NoFrontmatter)?;
 
-        let page = read_curriculum_page(path)
-            .map(Arc::new)
-            .map(Page::Curriculum)?;
+        let raw_content = &raw[content_start..];
+        let filename = full_path
+            .strip_prefix(curriculum_root().ok_or(DocError::NoCurriculumRoot)?)?
+            .to_owned();
+        let slug = curriculum_file_to_slug(&filename);
+        let url = format!("/{}/{slug}/", Locale::default().as_url_str());
+        let (title, line) = TITLE_RE
+            .captures(raw_content)
+            .map(|cap| (cap[1].to_owned(), cap[0].to_owned()))
+            .ok_or(DocError::NoH1)?;
+        let raw_content = raw_content.replacen(&line, "", 1);
+        let CurriculumFrontmatter {
+            summary,
+            template,
+            topic,
+        } = serde_yaml::from_str(fm)?;
+        let path = full_path
+            .strip_prefix(curriculum_root().ok_or(DocError::NoCurriculumRoot)?)?
+            .to_path_buf();
+        let meta = CurriculumBuildMeta {
+            url,
+            title,
+            slug,
+            summary,
+            template,
+            topic,
+            filename,
+            full_path,
+            path,
+            group: None,
+        };
+        let page = Page::Curriculum(Arc::new(CurriculumPage { meta, raw_content }));
         Ok(page)
     }
 }
@@ -126,76 +192,6 @@ static SLUG_RE: LazyLock<Regex> =
 
 fn curriculum_file_to_slug(file: &Path) -> String {
     SLUG_RE.replace_all(&file.to_string_lossy(), "").to_string()
-}
-
-pub fn curriculum_group(parents: &[Parent]) -> Option<String> {
-    if parents.len() > 1 {
-        if let Some(group) = parents.get(parents.len() - 2) {
-            if group.title.ends_with("modules") {
-                return Some(group.title.to_string());
-            }
-        }
-    };
-    None
-}
-
-pub fn relative_file_to_curriculum_page(
-    base_file: &Path,
-    relative_file: &str,
-) -> Result<Page, DocError> {
-    let mut path = base_file
-        .parent()
-        .ok_or(DocError::NoParent(base_file.to_path_buf()))?
-        .to_path_buf()
-        .join(relative_file);
-    if path.is_dir() {
-        path = path.join("0-README.md");
-    }
-    let path = fs::canonicalize(path)?;
-    curriculum_from_path(&path).ok_or(DocError::PageNotFound(
-        path.to_string_lossy().to_string(),
-        PageCategory::Curriculum,
-    ))
-}
-
-fn read_curriculum_page(path: impl Into<PathBuf>) -> Result<CurriculumPage, DocError> {
-    let full_path = path.into();
-    let raw = read_to_string(&full_path)?;
-    let (fm, content_start) = split_fm(&raw);
-    let fm = fm.ok_or(DocError::NoFrontmatter)?;
-
-    let raw_content = &raw[content_start..];
-    let filename = full_path
-        .strip_prefix(curriculum_root().ok_or(DocError::NoCurriculumRoot)?)?
-        .to_owned();
-    let slug = curriculum_file_to_slug(&filename);
-    let url = format!("/{}/{slug}/", Locale::default().as_url_str());
-    let (title, line) = TITLE_RE
-        .captures(raw_content)
-        .map(|cap| (cap[1].to_owned(), cap[0].to_owned()))
-        .ok_or(DocError::NoH1)?;
-    let raw_content = raw_content.replacen(&line, "", 1);
-    let CurriculumFrontmatter {
-        summary,
-        template,
-        topic,
-    } = serde_yaml::from_str(fm)?;
-    let path = full_path
-        .strip_prefix(curriculum_root().ok_or(DocError::NoCurriculumRoot)?)?
-        .to_path_buf();
-    let meta = CurriculumBuildMeta {
-        url,
-        title,
-        slug,
-        summary,
-        template,
-        topic,
-        filename,
-        full_path,
-        path,
-        group: None,
-    };
-    Ok(CurriculumPage { meta, raw_content })
 }
 
 impl PageLike for CurriculumPage {
@@ -258,6 +254,17 @@ impl PageLike for CurriculumPage {
     fn trailing_slash(&self) -> bool {
         true
     }
+}
+
+pub fn curriculum_group(parents: &[Parent]) -> Option<String> {
+    if parents.len() > 1 {
+        if let Some(group) = parents.get(parents.len() - 2) {
+            if group.title.ends_with("modules") {
+                return Some(group.title.to_string());
+            }
+        }
+    };
+    None
 }
 
 pub fn build_sidebar() -> Result<Vec<CurriculumSidebarEntry>, DocError> {

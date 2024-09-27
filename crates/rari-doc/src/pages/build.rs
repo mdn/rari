@@ -13,13 +13,13 @@ use super::json::{
     JsonCurriculum, JsonDoADoc, JsonDoc, JsonGenericHyData, JsonGenericPage, Prose, Section,
     Source, SpecificationSection, TocEntry, Translation,
 };
-use super::page::PageLike;
-use super::parents::parents;
-use super::title::{page_title, transform_title};
+use super::page::{Page, PageBuilder, PageLike};
 use super::types::contributors::ContributorSpotlight;
 use super::types::generic::GenericPage;
 use crate::baseline::get_baseline;
 use crate::error::DocError;
+use crate::helpers::parents::parents;
+use crate::helpers::title::{page_title, transform_title};
 use crate::html::bubble_up::bubble_up_curriculum_page;
 use crate::html::modifier::{add_missing_ids, remove_empty_p};
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
@@ -143,7 +143,7 @@ pub fn make_toc(sections: &[BuildSection], with_h3: bool) -> Vec<TocEntry> {
         .collect()
 }
 
-pub fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
+fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     let (ks_rendered_doc, templs, sidebars) = if let Some(rari_env) = &page.rari_env() {
         let Rendered {
             content,
@@ -195,7 +195,7 @@ pub fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     })
 }
 
-pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
+fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
     let PageContent {
         body,
         toc,
@@ -302,7 +302,7 @@ pub fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
     })))
 }
 
-pub fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
+fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
     let PageContent { body, toc, .. } = build_content(post)?;
     Ok(BuiltDocy::BlogPost(Box::new(JsonBlogPost {
         doc: JsonBlogPostDoc {
@@ -330,7 +330,7 @@ pub fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
     })))
 }
 
-pub fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
+fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
     let built = build_content(page);
     let PageContent { body, toc, .. } = built?;
     Ok(BuiltDocy::GenericPage(Box::new(JsonGenericPage {
@@ -349,11 +349,11 @@ pub fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
     })))
 }
 
-pub fn build_spa(spa: &SPA) -> Result<BuiltDocy, DocError> {
+fn build_spa(spa: &SPA) -> Result<BuiltDocy, DocError> {
     spa.as_built_doc()
 }
 
-pub fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> {
+fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> {
     let PageContent { body, toc, .. } = build_content(curriculum)?;
     let sidebar = build_sidebar().ok();
     let parents = parents(curriculum);
@@ -393,7 +393,7 @@ pub fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocErr
     })))
 }
 
-pub fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDocy, DocError> {
+fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDocy, DocError> {
     let PageContent { body, .. } = build_content(cs)?;
     let hy_data = ContributorSpotlightHyData {
         sections: body,
@@ -426,4 +426,17 @@ pub fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<()
         }
     }
     Ok(())
+}
+
+impl PageBuilder for Page {
+    fn build(&self) -> Result<BuiltDocy, DocError> {
+        match self {
+            Self::Doc(doc) => build_doc(doc),
+            Self::BlogPost(post) => build_blog_post(post),
+            Self::SPA(spa) => build_spa(spa),
+            Self::Curriculum(curriculum) => build_curriculum(curriculum),
+            Self::ContributorSpotlight(cs) => build_contributor_spotlight(cs),
+            Self::GenericPage(generic) => build_generic_page(generic),
+        }
+    }
 }
