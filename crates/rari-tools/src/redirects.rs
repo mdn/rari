@@ -494,7 +494,10 @@ fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
 /// This function will return a `ToolError` in the following situations:
 ///
 /// * **File Read Error:** If the file at the specified `path` cannot be opened or read.
-fn read_redirects_raw(path: &Path, map: &mut HashMap<String, String>) -> Result<(), ToolError> {
+pub(crate) fn read_redirects_raw(
+    path: &Path,
+    map: &mut HashMap<String, String>,
+) -> Result<(), ToolError> {
     let lines = read_lines(path)?;
     map.extend(lines.map_while(Result::ok).filter_map(|line| {
         if line.starts_with('#') {

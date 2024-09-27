@@ -187,8 +187,6 @@ fn do_move(
         ]
     };
 
-    println!("{} {:?}", command, args);
-
     // Execute the git move.
     let output = Command::new(command)
         .args(args)
@@ -267,10 +265,19 @@ use serial_test::file_serial;
 #[file_serial(file_fixtures)]
 mod test {
 
+    use std::{collections::HashMap, path::Path};
+
     use super::*;
-    use crate::tests::fixtures::{
-        docs::DocFixtures, redirects::RedirectFixtures, wikihistory::WikihistoryFixtures,
+    use crate::{
+        redirects,
+        tests::fixtures::{
+            docs::DocFixtures, redirects::RedirectFixtures, wikihistory::WikihistoryFixtures,
+        },
     };
+
+    fn s(s: &str) -> String {
+        s.to_string()
+    }
 
     #[test]
     fn test_validate_args() {
@@ -297,6 +304,12 @@ mod test {
             "Web/API/ExampleOne/SubExampleTwo".to_string(),
         ];
         let _docs = DocFixtures::new(&slugs, &Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, &Locale::EnUs);
+        let redirects = vec![(
+            "Web/API/Something".to_string(),
+            "Web/API/SomethingElse".to_string(),
+        )];
+        let _redirects = RedirectFixtures::new(&redirects, &Locale::EnUs);
 
         let result = do_move(
             "Web/API/ExampleOne",
@@ -305,40 +318,277 @@ mod test {
             true,
         );
         assert!(result.is_ok());
-        if let Ok(pairs) = result {
-            assert_eq!(pairs.len(), 3);
-            assert_eq!(pairs[0].0, "Web/API/ExampleOne");
-            assert_eq!(pairs[0].1, "Web/API/ExampleOneNewLocation");
-            assert_eq!(pairs[1].0, "Web/API/ExampleOne/SubExampleOne");
-            assert_eq!(pairs[1].1, "Web/API/ExampleOneNewLocation/SubExampleOne");
-            assert_eq!(pairs[2].0, "Web/API/ExampleOne/SubExampleTwo");
-            assert_eq!(pairs[2].1, "Web/API/ExampleOneNewLocation/SubExampleTwo");
-        }
+        let result = result.unwrap();
+        assert!(result.len() == 3);
+        assert_eq!(
+            result[0],
+            (s("Web/API/ExampleOne"), s("Web/API/ExampleOneNewLocation"))
+        );
+        assert_eq!(
+            result[1],
+            (
+                s("Web/API/ExampleOne/SubExampleOne"),
+                s("Web/API/ExampleOneNewLocation/SubExampleOne")
+            )
+        );
+        assert_eq!(
+            result[2],
+            (
+                s("Web/API/ExampleOne/SubExampleTwo"),
+                s("Web/API/ExampleOneNewLocation/SubExampleTwo")
+            )
+        );
     }
 
     #[test]
     fn test_do_move() {
         let slugs = vec![
-            "Burz/API/ExampleOne".to_string(),
+            "Web/API/Other".to_string(),
             "Web/API/ExampleOne".to_string(),
             "Web/API/ExampleOne/SubExampleOne".to_string(),
             "Web/API/ExampleOne/SubExampleTwo".to_string(),
         ];
+        let redirects = vec![
+            (
+                "docs/Web/API/Something".to_string(),
+                "docs/Web/API/SomethingElse".to_string(),
+            ),
+            (
+                "docs/Web/API/SomethingThatPointsToAMovedDoc".to_string(),
+                "docs/Web/API/ExampleOne/SubExampleOne".to_string(),
+            ),
+        ];
         let _docs = DocFixtures::new(&slugs, &Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, &Locale::EnUs);
-        let redirects = vec![(
-            "Web/API/Some".to_string(),
-            "Web/API/SomethingElse".to_string(),
-        )];
         let _redirects = RedirectFixtures::new(&redirects, &Locale::EnUs);
 
-        // let result = do_move(
-        //     "Web/API/ExampleOne",
-        //     "Web/API/ExampleOneNewLocation",
-        //     Locale::EnUs,
-        //     false,
-        // );
-        // println!("result: {:?}", result);
-        // assert!(result.is_ok());
+        let root_path = root_for_locale(Locale::EnUs).unwrap();
+        let should_exist = vec![
+            "en-us/web/api/other",
+            "en-us/web/api/exampleone",
+            "en-us/web/api/exampleone/subexampleone",
+            "en-us/web/api/exampleone/subexampletwo",
+        ];
+        let should_not_exist = vec![
+            "en-us/web/api/exampleonenewlocation",
+            "en-us/web/api/exampleonenewlocation/subexampleone",
+            "en-us/web/api/exampleonenewlocation/subexampletwo",
+        ];
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let result = do_move(
+            "Web/API/ExampleOne",
+            "Web/API/ExampleOneNewLocation",
+            Locale::EnUs,
+            false,
+        );
+
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(result.len() == 3);
+        assert_eq!(
+            result[0],
+            (s("Web/API/ExampleOne"), s("Web/API/ExampleOneNewLocation"))
+        );
+        assert_eq!(
+            result[1],
+            (
+                s("Web/API/ExampleOne/SubExampleOne"),
+                s("Web/API/ExampleOneNewLocation/SubExampleOne")
+            )
+        );
+        assert_eq!(
+            result[2],
+            (
+                s("Web/API/ExampleOne/SubExampleTwo"),
+                s("Web/API/ExampleOneNewLocation/SubExampleTwo")
+            )
+        );
+
+        let should_exist = vec![
+            "en-us/web/api/other",
+            "en-us/web/api/exampleonenewlocation",
+            "en-us/web/api/exampleonenewlocation/subexampleone",
+            "en-us/web/api/exampleonenewlocation/subexampletwo",
+        ];
+        let should_not_exist = vec![
+            "en-us/web/api/exampleone",
+            "en-us/web/api/exampleone/subexampleone",
+            "en-us/web/api/exampleone/subexampletwo",
+        ];
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        // check redirects
+        let mut redirects_path = PathBuf::from(root_path);
+        redirects_path.push(Locale::EnUs.as_folder_str());
+        redirects_path.push("_redirects.txt");
+        assert!(&redirects_path.exists());
+        let mut redirects = HashMap::new();
+        redirects::read_redirects_raw(&redirects_path, &mut redirects).unwrap();
+        // println!("{:?}", redirects);
+        assert_eq!(
+            redirects.get("/en-US/docs/Web/API/ExampleOne").unwrap(),
+            "/en-US/docs/Web/API/ExampleOneNewLocation"
+        );
+        assert_eq!(
+            redirects
+                .get("/en-US/docs/Web/API/ExampleOne/SubExampleOne")
+                .unwrap(),
+            "/en-US/docs/Web/API/ExampleOneNewLocation/SubExampleOne"
+        );
+        assert_eq!(
+            redirects
+                .get("/en-US/docs/Web/API/ExampleOne/SubExampleTwo")
+                .unwrap(),
+            "/en-US/docs/Web/API/ExampleOneNewLocation/SubExampleTwo"
+        );
+        // The entry that pointed to a moved doc should now point to the new location
+        assert_eq!(
+            redirects
+                .get("/en-US/docs/Web/API/SomethingThatPointsToAMovedDoc")
+                .unwrap(),
+            "/en-US/docs/Web/API/ExampleOneNewLocation/SubExampleOne"
+        );
+        // Other entries should be unharmed
+        assert_eq!(
+            redirects.get("/en-US/docs/Web/API/Something").unwrap(),
+            "/en-US/docs/Web/API/SomethingElse"
+        );
+    }
+
+    #[test]
+    fn test_do_move_translated() {
+        let slugs = vec![
+            "Web/API/Other".to_string(),
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleOne/SubExampleOne".to_string(),
+            "Web/API/ExampleOne/SubExampleTwo".to_string(),
+        ];
+        let redirects = vec![
+            (
+                "docs/Web/API/Something".to_string(),
+                "docs/Web/API/SomethingElse".to_string(),
+            ),
+            (
+                "docs/Web/API/SomethingThatPointsToAMovedDoc".to_string(),
+                "docs/Web/API/ExampleOne/SubExampleOne".to_string(),
+            ),
+        ];
+        let _docs = DocFixtures::new(&slugs, &Locale::PtBr);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, &Locale::PtBr);
+        let _redirects = RedirectFixtures::new(&redirects, &Locale::PtBr);
+
+        let root_path = root_for_locale(Locale::PtBr).unwrap();
+        let should_exist = vec![
+            "pt-br/web/api/other",
+            "pt-br/web/api/exampleone",
+            "pt-br/web/api/exampleone/subexampleone",
+            "pt-br/web/api/exampleone/subexampletwo",
+        ];
+        let should_not_exist = vec![
+            "pt-br/web/api/exampleonenewlocation",
+            "pt-br/web/api/exampleonenewlocation/subexampleone",
+            "pt-br/web/api/exampleonenewlocation/subexampletwo",
+        ];
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let result = do_move(
+            "Web/API/ExampleOne",
+            "Web/API/ExampleOneNewLocation",
+            Locale::PtBr,
+            false,
+        );
+
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(result.len() == 3);
+        assert_eq!(
+            result[0],
+            (s("Web/API/ExampleOne"), s("Web/API/ExampleOneNewLocation"))
+        );
+        assert_eq!(
+            result[1],
+            (
+                s("Web/API/ExampleOne/SubExampleOne"),
+                s("Web/API/ExampleOneNewLocation/SubExampleOne")
+            )
+        );
+        assert_eq!(
+            result[2],
+            (
+                s("Web/API/ExampleOne/SubExampleTwo"),
+                s("Web/API/ExampleOneNewLocation/SubExampleTwo")
+            )
+        );
+
+        let should_exist = vec![
+            "pt-br/web/api/other",
+            "pt-br/web/api/exampleonenewlocation",
+            "pt-br/web/api/exampleonenewlocation/subexampleone",
+            "pt-br/web/api/exampleonenewlocation/subexampletwo",
+        ];
+        let should_not_exist = vec![
+            "pt-br/web/api/exampleone",
+            "pt-br/web/api/exampleone/subexampleone",
+            "pt-br/web/api/exampleone/subexampletwo",
+        ];
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        // check redirects
+        let mut redirects_path = PathBuf::from(root_path);
+        redirects_path.push(Locale::PtBr.as_folder_str());
+        redirects_path.push("_redirects.txt");
+        assert!(&redirects_path.exists());
+        let mut redirects = HashMap::new();
+        redirects::read_redirects_raw(&redirects_path, &mut redirects).unwrap();
+        // println!("{:?}", redirects);
+        assert_eq!(
+            redirects.get("/pt-BR/docs/Web/API/ExampleOne").unwrap(),
+            "/pt-BR/docs/Web/API/ExampleOneNewLocation"
+        );
+        assert_eq!(
+            redirects
+                .get("/pt-BR/docs/Web/API/ExampleOne/SubExampleOne")
+                .unwrap(),
+            "/pt-BR/docs/Web/API/ExampleOneNewLocation/SubExampleOne"
+        );
+        assert_eq!(
+            redirects
+                .get("/pt-BR/docs/Web/API/ExampleOne/SubExampleTwo")
+                .unwrap(),
+            "/pt-BR/docs/Web/API/ExampleOneNewLocation/SubExampleTwo"
+        );
+        // The entry that pointed to a moved doc should now point to the new location
+        assert_eq!(
+            redirects
+                .get("/pt-BR/docs/Web/API/SomethingThatPointsToAMovedDoc")
+                .unwrap(),
+            "/pt-BR/docs/Web/API/ExampleOneNewLocation/SubExampleOne"
+        );
+        // Other entries should be unharmed
+        assert_eq!(
+            redirects.get("/pt-BR/docs/Web/API/Something").unwrap(),
+            "/pt-BR/docs/Web/API/SomethingElse"
+        );
+    }
+
+    fn check_file_existence(root: &Path, should_exist: &[&str], should_not_exist: &[&str]) {
+        for relative_path in should_exist {
+            let parts = relative_path.split('/').collect::<Vec<&str>>();
+            let mut path = PathBuf::from(root);
+            for part in parts {
+                path.push(part);
+            }
+            assert!(path.exists(), "{} should exist", path.display());
+        }
+
+        for relative_path in should_not_exist {
+            let parts = relative_path.split('/').collect::<Vec<&str>>();
+            let mut path = PathBuf::from(root);
+            for part in parts {
+                path.push(part);
+            }
+            assert!(!path.exists(), "{} should not exist", path.display());
+        }
     }
 }

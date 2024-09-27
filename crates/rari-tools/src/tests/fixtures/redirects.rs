@@ -22,18 +22,25 @@ impl RedirectFixtures {
         let mut folder_path = PathBuf::new();
         folder_path.push(root_for_locale(*locale).unwrap());
         folder_path.push(locale.as_folder_str());
-        println!("Creating redirects fixtures directory in {:?}", folder_path);
         fs::create_dir_all(&folder_path).unwrap();
         folder_path.push("_redirects.txt");
 
         let mut content = String::new();
         for (from, to) in entries {
-            content.push_str(format!("{} -> {}\n", from, to).as_str());
+            content.push_str(
+                format!(
+                    "/{}/{}\t/{}/{}\n",
+                    locale.as_url_str(),
+                    from,
+                    locale.as_url_str(),
+                    to
+                )
+                .as_str(),
+            );
         }
         content.push_str("\n");
 
         fs::write(&folder_path, content).unwrap();
-        println!("Created redirects fixtures: {:?}", folder_path);
 
         RedirectFixtures {
             path: folder_path,
