@@ -2,7 +2,7 @@ use fake::{faker::lorem::en::Paragraph, Fake};
 use indoc::formatdoc;
 use rari_doc::{
     pages::page::PageCategory,
-    resolve::{build_url, url_path_to_path_buf},
+    resolve::{build_url, url_meta_from, UrlMeta},
     utils::root_for_locale,
 };
 use rari_types::locale::Locale;
@@ -54,7 +54,9 @@ impl DocFixtures {
         let mut folder_path = PathBuf::new();
         folder_path.push(locale.as_folder_str());
         let url = build_url(slug, &locale, PageCategory::Doc).unwrap();
-        let (path, _, _, _) = url_path_to_path_buf(&url).unwrap();
+        let UrlMeta {
+            folder_path: path, ..
+        } = url_meta_from(&url).unwrap();
         folder_path.push(path);
         folder_path
     }
@@ -69,7 +71,7 @@ impl DocFixtures {
             current_slug.push_str(slug_component);
 
             let folder_path = Self::path_from_slug(current_slug.as_str(), locale);
-            let abs_folder_path = locale_root.join(folder_path);
+            let abs_folder_path = locale_root.join(&folder_path);
 
             let title = Self::capitalize(current_slug.split("/").last().unwrap());
             let content = formatdoc! {

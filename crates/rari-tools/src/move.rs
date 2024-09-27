@@ -5,7 +5,7 @@ use std::{fs::create_dir_all, path::PathBuf, process::Command, str::FromStr, syn
 use rari_doc::{
     helpers::subpages::get_sub_pages,
     pages::page::{self, Page, PageCategory, PageLike, PageWriter},
-    resolve::{build_url, url_path_to_path_buf},
+    resolve::{build_url, url_meta_from, UrlMeta}, //  url_path_to_path_buf
     utils::root_for_locale,
 };
 use rari_types::locale::Locale;
@@ -80,7 +80,7 @@ fn do_move(
     dry_run: bool,
 ) -> Result<Vec<(String, String)>, ToolError> {
     let old_url = build_url(old_slug, &locale, PageCategory::Doc)?;
-    let doc = page::Page::page_from_url_path(&old_url)?;
+    let doc = page::Page::from_url(&old_url)?;
     let real_old_slug = doc.slug();
 
     let new_parent_slug = parent_slug(new_slug)?;
@@ -152,13 +152,18 @@ fn do_move(
     let mut old_folder_path = PathBuf::new();
     old_folder_path.push(locale.as_folder_str());
     let url = build_url(real_old_slug, &locale, PageCategory::Doc)?;
-    let (path, _, _, _) = url_path_to_path_buf(&url)?;
+    // let (path, _, _, _) = url_path_to_path_buf(&url)?;
+    let UrlMeta {
+        folder_path: path, ..
+    } = url_meta_from(&url)?;
     old_folder_path.push(path);
 
     let mut new_folder_path = PathBuf::new();
     new_folder_path.push(locale.as_folder_str());
     let url = build_url(new_slug, &locale, PageCategory::Doc)?;
-    let (path, _, _, _) = url_path_to_path_buf(&url)?;
+    let UrlMeta {
+        folder_path: path, ..
+    } = url_meta_from(&url)?;
     new_folder_path.push(path);
 
     // Make sure the target parent directory exists.

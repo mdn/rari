@@ -7,7 +7,7 @@ use std::path::Path;
 use tracing::{error, warn};
 use url::Url;
 
-use rari_doc::resolve::url_path_to_path_buf;
+use rari_doc::resolve::{url_meta_from, UrlMeta};
 use rari_doc::utils::root_for_locale;
 use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
@@ -402,7 +402,9 @@ fn validate_to_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
             return Ok(());
         }
 
-        let (path, _, _, _) = url_path_to_path_buf(&url)?;
+        let UrlMeta {
+            folder_path: path, ..
+        } = url_meta_from(&url)?;
         let path = root_for_locale(*locale)?
             .join(locale.as_folder_str())
             .join(path);

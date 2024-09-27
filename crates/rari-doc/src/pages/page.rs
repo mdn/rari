@@ -230,7 +230,8 @@ pub trait PageReader {
 
 pub trait PageWriter {
     fn write(&self) -> Result<(), DocError>;
-    
+}
+
 pub trait PageBuilder {
     fn build(&self) -> Result<BuiltDocy, DocError>;
 }
