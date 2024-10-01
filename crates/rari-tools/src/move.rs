@@ -99,12 +99,12 @@ fn do_move(
         return Ok(vec![]);
     }
 
-    let pairs = vec![doc.clone()]
+    let pairs = [doc.clone()]
         .iter()
         .chain(&subpages)
         .map(|page_ref| {
             let slug = page_ref.slug().to_owned();
-            let new_slug = slug.replace(&real_old_slug, new_slug);
+            let new_slug = slug.replace(real_old_slug, new_slug);
             (slug, new_slug)
         })
         .collect::<Vec<_>>();
@@ -115,13 +115,13 @@ fn do_move(
     }
 
     // No dry run, so build a vec of pairs of `(old_page, Option<new_doc>)`.
-    let dv = vec![doc.clone()];
+    let dv = [doc.clone()];
     let doc_pairs = dv
         .iter()
         .chain(&subpages)
         .map(|page_ref| {
             let slug = page_ref.slug().to_owned();
-            let new_slug = slug.replace(&real_old_slug, new_slug);
+            let new_slug = slug.replace(real_old_slug, new_slug);
             let new_page = page_ref.clone();
             if let Page::Doc(doc) = new_page {
                 let mut cloned_doc = doc.clone();
@@ -308,7 +308,7 @@ mod test {
             "Web/API/ExampleOne/SubExampleOne".to_string(),
             "Web/API/ExampleOne/SubExampleTwo".to_string(),
         ];
-        let _docs = DocFixtures::new(&slugs, &Locale::EnUs);
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, &Locale::EnUs);
         let redirects = vec![(
             "Web/API/Something".to_string(),
@@ -363,7 +363,7 @@ mod test {
                 "docs/Web/API/ExampleOne/SubExampleOne".to_string(),
             ),
         ];
-        let _docs = DocFixtures::new(&slugs, &Locale::EnUs);
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, &Locale::EnUs);
         let _redirects = RedirectFixtures::new(&redirects, &Locale::EnUs);
 
@@ -479,7 +479,7 @@ mod test {
                 "docs/Web/API/ExampleOne/SubExampleOne".to_string(),
             ),
         ];
-        let _docs = DocFixtures::new(&slugs, &Locale::PtBr);
+        let _docs = DocFixtures::new(&slugs, Locale::PtBr);
         let _wikihistory = WikihistoryFixtures::new(&slugs, &Locale::PtBr);
         let _redirects = RedirectFixtures::new(&redirects, &Locale::PtBr);
 

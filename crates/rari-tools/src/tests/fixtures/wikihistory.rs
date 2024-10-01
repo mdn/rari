@@ -45,7 +45,7 @@ impl WikihistoryFixtures {
         }
 
         let mut json_string = serde_json::to_string_pretty(&entries).unwrap();
-        json_string.push_str("\n");
+        json_string.push('\n');
         fs::write(&folder_path, json_string).unwrap();
 
         WikihistoryFixtures {

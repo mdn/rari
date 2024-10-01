@@ -187,7 +187,7 @@ impl PageReader for Doc {
 
 impl PageWriter for Doc {
     fn write(&self) -> Result<(), DocError> {
-        write_doc(&self)
+        write_doc(self)
     }
 }
 

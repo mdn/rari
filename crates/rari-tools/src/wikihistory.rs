@@ -27,7 +27,7 @@ pub fn update_wiki_history(locale: Locale, pairs: &Vec<(String, String)>) -> Res
     // Serialize the sorted map back to pretty JSON
     let mut json_string = serde_json::to_string_pretty(&all)?;
     // Add a trailing newline
-    json_string.push_str("\n");
+    json_string.push('\n');
 
     // Write the updated JSON back to the file
     fs::write(&wiki_history_path, json_string)?;

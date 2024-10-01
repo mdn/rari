@@ -38,7 +38,7 @@ impl RedirectFixtures {
                 .as_str(),
             );
         }
-        content.push_str("\n");
+        content.push('\n');
 
         fs::write(&folder_path, content).unwrap();
 

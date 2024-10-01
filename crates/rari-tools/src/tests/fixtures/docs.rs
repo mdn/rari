@@ -15,27 +15,27 @@ pub(crate) struct DocFixtures {
 }
 
 impl DocFixtures {
-    pub fn new(slugs: &Vec<String>, locale: &Locale) -> Self {
+    pub fn new(slugs: &[String], locale: Locale) -> Self {
         Self::new_internal(slugs, locale, false)
     }
 
     #[allow(dead_code)]
-    pub fn debug_new(slugs: &Vec<String>, locale: &Locale) -> Self {
+    pub fn debug_new(slugs: &[String], locale: Locale) -> Self {
         Self::new_internal(slugs, locale, true)
     }
 
-    fn new_internal(slugs: &Vec<String>, locale: &Locale, do_not_remove: bool) -> Self {
+    fn new_internal(slugs: &[String], locale: Locale, do_not_remove: bool) -> Self {
         // create doc file for each slug in the vector, in the configured root directory for the locale
 
         // Iterate over each slug and create a file in the root directory
         let _files: Vec<String> = slugs
             .iter()
-            .map(|slug| Self::create_doc_file(&slug, locale))
+            .map(|slug| Self::create_doc_file(slug, locale))
             .collect();
 
         DocFixtures {
             // files,
-            locale: locale.clone(),
+            locale,
             do_not_remove,
         }
     }
@@ -50,7 +50,7 @@ impl DocFixtures {
         first + &rest
     }
 
-    fn path_from_slug(slug: &str, locale: &Locale) -> PathBuf {
+    fn path_from_slug(slug: &str, locale: Locale) -> PathBuf {
         let mut folder_path = PathBuf::new();
         folder_path.push(locale.as_folder_str());
         let url = build_url(slug, &locale, PageCategory::Doc).unwrap();
@@ -61,11 +61,11 @@ impl DocFixtures {
         folder_path
     }
 
-    fn create_doc_file(slug: &str, locale: &Locale) -> String {
+    fn create_doc_file(slug: &str, locale: Locale) -> String {
         let slug_components = slug.split('/').collect::<Vec<&str>>();
 
         let mut current_slug = String::new();
-        let locale_root = root_for_locale(*locale).unwrap();
+        let locale_root = root_for_locale(locale).unwrap();
 
         for slug_component in slug_components {
             current_slug.push_str(slug_component);
@@ -102,7 +102,7 @@ impl DocFixtures {
             } else {
                 fs::write(&path, content).unwrap();
             }
-            current_slug.push_str("/");
+            current_slug.push('/');
         }
 
         let path = locale_root

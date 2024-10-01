@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, BufWriter, Write};
 use std::path::Path;
 use tracing::{error, warn};
 use url::Url;
@@ -404,7 +404,7 @@ fn validate_to_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
 
         let UrlMeta {
             folder_path: path, ..
-        } = url_meta_from(&url)?;
+        } = url_meta_from(url)?;
         let path = root_for_locale(*locale)?
             .join(locale.as_folder_str())
             .join(path);
@@ -455,7 +455,7 @@ fn is_vanity_redirect_url(url: &str) -> bool {
         .iter()
         .map(|l| format!("/{}/", l.as_url_str()))
         .collect::<HashSet<String>>();
-    return locale_urls.contains(&url.to_string());
+    locale_urls.contains(url)
 }
 
 fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
@@ -529,17 +529,21 @@ pub(crate) fn read_redirects_raw(
 /// * `Ok(())` if the file is written successfully.
 /// * `Err(String)` with an error message if writing fails.
 fn write_redirects(path: &Path, map: &HashMap<String, String>) -> Result<(), ToolError> {
-    let mut file = File::create(path)?;
+    let file = File::create(path)?;
+    let mut buffed = BufWriter::new(file);
 
     // Sort the Map by making a BTreeMap from the map.
     let sorted_map: BTreeMap<_, _> = map.iter().collect();
 
     // Write the file header:
-    file.write(REDIRECT_FILE_HEADER.as_bytes())?;
+    buffed.write_all(REDIRECT_FILE_HEADER.as_bytes())?;
 
     // Write each redirect pair to the file.
     for (from, to) in sorted_map.iter() {
-        writeln!(file, "{}\t{}", from, to)?
+        buffed.write_all(from.as_bytes())?;
+        buffed.write_all(b"\t")?;
+        buffed.write_all(to.as_bytes())?;
+        buffed.write_all(b"\n")?;
     }
 
     Ok(())
@@ -556,9 +560,7 @@ fn write_redirects(path: &Path, map: &HashMap<String, String>) -> Result<(), Too
 /// * A tuple containing:
 ///   * A `HashSet` of references to `to` strings that only change case.
 ///   * A vector of references to redirect pairs that represent proper redirects.
-fn separate_case_changes<'a>(
-    pairs: &'a [(String, String)],
-) -> (HashSet<&'a String>, Vec<&'a (String, String)>) {
+fn separate_case_changes(pairs: &[(String, String)]) -> (HashSet<&String>, Vec<&(String, String)>) {
     let mut case_changed_targets = HashSet::new();
     let mut new_pairs = Vec::new();
 
@@ -694,7 +696,7 @@ mod tests {
             (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ]);
 
-        let update_pairs = vec![(s("/en-US/docs/E"), s("/en-US/docs/F"))];
+        let update_pairs = [(s("/en-US/docs/E"), s("/en-US/docs/F"))];
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected_refs = old_pairs.clone();
@@ -708,7 +710,7 @@ mod tests {
             (s("/en-US/docs/A"), s("/en-US/docs/B")),
             (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ]);
-        let update_pairs = vec![(s("/en-US/docs/C"), s("/en-US/docs/A"))];
+        let update_pairs = [(s("/en-US/docs/C"), s("/en-US/docs/A"))];
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected = HashMap::from([(s("/en-US/docs/C"), s("/en-US/docs/D"))]);
@@ -719,7 +721,7 @@ mod tests {
     #[test]
     fn test_remove_conflicting_old_redirects_empty_old_pairs() {
         let old_pairs: HashMap<String, String> = HashMap::new();
-        let update_pairs = vec![(s("/en-US/docs/A"), s("/en-US/docs/B"))];
+        let update_pairs = [(s("/en-US/docs/A"), s("/en-US/docs/B"))];
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected = HashMap::new();
@@ -734,7 +736,7 @@ mod tests {
             (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ]);
 
-        let update_pairs = vec![];
+        let update_pairs = [];
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected = HashMap::from([
@@ -752,7 +754,7 @@ mod tests {
             (s("/EN-US/DOCS/C"), s("/EN-US/DOCS/D")),
         ]);
 
-        let update_pairs = vec![
+        let update_pairs = [
             (s("/en-US/docs/New1"), s("/en-US/docs/a")),
             (s("/en-US/docs/New2"), s("/en-US/docs/c")),
         ];
