@@ -53,7 +53,7 @@ impl DocFixtures {
     fn path_from_slug(slug: &str, locale: Locale) -> PathBuf {
         let mut folder_path = PathBuf::new();
         folder_path.push(locale.as_folder_str());
-        let url = build_url(slug, &locale, PageCategory::Doc).unwrap();
+        let url = build_url(slug, locale, PageCategory::Doc).unwrap();
         let UrlMeta {
             folder_path: path, ..
         } = url_meta_from(&url).unwrap();

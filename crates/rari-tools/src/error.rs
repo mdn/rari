@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use thiserror::Error;
 
 use rari_doc::error::{DocError, UrlError};
@@ -7,7 +9,7 @@ use rari_utils::error::RariIoError;
 #[derive(Debug, Error)]
 pub enum ToolError {
     #[error("Invalid slug: {0}")]
-    InvalidSlug(String),
+    InvalidSlug(Cow<'static, str>),
     #[error("Git error: {0}")]
     GitError(String),
 
@@ -40,7 +42,7 @@ pub enum ToolError {
     RedirectError(#[from] RedirectError),
 
     #[error("Unknonwn error")]
-    Unknown(String),
+    Unknown(&'static str),
 }
 
 #[derive(Debug, Clone, Error)]

@@ -1,6 +1,9 @@
 use console::{style, Style};
 use dialoguer::{theme::ColorfulTheme, Confirm};
-use std::{fs::create_dir_all, path::PathBuf, process::Command, str::FromStr, sync::Arc};
+use std::{
+    borrow::Cow, ffi::OsStr, fs::create_dir_all, path::PathBuf, process::Command, str::FromStr,
+    sync::Arc,
+};
 
 use rari_doc::{
     helpers::subpages::get_sub_pages,
@@ -57,7 +60,7 @@ pub fn r#move(
             .with_prompt("Proceed?")
             .default(true)
             .interact()
-            .unwrap()
+            .unwrap_or_default()
     {
         let moved = do_move(old_slug, new_slug, locale, false)?;
         println!(
@@ -79,16 +82,15 @@ fn do_move(
     locale: Locale,
     dry_run: bool,
 ) -> Result<Vec<(String, String)>, ToolError> {
-    let old_url = build_url(old_slug, &locale, PageCategory::Doc)?;
+    let old_url = build_url(old_slug, locale, PageCategory::Doc)?;
     let doc = page::Page::from_url(&old_url)?;
     let real_old_slug = doc.slug();
 
     let new_parent_slug = parent_slug(new_slug)?;
-    if !page::Page::exists(&build_url(new_parent_slug, &locale, PageCategory::Doc)?) {
-        return Err(ToolError::InvalidSlug(format!(
-            "new parent slug does not exist: {}",
-            new_parent_slug
-        )));
+    if !page::Page::exists(&build_url(new_parent_slug, locale, PageCategory::Doc)?) {
+        return Err(ToolError::InvalidSlug(Cow::Owned(format!(
+            "new parent slug does not exist: {new_parent_slug}"
+        ))));
     }
     let subpages = get_sub_pages(&old_url, None, Default::default())?;
 
@@ -115,80 +117,62 @@ fn do_move(
     }
 
     // No dry run, so build a vec of pairs of `(old_page, Option<new_doc>)`.
-    let dv = [doc.clone()];
-    let doc_pairs = dv
-        .iter()
-        .chain(&subpages)
-        .map(|page_ref| {
-            let slug = page_ref.slug().to_owned();
-            let new_slug = slug.replace(real_old_slug, new_slug);
-            let new_page = page_ref.clone();
-            if let Page::Doc(doc) = new_page {
-                let mut cloned_doc = doc.clone();
-                let doc = Arc::make_mut(&mut cloned_doc);
-                doc.meta.slug = new_slug.to_string();
-                (page_ref, Some(doc.to_owned()))
-            } else {
-                println!("This does not look like a document");
-                (page_ref, None)
-            }
-        })
-        .collect::<Vec<_>>();
+    let doc_pairs = [&doc].into_iter().chain(&subpages).filter_map(|page_ref| {
+        let slug = page_ref.slug().to_owned();
+        let new_slug = slug.replace(real_old_slug, new_slug);
+        let new_page = page_ref.clone();
+        if let Page::Doc(doc) = new_page {
+            let mut cloned_doc = doc.clone();
+            let doc = Arc::make_mut(&mut cloned_doc);
+            doc.meta.slug = new_slug.to_string();
+            Some(doc.to_owned())
+        } else {
+            println!("This does not look like a document");
+            None
+        }
+    });
 
     // Now iterate through the vec and write the new frontmatter
     // (the changed slug) to all affected documents (root + children).
     // The docs are all still in their old location at this time.
-    doc_pairs.iter().try_for_each(|(_page_ref, new_doc)| {
-        if let Some(new_doc) = new_doc {
-            new_doc.write()?;
-        }
-        Ok::<(), ToolError>(())
-    })?;
+    for new_doc in doc_pairs {
+        new_doc.write()?;
+    }
 
     // Now we use the git command to move the whole parent directory
     // to a new location. This will move all children as well and
     // makes sure that we get a proper "file moved" in the git history.
 
-    let mut old_folder_path = PathBuf::new();
-    old_folder_path.push(locale.as_folder_str());
-    let url = build_url(real_old_slug, &locale, PageCategory::Doc)?;
-    // let (path, _, _, _) = url_path_to_path_buf(&url)?;
-    let UrlMeta {
-        folder_path: path, ..
-    } = url_meta_from(&url)?;
-    old_folder_path.push(path);
+    let mut old_folder_path = PathBuf::from(locale.as_folder_str());
+    let url = build_url(real_old_slug, locale, PageCategory::Doc)?;
+    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
+    old_folder_path.push(folder_path);
 
-    let mut new_folder_path = PathBuf::new();
-    new_folder_path.push(locale.as_folder_str());
-    let url = build_url(new_slug, &locale, PageCategory::Doc)?;
-    let UrlMeta {
-        folder_path: path, ..
-    } = url_meta_from(&url)?;
-    new_folder_path.push(path);
+    let mut new_folder_path = PathBuf::from(locale.as_folder_str());
+    let url = build_url(new_slug, locale, PageCategory::Doc)?;
+    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
+    new_folder_path.push(folder_path);
 
     // Make sure the target parent directory exists.
-    if let Some(target_parent_path) = new_folder_path.as_path().parent() {
+    if let Some(target_parent_path) = new_folder_path.parent() {
         let absolute_target_parent_path = root_for_locale(locale)?.join(target_parent_path);
         create_dir_all(absolute_target_parent_path)?;
     } else {
         return Err(ToolError::Unknown(
-            "Could not determine parent path for new folder".to_string(),
+            "Could not determine parent path for new folder",
         ));
     }
 
     // Conditional command for testing. In testing, we do not use git, because the test
     // fixtures are no under git control. SO instead of `git mv …` we use `mv …`.
     let command = if cfg!(test) { "mv" } else { "git" };
-    let args: Vec<String> = if cfg!(test) {
-        vec![
-            old_folder_path.to_string_lossy().into(),
-            new_folder_path.to_string_lossy().into(),
-        ]
+    let args = if cfg!(test) {
+        vec![old_folder_path.as_os_str(), new_folder_path.as_os_str()]
     } else {
         vec![
-            "mv".into(),
-            old_folder_path.to_string_lossy().into(),
-            new_folder_path.to_string_lossy().into(),
+            OsStr::new("mv"),
+            old_folder_path.as_os_str(),
+            new_folder_path.as_os_str(),
         ]
     };
 
@@ -210,11 +194,11 @@ fn do_move(
     update_wiki_history(locale, &pairs)?;
 
     // Update the redirect map. Create pairs of URLs from the slug pairs.
-    let url_pairs: Vec<(String, String)> = pairs
+    let url_pairs = pairs
         .iter()
         .map(|(old_slug, new_slug)| {
-            let old_url = build_url(old_slug, &locale, PageCategory::Doc)?;
-            let new_url = build_url(new_slug, &locale, PageCategory::Doc)?;
+            let old_url = build_url(old_slug, locale, PageCategory::Doc)?;
+            let new_url = build_url(new_slug, locale, PageCategory::Doc)?;
             Ok((old_url, new_url))
         })
         .collect::<Result<Vec<_>, ToolError>>()?;
@@ -229,30 +213,30 @@ fn parent_slug(slug: &str) -> Result<&str, ToolError> {
     if let Some(i) = slug.rfind('/') {
         Ok(&slug[..i])
     } else {
-        Err(ToolError::InvalidSlug("slug has no parent".to_string()))
+        Err(ToolError::InvalidSlug(Cow::Borrowed("slug has no parent")))
     }
 }
 
 fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
     if old_slug.is_empty() {
-        return Err(ToolError::InvalidSlug(
-            "old slug cannot be empty".to_string(),
-        ));
+        return Err(ToolError::InvalidSlug(Cow::Borrowed(
+            "old slug cannot be empty",
+        )));
     }
     if new_slug.is_empty() {
-        return Err(ToolError::InvalidSlug(
-            "new slug cannot be empty".to_string(),
-        ));
+        return Err(ToolError::InvalidSlug(Cow::Borrowed(
+            "new slug cannot be empty",
+        )));
     }
     if old_slug.contains("#") {
-        return Err(ToolError::InvalidSlug(
-            "old slug cannot contain '#'".to_string(),
-        ));
+        return Err(ToolError::InvalidSlug(Cow::Borrowed(
+            "old slug cannot contain '#'",
+        )));
     }
     if new_slug.contains("#") {
-        return Err(ToolError::InvalidSlug(
-            "new slug cannot contain '#'".to_string(),
-        ));
+        return Err(ToolError::InvalidSlug(Cow::Borrowed(
+            "new slug cannot contain '#'",
+        )));
     }
     Ok(())
 }

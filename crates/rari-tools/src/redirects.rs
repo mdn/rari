@@ -1,9 +1,11 @@
+use rari_doc::pages::page::{Page, PageLike};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufRead, BufWriter, Write};
 use std::path::Path;
+use std::str::FromStr;
 use tracing::{error, warn};
 use url::Url;
 
@@ -98,22 +100,22 @@ fn transit<'a>(
 ///
 /// - Returns `RedirectError::Cycle` if a redirect cycle is detected during processing.
 /// - Returns `RedirectError::NoCased` if a case-sensitive mapping for a redirect target is missing.
-pub fn short_cuts<'a>(
-    pairs: &'a [(&'a str, &'a str)],
+pub fn short_cuts(
+    pairs: &HashMap<impl AsRef<str>, impl AsRef<str>>,
 ) -> Result<Vec<(String, String)>, RedirectError> {
     let mut casing = pairs
         .iter()
         .flat_map(|(from, to)| {
             [
-                (from.to_lowercase(), Cow::Borrowed(*from)),
-                (to.to_lowercase(), Cow::Borrowed(*to)),
+                (from.as_ref().to_lowercase(), Cow::Borrowed(from.as_ref())),
+                (to.as_ref().to_lowercase(), Cow::Borrowed(to.as_ref())),
             ]
         })
         .collect::<HashMap<String, Cow<'_, str>>>();
 
     let lowercase_pairs: Vec<_> = pairs
         .iter()
-        .map(|(from, to)| (from.to_lowercase(), to.to_lowercase()))
+        .map(|(from, to)| (from.as_ref().to_lowercase(), to.as_ref().to_lowercase()))
         .collect();
 
     let dag = lowercase_pairs
@@ -140,7 +142,7 @@ pub fn short_cuts<'a>(
     // /en-US/docs/foo/bar     /en-US/docs/Web/something#bar
     // /en-US/docs/foo     /en-US/docs/Web/something
     for (from, to) in pairs {
-        if let Some((bare_to, hash)) = to.split_once('#') {
+        if let Some((bare_to, hash)) = to.as_ref().split_once('#') {
             let bare_to_lc = bare_to.to_lowercase();
             if let Some(redirected_to) = transitive_dag.get(&bare_to_lc) {
                 let new_to = concat_strs!(redirected_to, "#", hash.to_lowercase().as_str());
@@ -149,8 +151,11 @@ pub fn short_cuts<'a>(
                     .ok_or(RedirectError::NoCased(redirected_to.clone()))?;
                 let new_to_cased = Cow::Owned(concat_strs!(redirected_to_cased, "#", hash));
                 casing.insert(new_to.to_string(), new_to_cased);
-                tracing::info!("Short cutting hashed redirect: {from} -> {new_to}");
-                transitive_dag.insert(from.to_lowercase(), new_to);
+                tracing::info!(
+                    "Short cutting hashed redirect: {} -> {new_to}",
+                    from.as_ref()
+                );
+                transitive_dag.insert(from.as_ref().to_lowercase(), new_to);
             }
         }
     }
@@ -221,23 +226,16 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
     let (case_changed_targets, new_pairs) = separate_case_changes(update_pairs);
 
     // Remove conflicting old redirects based on the new_pairs
-    let clean_pairs = remove_conflicting_old_redirects(pairs, &new_pairs);
+    remove_conflicting_old_redirects(&mut pairs, &new_pairs);
     // Fix redirect cases based on case_changed_targets
-    let mut clean_pairs = fix_redirects_case(clean_pairs, &case_changed_targets);
+    let mut clean_pairs = fix_redirects_case(pairs, &case_changed_targets);
 
     // Add the new pairs to the clean_pairs
     for (from, to) in new_pairs {
         clean_pairs.insert(from.to_string(), to.to_string());
     }
 
-    let clean_pairs: HashMap<String, String> = short_cuts(
-        &clean_pairs
-            .iter()
-            .map(|(from, to)| (from.as_str(), to.as_str()))
-            .collect::<Vec<(&str, &str)>>(),
-    )?
-    .into_iter()
-    .collect();
+    let clean_pairs: HashMap<String, String> = short_cuts(&clean_pairs)?.into_iter().collect();
 
     validate_pairs(&clean_pairs, &locale)?;
 
@@ -296,7 +294,7 @@ fn validate_from_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
     }
 
     let parts: Vec<&str> = url.split('/').collect();
-    if parts.len() < 3 {
+    if parts.len() < 4 {
         return Err(ToolError::InvalidRedirectFromURL(format!(
             "From-URL '{}' does not have enough parts for locale validation.",
             url
@@ -311,38 +309,23 @@ fn validate_from_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
         )));
     }
 
-    if !url.contains("/docs/") {
+    if parts[2] != "docs" {
         return Err(ToolError::InvalidRedirectFromURL(format!(
             "From-URL '{}' must contain '/docs/'",
             url
         )));
     }
 
-    let valid_locales: Vec<String> = Locale::for_generic_and_spas()
-        .iter()
-        .map(|l| l.as_url_str().to_lowercase())
-        .collect();
-    if !valid_locales.contains(&from_locale.to_string()) {
-        return Err(ToolError::InvalidRedirectFromURL(format!(
-            "Locale prefix '{}' in From-URL '{}' is not valid.",
-            from_locale, url
-        )));
-    }
-
     check_url_invalid_symbols(&url)?;
 
     // Check for existing file/folder, commented for now
-    // let (path, _, _, _) = url_path_to_path_buf(&url)?;
-    // let path = root_for_locale(*locale)?
-    //     .join(locale.as_folder_str())
-    //     .join(path);
-    // if path.exists() {
-    //     return Err(ToolError::InvalidRedirectFromURL(format!(
-    //         "From-URL '{}' resolves to an existing folder at '{}'.",
-    //         url,
-    //         path.display()
-    //     )));
-    // }
+    if let Ok(page) = Page::from_url(&url) {
+        return Err(ToolError::InvalidRedirectFromURL(format!(
+            "From-URL '{}' resolves to an existing folder at '{}'.",
+            url,
+            page.path().display()
+        )));
+    }
 
     Ok(())
 }
@@ -435,12 +418,7 @@ fn validate_url_locale(url: &str) -> Result<(), ToolError> {
     }
 
     let to_locale = parts[1];
-    if !Locale::for_generic_and_spas()
-        .iter()
-        .map(|l| l.as_url_str().to_lowercase())
-        .collect::<HashSet<String>>()
-        .contains(&to_locale.to_lowercase())
-    {
+    if Locale::from_str(to_locale).is_err() {
         return Err(ToolError::InvalidRedirectToURL(format!(
             "Locale prefix '{}' in To-URL '{}' is not valid.",
             to_locale, url
@@ -451,11 +429,10 @@ fn validate_url_locale(url: &str) -> Result<(), ToolError> {
 }
 
 fn is_vanity_redirect_url(url: &str) -> bool {
-    let locale_urls = Locale::for_generic_and_spas()
-        .iter()
-        .map(|l| format!("/{}/", l.as_url_str()))
-        .collect::<HashSet<String>>();
-    locale_urls.contains(url)
+    url.strip_prefix('/')
+        .and_then(|url| url.strip_suffix('/'))
+        .map(|locale_str| Locale::from_str(locale_str).is_ok())
+        .unwrap_or_default()
 }
 
 fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
@@ -581,44 +558,34 @@ fn separate_case_changes(pairs: &[(String, String)]) -> (HashSet<&String>, Vec<&
 ///
 /// # Arguments
 ///
-/// * `old_pairs` - A HashMap of the original Entries.
+/// * `old_pairs` - A HashMap of the original Entries to be retained.
 /// * `new_pairs` - A slice of new redirect pairs being added.
 ///
-/// # Returns
-///
-/// * A vector of references to redirect pairs that do not conflict with `new_pairs`.
 fn remove_conflicting_old_redirects(
-    old_pairs: HashMap<String, String>,
+    old_pairs: &mut HashMap<String, String>,
     new_pairs: &[&(String, String)],
-) -> HashMap<String, String> {
+) {
     if old_pairs.is_empty() {
-        return HashMap::new();
+        return;
     }
 
     // Collect the lowercased 'to' values from new_pairs into a HashSet for quick lookup
     let new_targets: HashSet<String> = new_pairs.iter().map(|(_, to)| to.to_lowercase()).collect();
 
-    // Initialize a new HashMap to store filtered redirects
-    // Preallocate capacity to optimize performance
-    let mut filtered_old = HashMap::with_capacity(old_pairs.len());
-
     // Iterate over old_pairs, taking ownership of each (from, to) pair
-    for (from, to) in old_pairs.into_iter() {
+    old_pairs.retain(|from, to| {
         let from_lower = from.to_lowercase();
-        if new_targets.contains(&from_lower) {
+        let retain = !new_targets.contains(&from_lower);
+        if !retain {
             // Log a warning if there's a conflict
             warn!(
                 "Breaking 301: removing conflicting redirect {}\t{}",
                 from, to
             );
             // Skip inserting this pair into filtered_old
-        } else {
-            // Insert the pair into filtered_old without cloning
-            filtered_old.insert(from, to);
         }
-    }
-
-    filtered_old
+        retain
+    });
 }
 
 /// Fixes the casing of redirect targets based on a set of case-changed targets.
@@ -691,7 +658,7 @@ mod tests {
 
     #[test]
     fn test_remove_conflicting_old_redirects_no_conflicts() {
-        let old_pairs = HashMap::from([
+        let mut old_pairs = HashMap::from([
             (s("/en-US/docs/A"), s("/en-US/docs/B")),
             (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ]);
@@ -700,13 +667,13 @@ mod tests {
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected_refs = old_pairs.clone();
-        let result = remove_conflicting_old_redirects(old_pairs, &update_pairs_refs);
-        assert_eq!(result, expected_refs);
+        remove_conflicting_old_redirects(&mut old_pairs, &update_pairs_refs);
+        assert_eq!(old_pairs, expected_refs);
     }
 
     #[test]
     fn test_remove_conflicting_old_redirects_with_conflicts() {
-        let old_pairs = HashMap::from([
+        let mut old_pairs = HashMap::from([
             (s("/en-US/docs/A"), s("/en-US/docs/B")),
             (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ]);
@@ -714,24 +681,24 @@ mod tests {
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected = HashMap::from([(s("/en-US/docs/C"), s("/en-US/docs/D"))]);
-        let result = remove_conflicting_old_redirects(old_pairs, &update_pairs_refs);
-        assert_eq!(result, expected);
+        remove_conflicting_old_redirects(&mut old_pairs, &update_pairs_refs);
+        assert_eq!(old_pairs, expected);
     }
 
     #[test]
     fn test_remove_conflicting_old_redirects_empty_old_pairs() {
-        let old_pairs: HashMap<String, String> = HashMap::new();
+        let mut old_pairs: HashMap<String, String> = HashMap::new();
         let update_pairs = [(s("/en-US/docs/A"), s("/en-US/docs/B"))];
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected = HashMap::new();
-        let result = remove_conflicting_old_redirects(old_pairs, &update_pairs_refs);
-        assert_eq!(result, expected);
+        remove_conflicting_old_redirects(&mut old_pairs, &update_pairs_refs);
+        assert_eq!(old_pairs, expected);
     }
 
     #[test]
     fn test_remove_conflicting_old_redirects_empty_update_pairs() {
-        let old_pairs = HashMap::from([
+        let mut old_pairs = HashMap::from([
             (s("/en-US/docs/A"), s("/en-US/docs/B")),
             (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ]);
@@ -743,13 +710,13 @@ mod tests {
             (s("/en-US/docs/A"), s("/en-US/docs/B")),
             (s("/en-US/docs/C"), s("/en-US/docs/D")),
         ]);
-        let result = remove_conflicting_old_redirects(old_pairs, &update_pairs_refs);
-        assert_eq!(result, expected);
+        remove_conflicting_old_redirects(&mut old_pairs, &update_pairs_refs);
+        assert_eq!(old_pairs, expected);
     }
 
     #[test]
     fn test_remove_conflicting_old_redirects_case_insensitive() {
-        let old_pairs = HashMap::from([
+        let mut old_pairs = HashMap::from([
             (s("/EN-US/docs/A"), s("/en-US/docs/B")),
             (s("/EN-US/DOCS/C"), s("/EN-US/DOCS/D")),
         ]);
@@ -761,8 +728,8 @@ mod tests {
         let update_pairs_refs: Vec<&(String, String)> = update_pairs.iter().collect();
 
         let expected = HashMap::new();
-        let result = remove_conflicting_old_redirects(old_pairs, &update_pairs_refs);
-        assert_eq!(result, expected);
+        remove_conflicting_old_redirects(&mut old_pairs, &update_pairs_refs);
+        assert_eq!(old_pairs, expected);
     }
 
     #[test]
@@ -940,10 +907,12 @@ mod tests {
 
     #[test]
     fn simple_chain() {
-        let pairs = vec![
+        let pairs = [
             ("/en-US/docs/A", "/en-US/docs/B"),
             ("/en-US/docs/B", "/en-US/docs/C"),
-        ];
+        ]
+        .into_iter()
+        .collect();
         let result = short_cuts(&pairs).unwrap();
         let expected = vec![
             ("/en-US/docs/A".to_string(), "/en-US/docs/C".to_string()),
@@ -954,10 +923,12 @@ mod tests {
 
     #[test]
     fn a_equals_a() {
-        let pairs = vec![
+        let pairs = [
             ("/en-US/docs/A", "/en-US/docs/A"),
             ("/en-US/docs/B", "/en-US/docs/B"),
-        ];
+        ]
+        .into_iter()
+        .collect();
         let result = short_cuts(&pairs).unwrap();
         let expected: Vec<(String, String)> = vec![]; // empty result as expected
         assert_eq!(result, expected);
@@ -965,10 +936,12 @@ mod tests {
 
     #[test]
     fn simple_cycle() {
-        let pairs = vec![
+        let pairs = [
             ("/en-US/docs/A", "/en-US/docs/B"),
             ("/en-US/docs/B", "/en-US/docs/A"),
-        ];
+        ]
+        .into_iter()
+        .collect();
         let result = short_cuts(&pairs).unwrap();
         let expected: Vec<(String, String)> = vec![]; // empty result due to cycle
         assert_eq!(result, expected);
@@ -976,10 +949,12 @@ mod tests {
 
     #[test]
     fn hashes() {
-        let pairs = vec![
+        let pairs = [
             ("/en-US/docs/A", "/en-US/docs/B#Foo"),
             ("/en-US/docs/B", "/en-US/docs/C"),
-        ];
+        ]
+        .into_iter()
+        .collect();
         let result = short_cuts(&pairs).unwrap();
         let expected = vec![
             ("/en-US/docs/A".to_string(), "/en-US/docs/C#Foo".to_string()),
@@ -1035,7 +1010,9 @@ mod tests {
         let redirect_pairs = [
             ("/en-US/docs/foo/bar", "/en-US/docs/foo#bar"),
             ("/en-US/docs/foo", "/en-US/docs/Web/something"),
-        ];
+        ]
+        .into_iter()
+        .collect();
 
         // Call the short_cuts function with the input pairs
         let result = short_cuts(&redirect_pairs);
