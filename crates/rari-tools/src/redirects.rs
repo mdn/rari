@@ -1,4 +1,3 @@
-use rari_doc::pages::page::{Page, PageLike};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -6,15 +5,16 @@ use std::fs::File;
 use std::io::{self, BufRead, BufWriter, Write};
 use std::path::Path;
 use std::str::FromStr;
-use tracing::{error, warn};
-use url::Url;
 
+use rari_doc::pages::page::{Page, PageLike};
 use rari_doc::resolve::{url_meta_from, UrlMeta};
 use rari_doc::utils::root_for_locale;
 use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use rari_utils::error::RariIoError;
+use tracing::{error, warn};
+use url::Url;
 
 use crate::error::{RedirectError, ToolError};
 

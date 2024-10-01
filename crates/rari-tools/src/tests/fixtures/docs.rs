@@ -1,12 +1,13 @@
-use fake::{faker::lorem::en::Paragraph, Fake};
+use std::fs;
+use std::path::PathBuf;
+
+use fake::faker::lorem::en::Paragraph;
+use fake::Fake;
 use indoc::formatdoc;
-use rari_doc::{
-    pages::page::PageCategory,
-    resolve::{build_url, url_meta_from, UrlMeta},
-    utils::root_for_locale,
-};
+use rari_doc::pages::page::PageCategory;
+use rari_doc::resolve::{build_url, url_meta_from, UrlMeta};
+use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
-use std::{fs, path::PathBuf};
 
 pub(crate) struct DocFixtures {
     // files: Vec<String>,

@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::Path;
+
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
 use serde_json::Value;
-use std::{collections::BTreeMap, fs, path::Path};
 
 use crate::error::ToolError;
 

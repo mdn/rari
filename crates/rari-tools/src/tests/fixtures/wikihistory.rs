@@ -1,5 +1,6 @@
+use std::collections::BTreeMap;
 use std::fs;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::path::PathBuf;
 
 use chrono::{DateTime, SecondsFormat};
 use fake::faker::chrono::en::DateTimeBetween;

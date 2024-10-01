@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
-use thiserror::Error;
-
 use rari_doc::error::{DocError, UrlError};
-use rari_types::{error::EnvError, locale::LocaleError};
+use rari_types::error::EnvError;
+use rari_types::locale::LocaleError;
 use rari_utils::error::RariIoError;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ToolError {

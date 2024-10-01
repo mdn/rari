@@ -1,10 +1,14 @@
-use console::{style, Style};
-use dialoguer::{theme::ColorfulTheme, Confirm};
-use std::{
-    borrow::Cow, ffi::OsStr, fs::create_dir_all, path::PathBuf, process::Command, str::FromStr,
-    sync::Arc,
-};
+use std::borrow::Cow;
+use std::ffi::OsStr;
+use std::fs::create_dir_all;
+use std::path::PathBuf;
+use std::process::Command;
+use std::str::FromStr;
+use std::sync::Arc;
 
+use console::{style, Style};
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::Confirm;
 use rari_doc::{
     helpers::subpages::get_sub_pages,
     pages::page::{self, Page, PageCategory, PageLike, PageWriter},
@@ -13,7 +17,9 @@ use rari_doc::{
 };
 use rari_types::locale::Locale;
 
-use crate::{error::ToolError, redirects::add_redirects, wikihistory::update_wiki_history};
+use crate::error::ToolError;
+use crate::redirects::add_redirects;
+use crate::wikihistory::update_wiki_history;
 
 pub fn r#move(
     old_slug: &str,
@@ -254,15 +260,14 @@ use serial_test::file_serial;
 #[file_serial(file_fixtures)]
 mod test {
 
-    use std::{collections::HashMap, path::Path};
+    use std::collections::HashMap;
+    use std::path::Path;
 
     use super::*;
-    use crate::{
-        redirects,
-        tests::fixtures::{
-            docs::DocFixtures, redirects::RedirectFixtures, wikihistory::WikihistoryFixtures,
-        },
-    };
+    use crate::redirects;
+    use crate::tests::fixtures::docs::DocFixtures;
+    use crate::tests::fixtures::redirects::RedirectFixtures;
+    use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
 
     fn s(s: &str) -> String {
         s.to_string()

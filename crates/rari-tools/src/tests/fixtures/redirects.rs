@@ -1,4 +1,5 @@
-use std::{fs, path::PathBuf};
+use std::fs;
+use std::path::PathBuf;
 
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
