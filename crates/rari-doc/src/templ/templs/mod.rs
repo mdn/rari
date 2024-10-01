@@ -35,14 +35,12 @@ use crate::utils::TEMPL_RECORDER;
 
 pub fn invoke(
     env: &RariEnv,
-    ident: &str,
+    name: &str,
     args: Vec<Option<Arg>>,
 ) -> Result<(String, bool), DocError> {
-    let name = ident.to_ascii_lowercase();
-
     // TODO: improve sidebar handling
     let is_sidebar = matches!(
-        name.as_str(),
+        name,
         "apiref"
             | "defaultapisidebar"
             | "jsref"
@@ -65,7 +63,7 @@ pub fn invoke(
             | "pwasidebar"
             | "addonsidebarmain"
     );
-    let f = match name.as_str() {
+    let f = match name {
         "compat" => compat::compat_any,
         "specifications" => specification::specification_any,
         "glossary" => glossary::glossary_any,
@@ -166,16 +164,16 @@ pub fn invoke(
         "xulelem" => return Ok((Default::default(), false)),
 
         // unknown
-        _ if deny_warnings() => return Err(DocError::UnknownMacro(ident.to_string())),
+        _ if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
         _ => {
             TEMPL_RECORDER.with(|tx| {
                 if let Some(tx) = tx {
-                    if let Err(e) = tx.send(ident.to_string()) {
+                    if let Err(e) = tx.send(name.to_string()) {
                         error!("templ recorder: {e}");
                     }
                 }
             });
-            return Ok((format!("<s>unsupported templ: {ident}</s>"), is_sidebar));
+            return Ok((format!("<s>unsupported templ: {name}</s>"), is_sidebar));
         } //
     };
     f(env, args).map(|s| (s, is_sidebar))

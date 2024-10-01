@@ -232,6 +232,10 @@ impl PageLike for ContributorSpotlight {
     fn trailing_slash(&self) -> bool {
         true
     }
+
+    fn fm_offset(&self) -> usize {
+        self.raw[..self.content_start].lines().count()
+    }
 }
 
 fn read_contributor_spotlight(

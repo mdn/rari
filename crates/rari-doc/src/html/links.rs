@@ -130,7 +130,11 @@ pub fn render_link_via_page(
             }
             Err(e) => {
                 if !Page::ignore(url) {
-                    warn!("Link via page not found for {url}: {e}")
+                    warn!(
+                        source = "link-check",
+                        url = url,
+                        "Link via page not found: {e}"
+                    )
                 }
             }
         }

@@ -17,9 +17,14 @@ use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
 
 pub fn build_single_page(page: &Page) {
-    let slug = &page.slug();
-    let locale = page.locale();
-    let span = span!(Level::ERROR, "page", "{}:{}", locale, slug);
+    let file = page.full_path().to_string_lossy();
+    let span = span!(
+        Level::ERROR,
+        "page",
+        locale = page.locale().as_url_str(),
+        slug = page.slug(),
+        file = file.as_ref()
+    );
     let _enter = span.enter();
     let built_page = page.build();
     match built_page {

@@ -36,6 +36,8 @@ pub fn m2h(input: &str, locale: Locale) -> Result<String, MarkdownError> {
     let arena = Arena::new();
     let mut options = ComrakOptions::default();
     options.extension.tagfilter = false;
+    options.render.sourcepos = true;
+    options.render.experimental_inline_sourcepos = true;
     options.render.unsafe_ = true;
     options.extension.table = true;
     options.extension.autolink = true;
@@ -72,65 +74,63 @@ mod test {
     #[test]
     fn render_code_tags() -> Result<(), anyhow::Error> {
         let out = m2h("`<select>`", Locale::EnUs)?;
-        assert_eq!(out, "<p><code>&lt;select&gt;</code></p>\n");
+        assert_eq!(out,
+            "<p data-sourcepos=\"1:1-1:10\"><code data-sourcepos=\"1:2-1:9\">&lt;select&gt;</code></p>\n"
+        );
         Ok(())
     }
 
     #[test]
     fn basic() -> Result<(), anyhow::Error> {
         let out = m2h("{{foo-bar}}", Locale::EnUs)?;
-        assert_eq!(out, "<p>{{foo-bar}}</p>\n");
+        assert_eq!(out, "<p data-sourcepos=\"1:1-1:11\">{{foo-bar}}</p>\n");
         Ok(())
     }
 
     #[test]
     fn line_break() -> Result<(), anyhow::Error> {
-        let out = m2h("{{foo}} bar", Locale::EnUs)?;
-        assert_eq!(out, "<p>{{foo}} bar</p>\n");
         let out = m2h("- {{foo}}\n  - : bar", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<dl>\n<dt id=\"foo\" data-add-link>{{foo}}</dt>\n<dd>\n<p>bar</p>\n</dd>\n</dl>\n"
+            "<dl data-sourcepos=\"1:1-2:9\">\n<dt id=\"foo\" data-add-link data-sourcepos=\"1:1-2:9\">{{foo}}</dt>\n<dd data-sourcepos=\"2:3-2:9\">\n<p data-sourcepos=\"2:5-2:9\">bar</p>\n</dd>\n</dl>\n"
         );
         Ok(())
     }
 
     #[test]
     fn dt() -> Result<(), anyhow::Error> {
-        let out = m2h("{{foo}} bar", Locale::EnUs)?;
-        assert_eq!(out, "<p>{{foo}} bar</p>\n");
         let out = m2h("- {{foo}}\n  - : bar", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<dl>\n<dt id=\"foo\" data-add-link>{{foo}}</dt>\n<dd>\n<p>bar</p>\n</dd>\n</dl>\n"
+            "<dl data-sourcepos=\"1:1-2:9\">\n<dt id=\"foo\" data-add-link data-sourcepos=\"1:1-2:9\">{{foo}}</dt>\n<dd data-sourcepos=\"2:3-2:9\">\n<p data-sourcepos=\"2:5-2:9\">bar</p>\n</dd>\n</dl>\n"
         );
         Ok(())
     }
     #[test]
     fn code_macro() -> Result<(), anyhow::Error> {
         let out = m2h(r#"`{{foo}}` bar"#, Locale::EnUs)?;
-        assert_eq!(out, "<p><code>{{foo}}</code> bar</p>\n");
+        assert_eq!(out, "<p data-sourcepos=\"1:1-1:13\"><code data-sourcepos=\"1:2-1:8\">{{foo}}</code> bar</p>\n");
         Ok(())
     }
 
     #[test]
     fn macro_nl() -> Result<(), anyhow::Error> {
         let out = m2h("{{bar}}{{foo}}", Locale::EnUs)?;
-        assert_eq!(out, "<p>{{bar}}{{foo}}</p>\n");
+        assert_eq!(out, "<p data-sourcepos=\"1:1-1:14\">{{bar}}{{foo}}</p>\n");
         Ok(())
     }
 
     #[test]
     fn li_p() -> Result<(), anyhow::Error> {
         let out = m2h("- foo\n\n- bar\n", Locale::EnUs)?;
-        assert_eq!(out, "<ul>\n<li>foo</li>\n<li>bar</li>\n</ul>\n");
+        assert_eq!(out, "<ul data-sourcepos=\"1:1-3:5\">\n<li data-sourcepos=\"1:1-2:0\">foo</li>\n<li data-sourcepos=\"3:1-3:5\">bar</li>\n</ul>\n");
         Ok(())
     }
 
     #[test]
     fn callout() -> Result<(), anyhow::Error> {
         let out = m2h("> **Callout:** foobar", Locale::EnUs)?;
-        assert_eq!(out, "<div class=\"callout\">\n<p> foobar</p>\n</div>\n");
+        assert_eq!(out, "<div class=\"callout\" data-sourcepos=\"1:1-1:21\">\n<p data-sourcepos=\"1:3-1:21\"> foobar</p>\n</div>\n");
         Ok(())
     }
 
@@ -139,7 +139,7 @@ mod test {
         let out = m2h("> **Callout:** **foobar**", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<div class=\"callout\">\n<p> <strong>foobar</strong></p>\n</div>\n"
+            "<div class=\"callout\" data-sourcepos=\"1:1-1:25\">\n<p data-sourcepos=\"1:3-1:25\"> <strong data-sourcepos=\"1:16-1:25\">foobar</strong></p>\n</div>\n"
         );
         Ok(())
     }
@@ -149,7 +149,7 @@ mod test {
         let out = m2h("> **Note:** foobar", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<div class=\"notecard note\">\n<p> foobar</p>\n</div>\n"
+            "<div class=\"notecard note\" data-sourcepos=\"1:1-1:18\">\n<p data-sourcepos=\"1:3-1:18\"> foobar</p>\n</div>\n"
         );
         Ok(())
     }

@@ -83,7 +83,7 @@ pub fn post_process_html<T: PageLike>(
         element!("img[src]", |el| {
             if let Some(src) = el.get_attribute("src") {
                 let url = base_url.parse(&src)?;
-                if url.host() == base.host() {
+                if url.host() == base.host() && !url.path().starts_with("/assets/") {
                     el.set_attribute("src", url.path())?;
                     let file = page.full_path().parent().unwrap().join(&src);
                     let (width, height) = if src.ends_with(".svg") {
@@ -99,13 +99,21 @@ pub fn post_process_html<T: PageLike>(
                                     .map(|height| format!("{:.0}", height)),
                             ),
                             Err(e) => {
-                                warn!("Error parsing {}: {e}", file.display());
+                                warn!(
+                                    source = "image-check",
+                                    "Error parsing {}: {e}",
+                                    file.display()
+                                );
                                 (None, None)
                             }
                         }
-                    } else if let Ok(dim) = imagesize::size(&file)
-                        .inspect_err(|e| warn!("Error opening {}: {e}", file.display()))
-                    {
+                    } else if let Ok(dim) = imagesize::size(&file).inspect_err(|e| {
+                        warn!(
+                            source = "image-check",
+                            "Error opening {}: {e}",
+                            file.display()
+                        )
+                    }) {
                         (Some(dim.width.to_string()), Some(dim.height.to_string()))
                     } else {
                         (None, None)
@@ -133,12 +141,14 @@ pub fn post_process_html<T: PageLike>(
             Ok(())
         }),
         element!("a[href]", |el| {
-            let href = el.get_attribute("href").expect("href was required");
-            if href.starts_with('/') || href.starts_with("https://developer.mozilla.org") {
-                let href = href
+            let original_href = el.get_attribute("href").expect("href was required");
+            if original_href.starts_with('/')
+                || original_href.starts_with("https://developer.mozilla.org")
+            {
+                let href = original_href
                     .strip_prefix("https://developer.mozilla.org")
                     .map(|href| if href.is_empty() { "/" } else { href })
-                    .unwrap_or(&href);
+                    .unwrap_or(&original_href);
                 let no_locale = strip_locale_from_url(href).0.is_none();
                 let maybe_prefixed_href = if no_locale {
                     Cow::Owned(concat_strs!("/", Locale::default().as_url_str(), href))
@@ -165,6 +175,27 @@ pub fn post_process_html<T: PageLike>(
                     )?;
                     el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
                 }
+                if original_href != resolved_href {
+                    if let Some(pos) = el.get_attribute("data-sourcepos") {
+                        if let Some((start, _)) = pos.split_once('-') {
+                            if let Some((line, col)) = start.split_once(':') {
+                                tracing::warn!(
+                                    source = "link-check",
+                                    line = line,
+                                    col = col,
+                                    url = original_href,
+                                    redirect = resolved_href.as_ref()
+                                )
+                            }
+                        }
+                    } else {
+                        tracing::warn!(
+                            source = "link-check",
+                            url = original_href,
+                            redirect = resolved_href.as_ref()
+                        )
+                    }
+                }
                 el.set_attribute(
                     "href",
                     if no_locale {
@@ -173,7 +204,7 @@ pub fn post_process_html<T: PageLike>(
                         &resolved_href
                     },
                 )?;
-            } else if href.starts_with("http:") || href.starts_with("https:") {
+            } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
                 let class = el.get_attribute("class").unwrap_or_default();
                 if !class.split(' ').any(|s| s == "external") {
                     el.set_attribute(
@@ -288,6 +319,12 @@ pub fn post_process_html<T: PageLike>(
             el.prepend("<em>", ContentType::Html);
             el.append("</em>", ContentType::Html);
             el.remove_attribute("data-rewriter");
+            Ok(())
+        }),
+        element!("*[data-sourcepos]", |el| {
+            el.prepend("<em>", ContentType::Html);
+            el.append("</em>", ContentType::Html);
+            el.remove_attribute("data-sourcepos");
             Ok(())
         }),
     ];
