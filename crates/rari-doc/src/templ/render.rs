@@ -57,10 +57,53 @@ pub fn render_for_summary(input: &str) -> Result<String, DocError> {
     Ok(out)
 }
 
-pub fn render(env: &RariEnv, input: &str) -> Result<Rendered, DocError> {
+pub fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Rendered, DocError> {
     let tokens = parse(input)?;
-    render_tokens(env, tokens, input)
+    let mut templs = vec![];
+    let mut sidebars = vec![];
+    let mut out = String::with_capacity(input.len());
+    for token in tokens {
+        match token {
+            Token::Text(text) => {
+                let slice = &input[text.start..text.end];
+                push_text(&mut out, slice);
+            }
+            Token::Macro(mac) => {
+                let ident = &mac.ident;
+                let name = ident.to_ascii_lowercase();
+                let span = span!(
+                    Level::ERROR,
+                    "templ",
+                    templ = name,
+                    line = mac.pos.0 + offset,
+                    col = mac.pos.1
+                );
+                let _enter = span.enter();
+                match invoke(env, &name, mac.args) {
+                    Ok((rendered, is_sidebar)) => {
+                        if is_sidebar {
+                            sidebars.push(rendered)
+                        } else {
+                            encode_ref(templs.len(), &mut out)?;
+                            templs.push(rendered)
+                        }
+                    }
+                    Err(e) if deny_warnings() => return Err(e),
+                    Err(e) => {
+                        warn!("{e}",);
+                        writeln!(&mut out, "{e}")?;
+                    }
+                };
+            }
+        }
+    }
+    Ok(Rendered {
+        content: out,
+        templs,
+        sidebars,
+    })
 }
+
 fn encode_ref(index: usize, out: &mut String) -> Result<(), DocError> {
     Ok(write!(out, "{DELIM_START}{index}{DELIM_END}",)?)
 }
@@ -68,7 +111,7 @@ fn encode_ref(index: usize, out: &mut String) -> Result<(), DocError> {
 pub fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
     let Rendered {
         content, templs, ..
-    } = render(env, input)?;
+    } = render(env, input, 0)?;
     decode_ref(&content, &templs)
 }
 
@@ -115,44 +158,6 @@ pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocEr
     }
 
     Ok(decoded)
-}
-pub fn render_tokens(env: &RariEnv, tokens: Vec<Token>, input: &str) -> Result<Rendered, DocError> {
-    let mut templs = vec![];
-    let mut sidebars = vec![];
-    let mut out = String::with_capacity(input.len());
-    for token in tokens {
-        match token {
-            Token::Text(text) => {
-                let slice = &input[text.start..text.end];
-                push_text(&mut out, slice);
-            }
-            Token::Macro(mac) => {
-                let ident = &mac.ident;
-                let span = span!(Level::ERROR, "templ", "{}", &ident);
-                let _enter = span.enter();
-                match invoke(env, &mac.ident, mac.args) {
-                    Ok((rendered, is_sidebar)) => {
-                        if is_sidebar {
-                            sidebars.push(rendered)
-                        } else {
-                            encode_ref(templs.len(), &mut out)?;
-                            templs.push(rendered)
-                        }
-                    }
-                    Err(e) if deny_warnings() => return Err(e),
-                    Err(e) => {
-                        warn!("{e}");
-                        writeln!(&mut out, "{e}")?;
-                    }
-                };
-            }
-        }
-    }
-    Ok(Rendered {
-        content: out,
-        templs,
-        sidebars,
-    })
 }
 
 fn push_text(out: &mut String, slice: &str) {

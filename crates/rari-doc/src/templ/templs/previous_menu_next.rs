@@ -50,11 +50,22 @@ fn previous_next_menu_internal(
     let mut out = String::new();
     out.push_str(r#"<ul class="prev-next">"#);
     if let Some(prev) = prev {
+        let page = RariApi::get_page(&concat_strs!(
+            "/",
+            locale.as_url_str(),
+            "/docs/",
+            prev.as_str()
+        ))?;
         let title = l10n_json_data("Template", "previous", locale)?;
-        generate_link(&mut out, &prev, locale, title)?;
+        generate_link(&mut out, page.slug(), locale, title)?;
     }
     if let Some(menu) = menu {
-        let page = RariApi::get_page(&["", locale.as_url_str(), "docs", menu.as_str()].join("/"))?;
+        let page = RariApi::get_page(&concat_strs!(
+            "/",
+            locale.as_url_str(),
+            "/docs/",
+            menu.as_str()
+        ))?;
         let title = concat_strs!(
             l10n_json_data("Template", "prev_next_menu", locale)?,
             page.title()
@@ -62,8 +73,14 @@ fn previous_next_menu_internal(
         generate_link(&mut out, page.slug(), locale, &title)?;
     }
     if let Some(next) = next {
+        let page = RariApi::get_page(&concat_strs!(
+            "/",
+            locale.as_url_str(),
+            "/docs/",
+            next.as_str()
+        ))?;
         let title = l10n_json_data("Template", "next", locale)?;
-        generate_link(&mut out, &next, locale, title)?;
+        generate_link(&mut out, page.slug(), locale, title)?;
     }
     out.push_str("</ul>");
     Ok(out)

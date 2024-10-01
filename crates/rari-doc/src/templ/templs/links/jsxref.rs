@@ -18,7 +18,7 @@ pub fn jsxref(
     let mut base_path = url.clone();
 
     let mut slug = api_name.replace("()", "").replace(".prototype.", ".");
-    if !slug.contains("..") && slug.contains('.') {
+    if !slug.contains("/") && slug.contains('.') {
         // Handle try...catch case
         slug = slug.replace('.', "/");
     }
