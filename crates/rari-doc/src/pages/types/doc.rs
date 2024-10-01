@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -309,7 +309,7 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
 }
 
 fn write_doc(doc: &Doc) -> Result<(), DocError> {
-    let path = doc.path().to_path_buf();
+    let path = doc.path();
     let locale = doc.meta.locale;
 
     let mut file_path = root_for_locale(locale)?.to_path_buf();
@@ -334,19 +334,16 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
         ..frontmatter
     };
 
-    let frontmatter_encoded = serde_yaml::to_string(&frontmatter)?;
-    let mut out = String::new();
-    out.push_str("---\n");
-    out.push_str(&frontmatter_encoded);
-    out.push_str("---\n");
-
-    out.push_str(&doc.raw[content_start..]);
-
     if let Some(parent) = file_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let mut file = fs::File::create(&file_path)?;
-    file.write_all(out.as_bytes())?;
+    let file = fs::File::create(&file_path)?;
+    let mut buffer = BufWriter::new(file);
+    buffer.write_all(b"---\n")?;
+    serde_yaml::to_writer(&mut buffer, &frontmatter)?;
+    buffer.write_all(b"---\n")?;
+
+    buffer.write_all(doc.raw[content_start..].as_bytes())?;
 
     Ok(())
 }
