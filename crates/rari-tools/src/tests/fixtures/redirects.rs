@@ -10,18 +10,18 @@ pub(crate) struct RedirectFixtures {
 }
 
 impl RedirectFixtures {
-    pub fn new(entries: &Vec<(String, String)>, locale: &Locale) -> Self {
+    pub fn new(entries: &Vec<(String, String)>, locale: Locale) -> Self {
         Self::new_internal(entries, locale, false)
     }
     #[allow(dead_code)]
-    pub fn debug_new(entries: &Vec<(String, String)>, locale: &Locale) -> Self {
+    pub fn debug_new(entries: &Vec<(String, String)>, locale: Locale) -> Self {
         Self::new_internal(entries, locale, true)
     }
 
-    fn new_internal(entries: &Vec<(String, String)>, locale: &Locale, do_not_remove: bool) -> Self {
+    fn new_internal(entries: &Vec<(String, String)>, locale: Locale, do_not_remove: bool) -> Self {
         // create wiki history file for each slug in the vector, in the configured root directory for the locale
         let mut folder_path = PathBuf::new();
-        folder_path.push(root_for_locale(*locale).unwrap());
+        folder_path.push(root_for_locale(locale).unwrap());
         folder_path.push(locale.as_folder_str());
         fs::create_dir_all(&folder_path).unwrap();
         folder_path.push("_redirects.txt");

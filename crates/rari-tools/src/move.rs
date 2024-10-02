@@ -298,12 +298,12 @@ mod test {
             "Web/API/ExampleOne/SubExampleTwo".to_string(),
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let _wikihistory = WikihistoryFixtures::new(&slugs, &Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
         let redirects = vec![(
             "Web/API/Something".to_string(),
             "Web/API/SomethingElse".to_string(),
         )];
-        let _redirects = RedirectFixtures::new(&redirects, &Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&redirects, Locale::EnUs);
 
         let result = do_move(
             "Web/API/ExampleOne",
@@ -353,8 +353,8 @@ mod test {
             ),
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let _wikihistory = WikihistoryFixtures::new(&slugs, &Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&redirects, &Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&redirects, Locale::EnUs);
 
         let root_path = root_for_locale(Locale::EnUs).unwrap();
         let should_exist = vec![
@@ -469,8 +469,8 @@ mod test {
             ),
         ];
         let _docs = DocFixtures::new(&slugs, Locale::PtBr);
-        let _wikihistory = WikihistoryFixtures::new(&slugs, &Locale::PtBr);
-        let _redirects = RedirectFixtures::new(&redirects, &Locale::PtBr);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::PtBr);
+        let _redirects = RedirectFixtures::new(&redirects, Locale::PtBr);
 
         let root_path = root_for_locale(Locale::PtBr).unwrap();
         let should_exist = vec![

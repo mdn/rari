@@ -17,17 +17,17 @@ pub(crate) struct WikihistoryFixtures {
 }
 
 impl WikihistoryFixtures {
-    pub fn new(slugs: &Vec<String>, locale: &Locale) -> Self {
+    pub fn new(slugs: &Vec<String>, locale: Locale) -> Self {
         Self::new_internal(slugs, locale, false)
     }
     #[allow(dead_code)]
-    pub fn debug_new(slugs: &Vec<String>, locale: &Locale) -> Self {
+    pub fn debug_new(slugs: &Vec<String>, locale: Locale) -> Self {
         Self::new_internal(slugs, locale, true)
     }
-    fn new_internal(slugs: &Vec<String>, locale: &Locale, do_not_remove: bool) -> Self {
+    fn new_internal(slugs: &Vec<String>, locale: Locale, do_not_remove: bool) -> Self {
         // create wiki history file for each slug in the vector, in the configured root directory for the locale
         let mut folder_path = PathBuf::new();
-        folder_path.push(root_for_locale(*locale).unwrap());
+        folder_path.push(root_for_locale(locale).unwrap());
         folder_path.push(locale.as_folder_str());
         fs::create_dir_all(&folder_path).unwrap();
         folder_path.push("_wikihistory.json");
