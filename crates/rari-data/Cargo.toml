@@ -1,6 +1,6 @@
 [package]
 name = "rari-data"
-version = "0.0.10"
+version = "0.0.11"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
