@@ -355,8 +355,9 @@ pub fn render_md_to_html(input: &str, locale: Locale) -> Result<String, DocError
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use indoc::indoc;
+
+    use super::*;
 
     #[test]
     fn feature_status_test() {
