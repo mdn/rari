@@ -322,8 +322,6 @@ pub fn post_process_html<T: PageLike>(
             Ok(())
         }),
         element!("*[data-sourcepos]", |el| {
-            el.prepend("<em>", ContentType::Html);
-            el.append("</em>", ContentType::Html);
             el.remove_attribute("data-sourcepos");
             Ok(())
         }),
