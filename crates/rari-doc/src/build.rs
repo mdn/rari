@@ -2,8 +2,10 @@ use std::borrow::Cow;
 use std::fs::{self, File};
 use std::io::BufWriter;
 use std::iter::once;
+use std::path::PathBuf;
 
 use rari_types::globals::build_out_root;
+use rari_types::locale::Locale;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, span, Level};
 
@@ -70,7 +72,31 @@ pub fn build_curriculum_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
         .collect())
 }
 
+fn copy_blog_author_avatars() -> Result<(), DocError> {
+    for (slug, author) in &blog_files().authors {
+        if let Some(avatar) = &author.frontmatter.avatar {
+            let out_path = build_out_root()?.join(
+                [
+                    Locale::default().as_folder_str(),
+                    "blog",
+                    "author",
+                    slug.as_str(),
+                ]
+                .iter()
+                .collect::<PathBuf>(),
+            );
+
+            fs::create_dir_all(&out_path)?;
+            let from = author.path.with_file_name(avatar);
+            let to = out_path.join(avatar);
+            fs::copy(from, to)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn build_blog_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+    copy_blog_author_avatars()?;
     Ok(blog_files()
         .posts
         .values()
