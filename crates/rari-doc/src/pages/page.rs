@@ -233,6 +233,10 @@ pub trait PageReader {
     fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError>;
 }
 
+pub trait PageWriter {
+    fn write(&self) -> Result<(), DocError>;
+}
+
 pub trait PageBuilder {
     fn build(&self) -> Result<BuiltDocy, DocError>;
 }

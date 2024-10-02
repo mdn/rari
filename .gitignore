@@ -1,2 +1,7 @@
 /target
 .config.toml
+.DS_Store
+tests/data/content/files/*
+!tests/data/content/files/.keep
+tests/data/translated_content/files/*
+!tests/data/translated_content/files/.keep

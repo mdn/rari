@@ -71,11 +71,11 @@ pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, UrlError> {
     })
 }
 
-pub fn build_url(slug: &str, locale: &Locale, typ: PageCategory) -> Result<String, DocError> {
+pub fn build_url(slug: &str, locale: Locale, typ: PageCategory) -> Result<String, DocError> {
     Ok(match typ {
         PageCategory::Doc => concat_strs!("/", locale.as_url_str(), "/docs/", slug),
         PageCategory::BlogPost => concat_strs!("/", locale.as_url_str(), "/blog/", slug, "/"),
-        PageCategory::SPA => SPA::from_slug(slug, *locale)
+        PageCategory::SPA => SPA::from_slug(slug, locale)
             .ok_or(DocError::PageNotFound(slug.to_string(), PageCategory::SPA))?
             .url()
             .to_owned(),

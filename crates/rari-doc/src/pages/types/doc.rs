@@ -1,22 +1,27 @@
 use std::collections::HashMap;
+use std::fs;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_md::m2h;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
-use serde_yaml::Value;
+use serde_yaml_ng::Value;
 use tracing::debug;
 use validator::Validate;
 
 use crate::cached_readers::{doc_page_from_static_files, CACHED_DOC_PAGE_FILES};
 use crate::error::DocError;
-use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
+use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::resolve::{build_url, url_to_folder_path};
-use crate::utils::{locale_and_typ_from_path, root_for_locale, split_fm, t_or_vec};
+use crate::utils::{
+    locale_and_typ_from_path, root_for_locale, serialize_t_or_vec, split_fm, t_or_vec,
+};
 
 /*
   "attribute-order": [
@@ -35,22 +40,45 @@ use crate::utils::{locale_and_typ_from_path, root_for_locale, split_fm, t_or_vec
 pub struct FrontMatter {
     #[validate(length(max = 120))]
     pub title: String,
-    #[serde(rename = "short-title")]
+    #[serde(rename = "short-title", skip_serializing_if = "Option::is_none")]
     #[validate(length(max = 60))]
     pub short_title: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     pub slug: String,
     #[serde(rename = "page-type")]
     pub page_type: PageType,
-    #[serde(deserialize_with = "t_or_vec", default)]
+    #[serde(
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub status: Vec<FeatureStatus>,
-    #[serde(rename = "browser-compat", deserialize_with = "t_or_vec", default)]
+    #[serde(
+        rename = "browser-compat",
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub browser_compat: Vec<String>,
-    #[serde(rename = "spec-urls", deserialize_with = "t_or_vec", default)]
+    #[serde(
+        rename = "spec-urls",
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub spec_urls: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub original_slug: Option<String>,
-    #[serde(deserialize_with = "t_or_vec", default)]
+    #[serde(
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub sidebar: Vec<String>,
     #[serde(flatten)]
     pub other: HashMap<String, Value>,
@@ -158,6 +186,12 @@ impl PageReader for Doc {
     }
 }
 
+impl PageWriter for Doc {
+    fn write(&self) -> Result<(), DocError> {
+        write_doc(self)
+    }
+}
+
 impl PageLike for Doc {
     fn url(&self) -> &str {
         &self.meta.url
@@ -251,8 +285,8 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
         original_slug,
         sidebar,
         ..
-    } = serde_yaml::from_str(fm)?;
-    let url = build_url(&slug, &locale, PageCategory::Doc)?;
+    } = serde_yaml_ng::from_str(fm)?;
+    let url = build_url(&slug, locale, PageCategory::Doc)?;
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?
         .to_path_buf();
@@ -279,6 +313,63 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
     })
 }
 
+fn write_doc(doc: &Doc) -> Result<(), DocError> {
+    let path = doc.path();
+    let locale = doc.meta.locale;
+
+    let mut file_path = root_for_locale(locale)?.to_path_buf();
+    file_path.push(path);
+
+    let (fm, content_start) = split_fm(&doc.raw);
+    let fm = fm.ok_or(DocError::NoFrontmatter)?;
+    // Read original frontmatter to pass additional fields along,
+    // overwrite fields from meta
+    let mut frontmatter: FrontMatter = serde_yaml_ng::from_str(fm)?;
+    frontmatter = FrontMatter {
+        title: doc.meta.title.clone(),
+        short_title: doc.meta.short_title.clone(),
+        tags: doc.meta.tags.clone(),
+        slug: doc.meta.slug.clone(),
+        page_type: doc.meta.page_type,
+        status: doc.meta.status.clone(),
+        browser_compat: doc.meta.browser_compat.clone(),
+        spec_urls: doc.meta.spec_urls.clone(),
+        original_slug: doc.meta.original_slug.clone(),
+        sidebar: doc.meta.sidebar.clone(),
+        ..frontmatter
+    };
+
+    if let Some(parent) = file_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let fm_str = fm_to_string(&frontmatter)?;
+
+    let file = fs::File::create(&file_path)?;
+    let mut buffer = BufWriter::new(file);
+    buffer.write_all(b"---\n")?;
+    buffer.write_all(fm_str.as_bytes())?;
+    buffer.write_all(b"---\n")?;
+
+    buffer.write_all(doc.raw[content_start..].as_bytes())?;
+
+    Ok(())
+}
+
+fn fm_to_string(fm: &FrontMatter) -> Result<String, DocError> {
+    let fm_str = serde_yaml_ng::to_string(fm)?;
+    Ok(pretty_yaml::format_text(
+        &fm_str,
+        &FormatOptions {
+            language: LanguageOptions {
+                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                indent_block_sequence_in_map: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    )?)
+}
+
 pub fn render_md_to_html(input: &str, locale: Locale) -> Result<String, DocError> {
     let html = m2h(input, locale)?;
     Ok(html)
@@ -286,6 +377,8 @@ pub fn render_md_to_html(input: &str, locale: Locale) -> Result<String, DocError
 
 #[cfg(test)]
 mod tests {
+    use indoc::indoc;
+
     use super::*;
 
     #[test]
@@ -295,30 +388,39 @@ mod tests {
           - non-standard
           - experimental
       "#;
-        let meta = serde_yaml::from_str::<FrontMatter>(fm).unwrap();
+        let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.status.len(), 2);
 
         let fm = r#"
         status: experimental
       "#;
-        let meta = serde_yaml::from_str::<FrontMatter>(fm).unwrap();
+        let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.status.len(), 1);
     }
 
     #[test]
     fn browser_compat_test() {
-        let fm = r#"
-        browser-compat:
-          - foo
-          - ba
-      "#;
-        let meta = serde_yaml::from_str::<FrontMatter>(fm).unwrap();
+        let fm = indoc!(
+            r#"
+            title: "007"
+            slug: foo
+            page-type: none
+            browser-compat:
+              - foo
+              - bar
+            foo:
+              - bar
+      "#
+        );
+        let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.browser_compat.len(), 2);
+
+        assert_eq!(fm, fm_to_string(&meta).unwrap());
 
         let fm = r#"
         browser-compat: foo
       "#;
-        let meta = serde_yaml::from_str::<FrontMatter>(fm).unwrap();
+        let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.browser_compat.len(), 1);
     }
 }

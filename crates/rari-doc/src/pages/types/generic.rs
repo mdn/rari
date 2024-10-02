@@ -211,7 +211,7 @@ fn read_generic_page(
     let raw = read_to_string(&full_path)?;
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
-    let fm: GenericPageFrontmatter = serde_yaml::from_str(fm)?;
+    let fm: GenericPageFrontmatter = serde_yaml_ng::from_str(fm)?;
     let path = full_path.strip_prefix(root)?.to_path_buf();
     let page = path.with_extension("");
     let page = page.to_string_lossy();

@@ -14,7 +14,8 @@ use rari_types::error::EnvError;
 use rari_types::globals::{blog_root, content_root, content_translated_root};
 use rari_types::locale::{Locale, LocaleError};
 use serde::de::{self, value, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serializer};
+use serde::ser::SerializeSeq;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::DocError;
 use crate::pages::page::PageCategory;
@@ -85,6 +86,24 @@ where
     }
 
     deserializer.deserialize_any(TOrVec::<T>(PhantomData))
+}
+
+pub fn serialize_t_or_vec<T, S>(value: &Vec<T>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    T: Serialize,
+    S: Serializer,
+{
+    if value.len() == 1 {
+        // Serialize as a single element
+        value[0].serialize(serializer)
+    } else {
+        // Serialize as a sequence
+        let mut seq = serializer.serialize_seq(Some(value.len()))?;
+        for item in value {
+            seq.serialize_element(item)?;
+        }
+        seq.end()
+    }
 }
 
 pub fn root_for_locale(locale: Locale) -> Result<&'static Path, EnvError> {
