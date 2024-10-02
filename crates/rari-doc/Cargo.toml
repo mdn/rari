@@ -19,6 +19,8 @@ indexmap.workspace = true
 
 serde_yaml_ng = "0.10"
 yaml-rust = "0.4"
+pretty_yaml = "0.5"
+yaml_parser = "0.2"
 percent-encoding = "2"
 pest = "2"
 pest_derive = "2"

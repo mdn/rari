@@ -45,6 +45,8 @@ pub enum DocError {
     NoFrontmatter,
     #[error("Invalid frontmatter: {0}")]
     InvalidFrontmatter(#[from] serde_yaml_ng::Error),
+    #[error("Invalid frontmatter to format: {0}")]
+    InvalidFrontmatterToFmt(#[from] yaml_parser::SyntaxError),
     #[error(transparent)]
     EnvError(#[from] EnvError),
     #[error(transparent)]

@@ -4,6 +4,7 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_md::m2h;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::locale::Locale;
@@ -337,15 +338,32 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     if let Some(parent) = file_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
+    let fm_str = fm_to_string(&frontmatter)?;
+
     let file = fs::File::create(&file_path)?;
     let mut buffer = BufWriter::new(file);
     buffer.write_all(b"---\n")?;
-    serde_yaml_ng::to_writer(&mut buffer, &frontmatter)?;
+    buffer.write_all(fm_str.as_bytes())?;
     buffer.write_all(b"---\n")?;
 
     buffer.write_all(doc.raw[content_start..].as_bytes())?;
 
     Ok(())
+}
+
+fn fm_to_string(fm: &FrontMatter) -> Result<String, DocError> {
+    let fm_str = serde_yaml_ng::to_string(fm)?;
+    Ok(pretty_yaml::format_text(
+        &fm_str,
+        &FormatOptions {
+            language: LanguageOptions {
+                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                indent_block_sequence_in_map: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    )?)
 }
 
 pub fn render_md_to_html(input: &str, locale: Locale) -> Result<String, DocError> {
@@ -393,7 +411,7 @@ mod tests {
         let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.browser_compat.len(), 2);
 
-        assert_eq!(fm, serde_yaml_ng::to_string(&meta).unwrap());
+        assert_eq!(fm, fm_to_string(&meta).unwrap());
 
         let fm = r#"
         browser-compat: foo
