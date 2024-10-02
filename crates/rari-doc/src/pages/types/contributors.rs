@@ -242,7 +242,7 @@ fn read_contributor_spotlight(
     let raw = read_to_string(&full_path)?;
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
-    let fm: ContributorFrontMatter = serde_yaml::from_str(fm)?;
+    let fm: ContributorFrontMatter = serde_yaml_ng::from_str(fm)?;
 
     Ok(ContributorSpotlight {
         meta: ContributorBuildMeta::from_fm(fm, full_path, locale)?,

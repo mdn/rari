@@ -492,7 +492,7 @@ mod test {
     #[test]
     fn test_details_ser() {
         let yaml_str = r#"details: closed"#;
-        let entry: BasicEntry = serde_yaml::from_str(yaml_str).unwrap();
+        let entry: BasicEntry = serde_yaml_ng::from_str(yaml_str).unwrap();
         assert_eq!(entry.details, Details::Closed);
     }
 }

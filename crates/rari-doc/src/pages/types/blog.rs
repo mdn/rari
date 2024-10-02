@@ -292,7 +292,7 @@ fn read_blog_post(path: impl Into<PathBuf>) -> Result<BlogPost, DocError> {
     let raw = read_to_string(&full_path)?;
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
-    let fm: BlogPostFrontmatter = serde_yaml::from_str(fm)?;
+    let fm: BlogPostFrontmatter = serde_yaml_ng::from_str(fm)?;
 
     let read_time = readtime(&raw[content_start..]);
     Ok(BlogPost {

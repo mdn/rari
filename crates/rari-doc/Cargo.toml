@@ -17,7 +17,7 @@ itertools.workspace = true
 constcat.workspace = true
 indexmap.workspace = true
 
-serde_yaml = "0.9"
+serde_yaml_ng = "0.10"
 yaml-rust = "0.4"
 percent-encoding = "2"
 pest = "2"
@@ -54,3 +54,4 @@ css-syntax = { path = "../css-syntax", features = ["rari"] }
 
 [dev-dependencies]
 rari-types = { path = "../rari-types", features = ["testing"] }
+indoc.workspace = true

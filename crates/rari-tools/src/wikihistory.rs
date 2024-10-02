@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
-use std::fs;
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
 use std::path::Path;
 
 use rari_doc::utils::root_for_locale;
@@ -22,18 +23,17 @@ pub fn update_wiki_history(locale: Locale, pairs: &Vec<(String, String)>) -> Res
     let mut all: BTreeMap<String, Value> = serde_json::from_str(&wiki_history_content)?;
 
     for (old_slug, new_slug) in pairs {
-        if all.contains_key(old_slug) {
-            all.insert(new_slug.to_string(), all[old_slug].clone());
-            all.remove(old_slug);
+        if let Some(to) = all.remove(old_slug) {
+            all.insert(new_slug.to_string(), to);
         }
     }
-    // Serialize the sorted map back to pretty JSON
-    let mut json_string = serde_json::to_string_pretty(&all)?;
-    // Add a trailing newline
-    json_string.push('\n');
 
-    // Write the updated JSON back to the file
-    fs::write(&wiki_history_path, json_string)?;
+    let file = File::create(&wiki_history_path)?;
+    let mut buffer = BufWriter::new(file);
+    // Write the updated pretty JSON back to the file
+    serde_json::to_writer_pretty(&mut buffer, &all)?;
+    // Add a trailing newline
+    buffer.write_all(b"\n")?;
 
     Ok(())
 }

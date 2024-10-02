@@ -165,7 +165,7 @@ impl PageReader for CurriculumPage {
             summary,
             template,
             topic,
-        } = serde_yaml::from_str(fm)?;
+        } = serde_yaml_ng::from_str(fm)?;
         let path = full_path
             .strip_prefix(curriculum_root().ok_or(DocError::NoCurriculumRoot)?)?
             .to_path_buf();

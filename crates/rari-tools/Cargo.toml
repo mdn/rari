@@ -17,8 +17,8 @@ chrono.workspace = true
 tracing.workspace = true
 reqwest.workspace = true
 url.workspace = true
+indoc.workspace = true
 
-indoc = "2"
 console = "0"
 dialoguer = "0"
 csv = "1"

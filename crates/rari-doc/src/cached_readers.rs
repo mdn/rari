@@ -68,7 +68,7 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
             file.push(name);
             file.set_extension("yaml");
             let raw = read_to_string(&file)?;
-            let sidebar: Sidebar = serde_yaml::from_str(&raw)?;
+            let sidebar: Sidebar = serde_yaml_ng::from_str(&raw)?;
             let sidebar = Arc::new(MetaSidebar::from(sidebar));
             if cache_content() {
                 CACHED_SIDEBAR_FILES.write()?.insert(key, sidebar.clone());
@@ -249,7 +249,8 @@ pub fn gather_blog_authors() -> Result<HashMap<String, Arc<Author>>, DocError> {
                 let path = f.into_path();
                 let raw = read_to_string(&path)?;
                 let (fm, _) = split_fm(&raw);
-                let frontmatter: AuthorFrontmatter = serde_yaml::from_str(fm.unwrap_or_default())?;
+                let frontmatter: AuthorFrontmatter =
+                    serde_yaml_ng::from_str(fm.unwrap_or_default())?;
                 let name = path
                     .parent()
                     .and_then(|p| p.file_name())

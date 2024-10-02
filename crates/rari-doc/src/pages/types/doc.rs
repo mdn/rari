@@ -10,7 +10,7 @@ use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
-use serde_yaml::Value;
+use serde_yaml_ng::Value;
 use tracing::debug;
 use validator::Validate;
 
@@ -280,7 +280,7 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
         original_slug,
         sidebar,
         ..
-    } = serde_yaml::from_str(fm)?;
+    } = serde_yaml_ng::from_str(fm)?;
     let url = build_url(&slug, locale, PageCategory::Doc)?;
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?
@@ -319,7 +319,7 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     // Read original frontmatter to pass additional fields along,
     // overwrite fields from meta
-    let mut frontmatter: FrontMatter = serde_yaml::from_str(fm)?;
+    let mut frontmatter: FrontMatter = serde_yaml_ng::from_str(fm)?;
     frontmatter = FrontMatter {
         title: doc.meta.title.clone(),
         short_title: doc.meta.short_title.clone(),
@@ -340,7 +340,7 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     let file = fs::File::create(&file_path)?;
     let mut buffer = BufWriter::new(file);
     buffer.write_all(b"---\n")?;
-    serde_yaml::to_writer(&mut buffer, &frontmatter)?;
+    serde_yaml_ng::to_writer(&mut buffer, &frontmatter)?;
     buffer.write_all(b"---\n")?;
 
     buffer.write_all(doc.raw[content_start..].as_bytes())?;
@@ -356,6 +356,7 @@ pub fn render_md_to_html(input: &str, locale: Locale) -> Result<String, DocError
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indoc::indoc;
 
     #[test]
     fn feature_status_test() {
@@ -364,30 +365,39 @@ mod tests {
           - non-standard
           - experimental
       "#;
-        let meta = serde_yaml::from_str::<FrontMatter>(fm).unwrap();
+        let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.status.len(), 2);
 
         let fm = r#"
         status: experimental
       "#;
-        let meta = serde_yaml::from_str::<FrontMatter>(fm).unwrap();
+        let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.status.len(), 1);
     }
 
     #[test]
     fn browser_compat_test() {
-        let fm = r#"
-        browser-compat:
-          - foo
-          - ba
-      "#;
-        let meta = serde_yaml::from_str::<FrontMatter>(fm).unwrap();
+        let fm = indoc!(
+            r#"
+            title: "007"
+            slug: foo
+            page-type: none
+            browser-compat:
+              - foo
+              - bar
+            foo:
+              - bar
+      "#
+        );
+        let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.browser_compat.len(), 2);
+
+        assert_eq!(fm, serde_yaml_ng::to_string(&meta).unwrap());
 
         let fm = r#"
         browser-compat: foo
       "#;
-        let meta = serde_yaml::from_str::<FrontMatter>(fm).unwrap();
+        let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.browser_compat.len(), 1);
     }
 }
