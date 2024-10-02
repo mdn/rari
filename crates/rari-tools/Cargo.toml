@@ -1,6 +1,6 @@
 [package]
 name = "rari-tools"
-version = "0.0.9"
+version = "0.0.10"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
