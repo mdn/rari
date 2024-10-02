@@ -254,6 +254,10 @@ impl PageLike for CurriculumPage {
     fn trailing_slash(&self) -> bool {
         true
     }
+
+    fn fm_offset(&self) -> usize {
+        0
+    }
 }
 
 pub fn curriculum_group(parents: &[Parent]) -> Option<String> {

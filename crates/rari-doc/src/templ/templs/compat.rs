@@ -48,8 +48,8 @@ fn compat_internal(browser_compat: &[impl AsRef<str>]) -> String {
         .map(|query| {
             format!(
                 r#"<div class="bc-data" data-query="{}" data-depth="1" data-multiple="{multiple}">
-    If you're able to see this, something went wrong on this page.
-    </div>"#,
+If you're able to see this, something went wrong on this page.
+</div>"#,
                 query.as_ref()
             )
         })
@@ -71,7 +71,7 @@ mod test {
         };
         let Rendered {
             content, templs, ..
-        } = render(&env, r#"{{ compat }}"#)?;
+        } = render(&env, r#"{{ compat }}"#, 0)?;
         let out = decode_ref(&content, &templs)?;
         assert_eq!(out, r#""#);
         Ok(())
@@ -88,7 +88,7 @@ If you're able to see this, something went wrong on this page.
 </div>"#;
         let Rendered {
             content, templs, ..
-        } = render(&env, r#"{{ compat }}"#)?;
+        } = render(&env, r#"{{ compat }}"#, 0)?;
         let out = decode_ref(&content, &templs)?;
         assert_eq!(out, exp);
         Ok(())
@@ -111,7 +111,7 @@ If you're able to see this, something went wrong on this page.
 </div>"#;
         let Rendered {
             content, templs, ..
-        } = render(&env, r#"{{ compat }}"#)?;
+        } = render(&env, r#"{{ compat }}"#, 0)?;
         let out = decode_ref(&content, &templs)?;
         assert_eq!(out, exp);
         Ok(())

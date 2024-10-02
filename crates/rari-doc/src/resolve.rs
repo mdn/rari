@@ -104,7 +104,7 @@ mod test {
         } = url_meta_from(url)?;
         assert_eq!(locale, Locale::EnUs);
         assert_eq!(folder_path, PathBuf::from("web/html"));
-        assert_eq!(slug, "web/html");
+        assert_eq!(slug, "Web/HTML");
         Ok(())
     }
 

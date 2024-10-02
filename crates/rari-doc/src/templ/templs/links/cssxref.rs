@@ -67,6 +67,5 @@ pub fn cssxref_internal(
     } else {
         maybe_display_name.to_string()
     };
-
-    Ok(format!(r#"<a href={url}><code>{display_name}</code></a>"#))
+    RariApi::link(&url, None, Some(&display_name), true, None, false)
 }

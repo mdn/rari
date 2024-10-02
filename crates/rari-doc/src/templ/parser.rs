@@ -28,6 +28,7 @@ pub struct MacroToken {
     pub start: usize,
     pub end: usize,
     pub ident: String,
+    pub pos: (usize, usize),
     pub args: Vec<Option<Arg>>,
 }
 
@@ -35,6 +36,7 @@ impl From<Pair<'_, Rule>> for MacroToken {
     fn from(pair: Pair<'_, Rule>) -> Self {
         let start = pair.as_span().start();
         let end = pair.as_span().end();
+        let pos = pair.line_col();
         let m = pair.into_inner().next().unwrap();
         let (ident, args) = match m.as_rule() {
             Rule::fn_call => {
@@ -56,6 +58,7 @@ impl From<Pair<'_, Rule>> for MacroToken {
         Self {
             start,
             end,
+            pos,
             ident,
             args,
         }

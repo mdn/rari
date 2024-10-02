@@ -149,7 +149,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
             content,
             templs,
             sidebars,
-        } = render(rari_env, page.content())?;
+        } = render(rari_env, page.content(), page.fm_offset())?;
         (Cow::Owned(content), templs, sidebars)
     } else {
         (Cow::Borrowed(page.content()), vec![], vec![])

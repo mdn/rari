@@ -261,6 +261,10 @@ impl PageLike for Doc {
     fn trailing_slash(&self) -> bool {
         false
     }
+
+    fn fm_offset(&self) -> usize {
+        self.raw[..self.content_start].lines().count()
+    }
 }
 
 fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {

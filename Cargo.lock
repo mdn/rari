@@ -2513,6 +2513,7 @@ dependencies = [
  "rari-tools",
  "rari-types",
  "self_update",
+ "serde",
  "serde_json",
  "tabwriter",
  "tiny_http",

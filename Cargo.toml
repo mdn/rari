@@ -83,21 +83,24 @@ indoc = "2"
 
 
 [dependencies]
+rari-doc.workspace = true
+rari-tools.workspace = true
+rari-deps.workspace = true
+rari-types.workspace = true
+
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+
 self_update = { version = "0.41", default-features = false, features = [
     "rustls",
     "compression-flate2",
     "compression-zip-deflate",
 ] }
-anyhow = "1"
 clap = { version = "4.5.1", features = ["derive"] }
 clap-verbosity-flag = "2"
-rari-doc = { path = "crates/rari-doc" }
-rari-tools = { path = "crates/rari-tools" }
-rari-deps = { path = "crates/rari-deps" }
-rari-types = { path = "crates/rari-types" }
-serde_json = { version = "1", features = ["preserve_order"] }
 tiny_http = "0.12"
-tracing = "0.1"
 tracing-subscriber = "0.3"
 tracing-log = "0.2"
 tabwriter = "1"

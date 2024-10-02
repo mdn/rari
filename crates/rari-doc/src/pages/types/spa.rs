@@ -238,6 +238,10 @@ impl PageLike for SPA {
     fn trailing_slash(&self) -> bool {
         self.url().ends_with('/')
     }
+
+    fn fm_offset(&self) -> usize {
+        0
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

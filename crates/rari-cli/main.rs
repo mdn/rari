@@ -8,6 +8,7 @@ use std::thread::spawn;
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
+use issues::{issues_by, InMemoryLayer};
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas,
@@ -24,11 +25,13 @@ use rari_types::globals::{build_out_root, content_root, content_translated_root,
 use rari_types::settings::Settings;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
+use tracing::Level;
 use tracing_log::AsTrace;
-use tracing_subscriber::filter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{filter, Layer};
 
+mod issues;
 mod serve;
 
 #[derive(Parser)]
@@ -110,6 +113,8 @@ struct BuildArgs {
     skip_sitemap: bool,
     #[arg(long)]
     templ_stats: bool,
+    #[arg(long)]
+    issues: Option<PathBuf>,
 }
 
 enum Cache {
@@ -128,14 +133,20 @@ fn main() -> Result<(), Error> {
         rari_deps::web_ext_examples::update_web_ext_examples(rari_types::globals::data_dir())?;
     }
 
-    let filter = filter::Targets::new()
-        .with_target("rari_builder", cli.verbose.log_level_filter().as_trace())
+    let fmt_filter = filter::Targets::new()
         .with_target("rari_doc", cli.verbose.log_level_filter().as_trace())
         .with_target("rari", cli.verbose.log_level_filter().as_trace());
 
+    let memory_filter = filter::Targets::new().with_target("rari_doc", Level::WARN);
+
+    let memory_layer = InMemoryLayer::new();
     tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer().without_time())
-        .with(filter)
+        .with(
+            tracing_subscriber::fmt::layer()
+                .without_time()
+                .with_filter(fmt_filter),
+        )
+        .with(memory_layer.clone().with_filter(memory_filter))
         .init();
 
     match cli.command {
@@ -266,6 +277,33 @@ fn main() -> Result<(), Error> {
                 recorder_handler
                     .join()
                     .expect("unable to close templ recorder");
+            }
+
+            if let Some(issues_path) = args.issues {
+                let events = memory_layer.get_events();
+                let events = events.lock().unwrap();
+
+                let issues = issues_by(&events);
+
+                let mut tw = TabWriter::new(vec![]);
+                writeln!(&mut tw, "--- templ issues ---\t").expect("unable to write");
+                for (templ, templ_issues) in &issues.templ {
+                    writeln!(&mut tw, "{}\t{:5}", templ, templ_issues.len())
+                        .expect("unable to write");
+                }
+                writeln!(&mut tw, "--- other issues ---\t").expect("unable to write");
+                for (source, other_issues) in &issues.other {
+                    writeln!(&mut tw, "{}\t{:5}", source, other_issues.len())
+                        .expect("unable to write");
+                }
+                writeln!(&mut tw, "--- other issues w/o pos ---\t").expect("unable to write");
+                for (source, no_pos) in &issues.no_pos {
+                    writeln!(&mut tw, "{}\t{:5}", source, no_pos.len()).expect("unable to write");
+                }
+                print!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                let file = File::create(issues_path).unwrap();
+                let mut buffed = BufWriter::new(file);
+                serde_json::to_writer_pretty(&mut buffed, &issues).unwrap();
             }
         }
         Commands::Serve(args) => {
