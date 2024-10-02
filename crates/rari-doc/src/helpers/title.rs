@@ -2,12 +2,6 @@ use crate::error::DocError;
 use crate::pages::page::{Page, PageLike};
 
 pub fn transform_title(title: &str) -> &str {
-    if title.starts_with('<') {
-        if let Some(end) = title.find('>') {
-            return &title[..end + 1];
-        }
-    }
-
     match title {
         "Web technology for developers" => "References",
         "Learn web development" => "Guides",

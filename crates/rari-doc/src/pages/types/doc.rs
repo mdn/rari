@@ -206,7 +206,14 @@ impl PageLike for Doc {
     }
 
     fn short_title(&self) -> Option<&str> {
-        self.meta.short_title.as_deref()
+        self.meta.short_title.as_deref().or_else(|| {
+            if self.meta.title.starts_with('<') {
+                if let Some(end) = self.meta.title.find('>') {
+                    return Some(&self.meta.title[..end + 1]);
+                }
+            }
+            None
+        })
     }
 
     fn locale(&self) -> Locale {
