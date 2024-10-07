@@ -100,7 +100,8 @@ self_update = { version = "0.41", default-features = false, features = [
 ] }
 clap = { version = "4.5.1", features = ["derive"] }
 clap-verbosity-flag = "2"
-tiny_http = "0.12"
 tracing-subscriber = "0.3"
 tracing-log = "0.2"
 tabwriter = "1"
+axum = "0.7"
+tokio = "1"

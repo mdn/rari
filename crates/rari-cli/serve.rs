@@ -1,58 +1,57 @@
-use anyhow::Error;
+use axum::extract::Request;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::{Json, Router};
 use rari_doc::pages::json::BuiltDocy;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
-use serde_json::Value;
-use tiny_http::{Response, Server};
 use tracing::{error, span, Level};
 
-fn get_json(url: &str) -> Result<BuiltDocy, Error> {
+async fn get_json(req: Request) -> Result<Json<BuiltDocy>, AppError> {
+    let url = req.uri().path();
+    let span = span!(Level::ERROR, "url", "{}", url);
+    let _enter1 = span.enter();
     let url = url.strip_suffix("index.json").unwrap_or(url);
     let page = Page::from_url(url)?;
 
     let slug = &page.slug();
     let locale = page.locale();
     let span = span!(Level::ERROR, "page", "{}:{}", locale, slug);
-    let _enter = span.enter();
+    let _enter2 = span.enter();
     let json = page.build()?;
     tracing::info!("{url}");
-    Ok(json)
+    Ok(Json(json))
 }
 
-pub fn serve() -> Result<(), Error> {
-    let server = Server::http("0.0.0.0:8083").unwrap();
+struct AppError(anyhow::Error);
 
-    for request in server.incoming_requests() {
-        let url = request.url();
-        let url_span = span!(Level::ERROR, "url", "{}", url);
-        let _url_enter = url_span.enter();
-        match get_json(url) {
-            Ok(out) => {
-                let data = serde_json::to_string(&out).unwrap();
-
-                request.respond(
-                    Response::from_data(data.as_bytes()).with_header(
-                        "Content-Type: application/json; charset=utf-8"
-                            .parse::<tiny_http::Header>()
-                            .unwrap(),
-                    ),
-                )?;
-            }
-            Err(e) => {
-                error!("{e}");
-                request.respond(
-                    Response::from_data(
-                        serde_json::to_string_pretty(&Value::Null)
-                            .unwrap()
-                            .as_bytes(),
-                    )
-                    .with_header(
-                        "Content-Type: application/json; charset=utf-8"
-                            .parse::<tiny_http::Header>()
-                            .unwrap(),
-                    ),
-                )?;
-            }
-        }
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            error!("🤷‍♂️: {}", self.0),
+        )
+            .into_response()
     }
+}
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
+}
+
+pub fn serve() -> Result<(), anyhow::Error> {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            let app = Router::new().fallback(get_json);
+
+            let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();
+            axum::serve(listener, app).await.unwrap();
+        });
     Ok(())
 }
