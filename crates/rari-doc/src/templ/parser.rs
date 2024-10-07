@@ -73,18 +73,37 @@ pub enum Token {
 
 fn to_arg(pair: Pair<'_, Rule>) -> Option<Arg> {
     match pair.as_rule() {
-        Rule::sq_string => Some(Arg::String(
-            pair.as_span().as_str().to_string(),
-            Quotes::Single,
-        )),
-        Rule::dq_string => Some(Arg::String(
-            pair.as_span().as_str().to_string(),
-            Quotes::Double,
-        )),
-        Rule::bq_string => Some(Arg::String(
-            pair.as_span().as_str().to_string(),
-            Quotes::Back,
-        )),
+        Rule::sq_string => {
+            let s = pair.as_span().as_str();
+            Some(Arg::String(
+                unescaper::unescape(s).unwrap_or_else(|e| {
+                    tracing::error!(source = "templ_parser", "{}", e);
+                    s.to_string()
+                }),
+                Quotes::Single,
+            ))
+        }
+        Rule::dq_string => {
+            let s = pair.as_span().as_str();
+            Some(Arg::String(
+                unescaper::unescape(s).unwrap_or_else(|e| {
+                    tracing::error!(source = "templ_parser", "{}", e);
+                    s.to_string()
+                }),
+                Quotes::Double,
+            ))
+        }
+        Rule::bq_string => {
+            let s = pair.as_span().as_str();
+            Some(Arg::String(
+                unescaper::unescape(s).unwrap_or_else(|e| {
+                    tracing::error!(source = "templ_parser", "{}", e);
+                    s.to_string()
+                }),
+                Quotes::Back,
+            ))
+        }
+
         Rule::int => Some(Arg::Int(
             pair.as_span().as_str().parse().unwrap_or_default(),
         )),

@@ -45,6 +45,7 @@ svg_metadata = "0.5"
 memoize = "0.4"
 phf_macros = "0.11"
 phf = "0.11"
+unescaper = "0.1"
 
 rari-utils.workspace = true
 rari-types.workspace = true

@@ -168,3 +168,34 @@ fn push_text(out: &mut String, slice: &str) {
     }
     out.push_str(&slice[last..]);
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_basic() -> Result<(), DocError> {
+        let env = RariEnv {
+            ..Default::default()
+        };
+        let Rendered {
+            content, templs, ..
+        } = render(&env, r#"{{ echo("doom") }}"#, 0)?;
+        let out = decode_ref(&content, &templs)?;
+        assert_eq!(out, r#"doom"#);
+        Ok(())
+    }
+
+    #[test]
+    fn test_escape() -> Result<(), DocError> {
+        let env = RariEnv {
+            ..Default::default()
+        };
+        let Rendered {
+            content, templs, ..
+        } = render(&env, r#"{{ echo("\"doom\"") }}"#, 0)?;
+        let out = decode_ref(&content, &templs)?;
+        assert_eq!(out, r#""doom""#);
+        Ok(())
+    }
+}

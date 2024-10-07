@@ -6,6 +6,7 @@ pub mod compat;
 pub mod css_ref;
 pub mod cssinfo;
 pub mod csssyntax;
+pub mod echo;
 pub mod embeds;
 pub mod firefox_for_developers;
 pub mod glossary;
@@ -162,6 +163,9 @@ pub fn invoke(
 
         // ignore
         "xulelem" => return Ok((Default::default(), false)),
+
+        // debug
+        "echo" => echo::echo_any,
 
         // unknown
         _ if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
