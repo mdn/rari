@@ -34,7 +34,7 @@ pub fn render_internal_link(
     }
     if let Some(title) = title {
         out.push_str("\" title=\"");
-        out.push_str(title);
+        out.push_str(&html_escape::encode_quoted_attribute(title));
     }
     if modifier.only_en_us {
         out.push_str("\" class=\"only-in-en-us")
@@ -157,7 +157,7 @@ pub fn render_link_via_page(
     out.push_str(&url);
     if let Some(title) = title {
         out.push_str("\" title=\"");
-        out.push_str(title);
+        out.push_str(&html_escape::encode_quoted_attribute(title));
     }
     out.push_str("\">");
     if code {

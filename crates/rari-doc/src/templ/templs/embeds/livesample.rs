@@ -22,7 +22,7 @@ pub fn live_sample(
     let id = RariApi::anchorize(&id);
     let mut out = String::new();
     out.push_str(r#"<div class="code-example"><div class="example-header"></div><iframe class="sample-code-frame" title=""#);
-    out.push_str(&title);
+    out.push_str(&html_escape::encode_quoted_attribute(&title));
     out.push_str(r#" sample" id="frame_"#);
     out.push_str(&id);
     out.push_str(r#"" "#);

@@ -60,6 +60,7 @@ pub fn write_badge(
     abbreviation: &str,
     typ: &str,
 ) -> std::fmt::Result {
+    let title = html_escape::encode_quoted_attribute(title);
     write!(
         out,
         r#"<abbr class="icon icon-{typ}" title="{title}">
