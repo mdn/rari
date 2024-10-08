@@ -136,10 +136,6 @@ pub fn post_process_html<T: PageLike>(
             el.set_attribute("loading", "lazy")?;
             Ok(())
         }),
-        element!("li > p", |el| {
-            el.remove_and_keep_content();
-            Ok(())
-        }),
         element!("a[href]", |el| {
             let original_href = el.get_attribute("href").expect("href was required");
             if original_href.starts_with('/')
