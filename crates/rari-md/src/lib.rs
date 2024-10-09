@@ -11,14 +11,11 @@ pub(crate) mod dl;
 pub mod error;
 pub(crate) mod ext;
 pub(crate) mod html;
-pub(crate) mod li;
 pub mod node_card;
 pub(crate) mod p;
 
 use dl::{convert_dl, is_dl};
 use html::format_document;
-
-use self::li::remove_p;
 
 fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &F)
 where
@@ -45,15 +42,13 @@ pub fn m2h(input: &str, locale: Locale) -> Result<String, MarkdownError> {
     let root = parse_document(&arena, input, &options);
 
     iter_nodes(root, &|node| {
-        let (dl, li, templs_p, empty_p) = match node.data.borrow().value {
-            NodeValue::List(_) => (is_dl(node), true, false, false),
-            NodeValue::Paragraph => (false, false, is_escaped_templ_p(node), is_empty_p(node)),
-            _ => (false, false, false, false),
+        let (dl, templs_p, empty_p) = match node.data.borrow().value {
+            NodeValue::List(_) => (is_dl(node), false, false),
+            NodeValue::Paragraph => (false, is_escaped_templ_p(node), is_empty_p(node)),
+            _ => (false, false, false),
         };
         if dl {
             convert_dl(node);
-        } else if li {
-            remove_p(node);
         }
         if templs_p || empty_p {
             fix_p(node)
