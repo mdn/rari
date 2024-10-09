@@ -72,8 +72,6 @@ pub enum PageType {
     SvgAttribute,
     SvgElement,
     WebApiOverview,
-    WebApiGlobalFunction,
-    WebApiGlobalProperty,
     WebApiInterface,
     WebApiConstructor,
     WebApiInstanceMethod,
