@@ -2,6 +2,8 @@ use std::borrow::Cow;
 use std::str::FromStr;
 
 use console::{style, Style};
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::Confirm;
 use rari_doc::helpers::subpages::get_sub_pages;
 use rari_doc::pages::page::{self, PageCategory, PageLike};
 use rari_doc::resolve::build_url;
@@ -15,7 +17,7 @@ pub fn remove(
     locale: Option<&str>,
     recursive: bool,
     redirect: Option<&str>,
-    _assume_yes: bool,
+    assume_yes: bool,
 ) -> Result<(), ToolError> {
     validate_args(slug)?;
     let locale = if let Some(l) = locale {
@@ -25,16 +27,55 @@ pub fn remove(
     };
 
     let green = Style::new().green();
-    let _red = Style::new().red();
-    let _bold = Style::new().bold();
+    let red = Style::new().red();
+    let yellow = Style::new().yellow();
+    let bold = Style::new().bold();
     let changes = do_remove(slug, locale, recursive, redirect, true)?;
     if changes.is_empty() {
         println!("{}", green.apply_to("No changes would be made"));
         return Ok(());
     } else {
-        return Ok(());
+        println!(
+            "{} {} {}",
+            green.apply_to("This will delete"),
+            bold.apply_to(changes.len()),
+            green.apply_to("documents:"),
+        );
+        for slug in changes {
+            println!("{}", red.apply_to(&slug));
+        }
+        if let Some(redirect) = redirect {
+            println!(
+                "{} {} to: {}",
+                green.apply_to("Redirecting"),
+                green.apply_to(if recursive {
+                    "each document"
+                } else {
+                    "document"
+                }),
+                green.apply_to(&redirect),
+            );
+        } else {
+            println!("{}", yellow.apply_to("Deleting without a redirect. Consider using the --redirect option with a related page instead."));
+        }
     }
-    // Ok(())
+
+    if assume_yes
+        || Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt("Proceed?")
+            .default(true)
+            .interact()
+            .unwrap_or_default()
+    {
+        let removed = do_remove(slug, locale, recursive, redirect, false)?;
+        println!(
+            "{} {} {}",
+            green.apply_to("Removed"),
+            bold.apply_to(removed.len()),
+            green.apply_to("documents"),
+        );
+    }
+    Ok(())
 }
 
 fn do_remove(
@@ -68,9 +109,10 @@ fn do_remove(
 
     let subpages = get_sub_pages(&url, None, Default::default())?;
     if !recursive && !subpages.is_empty() {
-        return Err(ToolError::HasSubpagesError(Cow::Borrowed(
-            "page has subpages, use --recursive to delete recursively",
-        )));
+        return Err(ToolError::HasSubpagesError(Cow::Owned(format!(
+            "{0}, use --recursive to delete recursively",
+            slug
+        ))));
     }
 
     let slugs_to_remove = [doc.clone()]
@@ -80,9 +122,10 @@ fn do_remove(
         .collect::<Vec<_>>();
 
     if dry_run {
-        // If there is a redirect, check if it is valid, otherwise bail.
         return Ok(slugs_to_remove);
     }
+
+    let removed: Vec<String> = Vec::new();
 
     // let new_parent_slug = parent_slug(slug)?;
     // if !page::Page::exists(&build_url(new_parent_slug, locale, PageCategory::Doc)?) {
