@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use memoize::memoize;
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::globals::deny_warnings;
+use rari_types::globals::{cache_content, deny_warnings};
 use rari_types::locale::Locale;
 
 use super::titles::api_page_title;
@@ -207,7 +207,7 @@ pub fn get_sub_pages(
     let doc = Page::from_url(url)?;
     let full_path = doc.full_path();
     if let Some(folder) = full_path.parent() {
-        let sub_folders = read_sub_folders_cached(folder.to_path_buf(), depth)?;
+        let sub_folders = read_sub_folders(folder.to_path_buf(), depth)?;
 
         let mut sub_pages = sub_folders
             .iter()
@@ -220,9 +220,17 @@ pub fn get_sub_pages(
     Ok(vec![])
 }
 
+fn read_sub_folders(folder: PathBuf, depth: Option<usize>) -> Result<Vec<PathBuf>, ignore::Error> {
+    if cache_content() {
+        read_sub_folders_internal(folder, depth)
+    } else {
+        memoized_original_read_sub_folders_internal(folder, depth)
+    }
+}
+
 #[memoize(SharedCache)]
 #[allow(non_snake_case)]
-fn read_sub_folders_cached(
+fn read_sub_folders_internal(
     folder: PathBuf,
     depth: Option<usize>,
 ) -> Result<Vec<PathBuf>, ignore::Error> {
@@ -233,11 +241,6 @@ fn read_sub_folders_cached(
         .filter(|f| f.file_type().map(|ft| ft.is_file()).unwrap_or(false))
         .map(|f| f.into_path())
         .collect())
-}
-
-// This is only used in tests external to this crate
-pub fn clear_subfolder_cache() {
-    memoized_flush_read_sub_folders_cached();
 }
 
 fn split_into_parts(s: &str) -> Vec<(bool, &str)> {

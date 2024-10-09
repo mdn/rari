@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use fake::faker::lorem::en::Paragraph;
 use fake::Fake;
 use indoc::formatdoc;
-use rari_doc::helpers::subpages::clear_subfolder_cache;
 use rari_doc::pages::page::PageCategory;
 use rari_doc::resolve::{build_url, url_meta_from, UrlMeta};
 use rari_doc::utils::root_for_locale;
@@ -27,8 +26,6 @@ impl DocFixtures {
     }
 
     fn new_internal(slugs: &[String], locale: Locale, do_not_remove: bool) -> Self {
-        // clear the subfolder cache
-        clear_subfolder_cache();
         // create doc file for each slug in the vector, in the configured root directory for the locale
         // Iterate over each slug and create a file in the root directory
         let _files: Vec<String> = slugs

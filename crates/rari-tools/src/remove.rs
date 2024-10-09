@@ -43,7 +43,7 @@ fn do_remove(
     recursive: bool,
     redirect: Option<&str>,
     dry_run: bool,
-) -> Result<Vec<(String, String)>, ToolError> {
+) -> Result<Vec<String>, ToolError> {
     let url = build_url(slug, locale, PageCategory::Doc)?;
     let doc = page::Page::from_url(&url)?;
     let real_slug = doc.slug();
@@ -51,27 +51,37 @@ fn do_remove(
     // If we get a redirect value passed in, it is either a slug or a complete url.
     // If it is a slug, check if it actually exists, otherwise bail.
     let redirect_value = if let Some(redirect_str) = redirect {
-        let ret = if !redirect_str.starts_with("http") {
+        if !redirect_str.starts_with("http") {
             let redirect_url = build_url(redirect_str, locale, PageCategory::Doc)?;
             if !page::Page::exists(&redirect_url) {
-                return Err(ToolError::InvalidSlug(Cow::Owned(format!(
+                return Err(ToolError::InvalidRedirectToURL(format!(
                     "redirect slug does not exist: {redirect_url}"
-                ))));
+                )));
             }
             Some(redirect_url)
         } else {
             Some(redirect_str.to_owned())
-        };
-        ret
+        }
     } else {
         None
     };
 
     let subpages = get_sub_pages(&url, None, Default::default())?;
     if !recursive && !subpages.is_empty() {
-        return Err(ToolError::InvalidSlug(Cow::Owned(format!(
-            "page has subpages, use --recursive to remove them: {real_slug}"
-        ))));
+        return Err(ToolError::HasSubpagesError(Cow::Borrowed(
+            "page has subpages, use --recursive to delete recursively",
+        )));
+    }
+
+    let slugs_to_remove = [doc.clone()]
+        .iter()
+        .chain(&subpages)
+        .map(|page_ref| page_ref.slug().to_owned())
+        .collect::<Vec<_>>();
+
+    if dry_run {
+        // If there is a redirect, check if it is valid, otherwise bail.
+        return Ok(slugs_to_remove);
     }
 
     // let new_parent_slug = parent_slug(slug)?;
@@ -153,6 +163,7 @@ mod test {
             Some("Web/API/ExampleNonExisting"),
             true,
         );
+        assert!(matches!(result, Err(ToolError::InvalidRedirectToURL(_))));
         assert!(result.is_err());
 
         // external URL
@@ -181,6 +192,7 @@ mod test {
         // no recursive, we bail because of existing subpages
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, true);
         assert!(result.is_err());
+        assert!(matches!(result, Err(ToolError::HasSubpagesError(_))));
 
         // recursive
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, true, None, true);
@@ -205,6 +217,7 @@ mod test {
     fn test_nonexisting() {
         // This does not exist
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, true);
+        assert!(matches!(result, Err(ToolError::DocError(_))));
         assert!(result.is_err());
     }
 }
