@@ -13,6 +13,8 @@ pub enum Native {
     #[default]
     #[serde(rename = "English (US)")]
     EnUS,
+    #[serde(rename = "Deutsch")]
+    De,
     #[serde(rename = r#"Español"#)]
     Es,
     #[serde(rename = r#"Français"#)]
@@ -35,6 +37,7 @@ impl From<Locale> for Native {
     fn from(value: Locale) -> Self {
         match value {
             Locale::EnUs => Self::EnUS,
+            Locale::De => Self::De,
             Locale::Es => Self::Es,
             Locale::Fr => Self::Fr,
             Locale::Ja => Self::Ja,
@@ -64,6 +67,8 @@ pub enum Locale {
     #[default]
     #[serde(rename = "en-US")]
     EnUs,
+    #[serde(rename = "de")]
+    De,
     #[serde(rename = "es")]
     Es,
     #[serde(rename = "fr")]
@@ -111,6 +116,7 @@ impl Locale {
     pub const fn as_url_str(&self) -> &str {
         match *self {
             Self::EnUs => "en-US",
+            Self::De => "de",
             Self::Es => "es",
             Self::Fr => "fr",
             Self::Ja => "ja",
@@ -142,6 +148,7 @@ impl FromStr for Locale {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "en-US" | "en-us" => Ok(Self::EnUs),
+            "de" => Ok(Self::De),
             "es" => Ok(Self::Es),
             "fr" => Ok(Self::Fr),
             "ja" => Ok(Self::Ja),

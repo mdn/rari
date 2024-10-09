@@ -296,6 +296,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
             },
             browser_compat: doc.meta.browser_compat.clone(),
             other_translations,
+            page_type: doc.meta.page_type,
         },
         url: doc.meta.url.clone(),
         ..Default::default()

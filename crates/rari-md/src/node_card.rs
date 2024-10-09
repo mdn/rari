@@ -10,6 +10,9 @@ pub enum NoteCard {
 impl NoteCard {
     pub fn prefix_for_locale(&self, locale: Locale) -> &str {
         match (self, locale) {
+            (Self::Callout, Locale::De) => "Aufruf:",
+            (Self::Warning, Locale::De) => "Warnung:",
+            (Self::Note, Locale::De) => "Hinweis:",
             (Self::Callout, Locale::EnUs) => "Callout:",
             (Self::Warning, Locale::EnUs) => "Warning:",
             (Self::Note, Locale::EnUs) => "Note:",

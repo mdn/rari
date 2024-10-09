@@ -9,7 +9,7 @@ pub mod anchor;
 pub(crate) mod ctype;
 pub(crate) mod dl;
 pub mod error;
-pub(crate) mod ext;
+pub mod ext;
 pub(crate) mod html;
 pub mod node_card;
 pub(crate) mod p;
