@@ -1,5 +1,6 @@
 use std::fmt::Write;
 
+use rari_md::ext::{DELIM_END, DELIM_START};
 use rari_types::globals::deny_warnings;
 use rari_types::{AnyArg, RariEnv};
 use tracing::{span, warn, Level};
@@ -7,9 +8,6 @@ use tracing::{span, warn, Level};
 use super::parser::{parse, Token};
 use super::templs::invoke;
 use crate::error::DocError;
-
-static DELIM_START: &str = ";!::::";
-static DELIM_END: &str = ";!::::";
 
 pub struct Rendered {
     pub content: String,
@@ -117,7 +115,7 @@ pub fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocEr
 
 pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocError> {
     let mut decoded = String::with_capacity(input.len());
-    if !input.contains(";!::::") {
+    if !input.contains(DELIM_START) {
         return Ok(input.to_string());
     }
     let mut frags = vec![];

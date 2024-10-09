@@ -22,7 +22,7 @@ use rari_types::locale::Locale;
 
 use crate::anchor;
 use crate::ctype::isspace;
-use crate::ext::Flag;
+use crate::ext::{Flag, DELIM_START};
 use crate::node_card::{is_callout, NoteCard};
 
 /// Formats an AST as HTML, modified by the given options.
@@ -598,7 +598,7 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                     let mut text_content = Vec::with_capacity(20);
                     Self::collect_first_child_text(node, &mut text_content);
                     let raw_id = String::from_utf8(text_content).unwrap();
-                    let is_templ = raw_id.starts_with("!::::");
+                    let is_templ = raw_id.starts_with(DELIM_START);
                     if is_templ {
                         write!(self.output, "<dt data-update-id")?;
                     } else {

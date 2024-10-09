@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use rari_data::baseline::SupportStatusWithByKey;
+use rari_types::fm_types::PageType;
 use rari_types::locale::{Locale, Native};
 use serde::{Deserialize, Serialize};
 
@@ -114,6 +115,8 @@ pub struct JsonDoc {
     pub baseline: Option<&'static SupportStatusWithByKey>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
     pub browser_compat: Vec<String>,
+    #[serde(rename = "pageType")]
+    pub page_type: PageType,
 }
 
 #[derive(Debug, Clone, Serialize)]
