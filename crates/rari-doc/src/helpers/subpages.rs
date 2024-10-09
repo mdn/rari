@@ -235,6 +235,11 @@ fn read_sub_folders_cached(
         .collect())
 }
 
+// This is only used in tests external to this crate
+pub fn clear_subfolder_cache() {
+    memoized_flush_read_sub_folders_cached();
+}
+
 fn split_into_parts(s: &str) -> Vec<(bool, &str)> {
     let mut parts = Vec::new();
     let mut start = 0;

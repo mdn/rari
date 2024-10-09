@@ -19,6 +19,7 @@ use rari_types::locale::Locale;
 
 use crate::error::ToolError;
 use crate::redirects::add_redirects;
+use crate::utils::parent_slug;
 use crate::wikihistory::update_wiki_history;
 
 pub fn r#move(
@@ -214,15 +215,6 @@ fn do_move(
     Ok(pairs)
 }
 
-fn parent_slug(slug: &str) -> Result<&str, ToolError> {
-    let slug = slug.trim_end_matches('/');
-    if let Some(i) = slug.rfind('/') {
-        Ok(&slug[..i])
-    } else {
-        Err(ToolError::InvalidSlug(Cow::Borrowed("slug has no parent")))
-    }
-}
-
 fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
     if old_slug.is_empty() {
         return Err(ToolError::InvalidSlug(Cow::Borrowed(
@@ -247,15 +239,13 @@ fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
     Ok(())
 }
 
-#[cfg(test)]
-use serial_test::file_serial;
-
 // These tests use file system fixtures to simulate content and translated content.
 // The file system is a shared resource, so we force tests to be run serially,
 // to avoid concurrent fixture management issues.
 // Using `file_serial` as a synchonization lock, we should be able to run all tests
-// using the same `key` to be serialized across modules.
-
+// using the same `key` (here: file_fixtures) to be serialized across modules.
+#[cfg(test)]
+use serial_test::file_serial;
 #[cfg(test)]
 #[file_serial(file_fixtures)]
 mod test {

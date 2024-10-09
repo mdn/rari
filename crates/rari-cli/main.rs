@@ -21,6 +21,7 @@ use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
+use rari_tools::remove::remove;
 use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
 use rari_types::settings::Settings;
 use self_update::cargo_crate_version;
@@ -44,8 +45,6 @@ struct Cli {
     no_cache: bool,
     #[arg(long)]
     skip_updates: bool,
-    #[arg(short = 'y', long, help = "Assume yes to all prompts")]
-    assume_yes: bool,
     #[command(subcommand)]
     command: Commands,
 }
@@ -66,6 +65,7 @@ enum Commands {
 enum ContentSubcommand {
     /// Moves content from one slug to another
     Move(MoveArgs),
+    Delete(DeleteArgs),
 }
 
 #[derive(Args)]
@@ -73,6 +73,20 @@ struct MoveArgs {
     old_slug: String,
     new_slug: String,
     locale: Option<String>,
+    #[arg(short = 'y', long, help = "Assume yes to all prompts")]
+    assume_yes: bool,
+}
+
+#[derive(Args)]
+struct DeleteArgs {
+    slug: String,
+    locale: Option<String>,
+    #[arg(short, long, default_value_t = false)]
+    recursive: bool,
+    #[arg(long)]
+    redirect: Option<String>,
+    #[arg(short = 'y', long, help = "Assume yes to all prompts")]
+    assume_yes: bool,
 }
 
 #[derive(Args)]
@@ -331,7 +345,24 @@ fn main() -> Result<(), Error> {
                     &args.old_slug,
                     &args.new_slug,
                     args.locale.as_deref(),
-                    cli.assume_yes,
+                    args.assume_yes,
+                )?;
+            }
+            ContentSubcommand::Delete(args) => {
+                // slug: String,
+                // locale: Option<String>,
+                // #[arg(short, long, default_value_t = false)]
+                // recursive: bool,
+                // #[arg(long)]
+                // redirect: Option<String>,
+                // #[arg(short = 'y', long, help = "Assume yes to all prompts")]
+                // assume_yes: bool,
+                remove(
+                    &args.slug,
+                    args.locale.as_deref(),
+                    args.recursive,
+                    args.redirect.as_deref(),
+                    args.assume_yes,
                 )?;
             }
         },
