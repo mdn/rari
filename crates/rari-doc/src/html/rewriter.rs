@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 
-use lol_html::html_content::ContentType;
+use lol_html::html_content::{ContentType, Element};
 use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings};
 use rari_md::ext::DELIM_START;
 use rari_md::node_card::NoteCard;
@@ -218,7 +218,7 @@ pub fn post_process_html<T: PageLike>(
 
             Ok(())
         }),
-        element!("dt[data-add-link]", |el| {
+        element!("dt[data-add-link]", |el: &mut Element| {
             el.remove_attribute("data-add-link");
             if let Some(id) = el.get_attribute("id") {
                 el.prepend(&concat_strs!("<a href=\"#", &id, "\">"), ContentType::Html);
