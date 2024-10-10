@@ -123,11 +123,15 @@ fn do_remove(
         ))));
     }
 
-    let slugs_to_remove = [doc.clone()]
-        .iter()
-        .chain(&subpages)
-        .map(|page_ref| page_ref.slug().to_owned())
-        .collect::<Vec<_>>();
+    let slugs_to_remove = if recursive {
+        [doc.clone()]
+            .iter()
+            .chain(&subpages)
+            .map(|page_ref| page_ref.slug().to_owned())
+            .collect::<Vec<_>>()
+    } else {
+        vec![real_slug.to_owned()]
+    };
 
     if dry_run {
         return Ok(slugs_to_remove);
@@ -418,7 +422,7 @@ mod test {
         let wiki_history = test_get_wiki_history(Locale::EnUs);
         // println!("{:?}", wiki_history);
         assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
-        // assert!(wiki_history.contains_key("Web/API/ExampleOne/Subpage"));
+        assert!(wiki_history.contains_key("Web/API/ExampleOne/Subpage"));
         assert!(wiki_history.contains_key("Web/API/RedirectTarget"));
     }
 
