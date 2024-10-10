@@ -28,7 +28,7 @@ validator = { version = "0.18", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 
 scraper = { version = "0.20", features = ["deterministic"] }
-lol_html = "1"
+lol_html = "2"
 html-escape = "0.2"
 html5ever = "0.27"
 ego-tree = "0.6"

@@ -115,8 +115,8 @@ impl Anchorizer {
     ///
     /// assert_eq!("ticks-arent-in".to_string(), anchorizer.anchorize(source.to_string()));
     /// ```
-    pub fn anchorize(&mut self, header: String) -> String {
-        let id = anchor::anchorize(&header);
+    pub fn anchorize(&mut self, header: impl AsRef<str>) -> String {
+        let id = anchor::anchorize(header.as_ref());
 
         let mut uniq = 0;
         let id = loop {
@@ -597,12 +597,12 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                     self.cr()?;
                     let mut text_content = Vec::with_capacity(20);
                     Self::collect_first_child_text(node, &mut text_content);
-                    let raw_id = String::from_utf8(text_content).unwrap();
-                    let is_templ = raw_id.starts_with(DELIM_START);
+                    let raw_id = String::from_utf8_lossy(&text_content);
+                    let is_templ = raw_id.contains(DELIM_START);
                     if is_templ {
                         write!(self.output, "<dt data-update-id")?;
                     } else {
-                        let id = self.anchorizer.anchorize(raw_id);
+                        let id = self.anchorizer.anchorize(&raw_id);
                         write!(self.output, "<dt id=\"{}\"", id)?;
                     };
                     if !is_templ && !Self::next_is_link(node) {
@@ -633,9 +633,14 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                             let mut text_content = Vec::with_capacity(20);
                             Self::collect_text(node, &mut text_content);
 
-                            let mut id = String::from_utf8(text_content).unwrap();
-                            id = self.anchorizer.anchorize(id);
-                            write!(self.output, " id=\"{}\"", id)?;
+                            let raw_id = String::from_utf8(text_content).unwrap();
+                            let is_templ = raw_id.contains(DELIM_START);
+                            if is_templ {
+                                write!(self.output, " data-update-id")?;
+                            } else {
+                                let id = self.anchorizer.anchorize(&raw_id);
+                                write!(self.output, " id=\"{}\"", id)?;
+                            };
                         }
                         self.render_sourcepos(node)?;
                         self.output.write_all(b">")?;

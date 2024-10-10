@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 
-use lol_html::html_content::ContentType;
+use lol_html::html_content::{ContentType, Element};
 use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings};
+use rari_md::ext::DELIM_START;
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
@@ -53,7 +54,9 @@ pub fn post_process_html<T: PageLike>(
     let mut element_content_handlers = vec![
         element!("*[id]", |el| {
             if let Some(id) = el.get_attribute("id") {
-                if ids.contains(id.as_str()) {
+                if id.contains(DELIM_START) {
+                    el.set_attribute("data-update-id", "")?;
+                } else if ids.contains(id.as_str()) {
                     let (prefix, mut count) = if let Some((prefix, counter)) = id.rsplit_once('_') {
                         if counter.chars().all(|c| c.is_ascii_digit()) {
                             let count = counter.parse::<i64>().unwrap_or_default() + 1;
@@ -215,7 +218,7 @@ pub fn post_process_html<T: PageLike>(
 
             Ok(())
         }),
-        element!("dt[data-add-link]", |el| {
+        element!("dt[data-add-link]", |el: &mut Element| {
             el.remove_attribute("data-add-link");
             if let Some(id) = el.get_attribute("id") {
                 el.prepend(&concat_strs!("<a href=\"#", &id, "\">"), ContentType::Html);

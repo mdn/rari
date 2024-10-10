@@ -12,7 +12,7 @@ pub fn embded_jsfiddle(
     height: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let mut out = String::new();
-    out.push_str(r#"<iframe allowfullscreen="allowfullscreen" width="756" "#);
+    out.push_str(r#"<p><iframe allowfullscreen="allowfullscreen" width="756" "#);
     if let Some(height) = height {
         if !height.is_empty() {
             write!(&mut out, r#"height="{}" "#, height)?;
@@ -28,7 +28,7 @@ pub fn embded_jsfiddle(
         } else {
             "/"
         },
-        r#""></iframe>"#,
+        r#""></iframe></p>"#,
     ]);
     Ok(out)
 }

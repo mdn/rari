@@ -10,15 +10,17 @@ use std::sync::LazyLock;
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
-use htmldiff::htmldiff;
 use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
 use itertools::Itertools;
 use jsonpath_lib::Compiled;
-use prettydiff::diff_words;
+use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Value;
+use xml::fmt_html;
+
+mod xml;
 
 fn html(body: &str) -> String {
     format!(
@@ -243,21 +245,17 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
                     let rhs_t = WS_DIFF.replace_all(&rhs, "$x$y");
                     let lhs_t = DATA_FLAW_SRC.replace_all(&lhs_t, "");
                     let rhs_t = DATA_FLAW_SRC.replace_all(&rhs_t, "");
-                    lhs = html_minifier::minify(lhs_t).unwrap();
-                    rhs = html_minifier::minify(rhs_t).unwrap();
+                    lhs = fmt_html(&html_minifier::minify(lhs_t).unwrap());
+                    rhs = fmt_html(&html_minifier::minify(rhs_t).unwrap());
                 }
                 if lhs != rhs {
-                    if key != "doc.sidebarHTML" {
-                        diff.insert(
-                            key,
-                            ansi_to_html::convert(&diff_words(&lhs, &rhs).to_string()).unwrap(),
-                            //similar::TextDiff::from_words(&lhs, &rhs)
-                            //    .unified_diff()
-                            //    .to_string(),
-                        );
-                    } else {
-                        diff.insert(key, htmldiff(&lhs, &rhs));
-                    }
+                    diff.insert(
+                        key,
+                        ansi_to_html::convert(&diff_lines(&lhs, &rhs).to_string()).unwrap(),
+                        //similar::TextDiff::from_words(&lhs, &rhs)
+                        //    .unified_diff()
+                        //    .to_string(),
+                    );
                 }
             }
             (lhs, rhs) => {
