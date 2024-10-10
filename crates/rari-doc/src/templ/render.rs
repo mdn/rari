@@ -160,7 +160,7 @@ pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocEr
 
 fn push_text(out: &mut String, slice: &str) {
     let mut last = 0;
-    for (i, _) in slice.match_indices("\\{{") {
+    for (i, _) in slice.match_indices("\\{") {
         out.push_str(&slice[last..i]);
         last = i + 1;
     }

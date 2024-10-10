@@ -142,6 +142,8 @@ struct BuildArgs {
     #[arg(long)]
     ignore_html_whitespace: bool,
     #[arg(long)]
+    fast: bool,
+    #[arg(long)]
     value: bool,
     #[arg(short, long)]
     verbose: bool,
@@ -185,7 +187,13 @@ static WS_DIFF: LazyLock<Regex> =
 static DATA_FLAW_SRC: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#" data-flaw-src="[^"]+""#).unwrap());
 
-fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<String, String>) {
+fn full_diff(
+    lhs: &Value,
+    rhs: &Value,
+    path: &[PathIndex],
+    diff: &mut BTreeMap<String, String>,
+    fast: bool,
+) {
     if path.len() == 1 {
         if let PathIndex::Object(s) = &path[0] {
             if s == "url" {
@@ -209,6 +217,7 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
                         rhs.get(i).unwrap_or(&Value::Null),
                         &path,
                         diff,
+                        fast,
                     );
                 }
             }
@@ -223,6 +232,7 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
                         rhs.get(key).unwrap_or(&Value::Null),
                         &path,
                         diff,
+                        fast,
                     );
                 }
             }
@@ -251,10 +261,12 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
                 if lhs != rhs {
                     diff.insert(
                         key,
-                        ansi_to_html::convert(&diff_lines(&lhs, &rhs).to_string()).unwrap(),
-                        //similar::TextDiff::from_words(&lhs, &rhs)
-                        //    .unified_diff()
-                        //    .to_string(),
+                        ansi_to_html::convert(&if fast {
+                            diff_lines(&lhs, &rhs).to_string()
+                        } else {
+                            diff_words(&lhs, &rhs).to_string()
+                        })
+                        .unwrap(),
                     );
                 }
             }
@@ -264,12 +276,6 @@ fn full_diff(lhs: &Value, rhs: &Value, path: &[PathIndex], diff: &mut BTreeMap<S
                 if lhs != rhs {
                     diff.insert(
                         key,
-                        //ansi_to_html::convert(
-                        //    &similar::TextDiff::from_words(&lhs, &rhs)
-                        //        .unified_diff()
-                        //        .to_string(),
-                        //)
-                        //.unwrap(),
                         ansi_to_html::convert(&diff_words(&lhs, &rhs).to_string()).unwrap(),
                     );
                 }
@@ -303,7 +309,7 @@ fn main() -> Result<(), anyhow::Error> {
                         let left = v;
                         let right = b.get(k).unwrap_or(&Value::Null);
                         let mut diff = BTreeMap::new();
-                        full_diff(left, right, &[], &mut diff);
+                        full_diff(left, right, &[], &mut diff, arg.fast);
                         if !diff.is_empty() {
                             return Some(format!(
                                 r#"<li><span>{k}</span><div class="r"><pre><code>{}</code></pre></div></li>"#,

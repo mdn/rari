@@ -76,17 +76,30 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
     }
     if let Some(child) = block_quote.first_child() {
         if let Some(marker) = child.first_child() {
-            if let NodeValue::Text(ref text) = marker.data.borrow().value {
+            let mut data = marker.data.borrow_mut();
+            if let NodeValue::Text(ref text) = data.value {
                 if text.starts_with(NoteCard::Callout.new_prefix()) {
-                    marker.detach();
+                    if text.trim() == NoteCard::Callout.new_prefix() {
+                        marker.detach();
+                    } else if let Some(tail) = text.strip_prefix(NoteCard::Callout.new_prefix()) {
+                        data.value = NodeValue::Text(tail.trim().to_string());
+                    }
                     return Some(NoteCard::Callout);
                 }
                 if text.starts_with(NoteCard::Warning.new_prefix()) {
-                    marker.detach();
+                    if text.trim() == NoteCard::Warning.new_prefix() {
+                        marker.detach();
+                    } else if let Some(tail) = text.strip_prefix(NoteCard::Warning.new_prefix()) {
+                        data.value = NodeValue::Text(tail.trim().to_string());
+                    }
                     return Some(NoteCard::Warning);
                 }
                 if text.starts_with(NoteCard::Note.new_prefix()) {
-                    marker.detach();
+                    if text.trim() == NoteCard::Note.new_prefix() {
+                        marker.detach();
+                    } else if let Some(tail) = text.strip_prefix(NoteCard::Note.new_prefix()) {
+                        data.value = NodeValue::Text(tail.trim().to_string());
+                    }
                     return Some(NoteCard::Note);
                 }
             }

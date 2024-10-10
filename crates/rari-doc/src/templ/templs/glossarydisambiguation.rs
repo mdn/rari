@@ -16,13 +16,14 @@ pub fn glossarydisambiguation() -> Result<String, DocError> {
     out.push_str("<dl>");
 
     for page in pages {
+        let summary = get_hacky_summary_md(&page)?;
         out.extend([
             r#"<dt><a href=""#,
             page.url(),
             r#"">"#,
             page.title(),
             r#"</a></dt><dd>"#,
-            strip_paragraph_unckecked(get_hacky_summary_md(&page)?.as_str()),
+            strip_paragraph_unckecked(summary.as_str()),
             r#"</dd>"#,
         ]);
     }

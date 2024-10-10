@@ -247,6 +247,12 @@ pub fn post_process_html<T: PageLike>(
             }
             Ok(())
         }),
+        element!("pre:not(.notranslate)", |el| {
+            let mut class = el.get_attribute("class").unwrap_or_default();
+            class.push_str(" notranslate");
+            el.set_attribute("class", &class)?;
+            Ok(())
+        }),
         element!("pre[class*=brush]:not(.hidden)", |el| {
             let class = el.get_attribute("class");
             let class = class.as_deref().unwrap_or_default();

@@ -5,7 +5,7 @@ use regex::Regex;
 
 pub fn anchorize(content: &str) -> Cow<'_, str> {
     static REJECTED_CHARS: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r#"[<>"$#%&+,/:;=?@\[\]^`{|}~')(\\]"#).unwrap());
+        LazyLock::new(|| Regex::new(r#"[*<>"$#%&+,/:;=?@\[\]^`{|}~')(\\]"#).unwrap());
 
     let id = REJECTED_CHARS.replace_all(content, "");
     let mut id = id.trim().to_lowercase();
