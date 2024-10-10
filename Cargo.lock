@@ -2705,6 +2705,7 @@ dependencies = [
  "rari-doc",
  "rari-types",
  "rari-utils",
+ "rayon",
  "reqwest",
  "serde",
  "serde_json",

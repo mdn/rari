@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
@@ -7,11 +8,15 @@ use std::str::FromStr;
 use console::Style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
+use rari_doc::error::DocError;
 use rari_doc::helpers::subpages::get_sub_pages;
 use rari_doc::pages::page::{self, PageCategory, PageLike};
+use rari_doc::pages::types::doc::Doc;
+use rari_doc::reader::read_docs_parallel;
 use rari_doc::resolve::{build_url, url_meta_from, UrlMeta};
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::error::ToolError;
 use crate::redirects::add_redirects;
@@ -73,15 +78,55 @@ pub fn remove(
             .unwrap_or_default()
     {
         let removed = do_remove(slug, locale, recursive, redirect, false)?;
+        let removed_urls = removed
+            .iter()
+            .map(|slug| build_url(slug, locale, PageCategory::Doc))
+            .collect::<Result<Vec<_>, DocError>>()?;
         println!(
             "{} {} {}",
             green.apply_to("Deleted"),
             bold.apply_to(removed.len()),
-            green.apply_to("documents"),
+            green.apply_to("documents:"),
         );
+        for url in &removed_urls {
+            println!("{}", red.apply_to(&url));
+        }
 
         // Find references to deleted documents and
         // list them for manual review
+        println!("Checking references to deleted documents...");
+        let mut docs_path = PathBuf::from(root_for_locale(locale)?);
+        docs_path.push(locale.as_folder_str());
+
+        let docs = read_docs_parallel::<Doc>(&[docs_path], None)?;
+
+        let referencing_docs: BTreeSet<String> = docs
+            .into_par_iter()
+            .filter_map(|doc| {
+                for url in &removed {
+                    if doc.content().contains(url) {
+                        return Some(doc.url().to_owned());
+                    }
+                }
+                None
+            })
+            .collect();
+
+        if referencing_docs.is_empty() {
+            println!(
+                "{}",
+                green.apply_to("No file is referring to the deleted document."),
+            );
+        } else {
+            println!(
+                "{} {}",
+                yellow.apply_to(referencing_docs.len()),
+                yellow.apply_to("files are referring to the deleted documents. Please update the following files to remove the links:"),
+            );
+            for url in &referencing_docs {
+                println!("{}", yellow.apply_to(url));
+            }
+        }
     }
     Ok(())
 }
@@ -207,9 +252,6 @@ fn do_remove(
             .collect::<Result<Vec<_>, ToolError>>()?;
         add_redirects(locale, &pairs)?;
     }
-
-    // check references to the removed documents (do it in the main method)
-
     Ok(slugs_to_remove)
 }
 
