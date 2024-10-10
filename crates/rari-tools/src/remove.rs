@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
 
-use console::{style, Style};
+use console::Style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 use rari_doc::helpers::subpages::get_sub_pages;
@@ -14,8 +14,8 @@ use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
 
 use crate::error::ToolError;
-use crate::utils::parent_slug;
-use crate::wikihistory::{delete_from_wiki_history, update_wiki_history};
+use crate::redirects::add_redirects;
+use crate::wikihistory::delete_from_wiki_history;
 
 pub fn remove(
     slug: &str,
@@ -137,8 +137,6 @@ fn do_remove(
         return Ok(slugs_to_remove);
     }
 
-    let removed: Vec<String> = Vec::new();
-
     // Remove the documents. For single documents, we just remove the `index.md` file and
     // leave the folder structure in place. For recursive removal, we remove the entire
     // folder structure, duplicating the original yari tool behaviour.
@@ -157,12 +155,6 @@ fn do_remove(
         } else {
             vec![OsStr::new("rm"), OsStr::new("-rf"), path.as_os_str()]
         };
-
-        println!(
-            "recursive rm command: {} {}",
-            &command,
-            &args.join(OsStr::new(" ")).to_string_lossy()
-        );
 
         // Execute the recursive remove command
         let output = Command::new(command)
@@ -185,12 +177,6 @@ fn do_remove(
             vec![OsStr::new("rm"), &path.as_os_str()]
         };
 
-        println!(
-            "single rm command: {} {}",
-            &command,
-            &args.join(OsStr::new(" ")).to_string_lossy()
-        );
-
         // Execute the single file remove command
         let output = Command::new(command)
             .args(args)
@@ -210,27 +196,32 @@ fn do_remove(
     delete_from_wiki_history(locale, &slugs_to_remove)?;
 
     // update the redirects map if needed
+    if let Some(new_slug) = redirect_target {
+        let pairs = slugs_to_remove
+            .iter()
+            .map(|slug| {
+                let old_url = build_url(slug, locale, PageCategory::Doc)?;
+                // let new_url = build_url(&new_slug, locale, PageCategory::Doc)?;
+                Ok((old_url, new_slug.to_owned()))
+            })
+            .collect::<Result<Vec<_>, ToolError>>()?;
+        add_redirects(locale, &pairs)?;
+    }
 
-    // let new_parent_slug = parent_slug(slug)?;
-    // if !page::Page::exists(&build_url(new_parent_slug, locale, PageCategory::Doc)?) {
-    //     return Err(ToolError::InvalidSlug(Cow::Owned(format!(
-    //         "new parent slug does not exist: {new_parent_slug}"
-    //     ))));
-    // }
-    // // let subpages = get_sub_pages(&old_url, None, Default::default())?;
+    // check references to the removed documents (do it in the main method)
 
-    return Ok(vec![]);
+    Ok(slugs_to_remove)
 }
 
 fn validate_args(slug: &str) -> Result<(), ToolError> {
     if slug.is_empty() {
         return Err(ToolError::InvalidSlug(Cow::Borrowed(
-            "old slug cannot be empty",
+            "slug cannot be empty",
         )));
     }
     if slug.contains("#") {
         return Err(ToolError::InvalidSlug(Cow::Borrowed(
-            "old slug cannot contain '#'",
+            "slug cannot contain '#'",
         )));
     }
     Ok(())
@@ -249,8 +240,9 @@ mod test {
 
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
+    use crate::tests::fixtures::redirects::RedirectFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
-    use crate::utils::check_file_existence;
+    use crate::utils::test_utils::{check_file_existence, get_redirects_map};
     use crate::wikihistory::test_get_wiki_history;
 
     #[test]
@@ -381,6 +373,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
 
         let result = do_remove(
             "Web/API/ExampleOne",
@@ -399,6 +392,14 @@ mod test {
         let wiki_history = test_get_wiki_history(Locale::EnUs);
         assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
         assert!(wiki_history.contains_key("Web/API/RedirectTarget"));
+
+        let redirects = get_redirects_map(Locale::EnUs);
+        assert_eq!(redirects.len(), 1);
+        assert!(redirects.contains_key("/en-US/docs/Web/API/ExampleOne"));
+        assert_eq!(
+            redirects.get("/en-US/docs/Web/API/ExampleOne").unwrap(),
+            "/en-US/docs/Web/API/RedirectTarget"
+        );
     }
 
     #[test]
@@ -410,6 +411,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
         assert!(result.is_ok());
@@ -420,10 +422,12 @@ mod test {
         check_file_existence(root_path, &should_exist, &should_not_exist);
 
         let wiki_history = test_get_wiki_history(Locale::EnUs);
-        // println!("{:?}", wiki_history);
         assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
         assert!(wiki_history.contains_key("Web/API/ExampleOne/Subpage"));
         assert!(wiki_history.contains_key("Web/API/RedirectTarget"));
+
+        let redirects = get_redirects_map(Locale::EnUs);
+        assert_eq!(redirects.len(), 0);
     }
 
     #[test]
@@ -434,6 +438,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, true, None, false);
         assert!(result.is_ok());
@@ -449,5 +454,100 @@ mod test {
         let wiki_history = test_get_wiki_history(Locale::EnUs);
         assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
         assert!(!wiki_history.contains_key("Web/API/ExampleOne/Subpage"));
+
+        let redirects = get_redirects_map(Locale::EnUs);
+        assert_eq!(redirects.len(), 0);
+    }
+
+    #[test]
+    fn test_remove_recursive_with_redirect() {
+        let slugs = vec![
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleOne/Subpage".to_string(),
+            "Web/API/RedirectTarget".to_string(),
+        ];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+
+        let result = do_remove(
+            "Web/API/ExampleOne",
+            Locale::EnUs,
+            true,
+            Some("Web/API/RedirectTarget"),
+            false,
+        );
+        assert!(result.is_ok());
+
+        let should_exist = vec![];
+        let should_not_exist = vec![
+            "en-us/web/api/exampleone/index.md",
+            "en-us/web/api/exampleone/subpage/index.md",
+        ];
+        let root_path = root_for_locale(Locale::EnUs).unwrap();
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let wiki_history = test_get_wiki_history(Locale::EnUs);
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne/Subpage"));
+
+        let redirects = get_redirects_map(Locale::EnUs);
+        assert_eq!(redirects.len(), 2);
+        assert_eq!(
+            redirects.get("/en-US/docs/Web/API/ExampleOne").unwrap(),
+            "/en-US/docs/Web/API/RedirectTarget"
+        );
+        assert_eq!(
+            redirects
+                .get("/en-US/docs/Web/API/ExampleOne/Subpage")
+                .unwrap(),
+            "/en-US/docs/Web/API/RedirectTarget"
+        );
+    }
+
+    #[test]
+    fn test_remove_recursive_with_redirect_translated() {
+        let slugs = vec![
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleOne/Subpage".to_string(),
+            "Web/API/RedirectTarget".to_string(),
+        ];
+        let _docs = DocFixtures::new(&slugs, Locale::PtBr);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::PtBr);
+        let _redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
+
+        let result = do_remove(
+            "Web/API/ExampleOne",
+            Locale::PtBr,
+            true,
+            Some("Web/API/RedirectTarget"),
+            false,
+        );
+        assert!(result.is_ok());
+
+        let should_exist = vec![];
+        let should_not_exist = vec![
+            "pt-br/web/api/exampleone/index.md",
+            "pt-br/web/api/exampleone/subpage/index.md",
+        ];
+        let root_path = root_for_locale(Locale::PtBr).unwrap();
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let wiki_history = test_get_wiki_history(Locale::PtBr);
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne/Subpage"));
+
+        let redirects = get_redirects_map(Locale::PtBr);
+        assert_eq!(redirects.len(), 2);
+        assert_eq!(
+            redirects.get("/pt-BR/docs/Web/API/ExampleOne").unwrap(),
+            "/pt-BR/docs/Web/API/RedirectTarget"
+        );
+        assert_eq!(
+            redirects
+                .get("/pt-BR/docs/Web/API/ExampleOne/Subpage")
+                .unwrap(),
+            "/pt-BR/docs/Web/API/RedirectTarget"
+        );
     }
 }

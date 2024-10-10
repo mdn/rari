@@ -250,15 +250,11 @@ use serial_test::file_serial;
 #[file_serial(file_fixtures)]
 mod test {
 
-    use std::collections::HashMap;
-    use std::path::Path;
-
     use super::*;
-    use crate::redirects;
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
-    use crate::utils::check_file_existence;
+    use crate::utils::test_utils::{check_file_existence, get_redirects_map};
 
     fn s(s: &str) -> String {
         s.to_string()
@@ -404,13 +400,7 @@ mod test {
         check_file_existence(root_path, &should_exist, &should_not_exist);
 
         // check redirects
-        let mut redirects_path = PathBuf::from(root_path);
-        redirects_path.push(Locale::EnUs.as_folder_str());
-        redirects_path.push("_redirects.txt");
-        assert!(&redirects_path.exists());
-        let mut redirects = HashMap::new();
-        redirects::read_redirects_raw(&redirects_path, &mut redirects).unwrap();
-        // println!("{:?}", redirects);
+        let redirects = get_redirects_map(Locale::EnUs);
         assert_eq!(
             redirects.get("/en-US/docs/Web/API/ExampleOne").unwrap(),
             "/en-US/docs/Web/API/ExampleOneNewLocation"
@@ -520,13 +510,7 @@ mod test {
         check_file_existence(root_path, &should_exist, &should_not_exist);
 
         // check redirects
-        let mut redirects_path = PathBuf::from(root_path);
-        redirects_path.push(Locale::PtBr.as_folder_str());
-        redirects_path.push("_redirects.txt");
-        assert!(&redirects_path.exists());
-        let mut redirects = HashMap::new();
-        redirects::read_redirects_raw(&redirects_path, &mut redirects).unwrap();
-        // println!("{:?}", redirects);
+        let redirects = get_redirects_map(Locale::PtBr);
         assert_eq!(
             redirects.get("/pt-BR/docs/Web/API/ExampleOne").unwrap(),
             "/pt-BR/docs/Web/API/ExampleOneNewLocation"
