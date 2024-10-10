@@ -18,6 +18,7 @@ tracing.workspace = true
 reqwest.workspace = true
 url.workspace = true
 indoc.workspace = true
+rayon.workspace = true
 
 console = "0"
 dialoguer = "0"

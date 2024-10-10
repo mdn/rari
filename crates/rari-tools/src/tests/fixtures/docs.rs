@@ -27,7 +27,6 @@ impl DocFixtures {
 
     fn new_internal(slugs: &[String], locale: Locale, do_not_remove: bool) -> Self {
         // create doc file for each slug in the vector, in the configured root directory for the locale
-
         // Iterate over each slug and create a file in the root directory
         let _files: Vec<String> = slugs
             .iter()

@@ -41,6 +41,9 @@ pub enum ToolError {
     #[error(transparent)]
     RedirectError(#[from] RedirectError),
 
+    #[error("Page has subpages: {0}")]
+    HasSubpagesError(Cow<'static, str>),
+
     #[error("Unknonwn error")]
     Unknown(&'static str),
 }
