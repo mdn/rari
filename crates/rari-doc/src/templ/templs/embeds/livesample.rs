@@ -35,7 +35,7 @@ pub fn live_sample(
         if !height.is_empty() {
             // TODO: fix this
             if height.as_int() < 60 {
-                write!(&mut out, r#"height="{}" "#, height.as_int())?;
+                write!(&mut out, r#"height="60" "#)?;
             } else {
                 write!(&mut out, r#"height="{}" "#, height)?;
             }

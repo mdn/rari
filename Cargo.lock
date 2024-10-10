@@ -801,11 +801,11 @@ dependencies = [
  "anyhow",
  "clap",
  "html-minifier",
- "htmldiff",
  "ignore",
  "itertools",
  "jsonpath_lib",
  "prettydiff",
+ "quick-xml 0.36.2",
  "rayon",
  "regex",
  "serde",
@@ -1334,12 +1334,6 @@ dependencies = [
  "quote",
  "syn 2.0.79",
 ]
-
-[[package]]
-name = "htmldiff"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35b798ad26682ba974f035682fa7512c6b092262fc924f17cbb8fa54e464ea50"
 
 [[package]]
 name = "http"
@@ -2410,6 +2404,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.36.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7649a7b4df05aed9ea7ec6f628c67c9953a43869b8bc50929569b2999d443fe"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "quinn"
 version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3082,7 +3085,7 @@ dependencies = [
  "hyper",
  "indicatif",
  "log",
- "quick-xml",
+ "quick-xml 0.23.1",
  "regex",
  "reqwest",
  "self-replace",

@@ -20,5 +20,5 @@ prettydiff = "0.7"
 html-minifier = "5"
 ansi-to-html = "0.2"
 similar = "2"
-htmldiff = "0.1"
+quick-xml = "0.36"
 clap = { version = "4.5.1", features = ["derive"] }
