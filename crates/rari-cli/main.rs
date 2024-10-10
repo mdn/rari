@@ -349,14 +349,6 @@ fn main() -> Result<(), Error> {
                 )?;
             }
             ContentSubcommand::Delete(args) => {
-                // slug: String,
-                // locale: Option<String>,
-                // #[arg(short, long, default_value_t = false)]
-                // recursive: bool,
-                // #[arg(long)]
-                // redirect: Option<String>,
-                // #[arg(short = 'y', long, help = "Assume yes to all prompts")]
-                // assume_yes: bool,
                 remove(
                     &args.slug,
                     args.locale.as_deref(),
