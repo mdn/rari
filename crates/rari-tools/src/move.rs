@@ -171,7 +171,7 @@ fn do_move(
     }
 
     // Conditional command for testing. In testing, we do not use git, because the test
-    // fixtures are no under git control. SO instead of `git mv …` we use `mv …`.
+    // fixtures are not under git control. Instead of `git mv …` we use `mv …`.
     let command = if cfg!(test) { "mv" } else { "git" };
     let args = if cfg!(test) {
         vec![old_folder_path.as_os_str(), new_folder_path.as_os_str()]
@@ -258,6 +258,7 @@ mod test {
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
+    use crate::utils::check_file_existence;
 
     fn s(s: &str) -> String {
         s.to_string()
@@ -554,25 +555,5 @@ mod test {
             redirects.get("/pt-BR/docs/Web/API/Something").unwrap(),
             "/pt-BR/docs/Web/API/SomethingElse"
         );
-    }
-
-    fn check_file_existence(root: &Path, should_exist: &[&str], should_not_exist: &[&str]) {
-        for relative_path in should_exist {
-            let parts = relative_path.split('/').collect::<Vec<&str>>();
-            let mut path = PathBuf::from(root);
-            for part in parts {
-                path.push(part);
-            }
-            assert!(path.exists(), "{} should exist", path.display());
-        }
-
-        for relative_path in should_not_exist {
-            let parts = relative_path.split('/').collect::<Vec<&str>>();
-            let mut path = PathBuf::from(root);
-            for part in parts {
-                path.push(part);
-            }
-            assert!(!path.exists(), "{} should not exist", path.display());
-        }
     }
 }

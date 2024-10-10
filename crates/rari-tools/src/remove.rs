@@ -1,4 +1,7 @@
 use std::borrow::Cow;
+use std::ffi::OsStr;
+use std::path::PathBuf;
+use std::process::Command;
 use std::str::FromStr;
 
 use console::{style, Style};
@@ -6,11 +9,13 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 use rari_doc::helpers::subpages::get_sub_pages;
 use rari_doc::pages::page::{self, PageCategory, PageLike};
-use rari_doc::resolve::build_url;
+use rari_doc::resolve::{build_url, url_meta_from, UrlMeta};
+use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
 
 use crate::error::ToolError;
 use crate::utils::parent_slug;
+use crate::wikihistory::{delete_from_wiki_history, update_wiki_history};
 
 pub fn remove(
     slug: &str,
@@ -70,10 +75,13 @@ pub fn remove(
         let removed = do_remove(slug, locale, recursive, redirect, false)?;
         println!(
             "{} {} {}",
-            green.apply_to("Removed"),
+            green.apply_to("Deleted"),
             bold.apply_to(removed.len()),
             green.apply_to("documents"),
         );
+
+        // Find references to deleted documents and
+        // list them for manual review
     }
     Ok(())
 }
@@ -91,7 +99,7 @@ fn do_remove(
 
     // If we get a redirect value passed in, it is either a slug or a complete url.
     // If it is a slug, check if it actually exists, otherwise bail.
-    let redirect_value = if let Some(redirect_str) = redirect {
+    let redirect_target = if let Some(redirect_str) = redirect {
         if !redirect_str.starts_with("http") {
             let redirect_url = build_url(redirect_str, locale, PageCategory::Doc)?;
             if !page::Page::exists(&redirect_url) {
@@ -108,9 +116,9 @@ fn do_remove(
     };
 
     let subpages = get_sub_pages(&url, None, Default::default())?;
-    if !recursive && !subpages.is_empty() {
+    if !recursive && !subpages.is_empty() && redirect.is_some() {
         return Err(ToolError::HasSubpagesError(Cow::Owned(format!(
-            "{0}, use --recursive to delete recursively",
+            "{0}, unable to remove and redirect a document with children",
             slug
         ))));
     }
@@ -126,6 +134,78 @@ fn do_remove(
     }
 
     let removed: Vec<String> = Vec::new();
+
+    // Remove the documents. For single documents, we just remove the `index.md` file and
+    // leave the folder structure in place. For recursive removal, we remove the entire
+    // folder structure, duplicating the original yari tool behaviour.
+
+    // Conditional command for testing. In testing, we do not use git, because the test
+    // fixtures are not under git control. Instead of `git rm …` we use `rm …`.
+    let mut path = PathBuf::from(locale.as_folder_str());
+    let url = build_url(real_slug, locale, PageCategory::Doc)?;
+    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
+    path.push(folder_path);
+
+    let command = if cfg!(test) { "rm" } else { "git" };
+    if recursive {
+        let args = if cfg!(test) {
+            vec![OsStr::new("-rf"), path.as_os_str()]
+        } else {
+            vec![OsStr::new("rm"), OsStr::new("-rf"), path.as_os_str()]
+        };
+
+        println!(
+            "recursive rm command: {} {}",
+            &command,
+            &args.join(OsStr::new(" ")).to_string_lossy()
+        );
+
+        // Execute the recursive remove command
+        let output = Command::new(command)
+            .args(args)
+            .current_dir(root_for_locale(locale)?)
+            .output()
+            .expect("failed to execute process");
+
+        if !output.status.success() {
+            return Err(ToolError::GitError(format!(
+                "Failed to remove files: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+    } else {
+        path.push("index.md");
+        let args = if cfg!(test) {
+            vec![path.as_os_str()]
+        } else {
+            vec![OsStr::new("rm"), &path.as_os_str()]
+        };
+
+        println!(
+            "single rm command: {} {}",
+            &command,
+            &args.join(OsStr::new(" ")).to_string_lossy()
+        );
+
+        // Execute the single file remove command
+        let output = Command::new(command)
+            .args(args)
+            .current_dir(root_for_locale(locale)?)
+            .output()
+            .expect("failed to execute process");
+
+        if !output.status.success() {
+            return Err(ToolError::GitError(format!(
+                "Failed to remove files: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+    }
+
+    // update the wiki history
+    delete_from_wiki_history(locale, &slugs_to_remove)?;
+
+    // update the redirects map if needed
 
     // let new_parent_slug = parent_slug(slug)?;
     // if !page::Page::exists(&build_url(new_parent_slug, locale, PageCategory::Doc)?) {
@@ -155,23 +235,19 @@ fn validate_args(slug: &str) -> Result<(), ToolError> {
 // These tests use file system fixtures to simulate content and translated content.
 // The file system is a shared resource, so we force tests to be run serially,
 // to avoid concurrent fixture management issues.
-// Using `file_serial` as a synchonization lock, we should be able to run all tests
-// using the same `key` (here: file_fixtures) to be serialized across modules.
+// Using `file_serial` as a synchonization lock, we run all tests using
+// the same `key` (here: file_fixtures) to be serialized across modules.
 #[cfg(test)]
 use serial_test::file_serial;
 #[cfg(test)]
 #[file_serial(file_fixtures)]
 mod test {
 
-    // use std::collections::HashMap;
-    // use std::path::Path;
-
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
-    // use crate::redirects;
-    // use crate::tests::fixtures::docs::DocFixtures;
-    // use crate::tests::fixtures::redirects::RedirectFixtures;
-    // use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
+    use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
+    use crate::utils::check_file_existence;
+    use crate::wikihistory::test_get_wiki_history;
 
     #[test]
     fn test_validate_args() {
@@ -229,11 +305,22 @@ mod test {
         let slugs = vec![
             "Web/API/ExampleOne".to_string(),
             "Web/API/ExampleOne/Subpage".to_string(),
+            "Web/API/RedirectTarget".to_string(),
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
 
-        // no recursive, we bail because of existing subpages
+        // no recursive, no redirect, ok even with subpages
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, true);
+        assert!(result.is_ok());
+
+        // no recursive, with redirect, not ok with subpages
+        let result = do_remove(
+            "Web/API/ExampleOne",
+            Locale::EnUs,
+            false,
+            Some("Web/API/RedirectTarget"),
+            true,
+        );
         assert!(result.is_err());
         assert!(matches!(result, Err(ToolError::HasSubpagesError(_))));
 
@@ -260,7 +347,103 @@ mod test {
     fn test_nonexisting() {
         // This does not exist
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, true);
-        assert!(matches!(result, Err(ToolError::DocError(_))));
         assert!(result.is_err());
+        assert!(matches!(result, Err(ToolError::DocError(_))));
+    }
+
+    #[test]
+    fn test_remove_single() {
+        let slugs = vec!["Web/API/ExampleOne".to_string()];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+
+        let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
+        assert!(result.is_ok());
+
+        let should_exist = vec![];
+        let should_not_exist = vec!["en-us/web/api/exampleone/index.md"];
+        let root_path = root_for_locale(Locale::EnUs).unwrap();
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let wiki_history = test_get_wiki_history(Locale::EnUs);
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
+    }
+
+    #[test]
+    fn test_remove_single_with_redirect() {
+        let slugs = vec![
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/RedirectTarget".to_string(),
+        ];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+
+        let result = do_remove(
+            "Web/API/ExampleOne",
+            Locale::EnUs,
+            false,
+            Some("Web/API/RedirectTarget"),
+            false,
+        );
+        assert!(result.is_ok());
+
+        let should_exist = vec!["en-us/web/api/redirecttarget/index.md"];
+        let should_not_exist = vec!["en-us/web/api/exampleone/index.md"];
+        let root_path = root_for_locale(Locale::EnUs).unwrap();
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let wiki_history = test_get_wiki_history(Locale::EnUs);
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
+        assert!(wiki_history.contains_key("Web/API/RedirectTarget"));
+    }
+
+    #[test]
+    fn test_remove_single_with_subpages() {
+        let slugs = vec![
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleOne/Subpage".to_string(),
+            "Web/API/RedirectTarget".to_string(),
+        ];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+
+        let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
+        assert!(result.is_ok());
+
+        let should_exist = vec!["en-us/web/api/exampleone/subpage/index.md"];
+        let should_not_exist = vec!["en-us/web/api/exampleone/index.md"];
+        let root_path = root_for_locale(Locale::EnUs).unwrap();
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let wiki_history = test_get_wiki_history(Locale::EnUs);
+        // println!("{:?}", wiki_history);
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
+        // assert!(wiki_history.contains_key("Web/API/ExampleOne/Subpage"));
+        assert!(wiki_history.contains_key("Web/API/RedirectTarget"));
+    }
+
+    #[test]
+    fn test_remove_recursive() {
+        let slugs = vec![
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleOne/Subpage".to_string(),
+        ];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+
+        let result = do_remove("Web/API/ExampleOne", Locale::EnUs, true, None, false);
+        assert!(result.is_ok());
+
+        let should_exist = vec![];
+        let should_not_exist = vec![
+            "en-us/web/api/exampleone/index.md",
+            "en-us/web/api/exampleone/subpage/index.md",
+        ];
+        let root_path = root_for_locale(Locale::EnUs).unwrap();
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let wiki_history = test_get_wiki_history(Locale::EnUs);
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne/Subpage"));
     }
 }
