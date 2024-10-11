@@ -25,7 +25,7 @@ fn modification_times(//path: &Path,
     let repo_root_raw = String::from_utf8_lossy(&output.stdout);
     let repo_root = repo_root_raw.trim();
 
-    exec_git(
+    let output = exec_git(
         &[
             "log",
             "--name-only",
