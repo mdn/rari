@@ -66,6 +66,7 @@ enum ContentSubcommand {
     /// Moves content from one slug to another
     Move(MoveArgs),
     Delete(DeleteArgs),
+    AddRedirect(AddRedirectArgs),
 }
 
 #[derive(Args)]
@@ -87,6 +88,12 @@ struct DeleteArgs {
     redirect: Option<String>,
     #[arg(short = 'y', long, help = "Assume yes to all prompts")]
     assume_yes: bool,
+}
+
+#[derive(Args)]
+struct AddRedirectArgs {
+    from_url: String,
+    to_url: String,
 }
 
 #[derive(Args)]
@@ -356,6 +363,9 @@ fn main() -> Result<(), Error> {
                     args.redirect.as_deref(),
                     args.assume_yes,
                 )?;
+            }
+            ContentSubcommand::AddRedirect(_args) => {
+                todo!()
             }
         },
         Commands::Update(args) => update(args.version)?,

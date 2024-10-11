@@ -10,6 +10,8 @@ use thiserror::Error;
 pub enum ToolError {
     #[error("Invalid slug: {0}")]
     InvalidSlug(Cow<'static, str>),
+    #[error("Invalid url: {0}")]
+    InvalidUrl(Cow<'static, str>),
     #[error("Git error: {0}")]
     GitError(String),
 

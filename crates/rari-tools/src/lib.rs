@@ -1,3 +1,4 @@
+pub mod add_redirect;
 pub mod error;
 pub mod git;
 pub mod history;
