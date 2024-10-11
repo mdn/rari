@@ -138,8 +138,7 @@ fn do_remove(
     redirect: Option<&str>,
     dry_run: bool,
 ) -> Result<Vec<String>, ToolError> {
-    let url = build_url(slug, locale, PageCategory::Doc)?;
-    let doc = page::Page::from_url(&url)?;
+    let doc = Doc::page_from_slug(slug, locale)?;
     let real_slug = doc.slug();
 
     // If we get a redirect value passed in, it is either a slug or a complete url.
@@ -160,7 +159,7 @@ fn do_remove(
         None
     };
 
-    let subpages = get_sub_pages(&url, None, Default::default())?;
+    let subpages = get_sub_pages(doc.url(), None, Default::default())?;
     if !recursive && !subpages.is_empty() && redirect.is_some() {
         return Err(ToolError::HasSubpagesError(Cow::Owned(format!(
             "{0}, unable to remove and redirect a document with children",
