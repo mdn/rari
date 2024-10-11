@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
-use std::process::Command;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -18,6 +17,7 @@ use rari_doc::{
 use rari_types::locale::Locale;
 
 use crate::error::ToolError;
+use crate::git::exec_git_with_test_fallback;
 use crate::redirects::add_redirects;
 use crate::utils::parent_slug;
 use crate::wikihistory::update_wiki_history;
@@ -170,25 +170,15 @@ fn do_move(
         ));
     }
 
-    // Conditional command for testing. In testing, we do not use git, because the test
-    // fixtures are not under git control. Instead of `git mv …` we use `mv …`.
-    let command = if cfg!(test) { "mv" } else { "git" };
-    let args = if cfg!(test) {
-        vec![old_folder_path.as_os_str(), new_folder_path.as_os_str()]
-    } else {
-        vec![
+    // Execute the git move.
+    let output = exec_git_with_test_fallback(
+        &[
             OsStr::new("mv"),
             old_folder_path.as_os_str(),
             new_folder_path.as_os_str(),
-        ]
-    };
-
-    // Execute the git move.
-    let output = Command::new(command)
-        .args(args)
-        .current_dir(root_for_locale(locale)?)
-        .output()
-        .expect("failed to execute process");
+        ],
+        root_for_locale(locale)?,
+    );
 
     if !output.status.success() {
         return Err(ToolError::GitError(format!(

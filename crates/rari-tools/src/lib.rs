@@ -1,4 +1,5 @@
 pub mod error;
+pub mod git;
 pub mod history;
 pub mod r#move;
 pub mod popularities;

@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::process::Command;
 use std::str::FromStr;
 
 use console::Style;
@@ -13,12 +12,13 @@ use rari_doc::helpers::subpages::get_sub_pages;
 use rari_doc::pages::page::{self, PageCategory, PageLike};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
-use rari_doc::resolve::{build_url, url_meta_from, UrlMeta};
+use rari_doc::resolve::build_url;
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{once, IntoParallelIterator, ParallelIterator};
 
 use crate::error::ToolError;
+use crate::git::exec_git_with_test_fallback;
 use crate::redirects::add_redirects;
 use crate::wikihistory::delete_from_wiki_history;
 
@@ -169,13 +169,12 @@ fn do_remove(
     }
 
     let slugs_to_remove = if recursive {
-        [doc.clone()]
-            .iter()
+        once(&doc)
             .chain(&subpages)
-            .map(|page_ref| page_ref.slug().to_owned())
+            .map(|page_ref| page_ref.slug().to_string())
             .collect::<Vec<_>>()
     } else {
-        vec![real_slug.to_owned()]
+        vec![real_slug.to_string()]
     };
 
     if dry_run {
@@ -188,25 +187,21 @@ fn do_remove(
 
     // Conditional command for testing. In testing, we do not use git, because the test
     // fixtures are not under git control. Instead of `git rm …` we use `rm …`.
-    let mut path = PathBuf::from(locale.as_folder_str());
-    let url = build_url(real_slug, locale, PageCategory::Doc)?;
-    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
-    path.push(folder_path);
+    let path = doc.path();
 
-    let command = if cfg!(test) { "rm" } else { "git" };
     if recursive {
-        let args = if cfg!(test) {
-            vec![OsStr::new("-rf"), path.as_os_str()]
-        } else {
-            vec![OsStr::new("rm"), OsStr::new("-rf"), path.as_os_str()]
-        };
+        let parent = path
+            .parent()
+            .ok_or(ToolError::InvalidSlug(Cow::Owned(format!(
+                "{slug} ({}) has no parent directory",
+                path.display()
+            ))))?;
 
         // Execute the recursive remove command
-        let output = Command::new(command)
-            .args(args)
-            .current_dir(root_for_locale(locale)?)
-            .output()
-            .expect("failed to execute process");
+        let output = exec_git_with_test_fallback(
+            &[OsStr::new("rm"), OsStr::new("-rf"), parent.as_os_str()],
+            root_for_locale(locale)?,
+        );
 
         if !output.status.success() {
             return Err(ToolError::GitError(format!(
@@ -215,19 +210,11 @@ fn do_remove(
             )));
         }
     } else {
-        path.push("index.md");
-        let args = if cfg!(test) {
-            vec![path.as_os_str()]
-        } else {
-            vec![OsStr::new("rm"), &path.as_os_str()]
-        };
-
         // Execute the single file remove command
-        let output = Command::new(command)
-            .args(args)
-            .current_dir(root_for_locale(locale)?)
-            .output()
-            .expect("failed to execute process");
+        let output = exec_git_with_test_fallback(
+            &[OsStr::new("rm"), path.as_os_str()],
+            root_for_locale(locale)?,
+        );
 
         if !output.status.success() {
             return Err(ToolError::GitError(format!(
