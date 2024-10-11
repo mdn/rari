@@ -69,6 +69,8 @@ pub enum PageType {
     JavascriptStaticMethod,
     MathmlAttribute,
     MathmlElement,
+    MdnCommunityGuide,
+    MdnWritingGuide,
     SvgAttribute,
     SvgElement,
     WebApiOverview,

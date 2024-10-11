@@ -1,6 +1,7 @@
+use rari_md::{m2h_internal, M2HOptions};
+
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike};
-use crate::pages::types::doc::render_md_to_html;
 use crate::templ::render::render_for_summary;
 
 /// There's a few places were we still tansplant content.
@@ -14,7 +15,13 @@ pub fn get_hacky_summary_md(page: &Page) -> Result<String, DocError> {
                 || line.starts_with("##"))
         })
         .map(|line| {
-            render_for_summary(line).and_then(|md| render_md_to_html(md.trim(), page.locale()))
+            render_for_summary(line).and_then(|md| {
+                Ok(m2h_internal(
+                    md.trim(),
+                    page.locale(),
+                    M2HOptions { sourcepos: false },
+                )?)
+            })
         })
         .unwrap_or_else(|| Ok(String::from("No summray found.")))
 }

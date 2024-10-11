@@ -27,13 +27,31 @@ where
     }
 }
 
+pub struct M2HOptions {
+    pub sourcepos: bool,
+}
+
+impl Default for M2HOptions {
+    fn default() -> Self {
+        Self { sourcepos: true }
+    }
+}
+
 /// rari's custom markdown parser. This implements the MDN markdown extensions.
 /// See [MDN Markdown](https://developer.mozilla.org/en-US/docs/MDN/Writing_guidelines/Howto/Markdown_in_MDN)
 pub fn m2h(input: &str, locale: Locale) -> Result<String, MarkdownError> {
+    m2h_internal(input, locale, Default::default())
+}
+
+pub fn m2h_internal(
+    input: &str,
+    locale: Locale,
+    m2h_options: M2HOptions,
+) -> Result<String, MarkdownError> {
     let arena = Arena::new();
     let mut options = ComrakOptions::default();
     options.extension.tagfilter = false;
-    options.render.sourcepos = true;
+    options.render.sourcepos = m2h_options.sourcepos;
     options.render.experimental_inline_sourcepos = true;
     options.render.unsafe_ = true;
     options.extension.table = true;
