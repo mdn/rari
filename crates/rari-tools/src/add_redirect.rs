@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
-use rari_doc::pages::page;
 use rari_doc::resolve::{url_meta_from, UrlMeta};
+use rari_types::locale::Locale;
 
 use crate::error::ToolError;
 use crate::redirects::add_redirects;
@@ -24,15 +24,12 @@ fn do_add_redirect(from_url: &str, to_url: &str) -> Result<(), ToolError> {
             )));
         }
 
-        if !page::Page::exists(to_url) {
-            return Err(ToolError::InvalidRedirectToURL(format!(
-                "redirect url does not exist: {to_url}"
-            )));
-        }
         let UrlMeta {
             locale: to_locale, ..
         } = url_meta_from(to_url)?;
-        if from_locale != to_locale {
+
+        // Enforce that the locales match or the target is in the default Locale
+        if from_locale != to_locale && to_locale != Locale::EnUs {
             return Err(ToolError::InvalidRedirectToURL(format!(
                 "redirect url locales do not match: {from_locale} != {to_locale}"
             )));
@@ -82,21 +79,74 @@ mod test {
     fn test_add_redirect() {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(
+            &vec![(
+                "docs/Web/API/Something".to_string(),
+                "docs/Web/API/SomethingElse".to_string(),
+            )],
+            Locale::EnUs,
+        );
 
         let result = do_add_redirect(
             "/en-US/docs/Web/API/ExampleGone",
             "/en-US/docs/Web/API/ExampleOne",
         );
-        println!("{:?}", result);
         assert!(result.is_ok());
 
         let redirects = get_redirects_map(Locale::EnUs);
-        assert_eq!(redirects.len(), 1);
+        assert_eq!(redirects.len(), 2);
         assert!(redirects.contains_key("/en-US/docs/Web/API/ExampleGone"));
         assert_eq!(
             redirects.get("/en-US/docs/Web/API/ExampleGone").unwrap(),
             "/en-US/docs/Web/API/ExampleOne"
+        );
+    }
+
+    #[test]
+    fn test_add_redirect_differing_locales() {
+        let slugs = vec!["Web/API/ExampleOne".to_string()];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _docs_pt = DocFixtures::new(&slugs, Locale::PtBr);
+        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects_pt = RedirectFixtures::new(&vec![], Locale::PtBr);
+
+        // Locales do not match
+        let result = do_add_redirect(
+            "/en-US/docs/Web/API/ExampleGone",
+            "/pt-BR/docs/Web/API/ExampleOne",
+        );
+        assert!(result.is_err());
+        assert!(matches!(result, Err(ToolError::InvalidRedirectToURL(_))));
+
+        // Target is en-US, even if locales differ
+        let result = do_add_redirect(
+            "/pt-BR/docs/Web/API/ExampleGone",
+            "/en-US/docs/Web/API/ExampleOne",
+        );
+        assert!(result.is_ok());
+
+        let redirects = get_redirects_map(Locale::PtBr);
+        assert!(redirects.contains_key("/pt-BR/docs/Web/API/ExampleGone"));
+        assert_eq!(
+            redirects.get("/pt-BR/docs/Web/API/ExampleGone").unwrap(),
+            "/en-US/docs/Web/API/ExampleOne"
+        );
+    }
+
+    #[test]
+    fn test_add_redirect_external() {
+        let slugs = vec!["Web/API/ExampleOne".to_string()];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+
+        let result = do_add_redirect("/en-US/docs/Web/API/ExampleGone", "https://example.com/");
+        assert!(result.is_ok());
+
+        let redirects = get_redirects_map(Locale::EnUs);
+        assert!(redirects.contains_key("/en-US/docs/Web/API/ExampleGone"));
+        assert_eq!(
+            redirects.get("/en-US/docs/Web/API/ExampleGone").unwrap(),
+            "https://example.com/"
         );
     }
 }
