@@ -90,7 +90,10 @@ mod test {
 
     #[test]
     fn test_add_redirect() {
-        let slugs = vec!["Web/API/ExampleOne".to_string()];
+        let slugs = vec![
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/SomethingElse".to_string(),
+        ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(
             &vec![(
@@ -113,6 +116,19 @@ mod test {
             redirects.get("/en-US/docs/Web/API/ExampleGone").unwrap(),
             "/en-US/docs/Web/API/ExampleOne"
         );
+    }
+
+    #[test]
+    fn test_add_redirect_missing_target() {
+        let slugs = vec!["Web/API/ExampleOne".to_string()];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+
+        let result = do_add_redirect(
+            "/en-US/docs/Web/API/ExampleGone",
+            "/en-US/docs/Web/API/ExampleMissing",
+        );
+        assert!(result.is_err());
     }
 
     #[test]

@@ -237,7 +237,7 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
 
     let clean_pairs: HashMap<String, String> = short_cuts(&clean_pairs)?.into_iter().collect();
 
-    validate_pairs(&clean_pairs, &locale)?;
+    validate_pairs(&clean_pairs, locale)?;
 
     // Write the updated map back to the redirects file
     write_redirects(&path, &clean_pairs)?;
@@ -258,7 +258,7 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
 ///
 /// * `Ok(())` if all pairs are valid.
 /// * `Err(ToolError)` if any pair is invalid.
-fn validate_pairs(pairs: &HashMap<String, String>, locale: &Locale) -> Result<(), ToolError> {
+fn validate_pairs(pairs: &HashMap<String, String>, locale: Locale) -> Result<(), ToolError> {
     for (from, to) in pairs {
         validate_from_url(from, locale)?;
         validate_to_url(to, locale)?;
@@ -284,7 +284,7 @@ fn validate_pairs(pairs: &HashMap<String, String>, locale: &Locale) -> Result<()
 ///
 /// * `Ok(())` if the URL is valid.
 /// * `Err(ToolError)` if the URL is invalid.
-fn validate_from_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
+fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
     let url = url.to_lowercase();
     if !url.starts_with('/') {
         return Err(ToolError::InvalidRedirectFromURL(format!(
@@ -347,7 +347,7 @@ fn validate_from_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
 ///
 /// * `Ok(())` if the URL is valid.
 /// * `Err(ToolError)` if the URL is invalid.
-fn validate_to_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
+fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
     if is_vanity_redirect_url(url) {
         return Ok(());
     }
@@ -364,31 +364,25 @@ fn validate_to_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
         }
     } else if url.starts_with('/') {
         // Internal URL, perform validations
-
         check_url_invalid_symbols(url)?;
-        validate_url_locale(url)?;
 
         // Split by '#', take the bare URL
         let bare_url = url.split('#').next().unwrap_or("");
 
-        let parts: Vec<&str> = bare_url.split('/').collect();
-        if parts.len() < 2 {
-            return Err(ToolError::InvalidRedirectToURL(format!(
-                "To-URL '{}' does not have enough parts for locale validation.",
-                url
-            )));
-        }
+        let UrlMeta {
+            folder_path: path,
+            locale: to_locale,
+            ..
+        } = url_meta_from(bare_url)?;
 
-        let to_locale = parts[1];
-        if to_locale != locale.as_url_str().to_lowercase() {
-            // Different locale, no need to check path
+        // TODO: Revisit this logic, why is a different locale (usecase: redirecting from
+        // translated content into en-US) a free pass on checking if the target document exists?
+        if to_locale != locale {
+            // Different locale, no need to check path?
             return Ok(());
         }
 
-        let UrlMeta {
-            folder_path: path, ..
-        } = url_meta_from(url)?;
-        let path = root_for_locale(*locale)?
+        let path = root_for_locale(locale)?
             .join(locale.as_folder_str())
             .join(path);
         if !path.exists() {
@@ -408,25 +402,25 @@ fn validate_to_url(url: &str, locale: &Locale) -> Result<(), ToolError> {
     Ok(())
 }
 
-fn validate_url_locale(url: &str) -> Result<(), ToolError> {
-    let parts: Vec<&str> = url.split('/').collect();
-    if parts.len() < 3 {
-        return Err(ToolError::InvalidRedirectToURL(format!(
-            "To-URL '{}' does not have enough parts for locale validation.",
-            url
-        )));
-    }
+// fn validate_url_locale(url: &str) -> Result<(), ToolError> {
+//     let parts: Vec<&str> = url.split('/').collect();
+//     if parts.len() < 3 {
+//         return Err(ToolError::InvalidRedirectToURL(format!(
+//             "To-URL '{}' does not have enough parts for locale validation.",
+//             url
+//         )));
+//     }
 
-    let to_locale = parts[1];
-    if Locale::from_str(to_locale).is_err() {
-        return Err(ToolError::InvalidRedirectToURL(format!(
-            "Locale prefix '{}' in To-URL '{}' is not valid.",
-            to_locale, url
-        )));
-    }
+//     let to_locale = parts[1];
+//     if Locale::from_str(to_locale).is_err() {
+//         return Err(ToolError::InvalidRedirectToURL(format!(
+//             "Locale prefix '{}' in To-URL '{}' is not valid.",
+//             to_locale, url
+//         )));
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 fn is_vanity_redirect_url(url: &str) -> bool {
     url.strip_prefix('/')
@@ -649,8 +643,12 @@ where
 }
 
 #[cfg(test)]
+use serial_test::file_serial;
+#[cfg(test)]
+#[file_serial(file_fixtures)]
 mod tests {
     use super::*;
+    use crate::tests::fixtures::docs::DocFixtures;
 
     fn s(s: &str) -> String {
         s.to_string()
@@ -850,10 +848,61 @@ mod tests {
     }
 
     #[test]
+    fn test_validate_to_url_happy_path() {
+        let slugs = vec!["A".to_string()];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let url = "/en-US/docs/A";
+        let locale = Locale::EnUs;
+        let result = validate_to_url(url, locale);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_to_url_non_existing_doc() {
+        let slugs = vec!["A".to_string()];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let url = "/en-US/docs/B";
+        let locale = Locale::EnUs;
+        let result = validate_to_url(url, locale);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_to_url_no_enough_parts() {
+        let slugs = vec!["A".to_string()];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let url = "/";
+        let locale = Locale::EnUs;
+        let result = validate_to_url(url, locale);
+        assert!(result.is_err());
+
+        let url = "/en-US/A";
+        let locale = Locale::EnUs;
+        let result = validate_to_url(url, locale);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_to_url_invalid_symbols() {
+        let url = "/en-US/docs/\nA";
+        let locale = Locale::EnUs;
+        let result = validate_to_url(url, locale);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_to_url_diff_locale() {
+        let url = "/en-US/docs/A";
+        let locale = Locale::PtBr;
+        let result = validate_to_url(url, locale);
+        assert!(result.is_ok());
+    }
+
+    #[test]
     fn test_validate_from_url_happy_path() {
         let url = "/en-US/docs/A";
         let locale = Locale::EnUs;
-        let result = validate_from_url(url, &locale);
+        let result = validate_from_url(url, locale);
         assert!(result.is_ok());
     }
 
@@ -861,7 +910,7 @@ mod tests {
     fn test_validate_from_url_url_does_not_start_with_slash() {
         let url = "en-US/docs/A";
         let locale = Locale::EnUs;
-        let result = validate_from_url(url, &locale);
+        let result = validate_from_url(url, locale);
         assert!(result.is_err());
     }
 
@@ -869,7 +918,7 @@ mod tests {
     fn test_validate_from_url_url_has_insufficient_parts() {
         let url = "/en-US/docs";
         let locale = Locale::EnUs;
-        let result = validate_from_url(url, &locale);
+        let result = validate_from_url(url, locale);
         assert!(result.is_err());
     }
 
@@ -877,7 +926,7 @@ mod tests {
     fn test_validate_from_url_locale_mismatch() {
         let url = "/pt-BR/docs/A";
         let locale = Locale::EnUs;
-        let result = validate_from_url(url, &locale);
+        let result = validate_from_url(url, locale);
         assert!(result.is_err());
     }
 
@@ -885,7 +934,7 @@ mod tests {
     fn test_validate_from_url_missing_docs_segment() {
         let url = "/en-US/A";
         let locale = Locale::EnUs;
-        let result = validate_from_url(url, &locale);
+        let result = validate_from_url(url, locale);
         assert!(result.is_err());
     }
 
@@ -893,7 +942,7 @@ mod tests {
     fn test_validate_from_url_invalid_locale_prefix() {
         let url = "/hu/docs/A";
         let locale = Locale::EnUs;
-        let result = validate_from_url(url, &locale);
+        let result = validate_from_url(url, locale);
         assert!(result.is_err());
     }
 
@@ -901,7 +950,7 @@ mod tests {
     fn test_validate_from_url_forbidden_symbol() {
         let url = "/en-US/docs/\nA";
         let locale = Locale::EnUs;
-        let result = validate_from_url(url, &locale);
+        let result = validate_from_url(url, locale);
         assert!(result.is_err());
     }
 
