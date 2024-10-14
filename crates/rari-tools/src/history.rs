@@ -9,6 +9,7 @@ use rari_types::globals::{content_root, content_translated_root};
 use rari_types::HistoryEntry;
 
 use crate::error::ToolError;
+use crate::git::exec_git;
 
 pub fn gather_history() -> Result<(), ToolError> {
     let hanlde = content_translated_root().map(|translated_root| {
@@ -33,8 +34,8 @@ fn modification_times(path: &Path) -> Result<(), ToolError> {
     let repo_root_raw = String::from_utf8_lossy(&output.stdout);
     let repo_root = repo_root_raw.trim();
 
-    let output = Command::new("git")
-        .args([
+    let output = exec_git(
+        &[
             "log",
             "--name-only",
             "--no-decorate",
@@ -42,10 +43,9 @@ fn modification_times(path: &Path) -> Result<(), ToolError> {
             "--date-order",
             "--reverse",
             "-z",
-        ])
-        .current_dir(repo_root)
-        .output()
-        .expect("failed to execute process");
+        ],
+        repo_root,
+    );
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     let mut history = BTreeMap::new();

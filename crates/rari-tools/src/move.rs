@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
-use std::process::Command;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -18,7 +17,9 @@ use rari_doc::{
 use rari_types::locale::Locale;
 
 use crate::error::ToolError;
+use crate::git::exec_git_with_test_fallback;
 use crate::redirects::add_redirects;
+use crate::utils::parent_slug;
 use crate::wikihistory::update_wiki_history;
 
 pub fn r#move(
@@ -169,25 +170,15 @@ fn do_move(
         ));
     }
 
-    // Conditional command for testing. In testing, we do not use git, because the test
-    // fixtures are no under git control. SO instead of `git mv …` we use `mv …`.
-    let command = if cfg!(test) { "mv" } else { "git" };
-    let args = if cfg!(test) {
-        vec![old_folder_path.as_os_str(), new_folder_path.as_os_str()]
-    } else {
-        vec![
+    // Execute the git move.
+    let output = exec_git_with_test_fallback(
+        &[
             OsStr::new("mv"),
             old_folder_path.as_os_str(),
             new_folder_path.as_os_str(),
-        ]
-    };
-
-    // Execute the git move.
-    let output = Command::new(command)
-        .args(args)
-        .current_dir(root_for_locale(locale)?)
-        .output()
-        .expect("failed to execute process");
+        ],
+        root_for_locale(locale)?,
+    );
 
     if !output.status.success() {
         return Err(ToolError::GitError(format!(
@@ -214,15 +205,6 @@ fn do_move(
     Ok(pairs)
 }
 
-fn parent_slug(slug: &str) -> Result<&str, ToolError> {
-    let slug = slug.trim_end_matches('/');
-    if let Some(i) = slug.rfind('/') {
-        Ok(&slug[..i])
-    } else {
-        Err(ToolError::InvalidSlug(Cow::Borrowed("slug has no parent")))
-    }
-}
-
 fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
     if old_slug.is_empty() {
         return Err(ToolError::InvalidSlug(Cow::Borrowed(
@@ -247,27 +229,22 @@ fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
     Ok(())
 }
 
-#[cfg(test)]
-use serial_test::file_serial;
-
 // These tests use file system fixtures to simulate content and translated content.
 // The file system is a shared resource, so we force tests to be run serially,
 // to avoid concurrent fixture management issues.
 // Using `file_serial` as a synchonization lock, we should be able to run all tests
-// using the same `key` to be serialized across modules.
-
+// using the same `key` (here: file_fixtures) to be serialized across modules.
+#[cfg(test)]
+use serial_test::file_serial;
 #[cfg(test)]
 #[file_serial(file_fixtures)]
 mod test {
 
-    use std::collections::HashMap;
-    use std::path::Path;
-
     use super::*;
-    use crate::redirects;
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
+    use crate::utils::test_utils::{check_file_existence, get_redirects_map};
 
     fn s(s: &str) -> String {
         s.to_string()
@@ -413,13 +390,7 @@ mod test {
         check_file_existence(root_path, &should_exist, &should_not_exist);
 
         // check redirects
-        let mut redirects_path = PathBuf::from(root_path);
-        redirects_path.push(Locale::EnUs.as_folder_str());
-        redirects_path.push("_redirects.txt");
-        assert!(&redirects_path.exists());
-        let mut redirects = HashMap::new();
-        redirects::read_redirects_raw(&redirects_path, &mut redirects).unwrap();
-        // println!("{:?}", redirects);
+        let redirects = get_redirects_map(Locale::EnUs);
         assert_eq!(
             redirects.get("/en-US/docs/Web/API/ExampleOne").unwrap(),
             "/en-US/docs/Web/API/ExampleOneNewLocation"
@@ -529,13 +500,7 @@ mod test {
         check_file_existence(root_path, &should_exist, &should_not_exist);
 
         // check redirects
-        let mut redirects_path = PathBuf::from(root_path);
-        redirects_path.push(Locale::PtBr.as_folder_str());
-        redirects_path.push("_redirects.txt");
-        assert!(&redirects_path.exists());
-        let mut redirects = HashMap::new();
-        redirects::read_redirects_raw(&redirects_path, &mut redirects).unwrap();
-        // println!("{:?}", redirects);
+        let redirects = get_redirects_map(Locale::PtBr);
         assert_eq!(
             redirects.get("/pt-BR/docs/Web/API/ExampleOne").unwrap(),
             "/pt-BR/docs/Web/API/ExampleOneNewLocation"
@@ -564,25 +529,5 @@ mod test {
             redirects.get("/pt-BR/docs/Web/API/Something").unwrap(),
             "/pt-BR/docs/Web/API/SomethingElse"
         );
-    }
-
-    fn check_file_existence(root: &Path, should_exist: &[&str], should_not_exist: &[&str]) {
-        for relative_path in should_exist {
-            let parts = relative_path.split('/').collect::<Vec<&str>>();
-            let mut path = PathBuf::from(root);
-            for part in parts {
-                path.push(part);
-            }
-            assert!(path.exists(), "{} should exist", path.display());
-        }
-
-        for relative_path in should_not_exist {
-            let parts = relative_path.split('/').collect::<Vec<&str>>();
-            let mut path = PathBuf::from(root);
-            for part in parts {
-                path.push(part);
-            }
-            assert!(!path.exists(), "{} should not exist", path.display());
-        }
     }
 }
