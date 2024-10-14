@@ -277,29 +277,21 @@ pub fn post_process_html<T: PageLike>(
             el.after("</div>", ContentType::Html);
             Ok(())
         }),
-        element!("div.notecard.callout > p:first-child", |el| {
-            el.prepend(
-                &concat_strs!(
-                    "<strong>",
-                    NoteCard::Callout.prefix_for_locale(page.locale()),
-                    "</strong>"
-                ),
-                ContentType::Html,
-            );
-            Ok(())
-        }),
-        element!("div.notecard.warning > p:first-child", |el| {
-            el.prepend(
-                &concat_strs!(
-                    "<strong>",
-                    NoteCard::Warning.prefix_for_locale(page.locale()),
-                    "</strong>"
-                ),
-                ContentType::Html,
-            );
-            Ok(())
-        }),
-        element!("div.notecard.note > p:first-child", |el| {
+        element!(
+            "div.notecard.warning[data-add-warning] > p:first-child",
+            |el| {
+                el.prepend(
+                    &concat_strs!(
+                        "<strong>",
+                        NoteCard::Warning.prefix_for_locale(page.locale()),
+                        "</strong>"
+                    ),
+                    ContentType::Html,
+                );
+                Ok(())
+            }
+        ),
+        element!("div.notecard.note[data-add-note] > p:first-child", |el| {
             el.prepend(
                 &concat_strs!(
                     "<strong>",
@@ -328,6 +320,14 @@ pub fn post_process_html<T: PageLike>(
         }),
         element!("*[data-sourcepos]", |el| {
             el.remove_attribute("data-sourcepos");
+            Ok(())
+        }),
+        element!("*[data-add-note]", |el| {
+            el.remove_attribute("data-add-note");
+            Ok(())
+        }),
+        element!("*[data-add-warning]", |el| {
+            el.remove_attribute("data-add-warning");
             Ok(())
         }),
     ];

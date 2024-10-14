@@ -526,13 +526,15 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                             return Ok((false, Flag::Card));
                         }
                         Some(NoteCard::Note) => {
-                            self.output.write_all(b"<div class=\"notecard note\"")?;
+                            self.output
+                                .write_all(b"<div class=\"notecard note\" data-add-note")?;
                             self.render_sourcepos(node)?;
                             self.output.write_all(b">\n")?;
                             return Ok((false, Flag::Card));
                         }
                         Some(NoteCard::Warning) => {
-                            self.output.write_all(b"<div class=\"notecard warning\"")?;
+                            self.output
+                                .write_all(b"<div class=\"notecard warning\" data-add-warning")?;
                             self.render_sourcepos(node)?;
                             self.output.write_all(b">\n")?;
                             return Ok((false, Flag::Card));

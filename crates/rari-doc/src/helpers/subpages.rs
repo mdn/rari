@@ -8,6 +8,7 @@ use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::{cache_content, deny_warnings};
 use rari_types::locale::Locale;
 
+use super::l10n::l10n_json_data;
 use super::titles::api_page_title;
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
@@ -95,6 +96,14 @@ pub fn add_inline_badges(out: &mut String, page: &Page, locale: Locale) -> Resul
     Ok(())
 }
 
+pub fn write_parent_li(out: &mut String, page: &Page, locale: Locale) -> Result<(), DocError> {
+    let title = l10n_json_data("Template", "overview", locale)?;
+    write!(out, "<li><a href=\"{}\">{}</a>", page.url(), title)?;
+    add_inline_badges(out, page, locale)?;
+    write!(out, "</li>")?;
+    Ok(())
+}
+
 pub fn list_sub_pages_reverse_internal(
     out: &mut String,
     url: &str,
@@ -120,10 +129,14 @@ pub fn list_sub_pages_internal(
     depth: Option<usize>,
     sorter: Option<SubPagesSorter>,
     page_types: &[PageType],
+    include_parent: bool,
 ) -> Result<(), DocError> {
     let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
-
     let depth = depth.map(|i| i.saturating_sub(1));
+    if include_parent {
+        let page = Page::from_url_with_other_locale_and_fallback(url, Some(locale))?;
+        write_parent_li(out, &page, locale)?;
+    }
     for sub_page in sub_pages {
         if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
             continue;
@@ -134,7 +147,16 @@ pub fn list_sub_pages_internal(
         } else {
             write_li_with_badges(out, &sub_page, locale, false)?;
             out.push_str("<ol>");
-            list_sub_pages_internal(out, sub_page.url(), locale, depth, sorter, page_types)?;
+
+            list_sub_pages_internal(
+                out,
+                sub_page.url(),
+                locale,
+                depth,
+                sorter,
+                page_types,
+                include_parent,
+            )?;
             out.push_str("</ol>");
             out.push_str("</li>");
         }
@@ -148,6 +170,7 @@ pub fn list_sub_pages_grouped_internal(
     locale: Locale,
     sorter: Option<SubPagesSorter>,
     page_types: &[PageType],
+    include_parent: bool,
 ) -> Result<(), DocError> {
     let sub_pages = get_sub_pages(url, None, sorter.unwrap_or_default())?;
 
@@ -170,6 +193,10 @@ pub fn list_sub_pages_grouped_internal(
         } else {
             grouped.insert(sub_page.title(), vec![sub_page]);
         }
+    }
+    if include_parent {
+        let page = Page::from_url_with_other_locale_and_fallback(url, Some(locale))?;
+        write_parent_li(out, &page, locale)?;
     }
     for (prefix, group) in grouped {
         let keep_group = group.len() > 2;

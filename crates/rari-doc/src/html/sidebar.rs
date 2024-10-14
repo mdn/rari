@@ -224,6 +224,8 @@ pub struct SubPageEntry {
     pub tags: Vec<PageType>,
     #[serde(default)]
     pub details: Details,
+    #[serde(default)]
+    pub include_parent: bool,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -248,8 +250,8 @@ pub enum SidebarEntry {
 #[derive(Debug, Default)]
 pub enum MetaChildren {
     Children(Vec<SidebarMetaEntry>),
-    ListSubPages(String, Vec<PageType>),
-    ListSubPagesGrouped(String, Vec<PageType>),
+    ListSubPages(String, Vec<PageType>, bool),
+    ListSubPagesGrouped(String, Vec<PageType>, bool),
     WebExtApi,
     #[default]
     None,
@@ -327,12 +329,13 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 link,
                 title,
                 path,
+                include_parent,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
                 code: false,
                 content: SidebarMetaEntryContent::Link { link, title },
-                children: MetaChildren::ListSubPages(path, tags),
+                children: MetaChildren::ListSubPages(path, tags, include_parent),
             },
             SidebarEntry::ListSubPagesGrouped(SubPageEntry {
                 details,
@@ -340,12 +343,13 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 link,
                 title,
                 path,
+                include_parent,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
                 code: false,
                 content: SidebarMetaEntryContent::Link { link, title },
-                children: MetaChildren::ListSubPagesGrouped(path, tags),
+                children: MetaChildren::ListSubPagesGrouped(path, tags, include_parent),
             },
             SidebarEntry::Default(BasicEntry {
                 link,
@@ -457,11 +461,24 @@ impl SidebarMetaEntry {
                     child.render(out, locale, slug, l10n)?;
                 }
             }
-            MetaChildren::ListSubPages(url, page_types) => {
-                list_sub_pages_internal(out, url, locale, Some(1), None, page_types)?
-            }
-            MetaChildren::ListSubPagesGrouped(url, page_types) => {
-                list_sub_pages_grouped_internal(out, url, locale, None, page_types)?
+            MetaChildren::ListSubPages(url, page_types, include_parent) => list_sub_pages_internal(
+                out,
+                url,
+                locale,
+                Some(1),
+                None,
+                page_types,
+                *include_parent,
+            )?,
+            MetaChildren::ListSubPagesGrouped(url, page_types, include_parent) => {
+                list_sub_pages_grouped_internal(
+                    out,
+                    url,
+                    locale,
+                    None,
+                    page_types,
+                    *include_parent,
+                )?
             }
             MetaChildren::WebExtApi => {
                 let children = &helpers::webextapi::children(

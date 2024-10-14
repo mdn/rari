@@ -80,6 +80,7 @@ reqwest = { version = "0.12", default-features = false, features = [
     "gzip",
 ] }
 indoc = "2"
+base64 = "0.22"
 
 
 [dependencies]

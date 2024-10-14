@@ -135,8 +135,10 @@ mod test {
 
     #[test]
     fn li_p() -> Result<(), anyhow::Error> {
+        let out = m2h("- foo\n- bar\n", Locale::EnUs)?;
+        assert_eq!(out, "<ul data-sourcepos=\"1:1-2:5\">\n<li data-sourcepos=\"1:1-1:5\">foo</li>\n<li data-sourcepos=\"2:1-2:5\">bar</li>\n</ul>\n");
         let out = m2h("- foo\n\n- bar\n", Locale::EnUs)?;
-        assert_eq!(out, "<ul data-sourcepos=\"1:1-3:5\">\n<li data-sourcepos=\"1:1-2:0\">foo</li>\n<li data-sourcepos=\"3:1-3:5\">bar</li>\n</ul>\n");
+        assert_eq!(out, "<ul data-sourcepos=\"1:1-3:5\">\n<li data-sourcepos=\"1:1-2:0\">\n<p data-sourcepos=\"1:3-1:5\">foo</p>\n</li>\n<li data-sourcepos=\"3:1-3:5\">\n<p data-sourcepos=\"3:3-3:5\">bar</p>\n</li>\n</ul>\n");
         Ok(())
     }
 
@@ -162,7 +164,7 @@ mod test {
         let out = m2h("> **Note:** foobar", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<div class=\"notecard note\" data-sourcepos=\"1:1-1:18\">\n<p data-sourcepos=\"1:3-1:18\"> foobar</p>\n</div>\n"
+            "<div class=\"notecard note\" data-add-note data-sourcepos=\"1:1-1:18\">\n<p data-sourcepos=\"1:3-1:18\"> foobar</p>\n</div>\n"
         );
         Ok(())
     }

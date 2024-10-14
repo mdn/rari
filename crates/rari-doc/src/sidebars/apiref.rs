@@ -166,7 +166,7 @@ fn build_interface_list(entries: &mut Vec<SidebarMetaEntry>, interfaces: &[&str]
                     .map(|interface| SidebarMetaEntry {
                         code: true,
                         content: SidebarMetaEntryContent::Link {
-                            title: None,
+                            title: Some(interface.to_string()),
                             link: Some(format!(
                                 "/Web/API/{}",
                                 interface.replace("()", "").replace('.', "/")

@@ -42,6 +42,7 @@ pub fn list_sub_pages(
             Some(depth),
             Some(SubPagesSorter::SlugNatural),
             &[],
+            false,
         )?;
     }
     out.push_str(if ordered { "</ol>" } else { "</ul>" });
@@ -74,6 +75,7 @@ pub fn list_sub_pages_grouped(
             })
             .as_deref()
             .unwrap_or_default(),
+        false,
     )?;
     out.push_str("</ol></details>");
     Ok(out)

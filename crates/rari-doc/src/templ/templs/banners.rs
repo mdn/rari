@@ -37,7 +37,7 @@ pub fn available_in_workers(typ: Option<String>) -> Result<String, DocError> {
     .unwrap_or(l10n_json_data("Template", default_typ, env.locale)?);
 
     Ok(concat_strs!(
-        r#"<div class="notecard note"><p> "#,
+        r#"<div class="notecard note" data-add-note><p> "#,
         copy,
         "</p></div>"
     ))

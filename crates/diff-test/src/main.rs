@@ -1,14 +1,15 @@
 use std::cmp::max;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock, RwLock};
 
 use anyhow::{anyhow, Error};
+use base64::prelude::{Engine as _, BASE64_STANDARD_NO_PAD};
 use clap::{Args, Parser, Subcommand};
 use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
@@ -18,6 +19,7 @@ use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use xml::fmt_html;
 
 mod xml;
@@ -147,6 +149,8 @@ struct BuildArgs {
     value: bool,
     #[arg(short, long)]
     verbose: bool,
+    #[arg(long)]
+    sidebars: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -175,7 +179,7 @@ const IGNORE: &[&str] = &[
     "doc.popularity",
     "doc.source.github_url",
     "doc.source.last_commit_url",
-    "doc.sidebarHTML",
+    //"doc.sidebarHTML",
     "doc.sidebarMacro",
     "doc.hasMathML",
     "doc.other_translations",
@@ -187,12 +191,16 @@ static WS_DIFF: LazyLock<Regex> =
 static DATA_FLAW_SRC: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#" data-flaw-src="[^"]+""#).unwrap());
 
+static DIFF_MAP: LazyLock<Arc<RwLock<HashMap<String, String>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
+
 fn full_diff(
     lhs: &Value,
     rhs: &Value,
     path: &[PathIndex],
     diff: &mut BTreeMap<String, String>,
     fast: bool,
+    sidebars: bool,
 ) {
     if path.len() == 1 {
         if let PathIndex::Object(s) = &path[0] {
@@ -203,7 +211,7 @@ fn full_diff(
     }
     if lhs != rhs {
         let key = make_key(path);
-        if IGNORE.iter().any(|i| key.starts_with(i)) {
+        if IGNORE.iter().any(|i| key.starts_with(i)) || key == "doc.sidebarHTML" && !sidebars {
             return;
         }
         match (lhs, rhs) {
@@ -218,6 +226,7 @@ fn full_diff(
                         &path,
                         diff,
                         fast,
+                        sidebars,
                     );
                 }
             }
@@ -233,6 +242,7 @@ fn full_diff(
                         &path,
                         diff,
                         fast,
+                        sidebars,
                     );
                 }
             }
@@ -259,6 +269,15 @@ fn full_diff(
                     rhs = fmt_html(&html_minifier::minify(rhs_t).unwrap());
                 }
                 if lhs != rhs {
+                    let mut diff_hash = Sha256::new();
+                    diff_hash.write_all(lhs.as_bytes()).unwrap();
+                    diff_hash.write_all(rhs.as_bytes()).unwrap();
+                    let diff_hash = BASE64_STANDARD_NO_PAD.encode(&diff_hash.finalize()[..]);
+                    if let Some(hash) = (*DIFF_MAP.read().unwrap()).get(&diff_hash) {
+                        diff.insert(key, format!("See {hash}"));
+                        return;
+                    }
+                    (*DIFF_MAP.write().unwrap()).insert(diff_hash, "somewhere else".into());
                     diff.insert(
                         key,
                         ansi_to_html::convert(&if fast {
@@ -309,7 +328,7 @@ fn main() -> Result<(), anyhow::Error> {
                         let left = v;
                         let right = b.get(k).unwrap_or(&Value::Null);
                         let mut diff = BTreeMap::new();
-                        full_diff(left, right, &[], &mut diff, arg.fast);
+                        full_diff(left, right, &[], &mut diff, arg.fast, arg.sidebars);
                         if !diff.is_empty() {
                             return Some(format!(
                                 r#"<li><span>{k}</span><div class="r"><pre><code>{}</code></pre></div></li>"#,

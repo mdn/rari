@@ -799,6 +799,7 @@ version = "0.0.12"
 dependencies = [
  "ansi-to-html",
  "anyhow",
+ "base64",
  "clap",
  "html-minifier",
  "ignore",
@@ -810,6 +811,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "sha2",
  "similar",
 ]
 
