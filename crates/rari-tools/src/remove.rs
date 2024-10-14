@@ -227,13 +227,13 @@ fn do_remove(
     delete_from_wiki_history(locale, &slugs_to_remove)?;
 
     // update the redirects map if needed
-    if let Some(new_slug) = redirect_target {
+    if let Some(new_target) = redirect_target {
         let pairs = slugs_to_remove
             .iter()
             .map(|slug| {
                 let old_url = build_url(slug, locale, PageCategory::Doc)?;
                 // let new_url = build_url(&new_slug, locale, PageCategory::Doc)?;
-                Ok((old_url, new_slug.to_owned()))
+                Ok((old_url, new_target.to_owned()))
             })
             .collect::<Result<Vec<_>, ToolError>>()?;
         add_redirects(locale, &pairs)?;

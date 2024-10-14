@@ -1,21 +1,30 @@
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread::spawn;
 
-use rari_types::globals::content_root;
+use rari_types::globals::{content_root, content_translated_root};
 use rari_types::HistoryEntry;
 
+use crate::error::ToolError;
 use crate::git::exec_git;
 
-pub fn gather_history() -> BTreeMap<PathBuf, HistoryEntry> {
-    modification_times()
+pub fn gather_history() -> Result<(), ToolError> {
+    let hanlde = content_translated_root().map(|translated_root| {
+        spawn(|| {
+            modification_times(translated_root).unwrap();
+        })
+    });
+    modification_times(content_root())?;
+    if let Some(handle) = hanlde {
+        handle.join().expect("Unable to join history thread.");
+    }
+    Ok(())
 }
 
-fn modification_times(//path: &Path,
-) -> BTreeMap<PathBuf, HistoryEntry> {
-    let path = content_root();
+fn modification_times(path: &Path) -> Result<(), ToolError> {
     let output = Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .current_dir(path)
@@ -83,10 +92,10 @@ fn modification_times(//path: &Path,
         })
         .collect::<BTreeMap<PathBuf, HistoryEntry>>();
 
-    let out_file = path.join("en-US").join("_history.json");
+    let out_file = path.join("_git_history.json");
     let file = File::create(out_file).unwrap();
     let buffed = BufWriter::new(file);
 
     serde_json::to_writer_pretty(buffed, &history).unwrap();
-    history
+    Ok(())
 }
