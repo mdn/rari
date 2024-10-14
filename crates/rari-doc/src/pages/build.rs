@@ -248,7 +248,6 @@ fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
         },
         history.map(|entry| entry.hash.as_str()).unwrap_or_default()
     );
-
     let popularity = popularities().popularities.get(doc.url()).cloned();
     let other_translations = get_translations_for(doc.slug(), doc.locale())
         .into_iter()
