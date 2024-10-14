@@ -18,6 +18,7 @@ use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
+use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
@@ -364,8 +365,8 @@ fn main() -> Result<(), Error> {
                     args.assume_yes,
                 )?;
             }
-            ContentSubcommand::AddRedirect(_args) => {
-                todo!()
+            ContentSubcommand::AddRedirect(args) => {
+                add_redirect(&args.from_url, &args.to_url)?;
             }
         },
         Commands::Update(args) => update(args.version)?,

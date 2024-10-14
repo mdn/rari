@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use console::Style;
 use rari_doc::resolve::{url_meta_from, UrlMeta};
 use rari_types::locale::Locale;
 
@@ -7,8 +8,20 @@ use crate::error::ToolError;
 use crate::redirects::add_redirects;
 
 pub fn add_redirect(from_url: &str, to_url: &str) -> Result<(), ToolError> {
-    do_add_redirect(from_url, to_url)
-    // console output
+    do_add_redirect(from_url, to_url)?;
+
+    let green = Style::new().green();
+    let bold = Style::new().bold();
+
+    println!(
+        "{} {} {} {}",
+        green.apply_to("Saved"),
+        bold.apply_to(from_url),
+        green.apply_to("→"),
+        bold.apply_to(to_url),
+    );
+
+    Ok(())
 }
 
 fn do_add_redirect(from_url: &str, to_url: &str) -> Result<(), ToolError> {
