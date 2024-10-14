@@ -330,7 +330,7 @@ fn main() -> Result<(), Error> {
         Commands::GitHistory => {
             println!("Gathering history 📜");
             let start = std::time::Instant::now();
-            gather_history();
+            gather_history()?;
             println!("Took: {:?}", start.elapsed());
         }
         Commands::Popularities => {

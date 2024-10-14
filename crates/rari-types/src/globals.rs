@@ -135,19 +135,30 @@ pub fn json_svg_data_lookup() -> &'static JsonSVGDataLookup {
 }
 
 pub static GIT_HISTORY: LazyLock<HashMap<PathBuf, HistoryEntry>> = LazyLock::new(|| {
-    let f = content_root().join("en-US").join("_history.json");
-    if let Ok(json_str) = fs::read_to_string(f) {
+    let f = content_root().join("_git_history.json");
+    let mut map = if let Ok(json_str) = fs::read_to_string(f) {
         serde_json::from_str(&json_str).expect("unable to parse l10n json")
     } else {
         HashMap::new()
+    };
+    if let Some(translated_root) = content_translated_root() {
+        let f = translated_root.join("_git_history.json");
+        if let Ok(json_str) = fs::read_to_string(f) {
+            let translated: HashMap<PathBuf, HistoryEntry> =
+                serde_json::from_str(&json_str).expect("unable to parse l10n json");
+            map.extend(translated);
+        };
     }
+    map
 });
 pub fn git_history() -> &'static HashMap<PathBuf, HistoryEntry> {
     &GIT_HISTORY
 }
 
 pub static POPULARITIES: LazyLock<Popularities> = LazyLock::new(|| {
-    let f = content_root().join("en-US").join("popularities.json");
+    let f = content_root()
+        .join(Locale::EnUs.as_folder_str())
+        .join("popularities.json");
     if let Ok(json_str) = fs::read_to_string(f) {
         serde_json::from_str(&json_str).expect("unable to parse l10n json")
     } else {
