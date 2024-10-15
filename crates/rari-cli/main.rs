@@ -18,6 +18,7 @@ use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
+use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
@@ -66,6 +67,7 @@ enum ContentSubcommand {
     /// Moves content from one slug to another
     Move(MoveArgs),
     Delete(DeleteArgs),
+    AddRedirect(AddRedirectArgs),
 }
 
 #[derive(Args)]
@@ -87,6 +89,12 @@ struct DeleteArgs {
     redirect: Option<String>,
     #[arg(short = 'y', long, help = "Assume yes to all prompts")]
     assume_yes: bool,
+}
+
+#[derive(Args)]
+struct AddRedirectArgs {
+    from_url: String,
+    to_url: String,
 }
 
 #[derive(Args)]
@@ -356,6 +364,9 @@ fn main() -> Result<(), Error> {
                     args.redirect.as_deref(),
                     args.assume_yes,
                 )?;
+            }
+            ContentSubcommand::AddRedirect(args) => {
+                add_redirect(&args.from_url, &args.to_url)?;
             }
         },
         Commands::Update(args) => update(args.version)?,

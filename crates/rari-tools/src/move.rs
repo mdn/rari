@@ -318,6 +318,7 @@ mod test {
             "Web/API/ExampleOne".to_string(),
             "Web/API/ExampleOne/SubExampleOne".to_string(),
             "Web/API/ExampleOne/SubExampleTwo".to_string(),
+            "Web/API/SomethingElse".to_string(),
         ];
         let redirects = vec![
             (
@@ -353,7 +354,7 @@ mod test {
             Locale::EnUs,
             false,
         );
-
+        println!("result: {:?}", result);
         assert!(result.is_ok());
         let result = result.unwrap();
         assert!(result.len() == 3);
@@ -428,6 +429,7 @@ mod test {
             "Web/API/ExampleOne".to_string(),
             "Web/API/ExampleOne/SubExampleOne".to_string(),
             "Web/API/ExampleOne/SubExampleTwo".to_string(),
+            "Web/API/SomethingElse".to_string(),
         ];
         let redirects = vec![
             (
@@ -463,7 +465,6 @@ mod test {
             Locale::PtBr,
             false,
         );
-
         assert!(result.is_ok());
         let result = result.unwrap();
         assert!(result.len() == 3);
