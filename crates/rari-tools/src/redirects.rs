@@ -375,15 +375,8 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
             ..
         } = url_meta_from(bare_url)?;
 
-        // TODO: Revisit this logic, why is a different locale (usecase: redirecting from
-        // translated content into en-US) a free pass on checking if the target document exists?
-        if to_locale != locale {
-            // Different locale, no need to check path?
-            return Ok(());
-        }
-
-        let path = root_for_locale(locale)?
-            .join(locale.as_folder_str())
+        let path = root_for_locale(to_locale)?
+            .join(to_locale.as_folder_str())
             .join(path);
         if !path.exists() {
             return Err(ToolError::InvalidRedirectToURL(format!(
@@ -401,26 +394,6 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 
     Ok(())
 }
-
-// fn validate_url_locale(url: &str) -> Result<(), ToolError> {
-//     let parts: Vec<&str> = url.split('/').collect();
-//     if parts.len() < 3 {
-//         return Err(ToolError::InvalidRedirectToURL(format!(
-//             "To-URL '{}' does not have enough parts for locale validation.",
-//             url
-//         )));
-//     }
-
-//     let to_locale = parts[1];
-//     if Locale::from_str(to_locale).is_err() {
-//         return Err(ToolError::InvalidRedirectToURL(format!(
-//             "Locale prefix '{}' in To-URL '{}' is not valid.",
-//             to_locale, url
-//         )));
-//     }
-
-//     Ok(())
-// }
 
 fn is_vanity_redirect_url(url: &str) -> bool {
     url.strip_prefix('/')
@@ -892,9 +865,12 @@ mod tests {
 
     #[test]
     fn test_validate_to_url_diff_locale() {
+        let slugs = vec!["A".to_string()];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/A";
         let locale = Locale::PtBr;
         let result = validate_to_url(url, locale);
+        println!("{:?}", result);
         assert!(result.is_ok());
     }
 
