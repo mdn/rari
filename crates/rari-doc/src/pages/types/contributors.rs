@@ -181,7 +181,7 @@ impl PageLike for ContributorSpotlight {
     }
 
     fn locale(&self) -> Locale {
-        Locale::EnUs
+        self.meta.locale
     }
 
     fn content(&self) -> &str {

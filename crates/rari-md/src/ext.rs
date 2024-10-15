@@ -3,5 +3,5 @@ pub(crate) enum Flag {
     None,
 }
 
-pub static DELIM_START: &str = ";!::::";
-pub static DELIM_END: &str = ";!::::";
+pub static DELIM_START: &str = "⟬";
+pub static DELIM_END: &str = "⟭";

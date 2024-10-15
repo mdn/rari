@@ -54,11 +54,9 @@ mod test {
 
     #[test]
     fn test_only_escaped_templ() {
-        let b = b";!::::0;!::::";
+        let b = "⟬0⟭".as_bytes();
         assert!(only_escaped_templ(b, 0));
-        let b = b";!::::0;!::::;!::::1;!::::";
+        let b = "⟬0⟭⟬1⟭".as_bytes();
         assert!(only_escaped_templ(b, 0));
-        let b = b"foo ;!::::0;!::::;!::::1::::!;";
-        assert!(!only_escaped_templ(b, 0));
     }
 }

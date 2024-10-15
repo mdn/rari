@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use thiserror::Error;
 
-use crate::globals::settings;
+use crate::globals::{content_translated_root, settings};
 
 #[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord)]
 pub enum Native {
@@ -138,7 +138,11 @@ impl Locale {
     }
 
     pub fn for_generic_and_spas() -> &'static [Self] {
-        &LOCALES_FOR_GENERICS_AND_SPAS
+        if content_translated_root().is_none() {
+            [Locale::EnUs].as_slice()
+        } else {
+            &LOCALES_FOR_GENERICS_AND_SPAS
+        }
     }
 }
 
