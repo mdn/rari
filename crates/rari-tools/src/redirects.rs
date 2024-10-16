@@ -261,7 +261,7 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
 fn validate_pairs(pairs: &HashMap<String, String>, locale: Locale) -> Result<(), ToolError> {
     for (from, to) in pairs {
         validate_from_url(from, locale)?;
-        validate_to_url(to, locale)?;
+        validate_to_url(to)?;
     }
     Ok(())
 }
@@ -341,13 +341,12 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 /// # Arguments
 ///
 /// * `url` - The 'to' URL to validate.
-/// * `locale` - The expected `Locale`.
 ///
 /// # Returns
 ///
 /// * `Ok(())` if the URL is valid.
 /// * `Err(ToolError)` if the URL is invalid.
-fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
+fn validate_to_url(url: &str) -> Result<(), ToolError> {
     if is_vanity_redirect_url(url) {
         return Ok(());
     }
@@ -826,7 +825,7 @@ mod tests {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/A";
         let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_ok());
     }
 
@@ -836,7 +835,7 @@ mod tests {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/B";
         let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_err());
     }
 
@@ -846,12 +845,12 @@ mod tests {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/";
         let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_err());
 
         let url = "/en-US/A";
         let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_err());
     }
 
@@ -859,7 +858,7 @@ mod tests {
     fn test_validate_to_url_invalid_symbols() {
         let url = "/en-US/docs/\nA";
         let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_err());
     }
 
@@ -869,7 +868,7 @@ mod tests {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/A";
         let locale = Locale::PtBr;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         println!("{:?}", result);
         assert!(result.is_ok());
     }
