@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
@@ -23,7 +24,9 @@ use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
 use rari_tools::remove::remove;
+use rari_tools::sync_translated_content::sync_translated_content;
 use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
+use rari_types::locale::Locale;
 use rari_types::settings::Settings;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
@@ -68,6 +71,7 @@ enum ContentSubcommand {
     Move(MoveArgs),
     Delete(DeleteArgs),
     AddRedirect(AddRedirectArgs),
+    SyncTranslatedContent(SyncTranslatedContentArgs),
 }
 
 #[derive(Args)]
@@ -95,6 +99,11 @@ struct DeleteArgs {
 struct AddRedirectArgs {
     from_url: String,
     to_url: String,
+}
+
+#[derive(Args)]
+struct SyncTranslatedContentArgs {
+    locales: Option<Vec<String>>,
 }
 
 #[derive(Args)]
@@ -367,6 +376,17 @@ fn main() -> Result<(), Error> {
             }
             ContentSubcommand::AddRedirect(args) => {
                 add_redirect(&args.from_url, &args.to_url)?;
+            }
+            ContentSubcommand::SyncTranslatedContent(args) => {
+                let locales: Vec<rari_types::locale::Locale> = if let Some(locales) = args.locales {
+                    locales
+                        .iter()
+                        .filter_map(|l| Locale::from_str(l).ok())
+                        .collect()
+                } else {
+                    Locale::translated().to_owned()
+                };
+                sync_translated_content(&locales, false)?;
             }
         },
         Commands::Update(args) => update(args.version)?,

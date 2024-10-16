@@ -12,6 +12,8 @@ pub enum ToolError {
     InvalidSlug(Cow<'static, str>),
     #[error("Invalid url: {0}")]
     InvalidUrl(Cow<'static, str>),
+    #[error("Invalid locale: {0}")]
+    InvalidLocale(Cow<'static, str>),
     #[error("Git error: {0}")]
     GitError(String),
 

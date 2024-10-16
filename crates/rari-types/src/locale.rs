@@ -112,6 +112,24 @@ static LOCALES_FOR_GENERICS_AND_SPAS: LazyLock<Vec<Locale>> = LazyLock::new(|| {
         .collect::<Vec<_>>()
 });
 
+static TRANSLATED_LOCALES: LazyLock<Vec<Locale>> = LazyLock::new(|| {
+    let translated_locales = [
+        Locale::Es,
+        Locale::Fr,
+        Locale::Ja,
+        Locale::Ko,
+        Locale::PtBr,
+        Locale::Ru,
+        Locale::ZhCn,
+        Locale::ZhTw,
+    ];
+    translated_locales
+        .iter()
+        .chain(settings().additional_locales_for_generics_and_spas.iter())
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>()
+});
+
 impl Locale {
     pub const fn as_url_str(&self) -> &str {
         match *self {
@@ -139,6 +157,10 @@ impl Locale {
 
     pub fn for_generic_and_spas() -> &'static [Self] {
         &LOCALES_FOR_GENERICS_AND_SPAS
+    }
+
+    pub fn translated() -> &'static [Self] {
+        &TRANSLATED_LOCALES
     }
 }
 
