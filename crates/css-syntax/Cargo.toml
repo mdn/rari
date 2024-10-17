@@ -13,7 +13,6 @@ serde_json.workspace = true
 serde.workspace = true
 url.workspace = true
 html-escape.workspace = true
-rari-deps.workspace = true
 rari-types = { workspace = true, optional = true }
 
 css-syntax-types = { path = "../css-syntax-types" }
@@ -21,6 +20,9 @@ css-definition-syntax = { path = "../css-definition-syntax" }
 
 [build-dependencies]
 anyhow = "1"
+
+[dev-dependencies]
+rari-deps.workspace = true
 
 [features]
 default = []

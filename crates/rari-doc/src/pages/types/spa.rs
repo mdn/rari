@@ -307,18 +307,6 @@ static BASIC_SPAS: Map<&'static str, BuildSPA> = phf_map!(
         data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
         ..DEFAULT_BASIC_SPA
     },
-    "observatory/docs/tests_and_scoring" => BuildSPA {
-        slug: "observatory/docs/tests_and_scoring",
-        page_title: concat!("Tests & Scoring - ", OBSERVATORY_TITLE_FULL),
-        page_description: OBSERVATORY_DESCRIPTION,
-        ..DEFAULT_BASIC_SPA
-    },
-    "observatory/docs/faq" => BuildSPA {
-        slug: "observatory/docs/faq",
-        page_title: concat!("FAQ - ", OBSERVATORY_TITLE_FULL),
-        page_description: OBSERVATORY_DESCRIPTION,
-        ..DEFAULT_BASIC_SPA
-    },
     "search" => BuildSPA {
         slug: "search",
         page_title: "Search",
@@ -361,11 +349,6 @@ static BASIC_SPAS: Map<&'static str, BuildSPA> = phf_map!(
     "about" => BuildSPA {
         slug: "about",
         page_title: "About MDN",
-        ..DEFAULT_BASIC_SPA
-    },
-    "community" => BuildSPA {
-        slug: "community",
-        page_title: "Contribute to MDN",
         ..DEFAULT_BASIC_SPA
     },
     "advertising" => BuildSPA {

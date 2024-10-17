@@ -49,7 +49,6 @@ pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, UrlError> {
         ["community", tail] if locale == Default::default() && tail.starts_with("spotlight") => {
             (PageCategory::ContributorSpotlight, *tail)
         }
-        ["community", ..] => return Err(UrlError::InvalidUrl),
         _ => {
             let (_, slug) = strip_locale_from_url(url);
             let slug = slug.strip_prefix('/').unwrap_or(slug);

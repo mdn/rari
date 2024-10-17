@@ -824,7 +824,6 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/A";
-        let locale = Locale::EnUs;
         let result = validate_to_url(url);
         assert!(result.is_ok());
     }
@@ -834,7 +833,6 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/B";
-        let locale = Locale::EnUs;
         let result = validate_to_url(url);
         assert!(result.is_err());
     }
@@ -844,12 +842,10 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/";
-        let locale = Locale::EnUs;
         let result = validate_to_url(url);
         assert!(result.is_err());
 
         let url = "/en-US/A";
-        let locale = Locale::EnUs;
         let result = validate_to_url(url);
         assert!(result.is_err());
     }
@@ -857,7 +853,6 @@ mod tests {
     #[test]
     fn test_validate_to_url_invalid_symbols() {
         let url = "/en-US/docs/\nA";
-        let locale = Locale::EnUs;
         let result = validate_to_url(url);
         assert!(result.is_err());
     }
@@ -867,7 +862,6 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/A";
-        let locale = Locale::PtBr;
         let result = validate_to_url(url);
         println!("{:?}", result);
         assert!(result.is_ok());
