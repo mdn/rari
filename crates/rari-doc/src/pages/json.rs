@@ -296,6 +296,7 @@ pub struct JsonBasicSPA {
     pub page_description: Option<&'static str>,
     pub only_follow: bool,
     pub no_indexing: bool,
+    pub page_not_found: bool,
     pub url: String,
 }
 
