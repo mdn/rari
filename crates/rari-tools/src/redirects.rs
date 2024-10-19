@@ -375,6 +375,13 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
             ..
         } = url_meta_from(bare_url)?;
 
+        if to_locale != locale {
+            return Err(ToolError::InvalidRedirectToURL(format!(
+                "To-URL '{}' has locale '{}' which does not match expected locale '{}'.",
+                url, to_locale, locale
+            )));
+        }
+
         let path = root_for_locale(to_locale)?
             .join(to_locale.as_folder_str())
             .join(path);

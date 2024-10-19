@@ -386,7 +386,7 @@ fn main() -> Result<(), Error> {
                 } else {
                     Locale::translated().to_owned()
                 };
-                sync_translated_content(&locales, false)?;
+                sync_translated_content(&locales, cli.verbose.is_present())?;
             }
         },
         Commands::Update(args) => update(args.version)?,

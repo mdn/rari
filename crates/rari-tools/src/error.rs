@@ -14,6 +14,8 @@ pub enum ToolError {
     InvalidUrl(Cow<'static, str>),
     #[error("Invalid locale: {0}")]
     InvalidLocale(Cow<'static, str>),
+    #[error("Orphaned doc exists: {0}")]
+    OrphanedDocExists(Cow<'static, str>),
     #[error("Git error: {0}")]
     GitError(String),
 

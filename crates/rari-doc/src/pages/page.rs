@@ -49,6 +49,7 @@ impl Page {
         url: &str,
         locale: Option<Locale>,
     ) -> Result<Self, DocError> {
+        let url = &url[..url.find('#').unwrap_or(url.len())];
         let UrlMeta {
             folder_path,
             slug,
