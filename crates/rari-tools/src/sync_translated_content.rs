@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use std::ffi::OsStr;
 
 use console::Style;
 use md5::Digest;
@@ -7,7 +8,7 @@ use rari_doc::cached_readers::{
     doc_page_from_slug, doc_page_from_static_files, read_and_cache_doc_pages,
     STATIC_DOC_PAGE_FILES, STATIC_DOC_PAGE_TRANSLATED_FILES,
 };
-use rari_doc::pages::page::{Page, PageCategory, PageLike};
+use rari_doc::pages::page::{Page, PageCategory, PageLike, PageWriter};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::redirects::resolve_redirect;
 use rari_doc::resolve::build_url;
@@ -16,17 +17,14 @@ use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
 use crate::error::ToolError;
+use crate::git::exec_git_with_test_fallback;
 
 pub fn sync_translated_content(locales: &[Locale], verbose: bool) -> Result<(), ToolError> {
     validate_locales(locales)?;
 
     let green = Style::new().green();
-    // let white = Style::new().white();
-    // let red = Style::new().red();
-    // let yellow = Style::new().yellow();
     let dim = Style::new().dim();
     let bold = Style::new().bold();
-    // let default = Style::new();
 
     if verbose {
         println!(
@@ -114,7 +112,7 @@ pub fn sync_translated_content(locales: &[Locale], verbose: bool) -> Result<(), 
         println!(
             "  {}",
             green.apply_to(format!(
-                "Fixed {} redirected document.",
+                "Fixed {} redirected documents.",
                 result.redirected_docs
             ))
         );
@@ -162,9 +160,13 @@ struct SyncTranslatedDocumentStatus {
 
 fn sync_translated_document(
     doc: &Doc,
-    _verbose: bool,
+    verbose: bool,
 ) -> Result<SyncTranslatedDocumentStatus, ToolError> {
     let mut status = SyncTranslatedDocumentStatus::default();
+
+    let dim = Style::new().dim();
+    let yellow = Style::new().yellow();
+    let blue = Style::new().blue().bright();
 
     // let debug = if doc.slug() == "Web/API/Document_object_model/How_to_create_a_DOM_tree" {
     //     println!("HIT THE THING slug: {}", doc.slug());
@@ -183,7 +185,6 @@ fn sync_translated_document(
     status.moved = status.renamed && doc.slug().to_lowercase() != resolved_slug.to_lowercase();
 
     if status.moved {
-        // println!("moved: {} → {}", doc.slug(), resolved_slug);
         status.followed = true;
     }
 
@@ -203,12 +204,16 @@ fn sync_translated_document(
     // }
 
     if status.orphaned {
-        println!("orphaned: {}", doc.path().to_string_lossy());
+        if verbose {
+            println!(
+                "{}",
+                yellow.apply_to(format!("orphaned: {}", doc.path().to_string_lossy()))
+            );
+        }
         status.followed = false;
         status.moved = true;
-        let orphaned_slug = concat_strs!("orphaned/", &resolved_slug);
-        let orphaned_doc = doc_page_from_slug(&orphaned_slug, doc.locale());
-        // USE THIS: doc_page_from_static_files(path: &PathBuf, locale: Locale) -> Option<Result<Page, DocError>
+        resolved_slug = concat_strs!("orphaned/", &resolved_slug).into();
+        let orphaned_doc = doc_page_from_slug(&resolved_slug, doc.locale());
         if let Some(Ok(_)) = orphaned_doc {
             return Err(ToolError::OrphanedDocExists(Cow::Owned(format!(
                 "{} → {}",
@@ -217,54 +222,98 @@ fn sync_translated_document(
             ))));
         }
     } else if status.moved && md_or_html_exists(&resolved_slug, doc.locale())? {
-        println!(
-            "unrooting {} (conflicting translation)",
-            doc.path().to_string_lossy()
-        );
+        if verbose {
+            println!(
+                "{}",
+                dim.apply_to(format!(
+                    "unrooting {} (conflicting translation)",
+                    doc.path().to_string_lossy()
+                ))
+            );
+        }
         if let Some(Ok(_)) = resolved_doc {
             // set the slug to a /conflicting /... slug. if that already
             // exists (possibly from a previous move on this run),
             // append a md5 hash of the original slug to the slug
             // also set original_slug in metadata
-            let mut conflicting_slug = concat_strs!("conflicting/", &resolved_slug);
-            if md_or_html_exists(&conflicting_slug, doc.locale())? {
+            resolved_slug = concat_strs!("conflicting/", &resolved_slug).into();
+            if md_or_html_exists(&resolved_slug, doc.locale())? {
                 let mut hasher = md5::Md5::new();
                 hasher.update(doc.slug());
                 let digest = format!("{:x}", hasher.finalize());
-                println!("digest: {}", digest);
-
-                conflicting_slug = concat_strs!("conflicting/", &resolved_slug, "-", &digest);
+                // println!("digest: {}", digest);
+                resolved_slug = concat_strs!(&resolved_slug, "-", &digest).into();
             }
 
             status.conflicting = true;
-
-            status.redirect = Some((
-                build_url(doc.slug(), doc.locale(), PageCategory::Doc)?,
-                build_url(&conflicting_slug, doc.locale(), PageCategory::Doc)?,
-            ));
         } else {
             return Err(ToolError::Unknown("Conflicting docs not found"));
         }
-
-        // if debug {
-        //     println!(
-        //         "HERE: {} → {} {:#?} {}",
-        //         doc.slug(),
-        //         resolved_slug,
-        //         doc_page_from_slug(&resolved_slug, doc.locale()),
-        //         md_or_html_exists(&resolved_slug, doc.locale())?
-        //     );
-        // }
-
-        // if let Some(Ok(conflicting_doc)) = doc_page_from_slug(&resolved_slug, doc.locale()) {
-        //     println!(
-        //         "unrooting {} (conflicting translation)",
-        //         conflicting_doc.path().to_string_lossy()
-        //     );
-        // }
-        // move the document to the conflicting folder
     }
+
+    status.redirect = Some((
+        build_url(doc.slug(), doc.locale(), PageCategory::Doc)?,
+        build_url(&resolved_slug, doc.locale(), PageCategory::Doc)?,
+    ));
+    if verbose {
+        println!(
+            "{}",
+            blue.apply_to(format!("redirecting {} → {}", doc.slug(), resolved_slug))
+        );
+    }
+
+    // update wiki history doc.slug to resolved_slug
+
+    if status.moved {
+        move_doc(doc, &resolved_slug)?;
+        // move the doc to the new location
+        // set the original slug in metadata of moved doc
+    }
+
     Ok(status)
+}
+
+fn move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
+    let source_path = doc.path();
+    let target_directory = root_for_locale(doc.locale())?
+        .join(doc.locale().as_folder_str())
+        .join(target_slug.to_lowercase());
+    std::fs::create_dir_all(&target_directory)?;
+
+    // Write the new slug, store the old slug in `original_slug` metadata
+    let mut new_doc = doc.clone();
+    new_doc.meta.slug = target_slug.to_owned();
+    new_doc.meta.original_slug = Some(doc.slug().to_owned());
+    new_doc.write()?;
+
+    // Move the file with git
+    let output = exec_git_with_test_fallback(
+        &[
+            OsStr::new("mv"),
+            source_path.as_os_str(),
+            target_directory.as_os_str(),
+        ],
+        root_for_locale(doc.locale())?,
+    );
+
+    if !output.status.success() {
+        return Err(ToolError::GitError(format!(
+            "Failed to move files: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+
+    // If the source directory is empty, remove it with the fs api.
+    let source_directory = doc.full_path().parent().unwrap();
+    if source_directory
+        .read_dir()
+        .map(|mut dir| dir.next().is_none())
+        .unwrap_or(false)
+    {
+        std::fs::remove_dir(source_directory)?;
+    }
+
+    Ok(())
 }
 
 fn md_or_html_exists(slug: &str, locale: Locale) -> Result<bool, ToolError> {
