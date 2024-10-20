@@ -2,15 +2,21 @@ use axum::extract::Request;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{Json, Router};
+use rari_doc::error::DocError;
 use rari_doc::pages::json::BuiltDocy;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use tracing::{error, span, Level};
 
-async fn get_json(req: Request) -> Result<Json<BuiltDocy>, AppError> {
+async fn get_json_handler(req: Request) -> Result<Json<BuiltDocy>, AppError> {
     let url = req.uri().path();
+    let json = get_json(url)?;
+    Ok(Json(json))
+}
+
+fn get_json(url: &str) -> Result<BuiltDocy, DocError> {
     let span = span!(Level::ERROR, "url", "{}", url);
     let _enter1 = span.enter();
-    let url = url.strip_suffix("index.json").unwrap_or(url);
+    let url = url.strip_suffix("/index.json").unwrap_or(url);
     let page = Page::from_url(url)?;
 
     let slug = &page.slug();
@@ -19,7 +25,7 @@ async fn get_json(req: Request) -> Result<Json<BuiltDocy>, AppError> {
     let _enter2 = span.enter();
     let json = page.build()?;
     tracing::info!("{url}");
-    Ok(Json(json))
+    Ok(json)
 }
 
 struct AppError(anyhow::Error);
@@ -44,7 +50,7 @@ pub fn serve() -> Result<(), anyhow::Error> {
         .build()
         .unwrap()
         .block_on(async {
-            let app = Router::new().fallback(get_json);
+            let app = Router::new().fallback(get_json_handler);
 
             let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();
             axum::serve(listener, app).await.unwrap();

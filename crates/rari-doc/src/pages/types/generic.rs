@@ -72,6 +72,8 @@ impl PageReader for GenericPage {
         let without_root: &Path = path.strip_prefix(root)?;
         let (slug_prefix, title_suffix, root) = if without_root.starts_with("plus/") {
             (Some("plus/docs"), "MDN Plus", root.join("plus"))
+        } else if without_root.starts_with("community/") || without_root == Path::new("community") {
+            (None, "Contribute to MDN", root.join("community"))
         } else if without_root.starts_with("observatory/") {
             (
                 Some("observatory/docs"),

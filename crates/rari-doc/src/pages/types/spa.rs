@@ -33,6 +33,7 @@ pub struct BasicSPA {
 pub enum SPAData {
     BlogIndex,
     HomePage,
+    NotFound,
     BasicSPA(BasicSPA),
 }
 
@@ -138,6 +139,16 @@ impl SPA {
                 page_description: self.page_description,
                 only_follow: basic_spa.only_follow,
                 no_indexing: basic_spa.no_indexing,
+                page_not_found: false,
+                url: concat_strs!(self.base_slug.as_ref(), self.slug),
+            }))),
+            SPAData::NotFound => Ok(BuiltDocy::BasicSPA(Box::new(JsonBasicSPA {
+                slug: self.slug,
+                page_title: self.page_title,
+                page_description: self.page_description,
+                only_follow: false,
+                no_indexing: true,
+                page_not_found: true,
                 url: concat_strs!(self.base_slug.as_ref(), self.slug),
             }))),
             SPAData::HomePage => Ok(BuiltDocy::HomePageSPA(Box::new(JsonHomePageSPA {
@@ -281,6 +292,14 @@ static BASIC_SPAS: Map<&'static str, BuildSPA> = phf_map!(
         data: SPAData::HomePage,
         ..DEFAULT_BASIC_SPA
     },
+    "404" => BuildSPA {
+        slug: "404",
+        page_title: "404",
+        page_description: None,
+        trailing_slash: false,
+        en_us_only: true,
+        data: SPAData::NotFound
+    },
     "blog" => BuildSPA {
         slug: "blog",
         page_title: "MDN Blog",
@@ -305,18 +324,6 @@ static BASIC_SPAS: Map<&'static str, BuildSPA> = phf_map!(
         page_title: concat!("Scan results - ", OBSERVATORY_TITLE_FULL),
         page_description: OBSERVATORY_DESCRIPTION,
         data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
-        ..DEFAULT_BASIC_SPA
-    },
-    "observatory/docs/tests_and_scoring" => BuildSPA {
-        slug: "observatory/docs/tests_and_scoring",
-        page_title: concat!("Tests & Scoring - ", OBSERVATORY_TITLE_FULL),
-        page_description: OBSERVATORY_DESCRIPTION,
-        ..DEFAULT_BASIC_SPA
-    },
-    "observatory/docs/faq" => BuildSPA {
-        slug: "observatory/docs/faq",
-        page_title: concat!("FAQ - ", OBSERVATORY_TITLE_FULL),
-        page_description: OBSERVATORY_DESCRIPTION,
         ..DEFAULT_BASIC_SPA
     },
     "search" => BuildSPA {
@@ -361,11 +368,6 @@ static BASIC_SPAS: Map<&'static str, BuildSPA> = phf_map!(
     "about" => BuildSPA {
         slug: "about",
         page_title: "About MDN",
-        ..DEFAULT_BASIC_SPA
-    },
-    "community" => BuildSPA {
-        slug: "community",
-        page_title: "Contribute to MDN",
         ..DEFAULT_BASIC_SPA
     },
     "advertising" => BuildSPA {

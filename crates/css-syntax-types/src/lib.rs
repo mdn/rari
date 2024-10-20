@@ -214,10 +214,9 @@ impl std::str::FromStr for Global {
     fn from_str(value: &str) -> Result<Self, self::error::ConversionError> {
         if let Ok(v) = value.parse() {
             Ok(Self::Variant0(v))
-        } else if let Ok(v) = value.parse() {
-            Ok(Self::Variant1(v))
         } else {
-            Err("string conversion failed for all variants".into())
+            let Ok(v) = value.parse();
+            Ok(Self::Variant1(v))
         }
     }
 }

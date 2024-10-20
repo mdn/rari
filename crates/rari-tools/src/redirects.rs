@@ -261,7 +261,7 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
 fn validate_pairs(pairs: &HashMap<String, String>, locale: Locale) -> Result<(), ToolError> {
     for (from, to) in pairs {
         validate_from_url(from, locale)?;
-        validate_to_url(to, locale)?;
+        validate_to_url(to)?;
     }
     Ok(())
 }
@@ -346,14 +346,12 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 /// # Arguments
 ///
 /// * `url` - The 'to' URL to validate.
-/// * `locale` - The expected `Locale`. Only local redirects to the same locale are allowed with the
-///   exception of the default en-US locale.
 ///
 /// # Returns
 ///
 /// * `Ok(())` if the URL is valid.
 /// * `Err(ToolError)` if the URL is invalid.
-fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
+fn validate_to_url(url: &str) -> Result<(), ToolError> {
     if is_vanity_redirect_url(url) {
         return Ok(());
     }
@@ -380,13 +378,6 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
             locale: to_locale,
             ..
         } = url_meta_from(bare_url)?;
-
-        if to_locale != locale && to_locale != Locale::EnUs {
-            return Err(ToolError::InvalidRedirectToURL(format!(
-                "To-URL '{}' has locale '{}' which does not match expected locale '{}'.",
-                url, to_locale, locale
-            )));
-        }
 
         let path = root_for_locale(to_locale)?
             .join(to_locale.as_folder_str())
@@ -838,8 +829,7 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/A";
-        let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_ok());
     }
 
@@ -848,8 +838,7 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/B";
-        let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_err());
     }
 
@@ -858,32 +847,19 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/";
-        let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_err());
 
         let url = "/en-US/A";
-        let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_validate_to_url_invalid_symbols() {
         let url = "/en-US/docs/\nA";
-        let locale = Locale::EnUs;
-        let result = validate_to_url(url, locale);
+        let result = validate_to_url(url);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validate_to_url_diff_locale() {
-        let slugs = vec!["A".to_string()];
-        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let url = "/en-US/docs/A";
-        let locale = Locale::PtBr;
-        let result = validate_to_url(url, locale);
-        assert!(result.is_ok());
     }
 
     #[test]

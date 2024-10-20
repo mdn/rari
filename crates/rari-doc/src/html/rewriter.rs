@@ -179,7 +179,7 @@ pub fn post_process_html<T: PageLike>(
                         if let Some((start, _)) = pos.split_once('-') {
                             if let Some((line, col)) = start.split_once(':') {
                                 tracing::warn!(
-                                    source = "link-check",
+                                    source = "redirected-link",
                                     line = line,
                                     col = col,
                                     url = original_href,
@@ -189,7 +189,7 @@ pub fn post_process_html<T: PageLike>(
                         }
                     } else {
                         tracing::warn!(
-                            source = "link-check",
+                            source = "redirected-link",
                             url = original_href,
                             redirect = resolved_href.as_ref()
                         )

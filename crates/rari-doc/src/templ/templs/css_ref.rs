@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::LazyLock;
 
@@ -221,12 +222,10 @@ pub fn css_ref() -> Result<String, DocError> {
         out.push_str("<h3>");
         out.push(letter);
         out.push_str("</h3><ul>");
-        for (url, label) in items.into_iter().sorted_by(|(_, a), (_, b)| {
-            a.trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-')
-                .cmp(b.trim_matches(|c: char| {
-                    !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-'
-                }))
-        }) {
+        for (url, label) in items
+            .into_iter()
+            .sorted_by(|(_, a), (_, b)| compare_items(a, b))
+        {
             out.extend([
                 "<li>",
                 &RariApi::link(
@@ -245,6 +244,19 @@ pub fn css_ref() -> Result<String, DocError> {
     out.push_str(r#"</div>"#);
 
     Ok(out)
+}
+
+fn compare_items(a: &str, b: &str) -> Ordering {
+    let ord = a
+        .trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-')
+        .cmp(
+            b.trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-'),
+        );
+    if ord == Ordering::Equal {
+        a.cmp(b)
+    } else {
+        ord
+    }
 }
 
 fn initial_letter(s: &str) -> char {
