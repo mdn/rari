@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use crate::error::ToolError;
 
-pub fn update_wiki_history(locale: Locale, pairs: &Vec<(String, String)>) -> Result<(), ToolError> {
+pub fn update_wiki_history(locale: Locale, pairs: &[(String, String)]) -> Result<(), ToolError> {
     let mut all = read_wiki_history(locale)?;
     for (old_slug, new_slug) in pairs {
         if let Some(to) = all.remove(old_slug) {
@@ -20,7 +20,7 @@ pub fn update_wiki_history(locale: Locale, pairs: &Vec<(String, String)>) -> Res
     Ok(())
 }
 
-pub fn delete_from_wiki_history(locale: Locale, slugs: &Vec<String>) -> Result<(), ToolError> {
+pub fn delete_from_wiki_history(locale: Locale, slugs: &[String]) -> Result<(), ToolError> {
     let mut all = read_wiki_history(locale)?;
     for slug in slugs {
         all.remove(slug);

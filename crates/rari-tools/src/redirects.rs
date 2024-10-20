@@ -341,7 +341,8 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 /// # Arguments
 ///
 /// * `url` - The 'to' URL to validate.
-/// * `locale` - The expected `Locale`.
+/// * `locale` - The expected `Locale`. Only local redirects to the same locale are allowed with the
+///   exception of the default en-US locale.
 ///
 /// # Returns
 ///
@@ -375,7 +376,7 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
             ..
         } = url_meta_from(bare_url)?;
 
-        if to_locale != locale {
+        if to_locale != locale && to_locale != Locale::EnUs {
             return Err(ToolError::InvalidRedirectToURL(format!(
                 "To-URL '{}' has locale '{}' which does not match expected locale '{}'.",
                 url, to_locale, locale
@@ -877,7 +878,6 @@ mod tests {
         let url = "/en-US/docs/A";
         let locale = Locale::PtBr;
         let result = validate_to_url(url, locale);
-        println!("{:?}", result);
         assert!(result.is_ok());
     }
 

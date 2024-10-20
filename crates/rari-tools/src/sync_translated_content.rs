@@ -5,21 +5,26 @@ use std::ffi::OsStr;
 use console::Style;
 use md5::Digest;
 use rari_doc::cached_readers::{
-    doc_page_from_slug, doc_page_from_static_files, read_and_cache_doc_pages,
-    STATIC_DOC_PAGE_FILES, STATIC_DOC_PAGE_TRANSLATED_FILES,
+    doc_page_from_slug, read_and_cache_doc_pages, STATIC_DOC_PAGE_FILES,
+    STATIC_DOC_PAGE_TRANSLATED_FILES,
 };
 use rari_doc::pages::page::{Page, PageCategory, PageLike, PageWriter};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::redirects::resolve_redirect;
-use rari_doc::resolve::build_url;
+use rari_doc::resolve::{build_url, url_to_folder_path};
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
+use crate::redirects::add_redirects;
+use crate::wikihistory::update_wiki_history;
 
-pub fn sync_translated_content(locales: &[Locale], verbose: bool) -> Result<(), ToolError> {
+pub fn sync_translated_content(
+    locales: &[Locale],
+    verbose: bool,
+) -> Result<HashMap<Locale, SyncTranslatedContentResult>, ToolError> {
     validate_locales(locales)?;
 
     let green = Style::new().green();
@@ -79,52 +84,59 @@ pub fn sync_translated_content(locales: &[Locale], verbose: bool) -> Result<(), 
             results
         });
 
-    // add redirects, if there are any
-
+    // Add redirects contained in the results to the proper locale redirects files
     for (locale, result) in &res {
-        println!(
-            "{}",
-            green.apply_to(bold.apply_to(format!("Results for locale {}", locale)))
-        );
-        println!(
-            "  {}",
-            green.apply_to(format!("Total of {} documents.", result.total_docs))
-        );
-        println!(
-            "  {}",
-            green.apply_to(format!("Moved {} documents.", result.moved_docs))
-        );
-        println!(
-            "  {}",
-            green.apply_to(format!("Renamed {} documents.", result.renamed_docs))
-        );
-        println!(
-            "  {}",
-            green.apply_to(format!(
-                "Conflicting {} documents.",
-                result.conflicting_docs
-            ))
-        );
-        println!(
-            "  {}",
-            green.apply_to(format!("Orphaned {} documents", result.orphaned_docs))
-        );
-        println!(
-            "  {}",
-            green.apply_to(format!(
-                "Fixed {} redirected documents.",
-                result.redirected_docs
-            ))
-        );
+        let redirect_pairs = result
+            .redirects
+            .iter()
+            .map(|(from, to)| (from.to_string(), to.to_string()))
+            .collect::<Vec<_>>();
+        add_redirects(*locale, &redirect_pairs)?;
     }
 
-    // println!("res: {:#?}", res);
-
-    Ok(())
+    if verbose {
+        for (locale, result) in &res {
+            println!(
+                "{}",
+                green.apply_to(bold.apply_to(format!("Results for locale {}", locale)))
+            );
+            println!(
+                "  {}",
+                green.apply_to(format!("Total of {} documents.", result.total_docs))
+            );
+            println!(
+                "  {}",
+                green.apply_to(format!("Moved {} documents.", result.moved_docs))
+            );
+            println!(
+                "  {}",
+                green.apply_to(format!("Renamed {} documents.", result.renamed_docs))
+            );
+            println!(
+                "  {}",
+                green.apply_to(format!(
+                    "Conflicting {} documents.",
+                    result.conflicting_docs
+                ))
+            );
+            println!(
+                "  {}",
+                green.apply_to(format!("Orphaned {} documents", result.orphaned_docs))
+            );
+            println!(
+                "  {}",
+                green.apply_to(format!(
+                    "Fixed {} redirected documents.",
+                    result.redirected_docs
+                ))
+            );
+        }
+    }
+    Ok(res)
 }
 
 #[derive(Debug, Default)]
-struct SyncTranslatedContentResult {
+pub struct SyncTranslatedContentResult {
     pub moved_docs: usize,
     pub conflicting_docs: usize,
     pub orphaned_docs: usize,
@@ -149,7 +161,7 @@ impl SyncTranslatedContentResult {
 }
 
 #[derive(Debug, Default)]
-struct SyncTranslatedDocumentStatus {
+pub struct SyncTranslatedDocumentStatus {
     pub redirect: Option<(String, String)>,
     pub conflicting: bool,
     pub followed: bool,
@@ -167,13 +179,6 @@ fn sync_translated_document(
     let dim = Style::new().dim();
     let yellow = Style::new().yellow();
     let blue = Style::new().blue().bright();
-
-    // let debug = if doc.slug() == "Web/API/Document_object_model/How_to_create_a_DOM_tree" {
-    //     println!("HIT THE THING slug: {}", doc.slug());
-    //     true
-    // } else {
-    //     false
-    // };
 
     if doc.is_orphaned() || doc.is_conflicting() {
         return Ok(status);
@@ -198,10 +203,6 @@ fn sync_translated_document(
     if !status.renamed && !status.orphaned {
         return Ok(status);
     }
-
-    // if debug {
-    //     println!("   doc.slug: {}\n   status: {:#?}", doc.slug(), status);
-    // }
 
     if status.orphaned {
         if verbose {
@@ -259,10 +260,14 @@ fn sync_translated_document(
         println!(
             "{}",
             blue.apply_to(format!("redirecting {} → {}", doc.slug(), resolved_slug))
-        );
+        )
     }
 
-    // update wiki history doc.slug to resolved_slug
+    // Update the wiki history
+    update_wiki_history(
+        doc.locale(),
+        &[(doc.slug().to_string(), resolved_slug.to_string())],
+    )?;
 
     if status.moved {
         move_doc(doc, &resolved_slug)?;
@@ -277,7 +282,7 @@ fn move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
     let source_path = doc.path();
     let target_directory = root_for_locale(doc.locale())?
         .join(doc.locale().as_folder_str())
-        .join(target_slug.to_lowercase());
+        .join(url_to_folder_path(target_slug));
     std::fs::create_dir_all(&target_directory)?;
 
     // Write the new slug, store the old slug in `original_slug` metadata
@@ -322,9 +327,13 @@ fn md_or_html_exists(slug: &str, locale: Locale) -> Result<bool, ToolError> {
         .join(slug.to_lowercase());
     let md_path = folder_path.join("index.md");
     let html_path = folder_path.join("index.html");
-    let md_exists = doc_page_from_static_files(&md_path);
-    let html_exists = doc_page_from_static_files(&html_path);
-    let ret = matches!(md_exists, Some(Ok(_))) || matches!(html_exists, Some(Ok(_)));
+
+    // Not use the static cache here (`doc_page_from_static_files`),
+    // because we maybe have written files to the filesystem
+    // after the cache was created.
+    let md_exists = md_path.exists();
+    let html_exists = html_path.exists();
+    let ret = md_exists || html_exists;
     Ok(ret)
 }
 
@@ -362,12 +371,13 @@ use serial_test::file_serial;
 #[cfg(test)]
 #[file_serial(file_fixtures)]
 mod test {
+
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
 
     #[test]
-    fn test_valid_locales() {
+    fn test_valid_sync_locales() {
         let result = validate_locales(&[Locale::PtBr, Locale::ZhCn, Locale::Ru]);
         assert!(result.is_ok());
         let result = validate_locales(&[]);
@@ -377,26 +387,47 @@ mod test {
     }
 
     #[test]
-    fn test_sync_translated_content_for_locale() {
-        let slugs = vec![
+    fn test_sync_translated_content_no_changes() {
+        let en_slugs = vec![
             "Web/API/Other".to_string(),
             "Web/API/ExampleOne".to_string(),
-            "Web/API/ExampleOne/SubExampleOne".to_string(),
-            "Web/API/ExampleOne/SubExampleTwo".to_string(),
+            "Web/API/ExampleTwo".to_string(),
             "Web/API/SomethingElse".to_string(),
         ];
-        let redirects = vec![(
+        let en_redirects = vec![(
+            "docs/Web/API/OldExampleOne".to_string(),
             "docs/Web/API/ExampleOne".to_string(),
-            "docs/Web/API/ExampleOne/SubExampleOne".to_string(),
         )];
-        let _redirects = RedirectFixtures::new(&redirects, Locale::PtBr);
+        let _en_docs = DocFixtures::new(&en_slugs, Locale::EnUs);
+        let _en_redirects = RedirectFixtures::new(&en_redirects, Locale::EnUs);
 
-        let locale = Locale::PtBr;
-        let _docs = DocFixtures::new(&slugs, locale);
+        let es_slugs = vec![
+            "Web/API/Other".to_string(),
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleTwo".to_string(),
+            "Web/API/SomethingElse".to_string(),
+        ];
+        let es_redirects = vec![(
+            "docs/Web/API/OldExampleOne".to_string(),
+            "docs/Web/API/ExampleOne".to_string(),
+        )];
+        let _es_docs = DocFixtures::new(&es_slugs, Locale::Es);
+        let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
 
-        // let result = sync_translated_content_for_locale(locale);
-        // assert!(result.is_ok());
-        // let sync_result = result.unwrap();
-        // assert_eq!(sync_result.total_docs, 7); // Assuming no docs are read in the test environment
+        let result = sync_translated_content(&[Locale::Es], false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.len(), 1);
+
+        let es_result = result.get(&Locale::Es);
+        assert!(es_result.is_some());
+        let es_result = es_result.unwrap();
+        assert_eq!(es_result.total_docs, 6);
+        assert_eq!(es_result.moved_docs, 0);
+        assert_eq!(es_result.conflicting_docs, 0);
+        assert_eq!(es_result.orphaned_docs, 0);
+        assert_eq!(es_result.redirected_docs, 0);
+        assert_eq!(es_result.renamed_docs, 0);
+        assert_eq!(es_result.redirects.len(), 0);
     }
 }

@@ -318,17 +318,17 @@ pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
         )
         .unwrap();
     if let Some(translated_root) = content_translated_root() {
-        let transted_docs = read_docs_parallel::<Doc>(&[translated_root], None)?;
+        let translated_docs = read_docs_parallel::<Doc>(&[translated_root], None)?;
         STATIC_DOC_PAGE_TRANSLATED_FILES
             .set(
-                transted_docs
+                translated_docs
                     .iter()
                     .cloned()
                     .map(|doc| ((doc.locale(), Cow::Owned(doc.slug().to_string())), doc))
                     .collect(),
             )
             .unwrap();
-        docs.extend(transted_docs)
+        docs.extend(translated_docs)
     }
     init_translations_from_static_docs();
     STATIC_DOC_PAGE_FILES_BY_PATH
