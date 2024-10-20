@@ -318,13 +318,18 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 
     check_url_invalid_symbols(&url)?;
 
-    // Check for existing file/folder, commented for now
+    // Check for existing file/folder, make it a warning for now
     if let Ok(page) = Page::from_url(&url) {
-        return Err(ToolError::InvalidRedirectFromURL(format!(
+        warn!(
             "From-URL '{}' resolves to an existing folder at '{}'.",
             url,
             page.path().display()
-        )));
+        );
+        // return Err(ToolError::InvalidRedirectFromURL(format!(
+        //     "From-URL '{}' resolves to an existing folder at '{}'.",
+        //     url,
+        //     page.path().display()
+        // )));
     }
 
     Ok(())
