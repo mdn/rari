@@ -9,6 +9,17 @@
       "release-type": "rust",
       "include-component-in-tag": false,
       "include-v-in-tag": true
+    },
+    "rari-npm": {
+      "component": "rari-npm",
+      "release-type": "node"
     }
-  }
+  },
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "rari-inter",
+      "components": ["rari", "rari-npm"]
+    }
+  ]
 }
