@@ -8,7 +8,19 @@
       "component": "rari",
       "release-type": "rust",
       "include-component-in-tag": false,
-      "include-v-in-tag": true
+      "include-v-in-tag": true,
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "rari-npm/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "rari-npm/package-lock.json",
+          "jsonpath": "$.version"
+        }
+      ]
     }
   }
 }

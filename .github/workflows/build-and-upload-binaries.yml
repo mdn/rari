@@ -1,4 +1,4 @@
-name: ship binaries
+name: build-and-upload-binaries
 
 permissions:
   contents: write

@@ -1,0 +1,25 @@
+{
+  "name": "@mdn/rari",
+  "version": "0.0.13",
+  "description": "npm package for rari",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "postinstall": "node ./lib/postinstall.js"
+  },
+  "bin": {
+    "rari": "./bin/rari"
+  },
+  "author": "Florian Dieminger <me@fiji-flo.de>",
+  "license": "MPL-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "extract-zip": "^2.0.1",
+    "https-proxy-agent": "^7.0.2",
+    "proxy-from-env": "^1.1.0",
+    "tar": "^7.4.3"
+  }
+}
