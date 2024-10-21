@@ -3,9 +3,9 @@ import { arch, platform } from "os";
 import { join } from "path";
 
 import { download, exists } from "./download.js";
-import * as packageJson from "../package.json" with { type: "json" };
+import packageJson from "../package.json" with { type: "json" };
 
-const VERSION = packageJson.version;
+const VERSION = `v${packageJson.version}`;
 const BIN_PATH = join(import.meta.dirname, "../bin");
 const FORCE = JSON.parse(process.env.FORCE || "false");
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;

@@ -12,6 +12,9 @@
   },
   "author": "Florian Dieminger <me@fiji-flo.de>",
   "license": "MPL-2.0",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "extract-zip": "^2.0.1",
     "https-proxy-agent": "^7.0.2",

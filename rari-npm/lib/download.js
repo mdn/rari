@@ -16,13 +16,30 @@ const isWindows = platform() === "win32";
 const REPO = "mdn/rari";
 
 /**
+ *
+ * @param {string | URL} url
+ * @param {string | URL} [base]
+ */
+function URLparse(url, base) {
+  if (URL?.parse) {
+    return URL.parse(url, base);
+  } else {
+    try {
+      return new URL(url, base);
+    } catch {
+      return null;
+    }
+  }
+}
+
+/**
  * This function is adapted from vscode-ripgrep (https://github.com/microsoft/vscode-ripgrep)
  * Copyright (c) Microsoft, licensed under the MIT License
  *
  * @param {string} url
  */
 function isGithubUrl(url) {
-  return URL.parse(url)?.hostname === "api.github.com";
+  return URLparse(url)?.hostname === "api.github.com";
 }
 
 /**
@@ -46,7 +63,7 @@ export async function exists(path) {
  * @param {any} opts
  */
 export async function do_download(url, dest, opts) {
-  const proxy = getProxyForUrl(URL.parse(url));
+  const proxy = getProxyForUrl(URLparse(url));
   if (proxy !== "") {
     const HttpsProxyAgent = await import("https-proxy-agent");
     opts = {
@@ -100,7 +117,7 @@ export async function do_download(url, dest, opts) {
 function get(_url, opts) {
   console.log(`GET ${_url}`);
 
-  const proxy = getProxyForUrl(URL.parse(_url));
+  const proxy = getProxyForUrl(URLparse(_url));
   if (proxy !== "") {
     var HttpsProxyAgent = require("https-proxy-agent");
     opts = {
@@ -113,7 +130,7 @@ function get(_url, opts) {
     let result = "";
     https.get(_url, opts, (response) => {
       if (response.statusCode !== 200) {
-        reject(new Error("Request failed: " + response.statusCode));
+        reject(new Error(`Request (${_url}) failed: ${response.statusCode}`));
       }
 
       response.on("data", (d) => {
