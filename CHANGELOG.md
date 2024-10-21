@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.14](https://github.com/mdn/rari/compare/v0.0.13...v0.0.14) (2024-10-21)
+
+
+### Features
+
+* **rari-npm:** add initial support for npm ([e19db78](https://github.com/mdn/rari/commit/e19db78543b231e6711a2b4ea8a9ee7763a5b69b))
+
+
+### Bug Fixes
+
+* **css-sytax-types:** support &lt; rust 1.83 ([45f66b1](https://github.com/mdn/rari/commit/45f66b1f92df05e2879c6ec0b5ce646763be2bf2))
+
 ## [0.0.13](https://github.com/mdn/rari/compare/v0.0.12...v0.0.13) (2024-10-18)
 
 
