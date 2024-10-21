@@ -90,6 +90,7 @@ pub fn sync_translated_content(
         });
 
     // Add redirects contained in the results to the proper locale redirects files
+    // and modify wiki history files if needed.
     for (locale, result) in &res {
         let redirect_pairs = result
             .redirects
@@ -97,9 +98,13 @@ pub fn sync_translated_content(
             .map(|(from, to)| (from.to_string(), to.to_string()))
             .collect::<Vec<_>>();
         add_redirects(*locale, &redirect_pairs)?;
+        let wiki_history_pairs = result
+            .wiki_history
+            .iter()
+            .map(|(from, to)| (from.to_string(), to.to_string()))
+            .collect::<Vec<_>>();
+        update_wiki_history(*locale, &wiki_history_pairs)?;
     }
-
-    // TODO: Add wikihistory in batches
 
     if verbose {
         for (locale, result) in &res {
@@ -151,6 +156,7 @@ pub struct SyncTranslatedContentResult {
     pub renamed_docs: usize,
     pub total_docs: usize,
     pub redirects: HashMap<String, String>,
+    pub wiki_history: HashMap<String, String>,
 }
 
 impl SyncTranslatedContentResult {
@@ -164,12 +170,16 @@ impl SyncTranslatedContentResult {
         if let Some((from, to)) = status.redirect {
             self.redirects.insert(from, to);
         }
+        if let Some((old, current)) = status.wiki_history {
+            self.wiki_history.insert(old, current);
+        }
     }
 }
 
 #[derive(Debug, Default)]
 pub struct SyncTranslatedDocumentStatus {
     pub redirect: Option<(String, String)>,
+    pub wiki_history: Option<(String, String)>,
     pub conflicting: bool,
     pub followed: bool,
     pub moved: bool,
@@ -186,7 +196,7 @@ fn sync_translated_document(
 
     let dim = Style::new().dim();
     let yellow = Style::new().yellow();
-    // let blue = Style::new().blue().bright();
+    let blue = Style::new().blue().bright();
 
     if doc.is_orphaned() || doc.is_conflicting() {
         return Ok(status);
@@ -251,7 +261,7 @@ fn sync_translated_document(
                 hasher.update(doc.slug());
                 let digest = format!("{:x}", hasher.finalize());
                 // println!("digest: {}", digest);
-                resolved_slug = concat_strs!(&resolved_slug, "-", &digest).into();
+                resolved_slug = concat_strs!(&resolved_slug, "_", &digest).into();
             }
 
             status.conflicting = true;
@@ -264,23 +274,17 @@ fn sync_translated_document(
         build_url(doc.slug(), doc.locale(), PageCategory::Doc)?,
         build_url(&resolved_slug, doc.locale(), PageCategory::Doc)?,
     ));
-    // if verbose {
-    //     println!(
-    //         "{}",
-    //         blue.apply_to(format!("redirecting {} → {}", doc.slug(), resolved_slug))
-    //     )
-    // }
+    if verbose {
+        println!(
+            "{}",
+            blue.apply_to(format!("redirecting {} → {}", doc.slug(), resolved_slug))
+        )
+    }
 
-    // Update the wiki history
-    update_wiki_history(
-        doc.locale(),
-        &[(doc.slug().to_string(), resolved_slug.to_string())],
-    )?;
+    status.wiki_history = Some((doc.slug().to_string(), resolved_slug.to_string()));
 
     if status.moved {
         move_doc(doc, &resolved_slug)?;
-        // move the doc to the new location
-        // set the original slug in metadata of moved doc
     }
 
     Ok(status)
