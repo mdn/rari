@@ -9,7 +9,10 @@ use serde_json::Value;
 
 use crate::error::ToolError;
 
-pub fn update_wiki_history(locale: Locale, pairs: &[(String, String)]) -> Result<(), ToolError> {
+pub(crate) fn update_wiki_history(
+    locale: Locale,
+    pairs: &[(String, String)],
+) -> Result<(), ToolError> {
     let mut all = read_wiki_history(locale)?;
     for (old_slug, new_slug) in pairs {
         if let Some(to) = all.remove(old_slug) {
@@ -20,7 +23,7 @@ pub fn update_wiki_history(locale: Locale, pairs: &[(String, String)]) -> Result
     Ok(())
 }
 
-pub fn delete_from_wiki_history(locale: Locale, slugs: &[String]) -> Result<(), ToolError> {
+pub(crate) fn delete_from_wiki_history(locale: Locale, slugs: &[String]) -> Result<(), ToolError> {
     let mut all = read_wiki_history(locale)?;
     for slug in slugs {
         all.remove(slug);
@@ -40,7 +43,7 @@ fn write_wiki_history(locale: Locale, all: BTreeMap<String, Value>) -> Result<()
     Ok(())
 }
 
-fn read_wiki_history(locale: Locale) -> Result<BTreeMap<String, Value>, ToolError> {
+pub(crate) fn read_wiki_history(locale: Locale) -> Result<BTreeMap<String, Value>, ToolError> {
     let wiki_history_path = wiki_history_path(locale)?;
     // Read the content of the JSON file
     let wiki_history_content = fs::read_to_string(&wiki_history_path)?;

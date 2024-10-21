@@ -244,7 +244,8 @@ mod test {
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
-    use crate::utils::test_utils::{check_file_existence, get_redirects_map};
+    use crate::utils::get_redirects_map;
+    use crate::utils::test_utils::check_file_existence;
 
     fn s(s: &str) -> String {
         s.to_string()

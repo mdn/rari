@@ -86,7 +86,7 @@ mod test {
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
-    use crate::utils::test_utils::get_redirects_map;
+    use crate::utils::get_redirects_map;
 
     #[test]
     fn test_add_redirect() {

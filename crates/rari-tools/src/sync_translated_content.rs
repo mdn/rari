@@ -6,7 +6,6 @@ use console::Style;
 use md5::Digest;
 use rari_doc::pages::page::{Page, PageCategory, PageLike, PageWriter};
 use rari_doc::pages::types::doc::Doc;
-use rari_doc::redirects::resolve_redirect;
 use rari_doc::resolve::{build_url, url_to_folder_path};
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
@@ -15,7 +14,7 @@ use rari_utils::concat_strs;
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
 use crate::redirects::add_redirects;
-use crate::utils::read_all_doc_pages;
+use crate::utils::{get_redirects_map, read_all_doc_pages};
 use crate::wikihistory::update_wiki_history;
 
 pub fn sync_translated_content(
@@ -39,6 +38,20 @@ pub fn sync_translated_content(
     }
 
     let docs = read_all_doc_pages()?;
+    let redirects_maps: HashMap<Locale, HashMap<String, String>> = locales
+        .iter()
+        .chain(std::iter::once(&Locale::EnUs))
+        .map(|locale| {
+            (
+                *locale,
+                get_redirects_map(*locale)
+                    .iter()
+                    .map(|(k, v)| (k.to_lowercase(), v.to_string()))
+                    .collect(),
+            )
+        })
+        .collect();
+
     if verbose {
         let (doc_count, translated_doc_count) =
             docs.iter()
@@ -67,8 +80,7 @@ pub fn sync_translated_content(
         .filter(|&((locale, _), _doc)| locales.contains(locale))
         .fold(results, |mut results, ((locale, _), page)| {
             if let Page::Doc(doc) = page {
-                // println!("syncing doc: {:?}", doc.slug());
-                let status = sync_translated_document(&docs, doc, verbose);
+                let status = sync_translated_document(&docs, &redirects_maps, doc, verbose);
                 if let Ok(status) = status {
                     if !results.contains_key(locale) {
                         results.insert(*locale, SyncTranslatedContentResult::default());
@@ -189,6 +201,7 @@ pub struct SyncTranslatedDocumentStatus {
 
 fn sync_translated_document(
     docs: &HashMap<(Locale, Cow<'_, str>), Page>,
+    redirect_maps: &HashMap<Locale, HashMap<String, String>>,
     doc: &Doc,
     verbose: bool,
 ) -> Result<SyncTranslatedDocumentStatus, ToolError> {
@@ -196,13 +209,12 @@ fn sync_translated_document(
 
     let dim = Style::new().dim();
     let yellow = Style::new().yellow();
-    let blue = Style::new().blue().bright();
 
     if doc.is_orphaned() || doc.is_conflicting() {
         return Ok(status);
     }
 
-    let mut resolved_slug = resolve(doc.slug());
+    let mut resolved_slug = resolve(redirect_maps, doc.slug());
 
     status.renamed = doc.slug() != resolved_slug;
     status.moved = status.renamed && doc.slug().to_lowercase() != resolved_slug.to_lowercase();
@@ -240,7 +252,7 @@ fn sync_translated_document(
                 resolved_slug
             ))));
         }
-    } else if status.moved && md_or_html_exists(&resolved_slug, doc.locale())? {
+    } else if status.moved && md_exists(&resolved_slug, doc.locale())? {
         if verbose {
             println!(
                 "{}",
@@ -251,16 +263,14 @@ fn sync_translated_document(
             );
         }
         if resolved_doc.is_some() {
-            // set the slug to a /conflicting /... slug. if that already
+            // Set the slug to a /conflicting /... slug. if that already
             // exists (possibly from a previous move on this run),
-            // append a md5 hash of the original slug to the slug
-            // also set original_slug in metadata
+            // append a md5 hash of the original slug to the slug.
             resolved_slug = concat_strs!("conflicting/", &resolved_slug).into();
-            if md_or_html_exists(&resolved_slug, doc.locale())? {
+            if md_exists(&resolved_slug, doc.locale())? {
                 let mut hasher = md5::Md5::new();
                 hasher.update(doc.slug());
                 let digest = format!("{:x}", hasher.finalize());
-                // println!("digest: {}", digest);
                 resolved_slug = concat_strs!(&resolved_slug, "_", &digest).into();
             }
 
@@ -270,27 +280,23 @@ fn sync_translated_document(
         }
     }
 
+    // Add entries to the redirects and wiki history maps
     status.redirect = Some((
         build_url(doc.slug(), doc.locale(), PageCategory::Doc)?,
         build_url(&resolved_slug, doc.locale(), PageCategory::Doc)?,
     ));
-    if verbose {
-        println!(
-            "{}",
-            blue.apply_to(format!("redirecting {} → {}", doc.slug(), resolved_slug))
-        )
-    }
-
     status.wiki_history = Some((doc.slug().to_string(), resolved_slug.to_string()));
 
+    // Write and then move the doc to the new location.
+    // Also set `original_slug` in metadata.
     if status.moved {
-        move_doc(doc, &resolved_slug)?;
+        write_and_move_doc(doc, &resolved_slug)?;
     }
 
     Ok(status)
 }
 
-fn move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
+fn write_and_move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
     let source_path = doc.path();
     let target_directory = root_for_locale(doc.locale())?
         .join(doc.locale().as_folder_str())
@@ -333,7 +339,8 @@ fn move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
     Ok(())
 }
 
-fn md_or_html_exists(slug: &str, locale: Locale) -> Result<bool, ToolError> {
+/// Check if a markdown file exists for a given slug and locale.
+fn md_exists(slug: &str, locale: Locale) -> Result<bool, ToolError> {
     let folder_path = root_for_locale(locale)?
         .join(locale.as_folder_str())
         .join(slug.to_lowercase());
@@ -341,12 +348,23 @@ fn md_or_html_exists(slug: &str, locale: Locale) -> Result<bool, ToolError> {
     Ok(md_path.exists())
 }
 
-fn resolve(slug: &str) -> Cow<'_, str> {
-    let en_us_url_lc = concat_strs!("/", Locale::EnUs.as_folder_str(), "/docs/", slug);
+fn resolve<'a>(
+    redirect_maps: &'a HashMap<Locale, HashMap<String, String>>,
+    slug: &'a str,
+) -> Cow<'a, str> {
+    let en_us_url_lc =
+        concat_strs!("/", Locale::EnUs.as_folder_str(), "/docs/", slug).to_lowercase();
     // Note: Contrary to the yari original, we skip the fundamental redirects because
     // those have no role to play any more in this use case.
-    let resolved_url =
-        resolve_redirect(&en_us_url_lc).unwrap_or_else(|| Cow::Borrowed(&en_us_url_lc));
+
+    let resolved_url: Cow<'_, str> = match redirect_maps
+        .get(&Locale::EnUs)
+        .expect("Redirect map for locale not loaded")
+        .get(&en_us_url_lc)
+    {
+        Some(url) => Cow::Borrowed(url),
+        None => Cow::Borrowed(&en_us_url_lc),
+    };
 
     let page = Page::from_url(&resolved_url);
     if let Ok(page) = page {
@@ -376,9 +394,14 @@ use serial_test::file_serial;
 #[file_serial(file_fixtures)]
 mod test {
 
+    use rari_types::globals::content_translated_root;
+
     use super::*;
+    use crate::redirects::{read_redirects_raw, redirects_path};
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
+    use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
+    use crate::wikihistory::read_wiki_history;
 
     #[test]
     fn test_valid_sync_locales() {
@@ -404,6 +427,7 @@ mod test {
         )];
         let _en_docs = DocFixtures::new(&en_slugs, Locale::EnUs);
         let _en_redirects = RedirectFixtures::new(&en_redirects, Locale::EnUs);
+        let _en_wikihistory = WikihistoryFixtures::new(&en_slugs, Locale::EnUs);
 
         let es_slugs = vec![
             "Web/API/Other".to_string(),
@@ -417,6 +441,7 @@ mod test {
         )];
         let _es_docs = DocFixtures::new(&es_slugs, Locale::Es);
         let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
+        let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
 
         let result = sync_translated_content(&[Locale::Es], false);
         assert!(result.is_ok());
@@ -433,5 +458,154 @@ mod test {
         assert_eq!(es_result.redirected_docs, 0);
         assert_eq!(es_result.renamed_docs, 0);
         assert_eq!(es_result.redirects.len(), 0);
+    }
+
+    #[test]
+    fn test_sync_translated_content_orphaned() {
+        let en_slugs = vec![
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleTwo".to_string(),
+            "Web/API/SomethingElse".to_string(),
+        ];
+        let en_redirects = vec![(
+            "docs/Web/API/OldExampleOne".to_string(),
+            "docs/Web/API/ExampleOne".to_string(),
+        )];
+        let _en_docs = DocFixtures::new(&en_slugs, Locale::EnUs);
+        let _en_redirects = RedirectFixtures::new(&en_redirects, Locale::EnUs);
+        let _en_wikihistory = WikihistoryFixtures::new(&en_slugs, Locale::EnUs);
+
+        let es_slugs = vec![
+            "Web/API/Other".to_string(),
+            "Web/API/ExampleOne".to_string(),
+            "Web/API/ExampleTwo".to_string(),
+            "Web/API/SomethingElse".to_string(),
+        ];
+        let es_redirects = vec![(
+            "docs/Web/API/OldExampleOne".to_string(),
+            "docs/Web/API/ExampleOne".to_string(),
+        )];
+        let _es_docs = DocFixtures::new(&es_slugs, Locale::Es);
+        let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
+        let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
+
+        let result = sync_translated_content(&[Locale::Es], false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.len(), 1);
+
+        let es_result = result.get(&Locale::Es);
+        assert!(es_result.is_some());
+        let es_result = es_result.unwrap();
+        assert_eq!(es_result.total_docs, 6);
+        assert_eq!(es_result.moved_docs, 1);
+        assert_eq!(es_result.conflicting_docs, 0);
+        assert_eq!(es_result.orphaned_docs, 1);
+        assert_eq!(es_result.redirected_docs, 0);
+        assert_eq!(es_result.renamed_docs, 0);
+        assert_eq!(es_result.redirects.len(), 1);
+
+        let translated_root = content_translated_root().unwrap();
+        let orphaned_original_path = translated_root
+            .join(Locale::Es.as_folder_str())
+            .join("web")
+            .join("api")
+            .join("other")
+            .join("index.md");
+        assert!(!orphaned_original_path.exists());
+        let orphaned_path = translated_root
+            .join(Locale::Es.as_folder_str())
+            .join("orphaned")
+            .join("web")
+            .join("api")
+            .join("other")
+            .join("index.md");
+        assert!(orphaned_path.exists());
+
+        let mut redirects = HashMap::new();
+        read_redirects_raw(
+            redirects_path(Locale::Es).unwrap().as_path(),
+            &mut redirects,
+        )
+        .unwrap();
+        assert_eq!(redirects.len(), 2);
+        assert_eq!(
+            redirects.get("/es/docs/Web/API/Other").unwrap(),
+            "/es/docs/orphaned/Web/API/Other"
+        );
+
+        let wiki_history = read_wiki_history(Locale::Es).unwrap();
+        assert!(wiki_history.contains_key("orphaned/Web/API/Other"));
+    }
+
+    #[test]
+    fn test_sync_translated_content_moved() {
+        let en_slugs = vec![
+            "Web/API/OtherMoved".to_string(),
+            "Web/API/ExampleOne".to_string(),
+        ];
+        let en_redirects = vec![(
+            "docs/Web/API/Other".to_string(),
+            "docs/Web/API/OtherMoved".to_string(),
+        )];
+        let _en_docs = DocFixtures::new(&en_slugs, Locale::EnUs);
+        let _en_redirects = RedirectFixtures::new(&en_redirects, Locale::EnUs);
+        let _en_wikihistory = WikihistoryFixtures::new(&en_slugs, Locale::EnUs);
+
+        let es_slugs = vec![
+            "Web/API/Other".to_string(),
+            "Web/API/ExampleOne".to_string(),
+        ];
+        let es_redirects = vec![];
+        let _es_docs = DocFixtures::new(&es_slugs, Locale::Es);
+        let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
+        let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
+
+        let result = sync_translated_content(&[Locale::Es], false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.len(), 1);
+
+        let es_result = result.get(&Locale::Es);
+        assert!(es_result.is_some());
+        let es_result = es_result.unwrap();
+        assert_eq!(es_result.total_docs, 4);
+        assert_eq!(es_result.moved_docs, 1);
+        assert_eq!(es_result.conflicting_docs, 0);
+        assert_eq!(es_result.orphaned_docs, 0);
+        assert_eq!(es_result.redirected_docs, 1);
+        assert_eq!(es_result.renamed_docs, 1);
+        assert_eq!(es_result.redirects.len(), 1);
+
+        let translated_root = content_translated_root().unwrap();
+        let moved_original_path = translated_root
+            .join(Locale::Es.as_folder_str())
+            .join("web")
+            .join("api")
+            .join("other")
+            .join("index.md");
+        assert!(!moved_original_path.exists());
+        let moved_path = translated_root
+            .join(Locale::Es.as_folder_str())
+            .join("web")
+            .join("api")
+            .join("othermoved")
+            .join("index.md");
+        assert!(moved_path.exists());
+
+        let mut redirects = HashMap::new();
+        read_redirects_raw(
+            redirects_path(Locale::Es).unwrap().as_path(),
+            &mut redirects,
+        )
+        .unwrap();
+        assert_eq!(redirects.len(), 1);
+        assert_eq!(
+            redirects.get("/es/docs/Web/API/Other").unwrap(),
+            "/es/docs/Web/API/OtherMoved"
+        );
+
+        let wiki_history = read_wiki_history(Locale::Es).unwrap();
+        assert!(wiki_history.contains_key("Web/API/OtherMoved"));
     }
 }
