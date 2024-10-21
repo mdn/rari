@@ -1,14 +1,15 @@
 {
-  "name": "rari-npm",
+  "name": "@mdn/rari",
   "version": "0.0.13",
   "description": "npm package for rari",
-  "main": "lib/index.js",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "type": "module",
   "scripts": {
     "postinstall": "node ./lib/postinstall.js"
   },
   "bin": {
-    "rari": "bin/rari"
+    "rari": "./bin/rari"
   },
   "author": "Florian Dieminger <me@fiji-flo.de>",
   "license": "MPL-2.0",
