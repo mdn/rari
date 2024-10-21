@@ -42,13 +42,26 @@ pub enum PageCategory {
 
 impl Page {
     pub fn from_url(url: &str) -> Result<Self, DocError> {
-        Self::from_url_with_other_locale_and_fallback(url, None)
+        Self::internal_from_url_with_other_locale_and_fallback(url, None, true)
+    }
+
+    pub fn from_url_no_fallback(url: &str) -> Result<Self, DocError> {
+        Self::internal_from_url_with_other_locale_and_fallback(url, None, false)
     }
 
     pub fn from_url_with_other_locale_and_fallback(
         url: &str,
         locale: Option<Locale>,
     ) -> Result<Self, DocError> {
+        Self::internal_from_url_with_other_locale_and_fallback(url, locale, true)
+    }
+
+    fn internal_from_url_with_other_locale_and_fallback(
+        url: &str,
+        locale: Option<Locale>,
+        fallback: bool,
+    ) -> Result<Self, DocError> {
+        let url = &url[..url.find('#').unwrap_or(url.len())];
         let UrlMeta {
             folder_path,
             slug,
@@ -61,7 +74,7 @@ impl Page {
                 .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA)),
             PageCategory::Doc => {
                 let doc = Doc::page_from_slug_path(&folder_path, locale);
-                if doc.is_err() && locale != Default::default() {
+                if doc.is_err() && locale != Default::default() && fallback {
                     Doc::page_from_slug_path(&folder_path, Default::default())
                 } else {
                     doc

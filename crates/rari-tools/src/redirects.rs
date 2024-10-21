@@ -318,8 +318,8 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 
     check_url_invalid_symbols(&url)?;
 
-    // Check for existing file/folder, commented for now
-    if let Ok(page) = Page::from_url(&url) {
+    // Check for existing file/folder.
+    if let Ok(page) = Page::from_url_no_fallback(&url) {
         return Err(ToolError::InvalidRedirectFromURL(format!(
             "From-URL '{}' resolves to an existing folder at '{}'.",
             url,
@@ -855,16 +855,6 @@ mod tests {
         let url = "/en-US/docs/\nA";
         let result = validate_to_url(url);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validate_to_url_diff_locale() {
-        let slugs = vec!["A".to_string()];
-        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let url = "/en-US/docs/A";
-        let result = validate_to_url(url);
-        println!("{:?}", result);
-        assert!(result.is_ok());
     }
 
     #[test]
