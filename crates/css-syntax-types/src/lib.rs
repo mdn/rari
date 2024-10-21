@@ -215,7 +215,7 @@ impl std::str::FromStr for Global {
         if let Ok(v) = value.parse() {
             Ok(Self::Variant0(v))
         } else {
-            let Ok(v) = value.parse();
+            let v = value.to_string();
             Ok(Self::Variant1(v))
         }
     }

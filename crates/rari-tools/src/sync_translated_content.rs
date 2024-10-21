@@ -4,10 +4,6 @@ use std::ffi::OsStr;
 
 use console::Style;
 use md5::Digest;
-use rari_doc::cached_readers::{
-    doc_page_from_slug, read_and_cache_doc_pages, STATIC_DOC_PAGE_FILES,
-    STATIC_DOC_PAGE_TRANSLATED_FILES,
-};
 use rari_doc::pages::page::{Page, PageCategory, PageLike, PageWriter};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::redirects::resolve_redirect;
@@ -19,6 +15,7 @@ use rari_utils::concat_strs;
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
 use crate::redirects::add_redirects;
+use crate::utils::read_all_doc_pages;
 use crate::wikihistory::update_wiki_history;
 
 pub fn sync_translated_content(
@@ -35,35 +32,43 @@ pub fn sync_translated_content(
         println!(
             "{}",
             green.apply_to(format!(
-                "Syncing translated content for locales: {:?}. Reading documents from filesystem.",
+                "Syncing translated content for locales: {:?}. Reading documents.",
                 locales
             )),
         );
     }
-    let docs = read_and_cache_doc_pages()?;
+
+    let docs = read_all_doc_pages()?;
     if verbose {
+        let (doc_count, translated_doc_count) =
+            docs.iter()
+                .fold((0, 0), |(x, y), ((locale, _slug), _page)| {
+                    if *locale == Locale::EnUs {
+                        (x + 1, y)
+                    } else {
+                        (x, y + 1)
+                    }
+                });
         println!(
             "{}",
             dim.apply_to(format!(
-                "read {} docs: {} en-us, {} translated",
+                "read {} docs: {} en-Us, {} translated.",
                 docs.len(),
-                STATIC_DOC_PAGE_FILES.get().unwrap().len(),
-                STATIC_DOC_PAGE_TRANSLATED_FILES.get().unwrap().len()
+                doc_count,
+                translated_doc_count
             ))
         );
     }
-    let locales = locales.iter().collect::<HashSet<_>>();
     let results = HashMap::new();
+    let locales = locales.iter().collect::<HashSet<_>>();
 
-    let res = STATIC_DOC_PAGE_TRANSLATED_FILES
-        .get()
-        .expect("Is the translated content root set?")
+    let res = docs
         .iter()
-        .filter(|&((locale, _locale_str), _doc)| locales.contains(locale))
-        .fold(results, |mut results, ((locale, _locale_str), page)| {
+        .filter(|&((locale, _), _doc)| locales.contains(locale))
+        .fold(results, |mut results, ((locale, _), page)| {
             if let Page::Doc(doc) = page {
                 // println!("syncing doc: {:?}", doc.slug());
-                let status = sync_translated_document(doc, verbose);
+                let status = sync_translated_document(&docs, doc, verbose);
                 if let Ok(status) = status {
                     if !results.contains_key(locale) {
                         results.insert(*locale, SyncTranslatedContentResult::default());
@@ -93,6 +98,8 @@ pub fn sync_translated_content(
             .collect::<Vec<_>>();
         add_redirects(*locale, &redirect_pairs)?;
     }
+
+    // TODO: Add wikihistory in batches
 
     if verbose {
         for (locale, result) in &res {
@@ -171,6 +178,7 @@ pub struct SyncTranslatedDocumentStatus {
 }
 
 fn sync_translated_document(
+    docs: &HashMap<(Locale, Cow<'_, str>), Page>,
     doc: &Doc,
     verbose: bool,
 ) -> Result<SyncTranslatedDocumentStatus, ToolError> {
@@ -178,7 +186,7 @@ fn sync_translated_document(
 
     let dim = Style::new().dim();
     let yellow = Style::new().yellow();
-    let blue = Style::new().blue().bright();
+    // let blue = Style::new().blue().bright();
 
     if doc.is_orphaned() || doc.is_conflicting() {
         return Ok(status);
@@ -197,8 +205,10 @@ fn sync_translated_document(
         resolved_slug = Cow::Owned(url.to_string());
     }
 
-    let resolved_doc = doc_page_from_slug(&resolved_slug, Locale::EnUs);
-    status.orphaned = !matches!(resolved_doc, Some(Ok(_)));
+    let resolved_doc = docs.get(&(Locale::EnUs, resolved_slug.clone()));
+    // let resolved_doc = doc_page_from_slug(&resolved_slug, Locale::EnUs);
+    status.orphaned = resolved_doc.is_none();
+    // status.orphaned = !matches!(resolved_doc, Some(Ok(_)));
 
     if !status.renamed && !status.orphaned {
         return Ok(status);
@@ -214,8 +224,9 @@ fn sync_translated_document(
         status.followed = false;
         status.moved = true;
         resolved_slug = concat_strs!("orphaned/", &resolved_slug).into();
-        let orphaned_doc = doc_page_from_slug(&resolved_slug, doc.locale());
-        if let Some(Ok(_)) = orphaned_doc {
+        let orphaned_doc = docs.get(&(doc.locale(), resolved_slug.clone()));
+        // let orphaned_doc = doc_page_from_slug(&resolved_slug, doc.locale());
+        if orphaned_doc.is_some() {
             return Err(ToolError::OrphanedDocExists(Cow::Owned(format!(
                 "{} → {}",
                 doc.slug(),
@@ -232,7 +243,7 @@ fn sync_translated_document(
                 ))
             );
         }
-        if let Some(Ok(_)) = resolved_doc {
+        if resolved_doc.is_some() {
             // set the slug to a /conflicting /... slug. if that already
             // exists (possibly from a previous move on this run),
             // append a md5 hash of the original slug to the slug
@@ -256,12 +267,12 @@ fn sync_translated_document(
         build_url(doc.slug(), doc.locale(), PageCategory::Doc)?,
         build_url(&resolved_slug, doc.locale(), PageCategory::Doc)?,
     ));
-    if verbose {
-        println!(
-            "{}",
-            blue.apply_to(format!("redirecting {} → {}", doc.slug(), resolved_slug))
-        )
-    }
+    // if verbose {
+    //     println!(
+    //         "{}",
+    //         blue.apply_to(format!("redirecting {} → {}", doc.slug(), resolved_slug))
+    //     )
+    // }
 
     // Update the wiki history
     update_wiki_history(

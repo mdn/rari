@@ -13,7 +13,7 @@ use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use rari_utils::error::RariIoError;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 use url::Url;
 
 use crate::error::{RedirectError, ToolError};
@@ -320,7 +320,7 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 
     // Check for existing file/folder, make it a warning for now
     if let Ok(page) = Page::from_url(&url) {
-        warn!(
+        info!(
             "From-URL '{}' resolves to an existing folder at '{}'.",
             url,
             page.path().display()
