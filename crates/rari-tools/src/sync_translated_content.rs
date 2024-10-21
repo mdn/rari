@@ -206,9 +206,7 @@ fn sync_translated_document(
     }
 
     let resolved_doc = docs.get(&(Locale::EnUs, resolved_slug.clone()));
-    // let resolved_doc = doc_page_from_slug(&resolved_slug, Locale::EnUs);
     status.orphaned = resolved_doc.is_none();
-    // status.orphaned = !matches!(resolved_doc, Some(Ok(_)));
 
     if !status.renamed && !status.orphaned {
         return Ok(status);
@@ -225,7 +223,6 @@ fn sync_translated_document(
         status.moved = true;
         resolved_slug = concat_strs!("orphaned/", &resolved_slug).into();
         let orphaned_doc = docs.get(&(doc.locale(), resolved_slug.clone()));
-        // let orphaned_doc = doc_page_from_slug(&resolved_slug, doc.locale());
         if orphaned_doc.is_some() {
             return Err(ToolError::OrphanedDocExists(Cow::Owned(format!(
                 "{} → {}",
@@ -337,9 +334,6 @@ fn md_or_html_exists(slug: &str, locale: Locale) -> Result<bool, ToolError> {
         .join(locale.as_folder_str())
         .join(slug.to_lowercase());
     let md_path = folder_path.join("index.md");
-    // Not use the static cache here (`doc_page_from_static_files`),
-    // because we maybe have written files to the filesystem
-    // after the cache was created.
     Ok(md_path.exists())
 }
 
