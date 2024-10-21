@@ -114,6 +114,7 @@ static LOCALES_FOR_GENERICS_AND_SPAS: LazyLock<Vec<Locale>> = LazyLock::new(|| {
 
 static TRANSLATED_LOCALES: LazyLock<Vec<Locale>> = LazyLock::new(|| {
     let translated_locales = [
+        Locale::De,
         Locale::Es,
         Locale::Fr,
         Locale::Ja,

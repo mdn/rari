@@ -326,15 +326,10 @@ fn md_or_html_exists(slug: &str, locale: Locale) -> Result<bool, ToolError> {
         .join(locale.as_folder_str())
         .join(slug.to_lowercase());
     let md_path = folder_path.join("index.md");
-    let html_path = folder_path.join("index.html");
-
     // Not use the static cache here (`doc_page_from_static_files`),
     // because we maybe have written files to the filesystem
     // after the cache was created.
-    let md_exists = md_path.exists();
-    let html_exists = html_path.exists();
-    let ret = md_exists || html_exists;
-    Ok(ret)
+    Ok(md_path.exists())
 }
 
 fn resolve(slug: &str) -> Cow<'_, str> {
