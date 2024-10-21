@@ -355,7 +355,6 @@ mod test {
             Locale::EnUs,
             false,
         );
-        println!("result: {:?}", result);
         assert!(result.is_ok());
         let result = result.unwrap();
         assert!(result.len() == 3);
