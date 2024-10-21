@@ -212,10 +212,10 @@ impl From<&Global> for Global {
 impl std::str::FromStr for Global {
     type Err = self::error::ConversionError;
     fn from_str(value: &str) -> Result<Self, self::error::ConversionError> {
-        if let Ok(v) = value.parse() {
+        if let Ok(v) = value.parse::<Interface>() {
             Ok(Self::Variant0(v))
         } else {
-            let Ok(v) = value.parse();
+            let v = value.to_string();
             Ok(Self::Variant1(v))
         }
     }
