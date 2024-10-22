@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
@@ -78,7 +77,7 @@ enum ContentSubcommand {
 struct MoveArgs {
     old_slug: String,
     new_slug: String,
-    locale: Option<String>,
+    locale: Option<Locale>,
     #[arg(short = 'y', long, help = "Assume yes to all prompts")]
     assume_yes: bool,
 }
@@ -86,7 +85,7 @@ struct MoveArgs {
 #[derive(Args)]
 struct DeleteArgs {
     slug: String,
-    locale: Option<String>,
+    locale: Option<Locale>,
     #[arg(short, long, default_value_t = false)]
     recursive: bool,
     #[arg(long)]
@@ -103,7 +102,7 @@ struct AddRedirectArgs {
 
 #[derive(Args)]
 struct SyncTranslatedContentArgs {
-    locales: Option<Vec<String>>,
+    locales: Option<Vec<Locale>>,
 }
 
 #[derive(Args)]
@@ -358,17 +357,12 @@ fn main() -> Result<(), Error> {
         }
         Commands::Content(content_subcommand) => match content_subcommand {
             ContentSubcommand::Move(args) => {
-                r#move(
-                    &args.old_slug,
-                    &args.new_slug,
-                    args.locale.as_deref(),
-                    args.assume_yes,
-                )?;
+                r#move(&args.old_slug, &args.new_slug, args.locale, args.assume_yes)?;
             }
             ContentSubcommand::Delete(args) => {
                 remove(
                     &args.slug,
-                    args.locale.as_deref(),
+                    args.locale,
                     args.recursive,
                     args.redirect.as_deref(),
                     args.assume_yes,
@@ -378,15 +372,8 @@ fn main() -> Result<(), Error> {
                 add_redirect(&args.from_url, &args.to_url)?;
             }
             ContentSubcommand::SyncTranslatedContent(args) => {
-                let locales: Vec<rari_types::locale::Locale> = if let Some(locales) = args.locales {
-                    locales
-                        .iter()
-                        .filter_map(|l| Locale::from_str(l).ok())
-                        .collect()
-                } else {
-                    Locale::translated().to_owned()
-                };
-                sync_translated_content(&locales, cli.verbose.is_present())?;
+                let locales = args.locales.as_deref().unwrap_or(Locale::translated());
+                sync_translated_content(locales, cli.verbose.is_present())?;
             }
         },
         Commands::Update(args) => update(args.version)?,

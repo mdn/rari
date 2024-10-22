@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use console::Style;
 use dialoguer::theme::ColorfulTheme;
@@ -24,17 +23,13 @@ use crate::wikihistory::delete_from_wiki_history;
 
 pub fn remove(
     slug: &str,
-    locale: Option<&str>,
+    locale: Option<Locale>,
     recursive: bool,
     redirect: Option<&str>,
     assume_yes: bool,
 ) -> Result<(), ToolError> {
     validate_args(slug)?;
-    let locale = if let Some(l) = locale {
-        Locale::from_str(l)?
-    } else {
-        Locale::default()
-    };
+    let locale = locale.unwrap_or_default();
 
     let green = Style::new().green();
     let red = Style::new().red();
