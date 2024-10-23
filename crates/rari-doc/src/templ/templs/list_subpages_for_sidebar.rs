@@ -30,7 +30,7 @@ pub fn list_subpages_for_sidebar(
     out.push_str("<ol>");
     for page in sub_pages {
         let locale_page = if env.locale != Default::default() {
-            &Page::from_url_with_fallback(page.url(), Some(env.locale))?
+            &Page::from_url_with_fallback(page.url(), env.locale)?
         } else {
             &page
         };

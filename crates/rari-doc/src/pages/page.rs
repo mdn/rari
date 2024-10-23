@@ -49,8 +49,8 @@ impl Page {
         Self::internal_from_url(url, None, true)
     }
 
-    pub fn from_url_with_fallback(url: &str, locale: Option<Locale>) -> Result<Self, DocError> {
-        Self::internal_from_url(url, locale, true)
+    pub fn from_url_with_fallback(url: &str, locale: Locale) -> Result<Self, DocError> {
+        Self::internal_from_url(url, Some(locale), true)
     }
 
     fn internal_from_url(

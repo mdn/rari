@@ -66,7 +66,7 @@ pub fn write_li_with_badges(
     closed: bool,
 ) -> Result<(), DocError> {
     let locale_page = if locale != Default::default() {
-        &Page::from_url_with_fallback(page.url(), Some(locale))?
+        &Page::from_url_with_fallback(page.url(), locale)?
     } else {
         page
     };
@@ -134,7 +134,7 @@ pub fn list_sub_pages_internal(
     let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
     let depth = depth.map(|i| i.saturating_sub(1));
     if include_parent {
-        let page = Page::from_url_with_fallback(url, Some(locale))?;
+        let page = Page::from_url_with_fallback(url, locale)?;
         write_parent_li(out, &page, locale)?;
     }
     for sub_page in sub_pages {
@@ -195,7 +195,7 @@ pub fn list_sub_pages_grouped_internal(
         }
     }
     if include_parent {
-        let page = Page::from_url_with_fallback(url, Some(locale))?;
+        let page = Page::from_url_with_fallback(url, locale)?;
         write_parent_li(out, &page, locale)?;
     }
     for (prefix, group) in grouped {
