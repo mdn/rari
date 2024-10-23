@@ -66,7 +66,7 @@ pub fn write_li_with_badges(
     closed: bool,
 ) -> Result<(), DocError> {
     let locale_page = if locale != Default::default() {
-        &Page::from_url_with_other_locale_and_fallback(page.url(), Some(locale))?
+        &Page::from_url_with_fallback(page.url(), Some(locale))?
     } else {
         page
     };
@@ -134,7 +134,7 @@ pub fn list_sub_pages_internal(
     let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
     let depth = depth.map(|i| i.saturating_sub(1));
     if include_parent {
-        let page = Page::from_url_with_other_locale_and_fallback(url, Some(locale))?;
+        let page = Page::from_url_with_fallback(url, Some(locale))?;
         write_parent_li(out, &page, locale)?;
     }
     for sub_page in sub_pages {
@@ -195,7 +195,7 @@ pub fn list_sub_pages_grouped_internal(
         }
     }
     if include_parent {
-        let page = Page::from_url_with_other_locale_and_fallback(url, Some(locale))?;
+        let page = Page::from_url_with_fallback(url, Some(locale))?;
         write_parent_li(out, &page, locale)?;
     }
     for (prefix, group) in grouped {
@@ -231,7 +231,7 @@ pub fn get_sub_pages(
         Some(redirect) => redirect,
         None => url,
     };
-    let doc = Page::from_url(url)?;
+    let doc = Page::from_url_with_default_fallback(url)?;
     let full_path = doc.full_path();
     if let Some(folder) = full_path.parent() {
         let sub_folders = read_sub_folders(folder.to_path_buf(), depth)?;

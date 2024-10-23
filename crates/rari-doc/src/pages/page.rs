@@ -42,21 +42,18 @@ pub enum PageCategory {
 
 impl Page {
     pub fn from_url(url: &str) -> Result<Self, DocError> {
-        Self::internal_from_url_with_other_locale_and_fallback(url, None, true)
+        Self::internal_from_url(url, None, false)
     }
 
-    pub fn from_url_no_fallback(url: &str) -> Result<Self, DocError> {
-        Self::internal_from_url_with_other_locale_and_fallback(url, None, false)
+    pub fn from_url_with_default_fallback(url: &str) -> Result<Self, DocError> {
+        Self::internal_from_url(url, None, true)
     }
 
-    pub fn from_url_with_other_locale_and_fallback(
-        url: &str,
-        locale: Option<Locale>,
-    ) -> Result<Self, DocError> {
-        Self::internal_from_url_with_other_locale_and_fallback(url, locale, true)
+    pub fn from_url_with_fallback(url: &str, locale: Option<Locale>) -> Result<Self, DocError> {
+        Self::internal_from_url(url, locale, true)
     }
 
-    fn internal_from_url_with_other_locale_and_fallback(
+    fn internal_from_url(
         url: &str,
         locale: Option<Locale>,
         fallback: bool,
@@ -137,7 +134,7 @@ impl Page {
             return true;
         }
 
-        Page::from_url(url).is_ok()
+        Page::from_url_with_default_fallback(url).is_ok()
     }
 }
 

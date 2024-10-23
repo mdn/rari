@@ -32,7 +32,7 @@ impl RariApi {
             Some(redirect) => redirect,
             None => url,
         };
-        Page::from_url(url).map_err(Into::into)
+        Page::from_url_with_default_fallback(url).map_err(Into::into)
     }
 
     pub fn decode_uri_component(component: &str) -> String {

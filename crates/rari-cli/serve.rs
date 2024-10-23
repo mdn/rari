@@ -17,7 +17,7 @@ fn get_json(url: &str) -> Result<BuiltDocy, DocError> {
     let span = span!(Level::ERROR, "url", "{}", url);
     let _enter1 = span.enter();
     let url = url.strip_suffix("/index.json").unwrap_or(url);
-    let page = Page::from_url(url)?;
+    let page = Page::from_url_with_default_fallback(url)?;
 
     let slug = &page.slug();
     let locale = page.locale();
