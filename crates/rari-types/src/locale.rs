@@ -1,6 +1,7 @@
+use std::fmt::Display;
+use std::iter::once;
 use std::str::FromStr;
 use std::sync::LazyLock;
-use std::{fmt::Display, iter::once};
 
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
