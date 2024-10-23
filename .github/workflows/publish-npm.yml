@@ -10,4 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - run: echo 'This would run npm publish.'
+      - name: Setup
+        uses: actions/checkout@v4
+
+      - name: Checkout
+        working-directory: ./rari-npm
+        uses: actions/setup-node@v4
+        with:
+          registry-url: "https://registry.npmjs.org/"
+          node-version-file: "package.json"
+
+      - name: Publish
+        working-directory: ./rari-npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

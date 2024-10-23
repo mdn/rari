@@ -5,11 +5,16 @@
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mdn/rari"
+  },
+  "homepage": "https://github.com/mdn/rari/tree/main/rari-npm",
   "scripts": {
     "postinstall": "node ./lib/postinstall.js"
   },
   "bin": {
-    "rari": "./bin/rari"
+    "rari": "bin/rari"
   },
   "author": "Florian Dieminger <me@fiji-flo.de>",
   "license": "MPL-2.0",
