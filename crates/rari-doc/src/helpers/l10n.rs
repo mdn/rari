@@ -14,8 +14,8 @@ pub enum L10nError {
     NoEnUs,
 }
 
-/// Look up a translation from mdn/content's `jsondata folder.
-/// `typ` refers to the `L1on-<typ>.json` file.
+// Look up a translation from mdn/content's `jsondata folder.
+// `typ` refers to the `L10n-<typ>.json` file.
 pub fn l10n_json_data(typ: &str, key: &str, locale: Locale) -> Result<&'static str, L10nError> {
     if let Some(data) = JSON_L10N_FILES.get(typ).and_then(|file| file.get(key)) {
         get_for_locale(locale, data)

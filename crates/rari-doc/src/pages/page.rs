@@ -19,6 +19,10 @@ use crate::pages::types::spa::SPA;
 use crate::resolve::{strip_locale_from_url, url_meta_from, UrlMeta};
 use crate::utils::locale_and_typ_from_path;
 
+/// Represents a page in the documentation system.
+///
+/// The `Page` enum is used to define different types of pages that can be part of the documentation.
+/// It provides methods to create instances from URLs and to check the existence of pages.
 #[derive(Debug, Clone)]
 #[enum_dispatch]
 pub enum Page {
@@ -30,6 +34,10 @@ pub enum Page {
     GenericPage(Arc<GenericPage>),
 }
 
+/// Represents the category of a page in the documentation system.
+///
+/// The `PageCategory` enum is used to classify different types of pages within the documentation.
+/// Each variant corresponds to a specific category of pages.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PageCategory {
     Doc,
@@ -159,6 +167,15 @@ impl Page {
         false
     }
 
+    /// Checks if a `Page` for a given URL exists.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to be checked.
+    ///
+    /// # Returns
+    ///
+    /// * `bool` - Returns `true` if the `Page` for the given URL exists, otherwise `false`.
     pub fn exists(url: &str) -> bool {
         if url == "/discord" {
             return true;
@@ -281,14 +298,51 @@ impl<T: PageLike> PageLike for Arc<T> {
     }
 }
 
+/// A trait for reading pages in the documentation system.
+///
+/// The `PageReader` trait defines a method for reading pages from a specified path,
+/// optionally considering a locale.
 pub trait PageReader {
+    /// Reads a page from the given path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - An implementation of `Into<PathBuf>` that specifies the path to the page.
+    /// * `locale` - An optional `Locale` that specifies the locale to be considered while reading the page.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Page, DocError>` - Returns a `Page` on success, or a `DocError` on failure.
     fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError>;
 }
 
+/// A trait for writing pages in the documentation system.
+///
+/// The `PageWriter` trait defines a method for writing the current state of a page
+/// to the file system.
 pub trait PageWriter {
+    /// Writes the current state of the page to the file system.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), DocError>` - Returns `Ok(())` if the write operation is successful,
+    ///   or a `DocError` if an error occurs during the write process.
     fn write(&self) -> Result<(), DocError>;
 }
 
+/// A trait for building pages in the documentation system.
+///
+/// The `PageBuilder` trait defines a method for constructing a page and returning
+/// a `BuiltDocy` (A JSON represenatation of the build artifact). Implementors of
+/// this trait are responsible for handling the specifics of the build process,
+/// which could involve compiling content, applying templates, and performing
+/// any necessary transformations.
 pub trait PageBuilder {
+    /// Builds the page and returns the built `BuiltDocy` artifact.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<BuiltDocy, DocError>` - Returns `Ok(BuiltDocy)` if the build process is successful,
+    ///   or a `DocError` if an error occurs during the build process.
     fn build(&self) -> Result<BuiltDocy, DocError>;
 }
