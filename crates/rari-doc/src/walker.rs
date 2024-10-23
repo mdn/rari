@@ -25,7 +25,7 @@ pub fn walk_builder(
         }
         builder
     };
-    builder.git_ignore(settings().reader_ignores_gitignore);
+    builder.git_ignore(!settings().reader_ignores_gitignore);
     builder.types(types.build()?);
     Ok(builder)
 }

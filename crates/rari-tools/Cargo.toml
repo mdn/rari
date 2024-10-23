@@ -23,7 +23,7 @@ rayon.workspace = true
 console = "0"
 dialoguer = "0"
 csv = "1"
-md-5 = "0"
+sha2 = "0.10"
 
 [dev-dependencies]
 serial_test = { version = "3", features = ["file_locks"] }

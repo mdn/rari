@@ -1,6 +1,6 @@
-use std::fmt::Display;
 use std::str::FromStr;
 use std::sync::LazyLock;
+use std::{fmt::Display, iter::once};
 
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
@@ -93,38 +93,27 @@ impl Display for Locale {
     }
 }
 
+static ACTIVE_TRANSLATED_LOCALES: &[Locale] = &[
+    Locale::Es,
+    Locale::Fr,
+    Locale::Ja,
+    Locale::Ko,
+    Locale::PtBr,
+    Locale::Ru,
+    Locale::ZhCn,
+    Locale::ZhTw,
+];
+
 static LOCALES_FOR_GENERICS_AND_SPAS: LazyLock<Vec<Locale>> = LazyLock::new(|| {
-    let default_locales = [
-        Locale::EnUs,
-        Locale::Es,
-        Locale::Fr,
-        Locale::Ja,
-        Locale::Ko,
-        Locale::PtBr,
-        Locale::Ru,
-        Locale::ZhCn,
-        Locale::ZhTw,
-    ];
-    default_locales
-        .iter()
+    once(&Locale::EnUs)
+        .chain(ACTIVE_TRANSLATED_LOCALES.iter())
         .chain(settings().additional_locales_for_generics_and_spas.iter())
         .map(ToOwned::to_owned)
         .collect::<Vec<_>>()
 });
 
 static TRANSLATED_LOCALES: LazyLock<Vec<Locale>> = LazyLock::new(|| {
-    let translated_locales = [
-        Locale::De,
-        Locale::Es,
-        Locale::Fr,
-        Locale::Ja,
-        Locale::Ko,
-        Locale::PtBr,
-        Locale::Ru,
-        Locale::ZhCn,
-        Locale::ZhTw,
-    ];
-    translated_locales
+    ACTIVE_TRANSLATED_LOCALES
         .iter()
         .chain(settings().additional_locales_for_generics_and_spas.iter())
         .map(ToOwned::to_owned)
