@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cached_readers::{blog_auhtor_by_name, blog_files};
 use crate::error::DocError;
-use crate::pages::json::{PrevNextBlog, SlugNTitle};
+use crate::pages::json::{PrevNextBySlug, SlugNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::resolve::build_url;
 use crate::utils::{locale_and_typ_from_path, modified_dt, readtime, split_fm};
@@ -82,8 +82,8 @@ pub struct BlogMeta {
     #[serde(serialize_with = "modified_dt")]
     pub date: NaiveDateTime,
     pub author: AuthorLink,
-    #[serde(skip_serializing_if = "PrevNextBlog::is_none")]
-    pub links: PrevNextBlog,
+    #[serde(skip_serializing_if = "PrevNextBySlug::is_none")]
+    pub links: PrevNextBySlug,
     pub read_time: usize,
 }
 
@@ -306,10 +306,10 @@ fn read_blog_post(path: impl Into<PathBuf>) -> Result<BlogPost, DocError> {
     })
 }
 
-fn prev_next(url: &str) -> PrevNextBlog {
+fn prev_next(url: &str) -> PrevNextBySlug {
     let sorted_meta = &blog_files().sorted_meta;
     if let Some(i) = sorted_meta.iter().position(|m| m.url == url) {
-        PrevNextBlog {
+        PrevNextBySlug {
             previous: if i > 0 {
                 sorted_meta.get(i - 1).map(|m| SlugNTitle {
                     slug: m.slug.clone(),

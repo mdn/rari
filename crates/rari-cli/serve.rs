@@ -3,17 +3,17 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{Json, Router};
 use rari_doc::error::DocError;
-use rari_doc::pages::json::BuiltDocy;
+use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use tracing::{error, span, Level};
 
-async fn get_json_handler(req: Request) -> Result<Json<BuiltDocy>, AppError> {
+async fn get_json_handler(req: Request) -> Result<Json<BuiltPage>, AppError> {
     let url = req.uri().path();
     let json = get_json(url)?;
     Ok(Json(json))
 }
 
-fn get_json(url: &str) -> Result<BuiltDocy, DocError> {
+fn get_json(url: &str) -> Result<BuiltPage, DocError> {
     let span = span!(Level::ERROR, "url", "{}", url);
     let _enter1 = span.enter();
     let url = url.strip_suffix("/index.json").unwrap_or(url);

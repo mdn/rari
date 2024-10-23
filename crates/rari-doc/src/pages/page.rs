@@ -7,7 +7,7 @@ use rari_types::globals::blog_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 
-use super::json::BuiltDocy;
+use super::json::BuiltPage;
 use super::types::contributors::contributor_spotlight_from_url;
 use super::types::generic::GenericPage;
 use crate::error::DocError;
@@ -344,5 +344,5 @@ pub trait PageBuilder {
     ///
     /// * `Result<BuiltDocy, DocError>` - Returns `Ok(BuiltDocy)` if the build process is successful,
     ///   or a `DocError` if an error occurs during the build process.
-    fn build(&self) -> Result<BuiltDocy, DocError>;
+    fn build(&self) -> Result<BuiltPage, DocError>;
 }

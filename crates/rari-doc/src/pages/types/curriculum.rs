@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cached_readers::curriculum_files;
 use crate::error::DocError;
-use crate::pages::json::{Parent, PrevNextBlog, PrevNextCurriculum, UrlNTitle};
+use crate::pages::json::{Parent, PrevNextBySlug, PrevNextByUrl, UrlNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::utils::{as_null, split_fm};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -99,7 +99,7 @@ pub struct CurriculumMeta {
     pub sidebar: Vec<CurriculumIndexEntry>,
     pub modules: Vec<CurriculumIndexEntry>,
     pub parents: Vec<Parent>,
-    pub prev_next: PrevNextBlog,
+    pub prev_next: PrevNextBySlug,
     pub group: Option<String>,
 }
 
@@ -329,7 +329,7 @@ pub fn build_overview_modules(slug: &str) -> Result<Vec<CurriculumIndexEntry>, D
         .collect())
 }
 
-pub fn prev_next_modules(slug: &str) -> Result<Option<PrevNextCurriculum>, DocError> {
+pub fn prev_next_modules(slug: &str) -> Result<Option<PrevNextByUrl>, DocError> {
     let index = &curriculum_files().index;
     let i = index
         .iter()
@@ -337,7 +337,7 @@ pub fn prev_next_modules(slug: &str) -> Result<Option<PrevNextCurriculum>, DocEr
     prev_next(index, i)
 }
 
-pub fn prev_next_overview(slug: &str) -> Result<Option<PrevNextCurriculum>, DocError> {
+pub fn prev_next_overview(slug: &str) -> Result<Option<PrevNextByUrl>, DocError> {
     let index: Vec<_> = grouped_index()?
         .into_iter()
         .filter_map(|entry| {
@@ -357,16 +357,16 @@ pub fn prev_next_overview(slug: &str) -> Result<Option<PrevNextCurriculum>, DocE
 pub fn prev_next(
     index: &[CurriculumIndexEntry],
     i: Option<usize>,
-) -> Result<Option<PrevNextCurriculum>, DocError> {
+) -> Result<Option<PrevNextByUrl>, DocError> {
     Ok(i.map(|i| match i {
-        0 => PrevNextCurriculum {
+        0 => PrevNextByUrl {
             prev: None,
             next: index.get(1).map(|entry| UrlNTitle {
                 title: entry.title.clone(),
                 url: entry.url.clone(),
             }),
         },
-        i if i == index.len() => PrevNextCurriculum {
+        i if i == index.len() => PrevNextByUrl {
             prev: index.get(i - 1).map(|entry| UrlNTitle {
                 title: entry.title.clone(),
                 url: entry.url.clone(),
@@ -374,7 +374,7 @@ pub fn prev_next(
             next: None,
         },
 
-        i => PrevNextCurriculum {
+        i => PrevNextByUrl {
             prev: index.get(i - 1).map(|entry| UrlNTitle {
                 title: entry.title.clone(),
                 url: entry.url.clone(),
