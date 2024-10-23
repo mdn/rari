@@ -41,15 +41,47 @@ pub enum PageCategory {
 }
 
 impl Page {
+    /// Creates an instance of `Page` from the given URL if it exists.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to create the `Page` instance from.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, DocError>` - Returns an instance of `Page` on success, or a `DocError` on failure,
+    ///   usually if the Page's file cannot be found.
     pub fn from_url(url: &str) -> Result<Self, DocError> {
         Self::internal_from_url(url, None, false)
     }
 
-    pub fn from_url_with_default_fallback(url: &str) -> Result<Self, DocError> {
+    /// Creates a `Page` from the given URL with a fallback to the
+    /// default `Locale` if the page cannot be found in the given URL's `Locale`.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to create the instance from.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, DocError>` - Returns an instance of `Self` on success, or a `DocError` on failure.
+    pub fn from_url_with_fallback(url: &str) -> Result<Self, DocError> {
         Self::internal_from_url(url, None, true)
     }
 
-    pub fn from_url_with_fallback(url: &str, locale: Locale) -> Result<Self, DocError> {
+    /// Creates a `Page` from the given URL and a specified `Locale`. The page will be searched
+    /// for in the passed-in `Locale`, overriding the URL's `Locale`. If not found, the default `Locale`
+    /// is searched as a fallback.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to create the instance from.
+    /// * `locale` - A `Locale` that specifies the `Locale` the URL is searched in.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, DocError>` - Returns an instance of `Self` on success, or a `DocError` on failure.
+    pub fn from_url_with_locale_and_fallback(url: &str, locale: Locale) -> Result<Self, DocError> {
         Self::internal_from_url(url, Some(locale), true)
     }
 
@@ -134,7 +166,7 @@ impl Page {
             return true;
         }
 
-        Page::from_url_with_default_fallback(url).is_ok()
+        Page::from_url_with_fallback(url).is_ok()
     }
 }
 

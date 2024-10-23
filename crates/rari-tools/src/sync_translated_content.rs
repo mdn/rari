@@ -366,7 +366,7 @@ fn resolve<'a>(
         None => Cow::Borrowed(&en_us_url_lc),
     };
 
-    let page = Page::from_url_with_default_fallback(&resolved_url);
+    let page = Page::from_url_with_fallback(&resolved_url);
     if let Ok(page) = page {
         Cow::Owned(page.slug().to_string())
     } else {

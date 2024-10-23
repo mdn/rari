@@ -16,7 +16,7 @@ pub fn parents<T: PageLike>(doc: &T) -> Vec<Parent> {
         if parent_url.ends_with(doc.base_slug()) {
             break;
         }
-        if let Ok(parent) = Page::from_url_with_default_fallback(parent_url) {
+        if let Ok(parent) = Page::from_url_with_fallback(parent_url) {
             parents.push(Parent {
                 uri: parent.url().into(),
                 title: parent

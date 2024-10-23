@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fs;
 use std::path::Path;
 
+use rari_md::m2h;
 use rari_types::fm_types::PageType;
 use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
@@ -33,7 +34,7 @@ use crate::pages::types::curriculum::{
     build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
     prev_next_modules, prev_next_overview, CurriculumPage, Template,
 };
-use crate::pages::types::doc::{render_md_to_html, Doc};
+use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
@@ -154,7 +155,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     } else {
         (Cow::Borrowed(page.content()), vec![], vec![])
     };
-    let encoded_html = render_md_to_html(&ks_rendered_doc, page.locale())?;
+    let encoded_html = m2h(&ks_rendered_doc, page.locale())?;
     let html = decode_ref(&encoded_html, &templs)?;
     let post_processed_html = post_process_html(&html, page, false)?;
 

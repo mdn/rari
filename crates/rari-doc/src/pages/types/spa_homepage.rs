@@ -20,7 +20,7 @@ use crate::pages::page::{Page, PageLike};
 
 pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
     urls.iter()
-        .filter_map(|url| match Page::from_url_with_default_fallback(url) {
+        .filter_map(|url| match Page::from_url_with_fallback(url) {
             Ok(Page::BlogPost(post)) => Some(Ok(HomePageLatestNewsItem {
                 url: post.url().to_string(),
                 title: post.title().to_string(),
@@ -45,28 +45,30 @@ pub fn featured_articles(
     locale: Locale,
 ) -> Result<Vec<HomePageFeaturedArticle>, DocError> {
     urls.iter()
-        .filter_map(|url| match Page::from_url_with_fallback(url, locale) {
-            Ok(Page::BlogPost(post)) => Some(Ok(HomePageFeaturedArticle {
-                mdn_url: post.url().to_string(),
-                summary: post.meta.description.clone(),
-                title: post.title().to_string(),
-                tag: Some(Parent {
-                    uri: concat_strs!("/", Locale::default().as_url_str(), "/blog/"),
-                    title: "Blog".to_string(),
-                }),
-            })),
-            Ok(ref page @ Page::Doc(ref doc)) => Some(Ok(HomePageFeaturedArticle {
-                mdn_url: doc.url().to_string(),
-                summary: get_hacky_summary_md(page).unwrap_or_default(),
-                title: doc.title().to_string(),
-                tag: parents(page).get(1).cloned(),
-            })),
-            Err(e) => Some(Err(e)),
-            x => {
-                tracing::debug!("{x:?}");
-                None
-            }
-        })
+        .filter_map(
+            |url| match Page::from_url_with_locale_and_fallback(url, locale) {
+                Ok(Page::BlogPost(post)) => Some(Ok(HomePageFeaturedArticle {
+                    mdn_url: post.url().to_string(),
+                    summary: post.meta.description.clone(),
+                    title: post.title().to_string(),
+                    tag: Some(Parent {
+                        uri: concat_strs!("/", Locale::default().as_url_str(), "/blog/"),
+                        title: "Blog".to_string(),
+                    }),
+                })),
+                Ok(ref page @ Page::Doc(ref doc)) => Some(Ok(HomePageFeaturedArticle {
+                    mdn_url: doc.url().to_string(),
+                    summary: get_hacky_summary_md(page).unwrap_or_default(),
+                    title: doc.title().to_string(),
+                    tag: parents(page).get(1).cloned(),
+                })),
+                Err(e) => Some(Err(e)),
+                x => {
+                    tracing::debug!("{x:?}");
+                    None
+                }
+            },
+        )
         .collect()
 }
 
