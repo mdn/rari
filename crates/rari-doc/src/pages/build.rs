@@ -415,7 +415,23 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
     )))
 }
 
-pub fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<(), DocError> {
+/// Copies additional files from one directory to another, excluding a specified file.
+///
+/// This function reads all files from the source directory, filters out the specified file to ignore,
+/// and copies the remaining files to the destination directory. This is useful for copying additional
+/// assets from a source directory to a destination directory, ususally excluding the original `index.md`
+/// file.
+///
+/// # Arguments
+///
+/// * `from` - A reference to a `Path` that specifies the source directory.
+/// * `to` - A reference to a `Path` that specifies the destination directory.
+/// * `ignore` - A reference to a `Path` that specifies the file to be ignored during the copy process.
+///
+/// # Returns
+///
+/// * `Result<(), DocError>` - Returns `Ok(())` if all files are copied successfully, or a `DocError` if an error occurs.
+pub(crate) fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<(), DocError> {
     for from in fs::read_dir(from)?
         .filter_map(Result::ok)
         .map(|f| f.path())
