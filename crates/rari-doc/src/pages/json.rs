@@ -12,12 +12,36 @@ use crate::pages::types::blog::BlogMeta;
 use crate::specs::Specification;
 use crate::utils::modified_dt;
 
+/// Represents an entry in a Table of Contents (ToC), used to navigate a singel page. This is
+/// used on the right side of a typical page and allows users to quickly jump to a specific
+/// heading in the page.
+///
+/// The `TocEntry` struct is used to define individual entries in a Table of Contents.
+/// Each entry consists of the text to be displayed and a corresponding identifier.
+///
+/// # Fields
+///
+/// * `text` - A `String` that holds the display text of the ToC entry. This can
+///   contain HTML.
+/// * `id` - The `id` attribute of the target element in the page.
+/// ```
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct TocEntry {
     pub text: String,
     pub id: String,
 }
 
+/// Represents the git source control information for a documentation page.
+///
+/// The `Source` struct contains metadata about the source of a documentation page,
+/// including the folder path, GitHub URL, last commit URL, and the filename.
+///
+/// # Fields
+///
+/// * `folder` - A `PathBuf` that specifies the directory where the source file is located.
+/// * `github_url` - A `String` that holds the GitHUb URL to the spource file.
+/// * `last_commit_url` - A `String` that holds the URL to the last commit in the GitHub repository.
+/// * `filename` - A `String` that specifies the name of the source file.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Source {
     pub folder: PathBuf,
@@ -26,12 +50,33 @@ pub struct Source {
     pub filename: String,
 }
 
+/// Represents a parent entity in the page structure.
+///
+/// The `Parent` struct contains metadata about a parent entity, containing its URI and title.
+/// This is typically used to represent hierarchical relationships in the page tree,
+/// such as a parent page or section. A documentation page has a list of `Parent` items, for example.
+///
+/// # Fields
+///
+/// * `uri` - A `String` that holds the URI of the parent entity.
+/// * `title` - A `String` that holds the title of the parent entity.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Parent {
     pub uri: String,
     pub title: String,
 }
 
+/// Represents a translation entry in the list of other available translations for a documentation page.
+///
+/// The `Translation` struct contains metadata about a translation, including the locale,
+/// title, and native representation. This is used to display translations for other languages
+/// in the documentation.
+///
+/// # Fields
+///
+/// * `locale` - A `Locale` that specifies the locale of the translation.
+/// * `title` - A `String` that holds the translated title.
+/// * `native` - A `Native` representing the locale in a locale-native spelling, ie. "Deutsch".
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Translation {
     pub locale: Locale,
@@ -39,6 +84,19 @@ pub struct Translation {
     pub native: Native,
 }
 
+/// Represents a prose section on a documentation page, one of the possible items in the list of "body" sections.
+///
+/// The `Prose` struct is used to define a section of prose content within the documentation.
+/// It includes optional metadata such as an identifier and title, as well as the content itself.
+/// Additionally, it can specify whether the prose's title is rendered as a H3 HTML heading.
+///
+/// # Fields
+///
+/// * `id` - An `Option<String>` that holds an optional `id` element attribute for the prose section.
+/// * `title` - An `Option<String>` that holds an optional title for the prose section.
+/// * `is_h3` - A `bool` that indicates whether the prose section's `title` will be rendered as a &lt;H3&gt;
+///    heading. This field is serialized as `isH3`.
+/// * `content` - A `String` that holds the actual prose HTML content.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Prose {
     pub id: Option<String>,
@@ -48,6 +106,22 @@ pub struct Prose {
     pub content: String,
 }
 
+/// Represents a browser compatibility (BCD) section on a documentation page.
+///
+/// The `Compat` struct is used to define a compatibility section (BCD) within the documentation page.
+/// It includes optional metadata such as an identifier, title, and content, as well as the important
+/// query string to get to the underlying BCD data. Additionally, it can specify whether the title
+/// is rendered is a H3 HTML heading.
+///
+/// # Fields
+///
+/// * `id` - An `Option<String>` that holds an optional `id` element attribute for the compatibility section.
+/// * `title` - An `Option<String>` that holds an optional title for the compatibility section.
+/// * `is_h3` - A `bool` that indicates whether the compatibility section's `title` will be rendered as a &lt;H3&gt;
+///    heading. This field is serialized as `isH3`.
+/// * `query` - A `String` that holds the query string for BCD data.
+/// * `content` - An `Option<String>` that holds the optional content of the compatibility section. This field
+///    is skipped during serialization if it is `None`.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Compat {
     pub id: Option<String>,
