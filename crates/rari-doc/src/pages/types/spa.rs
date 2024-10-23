@@ -17,7 +17,7 @@ use crate::cached_readers::blog_files;
 use crate::error::DocError;
 use crate::helpers::title::page_title;
 use crate::pages::json::{
-    BlogIndex, BuiltDocy, HyData, ItemContainer, JsonBasicSPA, JsonBlogPost, JsonBlogPostDoc,
+    BlogIndex, BuiltDocy, ItemContainer, JsonBasicSPA, JsonBlogPost, JsonBlogPostDoc,
     JsonHomePageSPA, JsonHomePageSPAHyData,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
@@ -118,7 +118,7 @@ impl SPA {
                 url: self.url().to_owned(),
                 locale: self.locale(),
                 blog_meta: None,
-                hy_data: Some(HyData::BlogIndex(BlogIndex {
+                hy_data: Some(BlogIndex {
                     posts: blog_files()
                         .sorted_meta
                         .iter()
@@ -129,7 +129,7 @@ impl SPA {
                             m
                         })
                         .collect(),
-                })),
+                }),
                 page_title: self.title().to_owned(),
                 ..Default::default()
             }))),

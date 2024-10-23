@@ -10,9 +10,9 @@ use rari_utils::concat_strs;
 use scraper::Html;
 
 use super::json::{
-    BuiltDocy, Compat, ContributorSpotlightHyData, HyData, JsonBlogPost, JsonBlogPostDoc,
-    JsonCurriculum, JsonDoADoc, JsonDoc, JsonGenericHyData, JsonGenericPage, Prose, Section,
-    Source, SpecificationSection, TocEntry, Translation,
+    BuiltDocy, Compat, ContributorSpotlightHyData, JsonBlogPost, JsonBlogPostDoc, JsonCurriculum,
+    JsonDoADoc, JsonDoc, JsonGenericHyData, JsonGenericPage, Prose, Section, Source,
+    SpecificationSection, TocEntry, Translation,
 };
 use super::page::{Page, PageBuilder, PageLike};
 use super::types::contributors::ContributorSpotlight;
@@ -396,7 +396,7 @@ fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> 
 
 fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDocy, DocError> {
     let PageContent { body, .. } = build_content(cs)?;
-    let hy_data = ContributorSpotlightHyData {
+    let contributor_spotlight_data = ContributorSpotlightHyData {
         sections: body,
         contributor_name: cs.meta.contributor_name.clone(),
         folder_name: cs.meta.folder_name.clone(),
@@ -410,7 +410,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDocy, D
         JsonContributorSpotlight {
             url: cs.meta.url.clone(),
             page_title: cs.meta.title.clone(),
-            hy_data: HyData::ContributorSpotlight(hy_data),
+            hy_data: contributor_spotlight_data,
         },
     )))
 }
