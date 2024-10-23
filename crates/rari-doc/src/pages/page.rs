@@ -127,7 +127,16 @@ impl Page {
         }
     }
 
-    pub fn ignore(url: &str) -> bool {
+    /// Determines if the given URL should be ignored for link-checking.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to be checked.
+    ///
+    /// # Returns
+    ///
+    /// * `bool` - Returns `true` if the URL gets a free pass on link-checking, otherwise returns `false`.
+    pub fn ignore_link_check(url: &str) -> bool {
         if url == "/discord" {
             return true;
         }
@@ -149,6 +158,7 @@ impl Page {
 
         false
     }
+
     pub fn exists(url: &str) -> bool {
         if url == "/discord" {
             return true;

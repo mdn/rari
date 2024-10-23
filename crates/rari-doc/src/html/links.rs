@@ -129,7 +129,7 @@ pub fn render_link_via_page(
                 );
             }
             Err(e) => {
-                if !Page::ignore(url) {
+                if !Page::ignore_link_check(url) {
                     warn!(
                         source = "invalid-link",
                         url = url,
