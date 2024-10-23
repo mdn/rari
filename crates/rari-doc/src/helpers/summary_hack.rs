@@ -29,7 +29,7 @@ pub fn get_hacky_summary_md(page: &Page) -> Result<String, DocError> {
 /// Trims a `<p>` tag in good faith.
 /// This does not check if theres a `<p>` as root and will
 /// result in invalid html for input like:
-/// ```
+/// ```html
 /// <p>foo</p>bar
 /// ```
 pub fn strip_paragraph_unckecked(input: &str) -> &str {

@@ -415,7 +415,6 @@ mod tests {
             r#"
             title: "007"
             slug: foo
-            page-type: none
             browser-compat:
               - foo
               - bar
