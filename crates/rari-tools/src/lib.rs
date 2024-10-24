@@ -6,6 +6,7 @@ pub mod r#move;
 pub mod popularities;
 pub mod redirects;
 pub mod remove;
+pub mod sync_translated_content;
 #[cfg(test)]
 pub mod tests;
 mod utils;

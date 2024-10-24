@@ -22,6 +22,7 @@ pub struct Settings {
     pub legacy_live_samples_base_url: String,
     pub interactive_examples_base_url: String,
     pub additional_locales_for_generics_and_spas: Vec<Locale>,
+    pub reader_ignores_gitignore: bool,
 }
 
 impl Settings {
@@ -56,6 +57,10 @@ impl Settings {
         std::env::set_var(
             "CACHE_CONTENT",
             std::env::var("TESTING_CACHE_CONTENT").unwrap(),
+        );
+        std::env::set_var(
+            "READER_IGNORES_GITIGNORE",
+            std::env::var("TESTING_READER_IGNORES_GITIGNORE").unwrap(),
         );
         Self::new_internal()
     }

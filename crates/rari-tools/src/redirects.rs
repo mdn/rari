@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufRead, BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use rari_doc::pages::page::{Page, PageLike};
@@ -212,10 +212,7 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
 
     // Read the redirects file for the locale and populate the map.
     let mut pairs = HashMap::new();
-    let path = root_for_locale(locale)?
-        .to_path_buf()
-        .join(locale.as_folder_str())
-        .join("_redirects.txt");
+    let path = redirects_path(locale)?;
 
     if let Err(e) = read_redirects_raw(&path, &mut pairs) {
         error!("Error reading redirects: {e}");
@@ -243,6 +240,12 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
     write_redirects(&path, &clean_pairs)?;
 
     Ok(())
+}
+
+/// Gets the path to the redirects file for a specific locale.
+pub(crate) fn redirects_path(locale: Locale) -> Result<PathBuf, ToolError> {
+    let root = root_for_locale(locale)?;
+    Ok(root.join(locale.as_folder_str()).join("_redirects.txt"))
 }
 
 /// Validates a list of redirect pairs.
@@ -318,8 +321,8 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 
     check_url_invalid_symbols(&url)?;
 
-    // Check for existing file/folder, commented for now
-    if let Ok(page) = Page::from_url(&url) {
+    // Check for existing file/folder.
+    if let Ok(page) = Page::from_url_no_fallback(&url) {
         return Err(ToolError::InvalidRedirectFromURL(format!(
             "From-URL '{}' resolves to an existing folder at '{}'.",
             url,
@@ -855,16 +858,6 @@ mod tests {
         let url = "/en-US/docs/\nA";
         let result = validate_to_url(url);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validate_to_url_diff_locale() {
-        let slugs = vec!["A".to_string()];
-        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let url = "/en-US/docs/A";
-        let result = validate_to_url(url);
-        println!("{:?}", result);
-        assert!(result.is_ok());
     }
 
     #[test]

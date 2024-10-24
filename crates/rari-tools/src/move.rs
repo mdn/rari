@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use console::{style, Style};
@@ -25,15 +24,11 @@ use crate::wikihistory::update_wiki_history;
 pub fn r#move(
     old_slug: &str,
     new_slug: &str,
-    locale: Option<&str>,
+    locale: Option<Locale>,
     assume_yes: bool,
 ) -> Result<(), ToolError> {
     validate_args(old_slug, new_slug)?;
-    let locale = if let Some(l) = locale {
-        Locale::from_str(l)?
-    } else {
-        Locale::default()
-    };
+    let locale = locale.unwrap_or_default();
 
     // Make a dry run to give some feedback on what would be done
     let green = Style::new().green();
@@ -244,7 +239,8 @@ mod test {
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
-    use crate::utils::test_utils::{check_file_existence, get_redirects_map};
+    use crate::utils::get_redirects_map;
+    use crate::utils::test_utils::check_file_existence;
 
     fn s(s: &str) -> String {
         s.to_string()
@@ -354,7 +350,6 @@ mod test {
             Locale::EnUs,
             false,
         );
-        println!("result: {:?}", result);
         assert!(result.is_ok());
         let result = result.unwrap();
         assert!(result.len() == 3);

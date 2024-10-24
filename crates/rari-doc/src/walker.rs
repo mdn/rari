@@ -2,7 +2,7 @@ use std::path::Path;
 
 use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
-use rari_types::globals::{content_root, content_translated_root};
+use rari_types::globals::{content_root, content_translated_root, settings};
 
 pub fn walk_builder(
     paths: &[impl AsRef<Path>],
@@ -25,6 +25,7 @@ pub fn walk_builder(
         }
         builder
     };
+    builder.git_ignore(!settings().reader_ignores_gitignore);
     builder.types(types.build()?);
     Ok(builder)
 }

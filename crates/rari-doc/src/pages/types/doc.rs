@@ -35,6 +35,10 @@ use crate::utils::{
  ]
 */
 
+fn is_page_type_none(page_type: &PageType) -> bool {
+    matches!(page_type, PageType::None)
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug, Default, Validate)]
 #[serde(default)]
 pub struct FrontMatter {
@@ -46,7 +50,7 @@ pub struct FrontMatter {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     pub slug: String,
-    #[serde(rename = "page-type")]
+    #[serde(rename = "page-type", skip_serializing_if = "is_page_type_none")]
     pub page_type: PageType,
     #[serde(
         deserialize_with = "t_or_vec",
