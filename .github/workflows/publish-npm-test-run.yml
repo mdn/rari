@@ -1,14 +1,10 @@
-name: publish-npm
+name: publish-npm-test-run
 
-on:
-  workflow_run:
-    workflows: [build-and-upload-binaries]
-    types: [completed]
+on: workflow_dispatch
 
 jobs:
-  on-success:
+  test-run:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Setup
         uses: actions/checkout@v4
@@ -21,6 +17,4 @@ jobs:
 
       - name: Publish
         working-directory: ./rari-npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --dry-run
