@@ -14,7 +14,7 @@ const TARGET_LOOKUP = {
   arm64: {
     darwin: "aarch64-apple-darwin",
     linux: "aarch64-unknown-linux-musl",
-    win32: "arch64-pc-windows-msvc",
+    win32: "aarch64-pc-windows-msvc",
   },
   x64: {
     darwin: "x86_64-apple-darwin",
