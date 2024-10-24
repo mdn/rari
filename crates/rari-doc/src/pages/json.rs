@@ -1,3 +1,9 @@
+//! # The JSON Module
+//!
+//! This module provides structs used for serializing all content data for MDN.
+//! Ultimately, after processing the markdown sources, data is written to individual `index.json`
+//! files for each page in the system, using these structs.
+
 use std::path::PathBuf;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
@@ -12,7 +18,7 @@ use crate::pages::types::blog::BlogMeta;
 use crate::specs::Specification;
 use crate::utils::modified_dt;
 
-/// Represents an entry in a Table of Contents (ToC), used to navigate a singel page. This is
+/// Represents an entry in a Table of Contents (ToC), used to navigate a single page. This is
 /// used on the right side of a typical page and allows users to quickly jump to a specific
 /// heading in the page.
 ///
@@ -50,15 +56,15 @@ pub struct Source {
     pub filename: String,
 }
 
-/// Represents a parent entity in the page structure.
+/// Represents a parent entity in a page structure.
 ///
-/// The `Parent` struct contains metadata about a parent entity, containing its URI and title.
+/// The `Parent` struct contains metadata about a parent entity, containing its URL and title.
 /// This is typically used to represent hierarchical relationships in the page tree,
 /// such as a parent page or section. A documentation page has a list of `Parent` items, for example.
 ///
 /// # Fields
 ///
-/// * `uri` - A `String` that holds the URI of the parent entity.
+/// * `uri` - A `String` that holds the URL of the parent entity.
 /// * `title` - A `String` that holds the title of the parent entity.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Parent {
@@ -66,7 +72,7 @@ pub struct Parent {
     pub title: String,
 }
 
-/// Represents a translation entry in the list of other available translations for a documentation page.
+/// Represents a translation entry in the list of other available translations for a page.
 ///
 /// The `Translation` struct contains metadata about a translation, including the locale,
 /// title, and native representation. This is used to display translations for other languages
@@ -84,9 +90,9 @@ pub struct Translation {
     pub native: Native,
 }
 
-/// Represents a prose section on a documentation page, one of the possible items in the list of "body" sections.
+/// Represents a prose section on a page, one of the possible `Section` items in the list of body sections.
 ///
-/// The `Prose` struct is used to define a section of prose content within the documentation.
+/// The `Prose` struct is used to define a section of prose content within a page.
 /// It includes optional metadata such as an identifier and title, as well as the content itself.
 /// Additionally, it can specify whether the prose's title is rendered as a H3 HTML heading.
 ///
@@ -106,7 +112,7 @@ pub struct Prose {
     pub content: String,
 }
 
-/// Represents a browser compatibility (BCD) section on a documentation page.
+/// Represents a browser compatibility (BCD) section on a page, one of the possible `Section` items in the list of body sections.
 ///
 /// The `Compat` struct is used to define a compatibility section (BCD) within the documentation page.
 /// It includes optional metadata such as an identifier, title, and content, as well as the important
@@ -133,6 +139,21 @@ pub struct Compat {
     pub content: Option<String>,
 }
 
+/// Represents a specifications section on a page, one of the possible `Section` items in the list of body sections.
+///
+/// The `SpecificationSection` struct is used to define a section that contains one or more specifications.
+/// It includes optional metadata such as an identifier, title, and content, as well as a query string for BCD data,
+/// a flag indicating whether the section is an H3 heading, and the list of `Specification` items.
+///
+/// # Fields
+///
+/// * `id` - An `Option<String>` that holds an optional `id` element attribute for the specification section.
+/// * `title` - An `Option<String>` that holds an optional title for the specification section.
+/// * `is_h3` - A `bool` that indicates whether the specificaytion section's `title` will be rendered as a &lt;H3&gt;
+/// * `specifications` - A `Vec<Specification>` that holds the list of `Specfication` items within the section.
+/// * `query` - A `String` that holds the BCD query string associated with the specification section.
+/// * `content` - An `Option<String>` that holds the optional content of the specification section. This field is
+///   skipped during serialization if it is `None`.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct SpecificationSection {
     pub id: Option<String>,
@@ -145,6 +166,23 @@ pub struct SpecificationSection {
     pub content: Option<String>,
 }
 
+/// Represents a section in the documentation.
+///
+/// The `Section` enum is used to define different types of sections that can be part of the documentation.
+/// Each variant corresponds to a specific type of section, encapsulating the relevant data.
+///
+/// # Variants
+///
+/// * `Prose` - Represents a prose section, containing general content.
+/// * `BrowserCompatibility` - Represents a browser compatibility section, containing compatibility information.
+/// * `Specifications` - Represents a specifications section, containing multiple specifications.
+///
+/// # Fields
+///
+/// * `Prose(Prose)` - A variant that holds a `Prose` struct, which includes the prose content.
+/// * `BrowserCompatibility(Compat)` - A variant that holds a `Compat` struct, which includes compatibility information.
+/// * `Specifications(SpecificationSection)` - A variant that holds a `SpecificationSection` struct, which includes
+///   one or more specifications.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", content = "value", rename_all = "snake_case")]
 pub enum Section {
@@ -153,6 +191,43 @@ pub enum Section {
     Specifications(SpecificationSection),
 }
 
+/// Represents a Documentation page in the system.
+///
+/// The `JsonDoc` struct contains metadata and content for a documentation page.
+/// It includes various fields that describe the page's properties, content sections,
+/// translations, and other relevant information.
+///
+/// # Fields
+///
+/// * `body` - A `Vec<Section>` that holds the content sections of the document. This field is skipped during serialization if it is empty.
+///   This is the main content of the page, containing a list of prose, compatibility, and specification sections.
+/// * `is_active` - A `bool` that indicates whether the document is active. Serialized as `isActive`.
+/// * `is_markdown` - A `bool` that indicates whether the document is in Markdown format. Serialized as `isMarkdown`.
+/// * `is_translated` - A `bool` that indicates whether the document has been translated. Serialized as `isTranslated`.
+/// * `locale` - A `Locale` that specifies the locale of the document.
+/// * `mdn_url` - A `String` that holds the MDN URL of the document.
+/// * `modified` - A `NaiveDateTime` that specifies the last modified date and time of the document. Serialized using the `modified_dt` function.
+/// * `native` - A `Native` that holds the native representation of the locale, i.e. "Deutsch", "Español" etc.
+/// * `no_indexing` - A `bool` that indicates whether the document should be excluded from indexing. Serialized as `noIndexing`.
+/// * `other_translations` - A `Vec<Translation>` that holds translations of the document.
+/// * `page_title` - A `String` that holds the title of the page. Serialized as `pageTitle`.
+/// * `parents` - A `Vec<Parent>` that holds the parent entities of the document. This field is skipped during serialization if it is empty.
+/// * `popularity` - An `Option<f64>` that holds the popularity score of the document.
+/// * `short_title` - A `String` that holds the short title of the document.
+/// * `sidebar_html` - An `Option<String>` that holds the HTML content for the sidebar. Serialized as `sidebarHTML` and skipped
+///   during serialization if it is `None`.
+/// * `sidebar_macro` - An `Option<String>` that holds the macro content for the sidebar. Serialized as `sidebarMacro` and
+///   skipped during serialization if it is `None`.
+/// * `source` - A `Source` that holds the git source countrol information of the document.
+/// * `summary` - An `Option<String>` that holds the summary of the document. This field is skipped during serialization if it is `None`.
+/// * `title` - A `String` that holds the title of the document.
+/// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the document.
+/// * `baseline` - An `Option<&'static SupportStatusWithByKey>` that holds the baseline support status. This field is skipped during
+///    serialization if it is `None`.
+/// * `browser_compat` - A `Vec<String>` that holds the browser compatibility information. Serialized as `browserCompat` and skipped
+///    during serialization if it is empty.
+/// * `page_type` - A `PageType` that specifies the type of the page, for example `LandingPage`, `LearnModule`, `CssAtRule` or
+///    `HtmlAttribute`. Serialized as `pageType`.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct JsonDoc {
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -194,19 +269,31 @@ pub struct JsonDoc {
     pub page_type: PageType,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct BlogIndex {
-    pub posts: Vec<BlogMeta>,
-}
-
+/// Represents the outermost structure of the serialized JSON for a document page.
+///
+/// The `JsonDocPage` struct contains the main document and its associated URL.
+///
+/// # Fields
+///
+/// * `doc` - A `JsonDoc` that holds the main content and metadata of the documentation page.
+/// * `url` - A `String` that holds the URL of the documentation page.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct JsonDocPage {
     pub doc: JsonDoc,
     pub url: String,
 }
 
-pub struct BuiltDoc {
-    pub json: JsonDocPage,
+/// Represents an index of blog posts in the documentation system.
+///
+/// The `BlogIndex` struct contains a list of metadata for blog posts. This is used to
+/// manage TODO: what is this used for?
+///
+/// # Fields
+///
+/// * `posts` - A `Vec<BlogMeta>` that holds the metadata for each blog post.
+#[derive(Debug, Clone, Serialize)]
+pub struct BlogIndex {
+    pub posts: Vec<BlogMeta>,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
