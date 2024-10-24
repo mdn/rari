@@ -418,6 +418,16 @@ pub enum BuiltPage {
     Home(Box<JsonHomePage>),
 }
 
+/// Represents the previous and next navigation links by slug.
+///
+/// The `PrevNextBySlug` struct contains the slug and title for "previous" and "next" links, respectively.
+/// This is used to facilitate horizontal navigation between related pages, primarily in the Blog section
+/// of the site.
+///
+/// # Fields
+///
+/// * `previous` - An `Option<SlugNTitle>` that holds the the slug and title for the previous page, if available.
+/// * `next` - An `Option<SlugNTitle>` that holds the the slug and title for the next page, if available.
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 #[serde(default)]
 pub struct PrevNextBySlug {
@@ -426,17 +436,36 @@ pub struct PrevNextBySlug {
 }
 
 impl PrevNextBySlug {
+    /// Helper function used to suppress serializing if both `previous` and `next` are `None`.
     pub fn is_none(&self) -> bool {
         self.previous.is_none() && self.next.is_none()
     }
 }
 
+/// Represents a navigation link with a title and slug.
+///
+/// The `SlugNTitle` struct is used to define a single "previous" or "next" navigation link, used by `PrevNextBySlug`
+///
+/// # Fields
+///
+/// * `title` - A `String` that holds the title of the navigation link.
+/// * `slug` - A `String` that holds the slug of the navigation link.
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct SlugNTitle {
     pub title: String,
     pub slug: String,
 }
 
+/// Represents the previous and next navigation links by URL.
+///
+/// The `PrevNextBySlug` struct contains the URL and title for "previous" and "next" links, respectively.
+/// This is used to facilitate horizontal navigation between related pages, primarily in the Curriculum
+/// section of the site.
+///
+/// # Fields
+///
+/// * `previous` - An `Option<UrlNTitle>` that holds the the URL and title for the previous page, if available.
+/// * `next` - An `Option<UrlNTitle>` that holds the the URL and title for the next page, if available.
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 #[serde(default)]
 pub struct PrevNextByUrl {
@@ -444,12 +473,35 @@ pub struct PrevNextByUrl {
     pub next: Option<UrlNTitle>,
 }
 
+/// Represents a navigation link with a title and URL.
+///
+/// The `SlugNTitle` struct is used to define a single "previous" or "next" navigation link, used by `PrevNextBySlug`
+///
+/// # Fields
+///
+/// * `title` - A `String` that holds the title of the navigation link.
+/// * `url` - A `String` that holds the URL of the navigation link.
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct UrlNTitle {
     pub title: String,
     pub url: String,
 }
 
+/// Represents a Single Page Application (SPA) page in the documentation system, i.e. AI Help, Observatory, etc.
+///
+/// The `JsonSPAPage` struct contains metadata and content for an SPA page.
+/// It includes various fields that describe the page's properties, such as the slug,
+/// title, description, and indexing options.
+///
+/// # Fields
+///
+/// * `slug` - A `&'static str` that holds the unique identifier for the SPA page.
+/// * `page_title` - A `&'static str` that holds the title of the SPA page.
+/// * `page_description` - An `Option<&'static str>` that holds the description of the SPA page, if available.
+/// * `only_follow` - A `bool` that indicates whether the page should only be followed by search engines.
+/// * `no_indexing` - A `bool` that indicates whether the page should be excluded from indexing by search engines.
+/// * `page_not_found` - A `bool` that indicates whether the page represents a "Page Not Found" (404) error.
+/// * `url` - A `String` that holds the URL of the page.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonSPAPage {
@@ -462,6 +514,19 @@ pub struct JsonSPAPage {
     pub url: String,
 }
 
+/// Represents a featured article (usually a blog post or documentation page) on the home page.
+///
+/// The `HomePageFeaturedArticle` struct contains metadata about the featured article,
+/// including its URL, summary, title, and an optional parent tag. This is used to display
+/// featured articles prominently on the home page of MDN.
+///
+/// # Fields
+///
+/// * `mdn_url` - A `String` that holds the MDN URL of the featured article.
+/// * `summary` - A `String` that holds a brief summary of the featured article.
+/// * `title` - A `String` that holds the title of the featured article.
+/// * `tag` - An `Option<Parent>` that holds an optional parent for the featured article, which is
+///   used for categorization.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HomePageFeaturedArticle {
@@ -471,6 +536,15 @@ pub struct HomePageFeaturedArticle {
     pub tag: Option<Parent>,
 }
 
+/// The `HomePageFeaturedContributor` struct contains metadata about a featured contributor item
+/// on the home page, including their name, a URL to their profile or related content, and the
+/// displayed quote.
+///
+/// # Fields
+///
+/// * `contributor_name` - A `String` that holds the name of the featured contributor.
+/// * `url` - A `String` that holds the URL to the contributor's profile or related content.
+/// * `quote` - A `String` that holds a quote from the featured contributor.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HomePageFeaturedContributor {
@@ -479,6 +553,13 @@ pub struct HomePageFeaturedContributor {
     pub quote: String,
 }
 
+/// The `NameUrl` struct is used to store a pair of a name and a corresponding URL.
+/// This is used in the "Latest news" and "Recent contributions" sections of the home page.
+///
+/// # Fields
+///
+/// * `name` - A `String` that holds the name or title of the entity.
+/// * `url` - A `String` that holds the URL associated with the entity.
 #[derive(Debug, Clone, Serialize)]
 pub struct NameUrl {
     pub name: String,
