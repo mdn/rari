@@ -299,7 +299,6 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             page_type: doc.meta.page_type,
         },
         url: doc.meta.url.clone(),
-        ..Default::default()
     })))
 }
 
