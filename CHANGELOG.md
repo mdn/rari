@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.14](https://github.com/mdn/rari/compare/v0.0.13...v0.0.14) (2024-10-24)
+
+
+### Features
+
+* **cli:** sync translated content ([#24](https://github.com/mdn/rari/issues/24)) ([a3e3e87](https://github.com/mdn/rari/commit/a3e3e871d78319cd0f85dde1cee638d088442215))
+* **rari-npm:** add initial support for npm ([e6ba05b](https://github.com/mdn/rari/commit/e6ba05b20b253a98d2f6646aceff1d6e094030a1))
+* **rari-npm:** add workflow ([9c7baa4](https://github.com/mdn/rari/commit/9c7baa488daafdec18239059471bc1aa6d73d9fe))
+* **rari-npm:** include cli script ([ee9a1d9](https://github.com/mdn/rari/commit/ee9a1d9f832f3789757841dedea8237f29e1fcc2))
+* **rari-npm:** rename package ([4376a82](https://github.com/mdn/rari/commit/4376a8257fb82514fc8e532d41e9608205ebc4f4))
+
+
+### Bug Fixes
+
+* **css-sytax-types:** support &lt; rust 1.83 ([45f66b1](https://github.com/mdn/rari/commit/45f66b1f92df05e2879c6ec0b5ce646763be2bf2))
+* **rari-npm:** fix download and node &lt; 22 ([11ec9ee](https://github.com/mdn/rari/commit/11ec9ee7a7c4135565d37caa5e85ba50892594b8))
+* **rari-npm:** use version from package.json ([cf07c78](https://github.com/mdn/rari/commit/cf07c7873a772cae4e3e9b582dca0fdc8b1608fc))
+
 ## [0.0.13](https://github.com/mdn/rari/compare/v0.0.12...v0.0.13) (2024-10-18)
 
 

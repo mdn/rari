@@ -1,14 +1,17 @@
-name: publish-npm
+name: publish-npm-manual
 
 on:
-  workflow_run:
-    workflows: [build-and-upload-binaries]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "actually publish"
+        required: true
+        default: false
+        type: boolean
 
 jobs:
-  on-success:
+  test-run:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Setup
         uses: actions/checkout@v4
@@ -19,7 +22,13 @@ jobs:
           registry-url: "https://registry.npmjs.org/"
           node-version-file: "./rari-npm/package.json"
 
+      - name: Test Publish
+        if: ${{ ! inputs.publish }}
+        working-directory: ./rari-npm
+        run: npm publish --access public --dry-run
+
       - name: Publish
+        if: ${{ inputs.publish }}
         working-directory: ./rari-npm
         run: npm publish --access public
         env:

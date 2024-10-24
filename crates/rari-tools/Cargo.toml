@@ -1,6 +1,6 @@
 [package]
 name = "rari-tools"
-version = "0.0.13"
+version = "0.0.14"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -19,11 +19,11 @@ reqwest.workspace = true
 url.workspace = true
 indoc.workspace = true
 rayon.workspace = true
+console.workspace = true
 
-console = "0"
-dialoguer = "0"
+dialoguer = "0.11"
 csv = "1"
-md-5 = "0"
+sha2 = "0.10"
 
 [dev-dependencies]
 serial_test = { version = "3", features = ["file_locks"] }

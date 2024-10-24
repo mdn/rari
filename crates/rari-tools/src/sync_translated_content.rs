@@ -1,15 +1,15 @@
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ffi::OsStr;
 
 use console::Style;
-use md5::Digest;
 use rari_doc::pages::page::{Page, PageCategory, PageLike, PageWriter};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::resolve::{build_url, url_to_folder_path};
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
+use sha2::{Digest, Sha256};
 
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
@@ -73,7 +73,6 @@ pub fn sync_translated_content(
         );
     }
     let results = HashMap::new();
-    let locales = locales.iter().collect::<HashSet<_>>();
 
     let res = docs
         .iter()
@@ -82,10 +81,8 @@ pub fn sync_translated_content(
             if let Page::Doc(doc) = page {
                 let status = sync_translated_document(&docs, &redirects_maps, doc, verbose);
                 if let Ok(status) = status {
-                    if !results.contains_key(locale) {
-                        results.insert(*locale, SyncTranslatedContentResult::default());
-                    }
-                    let result = results.get_mut(locale).unwrap();
+                    let result: &mut SyncTranslatedContentResult =
+                        results.entry(*locale).or_default();
                     result.add_status(status);
                 } else {
                     tracing::error!(
@@ -214,7 +211,7 @@ fn sync_translated_document(
         return Ok(status);
     }
 
-    let mut resolved_slug = resolve(redirect_maps, doc.slug());
+    let resolved_slug = resolve(redirect_maps, doc.slug());
 
     status.renamed = doc.slug() != resolved_slug;
     status.moved = status.renamed && doc.slug().to_lowercase() != resolved_slug.to_lowercase();
@@ -223,9 +220,11 @@ fn sync_translated_document(
         status.followed = true;
     }
 
-    if let Some((url, _)) = resolved_slug.split_once('#') {
-        resolved_slug = Cow::Owned(url.to_string());
-    }
+    let mut resolved_slug = if let Some((url, _)) = resolved_slug.split_once('#') {
+        Cow::Borrowed(url)
+    } else {
+        resolved_slug
+    };
 
     let resolved_doc = docs.get(&(Locale::EnUs, resolved_slug.clone()));
     status.orphaned = resolved_doc.is_none();
@@ -265,12 +264,11 @@ fn sync_translated_document(
         if resolved_doc.is_some() {
             // Set the slug to a /conflicting /... slug. if that already
             // exists (possibly from a previous move on this run),
-            // append a md5 hash of the original slug to the slug.
+            // append a sha256 hash of the original slug to the slug.
             resolved_slug = concat_strs!("conflicting/", &resolved_slug).into();
             if md_exists(&resolved_slug, doc.locale())? {
-                let mut hasher = md5::Md5::new();
-                hasher.update(doc.slug());
-                let digest = format!("{:x}", hasher.finalize());
+                let hash = Sha256::digest(doc.slug().as_bytes());
+                let digest = format!("{:x}", hash);
                 resolved_slug = concat_strs!(&resolved_slug, "_", &digest).into();
             }
 
@@ -343,7 +341,7 @@ fn write_and_move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
 fn md_exists(slug: &str, locale: Locale) -> Result<bool, ToolError> {
     let folder_path = root_for_locale(locale)?
         .join(locale.as_folder_str())
-        .join(slug.to_lowercase());
+        .join(url_to_folder_path(slug));
     let md_path = folder_path.join("index.md");
     Ok(md_path.exists())
 }
@@ -357,21 +355,19 @@ fn resolve<'a>(
     // Note: Contrary to the yari original, we skip the fundamental redirects because
     // those have no role to play any more in this use case.
 
-    let resolved_url: Cow<'_, str> = match redirect_maps
+    let resolved_url = redirect_maps
         .get(&Locale::EnUs)
         .expect("Redirect map for locale not loaded")
         .get(&en_us_url_lc)
-    {
-        Some(url) => Cow::Borrowed(url),
-        None => Cow::Borrowed(&en_us_url_lc),
-    };
+        .unwrap_or(&en_us_url_lc);
 
-    let page = Page::from_url_with_fallback(&resolved_url);
+    let page = Page::from_url(resolved_url);
     if let Ok(page) = page {
-        Cow::Owned(page.slug().to_string())
-    } else {
-        Cow::Borrowed(slug)
+        if page.slug() != slug {
+            return Cow::Owned(page.slug().to_string());
+        }
     }
+    Cow::Borrowed(slug)
 }
 
 fn validate_locales(locales: &[Locale]) -> Result<(), ToolError> {

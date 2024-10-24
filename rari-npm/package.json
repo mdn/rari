@@ -1,15 +1,20 @@
 {
   "name": "@mdn/rari",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "npm package for rari",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mdn/rari"
+  },
+  "homepage": "https://github.com/mdn/rari/tree/main/rari-npm",
   "scripts": {
     "postinstall": "node ./lib/postinstall.js"
   },
   "bin": {
-    "rari": "./bin/rari"
+    "rari": "lib/cli.js"
   },
   "author": "Florian Dieminger <me@fiji-flo.de>",
   "license": "MPL-2.0",
