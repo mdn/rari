@@ -6,7 +6,7 @@ import { download, exists } from "./download.js";
 import packageJson from "../package.json" with { type: "json" };
 
 const VERSION = `v${packageJson.version}`;
-const BIN_PATH = join(import.meta.dirname, "../bin");
+const BIN_PATH = join(import.meta.dirname, "../binary");
 const FORCE = JSON.parse(process.env.FORCE || "false");
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 

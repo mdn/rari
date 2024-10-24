@@ -14,7 +14,7 @@
     "postinstall": "node ./lib/postinstall.js"
   },
   "bin": {
-    "rari": "bin/rari"
+    "rari": "lib/cli.js"
   },
   "author": "Florian Dieminger <me@fiji-flo.de>",
   "license": "MPL-2.0",

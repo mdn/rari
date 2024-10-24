@@ -19,9 +19,9 @@ reqwest.workspace = true
 url.workspace = true
 indoc.workspace = true
 rayon.workspace = true
+console.workspace = true
 
-console = "0"
-dialoguer = "0"
+dialoguer = "0.11"
 csv = "1"
 sha2 = "0.10"
 
