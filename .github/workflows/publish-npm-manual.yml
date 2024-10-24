@@ -1,4 +1,4 @@
-name: publish-npm-test-run
+name: publish-npm-manual
 
 on:
   workflow_dispatch:
@@ -23,12 +23,12 @@ jobs:
           node-version-file: "./rari-npm/package.json"
 
       - name: Test Publish
-        if: ${{ ! input.publish }}
+        if: ${{ ! inputs.publish }}
         working-directory: ./rari-npm
         run: npm publish --access public --dry-run
 
       - name: Publish
-        if: ${{ input.publish }}
+        if: ${{ inputs.publish }}
         working-directory: ./rari-npm
         run: npm publish --access public
         env:
