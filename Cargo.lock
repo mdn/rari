@@ -2644,6 +2644,7 @@ dependencies = [
  "svg_metadata",
  "thiserror",
  "tracing",
+ "tracing-subscriber",
  "unescaper",
  "url",
  "validator",

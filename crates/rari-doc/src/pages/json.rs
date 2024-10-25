@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::types::contributors::Usernames;
 use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
+use crate::issues::DisplayIssues;
 use crate::pages::types::blog::BlogMeta;
 use crate::specs::Specification;
 use crate::utils::modified_dt;
@@ -117,6 +118,8 @@ pub struct JsonDoc {
     pub browser_compat: Vec<String>,
     #[serde(rename = "pageType")]
     pub page_type: PageType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flaws: Option<DisplayIssues>,
 }
 
 impl JsonDoc {
