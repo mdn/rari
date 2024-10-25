@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.15](https://github.com/mdn/rari/compare/v0.0.14...v0.0.15) (2024-10-25)
+
+
+### Features
+
+* **issues:** initial flaw compat ([dc0c131](https://github.com/mdn/rari/commit/dc0c131c911ba026e97e8c160e9117f2fc033aa5))
+* **rari-doc:** write metadata.json ([6244c4b](https://github.com/mdn/rari/commit/6244c4b2bb74afe84282eb1d10bcc91fd0f231c8))
+
+
+### Bug Fixes
+
+* **rari-npm:** fix windows arm ([9bba930](https://github.com/mdn/rari/commit/9bba9307b9bf24e40471354ca048ce6365f1cb7e))
+* **rari-npm:** publish action ([62ad708](https://github.com/mdn/rari/commit/62ad708bf1ee6ba3e2ec4bc026d2b15c797eb986))
+
 ## [0.0.14](https://github.com/mdn/rari/compare/v0.0.13...v0.0.14) (2024-10-24)
 
 
