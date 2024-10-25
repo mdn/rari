@@ -119,6 +119,68 @@ pub struct JsonDoc {
     pub page_type: PageType,
 }
 
+impl JsonDoc {
+    pub fn as_meta(&self, hash: String) -> JsonDocMetadata {
+        JsonDocMetadata {
+            is_active: &self.is_active,
+            is_markdown: &self.is_markdown,
+            is_translated: &self.is_translated,
+            locale: &self.locale,
+            mdn_url: &self.mdn_url,
+            modified: &self.modified,
+            native: &self.native,
+            no_indexing: &self.no_indexing,
+            other_translations: &self.other_translations,
+            page_title: &self.page_title,
+            parents: &self.parents,
+            popularity: &self.popularity,
+            short_title: &self.short_title,
+            source: &self.source,
+            summary: &self.summary,
+            title: &self.title,
+            baseline: &self.baseline,
+            browser_compat: &self.browser_compat,
+            page_type: &self.page_type,
+            hash,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct JsonDocMetadata<'a> {
+    #[serde(rename = "isActive")]
+    pub is_active: &'a bool,
+    #[serde(rename = "isMarkdown")]
+    pub is_markdown: &'a bool,
+    #[serde(rename = "isTranslated")]
+    pub is_translated: &'a bool,
+    pub locale: &'a Locale,
+    pub mdn_url: &'a String,
+    #[serde(serialize_with = "modified_dt")]
+    pub modified: &'a NaiveDateTime,
+    pub native: &'a Native,
+    #[serde(rename = "noIndexing")]
+    pub no_indexing: &'a bool,
+    pub other_translations: &'a Vec<Translation>,
+    #[serde(rename = "pageTitle")]
+    pub page_title: &'a String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub parents: &'a Vec<Parent>,
+    pub popularity: &'a Option<f64>,
+    pub short_title: &'a String,
+    pub source: &'a Source,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: &'a Option<String>,
+    pub title: &'a String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline: &'a Option<&'static SupportStatusWithByKey>,
+    #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
+    pub browser_compat: &'a Vec<String>,
+    #[serde(rename = "pageType")]
+    pub page_type: &'a PageType,
+    pub hash: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct BlogIndex {
     pub posts: Vec<BlogMeta>,
