@@ -228,24 +228,22 @@ fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
         .map(String::from)
         .unwrap_or(transform_title(doc.title()).to_string());
 
+    let repo = match doc.locale() {
+        Locale::EnUs => "content",
+        Locale::De => "translated-content-de",
+        _ => "translated-content",
+    };
+
     let github_url = format!(
         "https://github.com/mdn/{}/blob/{}/files/{}",
-        if doc.locale() == Locale::default() {
-            "content"
-        } else {
-            "translated-content"
-        },
+        repo,
         content_branch(),
         doc.meta.path.display()
     );
 
     let last_commit_url = format!(
         "https://github.com/mdn/{}/commit/{}",
-        if doc.locale() == Locale::default() {
-            "content"
-        } else {
-            "translated-content"
-        },
+        repo,
         history.map(|entry| entry.hash.as_str()).unwrap_or_default()
     );
     let popularity = popularities().popularities.get(doc.url()).cloned();
