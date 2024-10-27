@@ -1,3 +1,9 @@
+//! # Web Specifications Module
+//!
+//! The `specs` module provides functionality for managing and accessing specifications (Webspec, BCD)
+//! related to web technologies. It includes utilities for loading specification data from files,
+//! deduplicating specification URLs, and extracting relevant specifications based on queries.
+
 use std::sync::LazyLock;
 
 use rari_data::specs::{BCDSpecUrls, WebSpecs};
@@ -8,12 +14,12 @@ use tracing::warn;
 use crate::utils::deduplicate;
 
 #[derive(Debug, Clone, Default)]
-pub struct SpecsData {
+struct SpecsData {
     pub web_specs: WebSpecs,
     pub bcd_spec_urls: BCDSpecUrls,
 }
 
-pub static SPECS: LazyLock<SpecsData> = LazyLock::new(|| {
+static SPECS: LazyLock<SpecsData> = LazyLock::new(|| {
     let web_specs = WebSpecs::from_file(&data_dir().join("web-specs/package/index.json"))
         .map_err(|e| {
             warn!("{e:?}");
@@ -37,6 +43,15 @@ pub static SPECS: LazyLock<SpecsData> = LazyLock::new(|| {
     }
 });
 
+/// Represents a web technology specification.
+///
+/// The `Specification` struct is used to store information about a web spec,
+/// including its title and the URL to its Browser Compatibility Data (BCD) specification.
+///
+/// # Fields
+///
+/// * `bcd_specification_url` - A `String` that holds the URL to the BCD specification.
+/// * `title` - A `&'static str` that holds the title of the specification.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Specification {
     #[serde(rename = "bcdSpecificationURL")]
@@ -44,14 +59,30 @@ pub struct Specification {
     pub title: &'static str,
 }
 
-pub fn extract_specifications(query: &[String], spec_urls: &[String]) -> Vec<Specification> {
+/// Extracts relevant specifications based on the provided query and specification URLs.
+///
+/// This function searches for specifications that match the given query and specification URLs.
+/// It first checks if the query is not empty and the specification URLs are empty. If so, it looks up
+/// the BCD (Browser Compatibility Data) specification URLs that match the query keys. If no exact match is found,
+/// it checks if the query is a prefix of any keys. The function then deduplicates the collected URLs and
+/// maps them to `Specification` objects, which include the BCD specification URL and the title of the specification.
+///
+/// # Arguments
+///
+/// * `query` - A slice of strings that holds the query keys to search for specifications.
+/// * `spec_urls` - A slice of strings that holds the specification URLs to be included.
+///
+/// # Returns
+///
+/// * `Vec<Specification>` - Returns a vector of `Specification` objects that match the query and specification URLs.
+pub(crate) fn extract_specifications(query: &[String], spec_urls: &[String]) -> Vec<Specification> {
     let mut all_spec_urls: Vec<&String> = vec![];
     if !query.is_empty() && spec_urls.is_empty() {
         for q in query {
             if let Some(urls) = SPECS.bcd_spec_urls.specs_urls_by_key.get(q) {
                 all_spec_urls.extend(urls.iter())
             } else {
-                // no spec_urls found for the full key os we check if q is a prefix of some keys.
+                // no spec_urls found for the full key so we check if q is a prefix of some keys.
                 // e.g. javascript.operators
                 all_spec_urls.extend(
                     SPECS
