@@ -1,3 +1,8 @@
+//! # Build Module
+//!
+//! The `build` module provides functionality for building pages. The module leverages parallel
+//! processing for documentzation pages to improve the efficiency of building large sets files.
+
 use std::borrow::Cow;
 use std::fs::{self, File};
 use std::io::BufWriter;
@@ -18,6 +23,24 @@ use crate::pages::page::{Page, PageBuilder, PageLike};
 use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
 
+/// Builds a single documentation page and writes the output to a JSON file.
+///
+/// This function takes a `Page` object, builds the page, and writes the resulting content
+/// to a JSON file in the output directory. It also copies additional files from the source
+/// directory to the output directory, excluding the markdown source file. The function uses
+/// tracing to create a `span` holding context and also log errors.
+///
+/// # Arguments
+///
+/// * `page` - A reference to the `Page` object to be built.
+///
+/// # Panics
+///
+/// This function will panic if:
+/// - The `BUILD_OUT_ROOT` environment variable is not set.
+/// - An error occurs while creating the output directory or file.
+/// - An error occurs while writing the JSON content to the file.
+/// - An error occurs while copying additional files.
 pub fn build_single_page(page: &Page) {
     let file = page.full_path().to_string_lossy();
     let span = span!(
@@ -51,6 +74,25 @@ pub fn build_single_page(page: &Page) {
     }
 }
 
+/// Builds a collection of documentation pages and returns their URLs.
+///
+/// This function takes a slice of `Page` objects, builds each page in parallel using the `build_single_page` function,
+/// and collects the URLs of the built pages into a vector. The function leverages parallel processing to improve
+/// the efficiency of building large sets of documentation files.
+///
+/// # Arguments
+///
+/// * `docs` - A slice of `Page` objects representing the documentation pages to be built.
+///
+/// # Returns
+///
+/// * `Result<Vec<Cow<'_, str>>, DocError>` - Returns a vector of `Cow<'_, str>` containing the URLs of the built
+///   pages if successful, or a `DocError` if an error occurs during the process.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - An error occurs while building any of the documentation pages.
 pub fn build_docs(docs: &[Page]) -> Result<Vec<Cow<'_, str>>, DocError> {
     Ok(docs
         .into_par_iter()
@@ -61,6 +103,20 @@ pub fn build_docs(docs: &[Page]) -> Result<Vec<Cow<'_, str>>, DocError> {
         .collect())
 }
 
+/// Builds curriculum pages and returns their URLs.
+///
+/// This function retrieves the (cached) curriculum pages, builds each page using the `build_single_page` function,
+/// and collects the URLs of the built pages into a vector.
+///
+/// # Returns
+///
+/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of
+///   the built pages if successful, or a `DocError` if an error occurs during the process.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - An error occurs while building any of the curriculum pages.
 pub fn build_curriculum_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
     Ok(curriculum_files()
         .by_path
@@ -95,6 +151,22 @@ fn copy_blog_author_avatars() -> Result<(), DocError> {
     Ok(())
 }
 
+/// Builds blog pages and returns their URLs.
+///
+/// This function first copies blog author avatar images as referenced in the blog files' frontmatter `authors` field
+/// if available. It then retrieves the (cached) blog pages and the SPA for the blog, builds each page using the
+/// `build_single_page` function, and collects the URLs of the built pages into a vector.
+///
+/// # Returns
+///
+/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of
+///   the built pages if successful, or a `DocError` if an error occurs during the process.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - An error occurs while copying blog author avatars.
+/// - An error occurs while building any of the blog pages.
 pub fn build_blog_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
     copy_blog_author_avatars()?;
     Ok(blog_files()
@@ -108,6 +180,20 @@ pub fn build_blog_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
         .collect())
 }
 
+/// Builds generic pages and returns their URLs.
+///
+/// This function retrieves the cached generic pages, builds each page using the `build_single_page` function,
+/// and collects the URLs of the built pages into a vector.
+///
+/// # Returns
+///
+/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of the
+///   built pages if successful, or a `DocError` if an error occurs during the process.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - An error occurs while building any of the generic pages.
 pub fn build_generic_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
     Ok(generic_pages_files()
         .values()
@@ -118,6 +204,20 @@ pub fn build_generic_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
         .collect())
 }
 
+/// Builds contributor spotlight pages and returns their URLs.
+///
+/// This function retrieves the cached contributor spotlight pages, builds each page using the `build_single_page`
+/// function, and collects the URLs of the built pages into a vector.
+///
+/// # Returns
+///
+/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of
+///   the built pages if successful, or a `DocError` if an error occurs during the process.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - An error occurs while building any of the contributor spotlight pages.
 pub fn build_contributor_spotlight_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
     Ok(contributor_spotlight_files()
         .values()
@@ -128,6 +228,20 @@ pub fn build_contributor_spotlight_pages() -> Result<Vec<Cow<'static, str>>, Doc
         .collect())
 }
 
+/// Builds single-page applications (SPAs) and returns their URLs.
+///
+/// This function retrieves all SPAs, builds each SPA using the `build_single_page` function,
+/// and collects the URLs of the built SPAs into a vector.
+///
+/// # Returns
+///
+/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of
+///   the built SPAs if successful, or a `DocError` if an error occurs during the process.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - An error occurs while building any of the SPAs.
 pub fn build_spas() -> Result<Vec<Cow<'static, str>>, DocError> {
     Ok(SPA::all()
         .iter()
