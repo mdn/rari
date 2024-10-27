@@ -38,7 +38,7 @@ use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
-use crate::translations::get_translations_for;
+use crate::translations::get_other_translations_for;
 
 impl<'a> From<BuildSection<'a>> for Section {
     fn from(value: BuildSection) -> Self {
@@ -250,7 +250,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         history.map(|entry| entry.hash.as_str()).unwrap_or_default()
     );
     let popularity = popularities().popularities.get(doc.url()).cloned();
-    let other_translations = get_translations_for(doc.slug(), doc.locale())
+    let other_translations = get_other_translations_for(doc.slug(), doc.locale())
         .into_iter()
         .map(|(locale, title)| Translation {
             native: locale.into(),
