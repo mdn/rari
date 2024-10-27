@@ -5,7 +5,7 @@ use rari_types::AnyArg;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
-use crate::utils::dedup_ws;
+use crate::utils::dedup_whitespace;
 
 #[allow(clippy::too_many_arguments)]
 #[rari_f]
@@ -18,7 +18,7 @@ pub fn live_sample(
     _deprecated_5: Option<String>,
     allowed_features: Option<String>,
 ) -> Result<String, DocError> {
-    let title = dedup_ws(&id.replace('_', " "));
+    let title = dedup_whitespace(&id.replace('_', " "));
     let id = RariApi::anchorize(&id);
     let mut out = String::new();
     out.push_str(r#"<div class="code-example"><div class="example-header"></div><iframe class="sample-code-frame" title=""#);

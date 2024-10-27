@@ -15,7 +15,7 @@ use crate::error::DocError;
 use crate::pages::json::{PrevNextBySlug, SlugNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::resolve::build_url;
-use crate::utils::{locale_and_typ_from_path, modified_dt, readtime, split_fm};
+use crate::utils::{calculate_read_time_minutes, locale_and_typ_from_path, modified_dt, split_fm};
 
 #[derive(Clone, Debug, Default)]
 pub struct Author {
@@ -298,7 +298,7 @@ fn read_blog_post(path: impl Into<PathBuf>) -> Result<BlogPost, DocError> {
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     let fm: BlogPostFrontmatter = serde_yaml_ng::from_str(fm)?;
 
-    let read_time = readtime(&raw[content_start..]);
+    let read_time = calculate_read_time_minutes(&raw[content_start..]);
     Ok(BlogPost {
         meta: BlogPostBuildMeta::from_fm(fm, full_path, read_time)?,
         raw,
