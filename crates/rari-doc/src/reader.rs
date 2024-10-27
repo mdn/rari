@@ -1,3 +1,10 @@
+//! # Reader Module
+//!
+//! The `reader` module provides functionality for reading and processing documentation pages
+//! in parallel. It includes utilities for walking through directories, reading files, and
+//! collecting the resulting pages. The module leverages parallel processing to improve the
+//! efficiency of reading large sets of documentation files.
+
 use std::path::Path;
 
 use rari_types::globals::settings;
@@ -7,6 +14,32 @@ use crate::error::DocError;
 use crate::pages::page::{Page, PageReader};
 use crate::walker::walk_builder;
 
+/// Reads documentation pages in parallel from the specified paths and collects them into a vector.
+///
+/// This function walks through the given paths, reads documentation pages in parallel, and collects
+/// the resulting pages into a vector. It leverages parallel processing to improve the efficiency of
+/// reading large sets of documentation files. The function respects `.gitignore` files by default,
+/// but this behavior can be configured through the `reader_ignores_gitignore` setting for testing.
+///
+/// # Type Parameters
+///
+/// * `T` - The type of the page reader. Must implement the `PageReader` trait.
+///
+/// # Arguments
+///
+/// * `paths` - A slice of paths to start the walk from. Each path should implement `AsRef<Path>`.
+/// * `glob` - An optional string slice that holds the glob pattern to filter the files. If `None`, defaults to "index.md".
+///
+/// # Returns
+///
+/// * `Result<Vec<Page>, DocError>` - Returns a vector of `Page` objects if successful,
+///   or a `DocError` if an error occurs during the process.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - An error occurs while building the walk builder.
+/// - An error occurs while reading a page.
 pub fn read_docs_parallel<T: PageReader>(
     paths: &[impl AsRef<Path>],
     glob: Option<&str>,
