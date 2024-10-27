@@ -8,12 +8,12 @@ use std::thread::spawn;
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
-use issues::{issues_by, InMemoryLayer};
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas,
 };
 use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
+use rari_doc::issues::{issues_by, InMemoryLayer};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
@@ -35,7 +35,6 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter, Layer};
 
-mod issues;
 mod serve;
 
 #[derive(Parser)]
@@ -167,9 +166,11 @@ fn main() -> Result<(), Error> {
         .with_target("rari_doc", cli.verbose.log_level_filter().as_trace())
         .with_target("rari", cli.verbose.log_level_filter().as_trace());
 
-    let memory_filter = filter::Targets::new().with_target("rari_doc", Level::WARN);
+    let memory_filter = filter::Targets::new()
+        .with_target("rari_doc", Level::WARN)
+        .with_target("rari", Level::WARN);
 
-    let memory_layer = InMemoryLayer::new();
+    let memory_layer = InMemoryLayer::default();
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::fmt::layer()
@@ -341,7 +342,7 @@ fn main() -> Result<(), Error> {
             settings.deny_warnings = args.deny_warnings;
             settings.cache_content = args.cache_content;
             let _ = SETTINGS.set(settings);
-            serve::serve()?
+            serve::serve(memory_layer.clone())?
         }
         Commands::GitHistory => {
             println!("Gathering history 📜");

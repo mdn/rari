@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
@@ -9,14 +9,16 @@ use tracing::{Event, Subscriber};
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Issue {
+    pub req: u64,
     pub fields: Vec<(&'static str, String)>,
     pub spans: Vec<(&'static str, String)>,
 }
 
 #[derive(Debug, Default)]
 pub struct IssueEntries {
+    req: u64,
     entries: Vec<(&'static str, String)>,
 }
 
@@ -29,6 +31,7 @@ pub struct Issues<'a> {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct TemplIssue<'a> {
+    pub req: u64,
     pub source: &'a str,
     pub file: &'a str,
     pub slug: &'a str,
@@ -40,6 +43,7 @@ pub struct TemplIssue<'a> {
 
 static UNKNOWN: &str = "unknown";
 static DEFAULT_TEMPL_ISSUE: TemplIssue<'static> = TemplIssue {
+    req: 0,
     source: UNKNOWN,
     file: UNKNOWN,
     slug: UNKNOWN,
@@ -101,18 +105,12 @@ pub fn issues_by(issues: &[Issue]) -> Issues {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct InMemoryLayer {
     events: Arc<Mutex<Vec<Issue>>>,
 }
 
 impl InMemoryLayer {
-    pub fn new() -> Self {
-        InMemoryLayer {
-            events: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
     pub fn get_events(&self) -> Arc<Mutex<Vec<Issue>>> {
         Arc::clone(&self.events)
     }
@@ -125,6 +123,11 @@ impl Visit for IssueEntries {
     fn record_str(&mut self, field: &Field, value: &str) {
         self.entries.push((field.name(), value.to_string()));
     }
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        if field.name() == "req" {
+            self.req = value;
+        }
+    }
 }
 impl Visit for Issue {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
@@ -132,6 +135,11 @@ impl Visit for Issue {
     }
     fn record_str(&mut self, field: &Field, value: &str) {
         self.fields.push((field.name(), value.to_string()));
+    }
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        if field.name() == "req" {
+            self.req = value;
+        }
     }
 }
 impl<S> Layer<S> for InMemoryLayer
@@ -155,6 +163,7 @@ where
     }
     fn on_event(&self, event: &Event, ctx: tracing_subscriber::layer::Context<S>) {
         let mut issue = Issue {
+            req: 0,
             fields: vec![],
             spans: vec![],
         };
@@ -163,6 +172,9 @@ where
         for span in scope {
             let ext = span.extensions();
             if let Some(entries) = ext.get::<IssueEntries>() {
+                if entries.req != 0 {
+                    issue.req = entries.req
+                }
                 issue.spans.extend(entries.entries.iter().rev().cloned());
             }
         }
@@ -171,4 +183,82 @@ where
         let mut events = self.events.lock().unwrap();
         events.push(issue);
     }
+}
+
+#[derive(Serialize, Debug, Default, Clone)]
+#[serde(untagged)]
+pub enum Additional {
+    BrokenLink {
+        href: String,
+    },
+    #[default]
+    None,
+}
+
+#[derive(Serialize, Debug, Default, Clone)]
+pub struct DisplayIssue {
+    pub id: usize,
+    pub explanation: Option<String>,
+    pub suggestion: Option<String>,
+    pub fixable: Option<bool>,
+    pub fixed: bool,
+    pub name: String,
+    pub line: Option<usize>,
+    pub col: Option<usize>,
+    #[serde(flatten)]
+    pub additional: Additional,
+}
+
+pub type DisplayIssues = BTreeMap<&'static str, Vec<DisplayIssue>>;
+
+impl From<Issue> for DisplayIssue {
+    fn from(value: Issue) -> Self {
+        let mut di = DisplayIssue::default();
+        let mut additional = HashMap::new();
+        for (key, value) in value.spans.into_iter().chain(value.fields.into_iter()) {
+            match key {
+                "line" => di.line = value.parse().ok(),
+                "col" => di.col = value.parse().ok(),
+                "source" => {
+                    di.name = value;
+                }
+                "message" => di.explanation = Some(value),
+                "redirect" => di.suggestion = Some(value),
+
+                _ => {
+                    additional.insert(key, value);
+                }
+            }
+        }
+        let additional = match di.name.as_str() {
+            "redirected-link" => {
+                di.fixed = false;
+                di.fixable = Some(true);
+                Additional::BrokenLink {
+                    href: additional.remove("url").unwrap_or_default(),
+                }
+            }
+            _ => Additional::None,
+        };
+        di.additional = additional;
+        di
+    }
+}
+
+pub fn to_display_issues(issues: Vec<Issue>) -> DisplayIssues {
+    let mut map = BTreeMap::new();
+    for issue in issues {
+        let di = DisplayIssue::from(issue);
+        match &di.additional {
+            Additional::BrokenLink { .. } => {
+                let entry: &mut Vec<_> = map.entry("broken_links").or_default();
+                entry.push(di);
+            }
+            Additional::None => {
+                let entry: &mut Vec<_> = map.entry("unknown").or_default();
+                entry.push(di);
+            }
+        }
+    }
+    map
 }

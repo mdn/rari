@@ -297,6 +297,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             browser_compat: doc.meta.browser_compat.clone(),
             other_translations,
             page_type: doc.meta.page_type,
+            flaws: None,
         },
         url: doc.meta.url.clone(),
     })))

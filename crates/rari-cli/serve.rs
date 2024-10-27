@@ -1,15 +1,38 @@
-use axum::extract::Request;
+use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
+
+use axum::extract::{Request, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{Json, Router};
 use rari_doc::error::DocError;
+use rari_doc::issues::{to_display_issues, InMemoryLayer};
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use tracing::{error, span, Level};
 
-async fn get_json_handler(req: Request) -> Result<Json<BuiltPage>, AppError> {
+static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+async fn get_json_handler(
+    State(memory_layer): State<Arc<InMemoryLayer>>,
+    req: Request,
+) -> Result<Json<BuiltPage>, AppError> {
+    let req_id = REQ_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let span = span!(Level::WARN, "serve", req = req_id);
+    let _enter1 = span.enter();
     let url = req.uri().path();
-    let json = get_json(url)?;
+    let mut json = get_json(url)?;
+    if let BuiltPage::Doc(json_doc) = &mut json {
+        let m = memory_layer.get_events();
+        let mut issues = m.lock().unwrap();
+        let req_isses: Vec<_> = issues
+            .iter()
+            .filter(|issue| issue.req == req_id)
+            .cloned()
+            .collect();
+        issues.retain_mut(|i| i.req != req_id);
+        json_doc.doc.flaws = Some(to_display_issues(req_isses));
+    }
     Ok(Json(json))
 }
 
@@ -44,13 +67,15 @@ where
     }
 }
 
-pub fn serve() -> Result<(), anyhow::Error> {
+pub fn serve(memory_layer: InMemoryLayer) -> Result<(), anyhow::Error> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap()
         .block_on(async {
-            let app = Router::new().fallback(get_json_handler);
+            let app = Router::new()
+                .fallback(get_json_handler)
+                .with_state(Arc::new(memory_layer));
 
             let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();
             axum::serve(listener, app).await.unwrap();

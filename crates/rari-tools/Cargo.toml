@@ -1,8 +1,11 @@
 [package]
 name = "rari-tools"
-version = "0.0.14"
+version = "0.0.15"
 edition.workspace = true
-authors.workspace = true
+authors = [
+    "Andi Pieper <apieper@mozilla.com>",
+    "The MDN Engineering Team <mdn-dev@mozilla.com>",
+]
 license.workspace = true
 rust-version.workspace = true
 
@@ -20,10 +23,10 @@ url.workspace = true
 indoc.workspace = true
 rayon.workspace = true
 console.workspace = true
+sha2.workspace = true
 
 dialoguer = "0.11"
 csv = "1"
-sha2 = "0.10"
 
 [dev-dependencies]
 serial_test = { version = "3", features = ["file_locks"] }

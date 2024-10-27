@@ -178,6 +178,13 @@ pub fn post_process_html<T: PageLike>(
                     if let Some(pos) = el.get_attribute("data-sourcepos") {
                         if let Some((start, _)) = pos.split_once('-') {
                             if let Some((line, col)) = start.split_once(':') {
+                                let line_n =
+                                    line.parse::<usize>().map(|l| l + page.fm_offset()).ok();
+                                let line = line_n
+                                    .map(|i| i.to_string())
+                                    .map(Cow::Owned)
+                                    .unwrap_or(Cow::Borrowed(line));
+                                let line = line.as_ref();
                                 tracing::warn!(
                                     source = "redirected-link",
                                     line = line,
