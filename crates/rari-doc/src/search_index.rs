@@ -1,3 +1,9 @@
+//! # Search Index Module
+//!
+//! The `search_index` module provides functionality for building and managing the search index
+//! for documentation pages. It takes popularity datainto account when generating the search index
+//! files for different locales.
+
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::File;
@@ -14,11 +20,32 @@ use crate::error::DocError;
 use crate::pages::page::{Page, PageLike};
 
 #[derive(Debug, Serialize)]
-pub struct SearchItem<'a> {
+struct SearchItem<'a> {
     title: &'a str,
     url: &'a str,
 }
 
+/// Builds the search index for the provided pages.
+///
+/// This function reads popularity data from a JSON file, sorts the documentation pages based on their popularity,
+/// and generates search index files for different locales. The search index files are written to the output directory
+/// and contain the title and URL of each documentation page.
+///
+/// # Arguments
+///
+/// * `docs` - A slice of `Page` objects representing the documentation pages to be indexed.
+///
+/// # Returns
+///
+/// * `Result<(), DocError>` - Returns `Ok(())` if the search index is built successfully,
+///   or a `DocError` if an error occurs during the process.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The popularity data file cannot be read.
+/// - The popularity data cannot be parsed.
+/// - An error occurs while creating or writing to the search index files.
 pub fn build_search_index(docs: &[Page]) -> Result<(), DocError> {
     let in_file = content_root()
         .join(Locale::EnUs.as_folder_str())
