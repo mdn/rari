@@ -15,7 +15,7 @@ pub struct Rendered {
     pub sidebars: Vec<String>,
 }
 
-pub fn render_for_summary(input: &str) -> Result<String, DocError> {
+pub(crate) fn render_for_summary(input: &str) -> Result<String, DocError> {
     let tokens = parse(input)?;
     let mut out = String::with_capacity(input.len());
     for token in tokens {
@@ -55,7 +55,7 @@ pub fn render_for_summary(input: &str) -> Result<String, DocError> {
     Ok(out)
 }
 
-pub fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Rendered, DocError> {
+pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Rendered, DocError> {
     let tokens = parse(input)?;
     let mut templs = vec![];
     let mut sidebars = vec![];
@@ -106,7 +106,7 @@ fn encode_ref(index: usize, out: &mut String) -> Result<(), DocError> {
     Ok(write!(out, "{DELIM_START}{index}{DELIM_END}",)?)
 }
 
-pub fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
+pub(crate) fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
     let Rendered {
         content, templs, ..
     } = render(env, input, 0)?;
