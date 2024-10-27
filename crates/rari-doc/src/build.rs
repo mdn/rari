@@ -20,7 +20,7 @@ use crate::cached_readers::{
 };
 use crate::error::DocError;
 use crate::pages::build::copy_additional_files;
-use crate::pages::json::BuiltDocy;
+use crate::pages::json::BuiltPage;
 use crate::pages::page::{Page, PageBuilder, PageLike};
 use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
@@ -62,7 +62,7 @@ pub fn build_single_page(page: &Page) -> Result<(), DocError> {
     let file = File::create(out_file).unwrap();
     let mut buffed = BufWriter::new(file);
 
-    if let BuiltDocy::Doc(json) = built_page {
+    if let BuiltPage::Doc(json) = built_page {
         let json_str = serde_json::to_string(&json)?;
         buffed.write_all(json_str.as_bytes())?;
         let hash = Sha256::digest(json_str.as_bytes());
