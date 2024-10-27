@@ -151,8 +151,8 @@ impl Doc {
 impl PageReader for Doc {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
-        if let Some(doc) = doc_page_from_static_files(&path) {
-            return doc;
+        if let Ok(doc) = doc_page_from_static_files(&path) {
+            return Ok(doc);
         }
 
         if let Some(cache) = CACHED_DOC_PAGE_FILES.get() {

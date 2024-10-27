@@ -10,7 +10,7 @@ use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 
-use crate::cached_readers::{blog_auhtor_by_name, blog_files};
+use crate::cached_readers::{blog_author_by_name, blog_files};
 use crate::error::DocError;
 use crate::pages::json::{PrevNextBySlug, SlugNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
@@ -129,7 +129,7 @@ impl From<&BlogPostBuildMeta> for BlogMeta {
             sponsored,
             date: NaiveDateTime::from(date),
             read_time,
-            author: blog_auhtor_by_name(&author)
+            author: blog_author_by_name(&author)
                 .map(|a| AuthorLink::from_author(&a, &author))
                 .unwrap_or(AuthorLink {
                     name: Some(author),
