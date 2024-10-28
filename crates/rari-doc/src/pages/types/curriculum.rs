@@ -10,12 +10,17 @@ use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use ts_rs::TS;
 
 use crate::cached_readers::curriculum_files;
 use crate::error::DocError;
 use crate::pages::json::{Parent, PrevNextBySlug, PrevNextByUrl, UrlNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::utils::{as_null, split_fm};
+
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum Template {
@@ -28,6 +33,8 @@ pub enum Template {
     Default,
 }
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub enum Topic {
     #[serde(rename = "Web Standards & Semantics")]
@@ -42,6 +49,8 @@ pub enum Topic {
     None,
 }
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CurriculumSidebarEntry {
@@ -52,6 +61,8 @@ pub struct CurriculumSidebarEntry {
     pub children: Vec<CurriculumSidebarEntry>,
 }
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CurriculumIndexEntry {

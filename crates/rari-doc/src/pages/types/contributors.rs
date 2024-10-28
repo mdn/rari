@@ -10,11 +10,15 @@ use rari_types::RariEnv;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use ts_rs::TS;
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::utils::split_fm;
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Usernames {

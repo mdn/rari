@@ -9,6 +9,8 @@ use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use ts_rs::TS;
 
 use crate::cached_readers::{blog_author_by_name, blog_files};
 use crate::error::DocError;
@@ -23,6 +25,8 @@ pub struct Author {
     pub path: PathBuf,
 }
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct AuthorLink {
     pub name: Option<String>,
@@ -52,6 +56,8 @@ pub struct AuthorFrontmatter {
     pub avatar: Option<String>,
 }
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 #[serde(default)]
 pub struct AuthorMetadata {
@@ -60,6 +66,8 @@ pub struct AuthorMetadata {
     pub avatar_url: Option<String>,
 }
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 #[serde(default)]
 pub struct BlogImage {
@@ -69,6 +77,8 @@ pub struct BlogImage {
     pub creator: Option<AuthorMetadata>,
 }
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BlogMeta {

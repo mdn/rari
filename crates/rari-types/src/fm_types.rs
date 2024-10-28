@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
+#[cfg(feature = "testing")]
+use ts_rs::TS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumString)]
 #[serde(rename_all = "kebab-case")]
@@ -10,6 +12,8 @@ pub enum FeatureStatus {
     Deprecated,
 }
 
+#[cfg_attr(feature = "testing", derive(TS))]
+#[cfg_attr(feature = "testing", ts(export))]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumString)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]

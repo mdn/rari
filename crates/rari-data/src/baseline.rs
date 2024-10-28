@@ -6,6 +6,8 @@ use std::path::Path;
 use rari_utils::io::read_to_string;
 use serde::de::{self, value, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
+#[cfg(feature = "testing")]
+use ts_rs::TS;
 use url::Url;
 
 use crate::error::Error;
@@ -86,6 +88,8 @@ pub struct FeatureData {
     pub snapshot: Vec<String>,
 }
 
+#[cfg_attr(feature = "testing", derive(TS))]
+#[cfg_attr(feature = "testing", ts(export))]
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum BrowserIdentifier {
@@ -98,6 +102,8 @@ pub enum BrowserIdentifier {
     SafariIos,
 }
 
+#[cfg_attr(feature = "testing", derive(TS))]
+#[cfg_attr(feature = "testing", ts(export))]
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BaselineHighLow {
@@ -107,6 +113,8 @@ pub enum BaselineHighLow {
     False(bool),
 }
 
+#[cfg_attr(feature = "testing", derive(TS))]
+#[cfg_attr(feature = "testing", ts(export))]
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SupportStatus {
     /// Whether the feature is Baseline (low substatus), Baseline (high substatus), or not (false)
@@ -122,6 +130,8 @@ pub struct SupportStatus {
     pub support: BTreeMap<BrowserIdentifier, String>,
 }
 
+#[cfg_attr(feature = "testing", derive(TS))]
+#[cfg_attr(feature = "testing", ts(export))]
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SupportStatusWithByKey {
     /// Whether the feature is Baseline (low substatus), Baseline (high substatus), or not (false)

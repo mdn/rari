@@ -8,6 +8,8 @@ use tracing::span::{Attributes, Id};
 use tracing::{Event, Subscriber};
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
+#[cfg(test)]
+use ts_rs::TS;
 
 #[derive(Debug, Default, Clone)]
 pub struct Issue {
@@ -185,6 +187,8 @@ where
     }
 }
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Serialize, Debug, Default, Clone)]
 #[serde(untagged)]
 pub enum Additional {
@@ -195,6 +199,8 @@ pub enum Additional {
     None,
 }
 
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Serialize, Debug, Default, Clone)]
 pub struct DisplayIssue {
     pub id: usize,

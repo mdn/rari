@@ -17,8 +17,8 @@ use crate::cached_readers::blog_files;
 use crate::error::DocError;
 use crate::helpers::title::page_title;
 use crate::pages::json::{
-    BlogIndex, BuiltPage, ItemContainer, JsonBlogPostDoc, JsonBlogPostPage, JsonHomePage,
-    JsonHomePageSPAHyData, JsonSPAPage,
+    BlogIndex, BuiltPage, ItemContainer, ItemContainerItem, JsonBlogPostDoc, JsonBlogPostPage,
+    JsonHomePage, JsonHomePageSPAHyData, JsonSPAPage,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::types::blog::BlogMeta;
@@ -172,10 +172,16 @@ impl SPA {
                             "/en-US/blog/mdn-http-observatory-launch/",
                             "/en-US/blog/mdn-curriculum-launch/",
                             "/en-US/blog/baseline-evolution-on-mdn/",
-                        ])?,
+                        ])?
+                        .into_iter()
+                        .map(ItemContainerItem::LatestNews)
+                        .collect(),
                     },
                     recent_contributions: ItemContainer {
-                        items: recent_contributions()?,
+                        items: recent_contributions()?
+                            .into_iter()
+                            .map(ItemContainerItem::RecentContribution)
+                            .collect(),
                     },
                 },
             }))),

@@ -6,9 +6,13 @@ use std::sync::LazyLock;
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use thiserror::Error;
+#[cfg(feature = "testing")]
+use ts_rs::TS;
 
 use crate::globals::{content_translated_root, settings};
 
+#[cfg_attr(feature = "testing", derive(TS))]
+#[cfg_attr(feature = "testing", ts(export))]
 #[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord)]
 pub enum Native {
     #[default]
@@ -61,6 +65,8 @@ pub enum LocaleError {
     IOError(#[from] std::io::Error),
 }
 
+#[cfg_attr(feature = "testing", derive(TS))]
+#[cfg_attr(feature = "testing", ts(export))]
 #[derive(
     PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Deserialize, Serialize, Default, Hash,
 )]

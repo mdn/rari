@@ -10,6 +10,8 @@ use rari_data::specs::{BCDSpecUrls, WebSpecs};
 use rari_types::globals::{data_dir, json_spec_data_lookup};
 use serde::Serialize;
 use tracing::warn;
+#[cfg(test)]
+use ts_rs::TS;
 
 use crate::utils::deduplicate;
 
@@ -52,6 +54,8 @@ static SPECS: LazyLock<SpecsData> = LazyLock::new(|| {
 ///
 /// * `bcd_specification_url` - A `String` that holds the URL to the BCD specification.
 /// * `title` - A `&'static str` that holds the title of the specification.
+#[cfg_attr(test, derive(TS))]
+#[cfg_attr(test, ts(export))]
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Specification {
     #[serde(rename = "bcdSpecificationURL")]

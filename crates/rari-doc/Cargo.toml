@@ -55,10 +55,10 @@ memoize = "0.4"
 phf_macros = "0.11"
 phf = "0.11"
 unescaper = "0.1"
-
-
 css-syntax = { path = "../css-syntax", features = ["rari"] }
 
 [dev-dependencies]
 rari-types = { path = "../rari-types", features = ["testing"] }
+rari-data = { path = "../rari-data", features = ["testing"] }
+ts-rs = { version = "10.0", features = ["chrono-impl", "serde-compat"] }
 indoc.workspace = true
