@@ -700,6 +700,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dashmap"
+version = "6.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+ "hashbrown 0.14.5",
+ "lock_api",
+ "once_cell",
+ "parking_lot_core",
+]
+
+[[package]]
 name = "der"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -800,6 +814,7 @@ dependencies = [
  "anyhow",
  "base64",
  "clap",
+ "dashmap",
  "html-minifier",
  "ignore",
  "itertools",
@@ -2559,6 +2574,7 @@ dependencies = [
  "axum",
  "clap",
  "clap-verbosity-flag",
+ "dashmap",
  "rari-deps",
  "rari-doc",
  "rari-tools",
@@ -2609,6 +2625,7 @@ dependencies = [
  "constcat",
  "crossbeam-channel",
  "css-syntax",
+ "dashmap",
  "ego-tree",
  "enum_dispatch",
  "html-escape",
@@ -2692,7 +2709,7 @@ dependencies = [
  "dialoguer",
  "fake",
  "indoc",
- "rand 0.7.3",
+ "rand 0.8.5",
  "rari-doc",
  "rari-types",
  "rari-utils",

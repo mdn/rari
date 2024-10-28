@@ -26,8 +26,9 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock, OnceLock, RwLock};
+use std::sync::{Arc, LazyLock, OnceLock};
 
+use dashmap::DashMap;
 use rari_types::globals::{
     blog_root, cache_content, content_root, content_translated_root, contributor_spotlight_root,
     curriculum_root, generic_pages_root,
@@ -57,10 +58,10 @@ pub(crate) static STATIC_DOC_PAGE_TRANSLATED_FILES: OnceLock<
     HashMap<(Locale, Cow<'_, str>), Page>,
 > = OnceLock::new();
 pub(crate) static STATIC_DOC_PAGE_FILES_BY_PATH: OnceLock<HashMap<PathBuf, Page>> = OnceLock::new();
-pub static CACHED_DOC_PAGE_FILES: OnceLock<Arc<RwLock<HashMap<PathBuf, Page>>>> = OnceLock::new();
-type SidebarFilesCache = Arc<RwLock<HashMap<(String, Locale), Arc<MetaSidebar>>>>;
+pub static CACHED_DOC_PAGE_FILES: OnceLock<Arc<DashMap<PathBuf, Page>>> = OnceLock::new();
+type SidebarFilesCache = Arc<DashMap<(String, Locale), Arc<MetaSidebar>>>;
 pub(crate) static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
-    LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
+    LazyLock::new(|| Arc::new(DashMap::new()));
 pub(crate) static CACHED_CURRICULUM: OnceLock<CurriculumFiles> = OnceLock::new();
 pub(crate) static GENERIC_PAGES_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
 pub(crate) static CONTRIBUTOR_SPOTLIGHT_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
@@ -137,7 +138,7 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
         _ => {
             let key = (name.to_string(), locale);
             if cache_content() {
-                if let Some(sidebar) = CACHED_SIDEBAR_FILES.read()?.get(&key) {
+                if let Some(sidebar) = CACHED_SIDEBAR_FILES.get(&key) {
                     return Ok(sidebar.clone());
                 }
             }
@@ -149,7 +150,7 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
             let sidebar: Sidebar = serde_yaml_ng::from_str(&raw)?;
             let sidebar = Arc::new(MetaSidebar::from(sidebar));
             if cache_content() {
-                CACHED_SIDEBAR_FILES.write()?.insert(key, sidebar.clone());
+                CACHED_SIDEBAR_FILES.insert(key, sidebar.clone());
             }
             sidebar
         }

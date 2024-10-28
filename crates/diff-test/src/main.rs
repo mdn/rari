@@ -1,16 +1,17 @@
 use std::cmp::max;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::{Arc, LazyLock, RwLock};
+use std::sync::{Arc, LazyLock};
 
 use anyhow::{anyhow, Error};
 use base64::prelude::{Engine as _, BASE64_STANDARD_NO_PAD};
 use clap::{Args, Parser, Subcommand};
+use dashmap::DashMap;
 use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
 use itertools::Itertools;
@@ -191,8 +192,8 @@ static WS_DIFF: LazyLock<Regex> =
 static DATA_FLAW_SRC: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#" data-flaw-src="[^"]+""#).unwrap());
 
-static DIFF_MAP: LazyLock<Arc<RwLock<HashMap<String, String>>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
+static DIFF_MAP: LazyLock<Arc<DashMap<String, String>>> =
+    LazyLock::new(|| Arc::new(DashMap::new()));
 
 fn full_diff(
     lhs: &Value,
@@ -273,11 +274,11 @@ fn full_diff(
                     diff_hash.write_all(lhs.as_bytes()).unwrap();
                     diff_hash.write_all(rhs.as_bytes()).unwrap();
                     let diff_hash = BASE64_STANDARD_NO_PAD.encode(&diff_hash.finalize()[..]);
-                    if let Some(hash) = (*DIFF_MAP.read().unwrap()).get(&diff_hash) {
-                        diff.insert(key, format!("See {hash}"));
+                    if let Some(hash) = DIFF_MAP.get(&diff_hash) {
+                        diff.insert(key, format!("See {}", hash.as_str()));
                         return;
                     }
-                    (*DIFF_MAP.write().unwrap()).insert(diff_hash, "somewhere else".into());
+                    DIFF_MAP.insert(diff_hash, "somewhere else".into());
                     diff.insert(
                         key,
                         ansi_to_html::convert(&if fast {

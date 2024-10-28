@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 pub use std::ops::Deref;
-use std::sync::{Arc, LazyLock, RwLock};
+use std::sync::{Arc, LazyLock};
 
+use dashmap::DashMap;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
 use rari_types::locale::Locale;
@@ -42,10 +43,9 @@ fn cache_side_bar(sidebar: &str) -> bool {
         )
 }
 
-type SidebarCache = Arc<RwLock<HashMap<Locale, HashMap<String, String>>>>;
+type SidebarCache = Arc<DashMap<Locale, HashMap<String, String>>>;
 
-static SIDEBAR_CACHE: LazyLock<SidebarCache> =
-    LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
+static SIDEBAR_CACHE: LazyLock<SidebarCache> = LazyLock::new(|| Arc::new(DashMap::new()));
 
 pub fn expand_details_and_mark_current_for_inline_sidebar(
     html: &mut Html,
@@ -100,18 +100,14 @@ pub fn postprocess_sidebar<T: PageLike>(
 pub fn render_sidebar(s: &str, slug: &str, locale: Locale) -> Result<String, DocError> {
     let rendered_sidebar = if cache_side_bar(s) {
         if let Some(sb) = SIDEBAR_CACHE
-            .read()
-            .map_err(|_| DocError::SidebarCachePoisoned)?
             .get(&locale)
-            .and_then(|map| map.get(s))
+            .and_then(|map| map.get(s).map(ToString::to_string))
         {
-            return Ok::<_, DocError>(sb.to_string());
+            return Ok::<_, DocError>(sb);
         }
         let sidebar = read_sidebar(s, locale, slug)?;
         let rendered_sidebar = sidebar.render(locale)?;
         SIDEBAR_CACHE
-            .write()
-            .map_err(|_| DocError::SidebarCachePoisoned)?
             .entry(locale)
             .or_default()
             .entry(s.to_string())

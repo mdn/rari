@@ -156,7 +156,7 @@ impl PageReader for Doc {
         }
 
         if let Some(cache) = CACHED_DOC_PAGE_FILES.get() {
-            if let Some(doc) = cache.read()?.get(&path) {
+            if let Some(doc) = cache.get(&path) {
                 return Ok(doc.clone());
             }
         }
@@ -182,9 +182,7 @@ impl PageReader for Doc {
 
         let page = Page::Doc(Arc::new(doc));
         if let Some(cache) = CACHED_DOC_PAGE_FILES.get() {
-            if let Ok(mut cache) = cache.write() {
-                cache.insert(path, page.clone());
-            }
+            cache.insert(path, page.clone());
         }
         Ok(page)
     }

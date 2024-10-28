@@ -3,11 +3,12 @@ use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::thread::spawn;
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
+use dashmap::DashMap;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas,
@@ -228,9 +229,7 @@ fn main() -> Result<(), Error> {
             };
 
             if matches!(cache, Cache::Dynamic) {
-                CACHED_DOC_PAGE_FILES
-                    .set(Arc::new(RwLock::new(HashMap::new())))
-                    .unwrap();
+                CACHED_DOC_PAGE_FILES.set(Arc::new(DashMap::new())).unwrap();
             }
             let mut urls = Vec::new();
             let mut docs = Vec::new();

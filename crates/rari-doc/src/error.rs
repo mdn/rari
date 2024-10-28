@@ -1,5 +1,4 @@
 use std::path::{PathBuf, StripPrefixError};
-use std::sync::PoisonError;
 
 use css_syntax::error::SyntaxError;
 use rari_md::error::MarkdownError;
@@ -39,8 +38,6 @@ pub enum DocError {
     NotFoundInStaticCache(String),
     #[error("File cache broken")]
     FileCacheBroken,
-    #[error("File cache poisoned")]
-    FileCachePoisoned,
     #[error(transparent)]
     IOError(#[from] std::io::Error),
     #[error("Error parsing frontmatter: {0}")]
@@ -67,8 +64,6 @@ pub enum DocError {
     Utf8Error(#[from] std::string::FromUtf8Error),
     #[error("Link to redirect: {from} -> {to}")]
     RedirectedLink { from: String, to: String },
-    #[error("Sidebar cache poisoned")]
-    SidebarCachePoisoned,
     #[error("Unknown macro: {0}")]
     UnknownMacro(String),
     #[error("CSS Page type required")]
@@ -107,16 +102,6 @@ pub enum DocError {
     RariIoError(#[from] rari_utils::error::RariIoError),
     #[error("Slug required for SidebarEntry")]
     SlugRequiredForSidebarEntry,
-}
-
-/// Converts a `PoisonError` into a `DocError`.
-///
-/// This implementation of the `From` trait allows a `PoisonError` to be converted into a `DocError`.
-/// Specifically, it maps any `PoisonError` to the `FileCachePoisoned` variant of `DocError`.
-impl<T> From<PoisonError<T>> for DocError {
-    fn from(_: PoisonError<T>) -> Self {
-        Self::FileCachePoisoned
-    }
 }
 
 /// Represents various errors that can occur while processing URLs.

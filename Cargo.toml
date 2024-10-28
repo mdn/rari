@@ -90,6 +90,7 @@ indoc = "2"
 base64 = "0.22"
 console = "0.15"
 sha2 = "0.10"
+dashmap = "6"
 
 
 [dependencies]
@@ -103,6 +104,7 @@ serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
+dashmap.workspace = true
 
 self_update = { version = "0.41", default-features = false, features = [
     "rustls",
