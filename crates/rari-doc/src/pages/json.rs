@@ -150,6 +150,7 @@ pub struct Compat {
     #[serde(rename = "isH3")]
     pub is_h3: bool,
     pub query: String,
+    #[cfg_attr(test, ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
 }
@@ -179,6 +180,7 @@ pub struct SpecificationSection {
     pub is_h3: bool,
     pub specifications: Vec<Specification>,
     pub query: String,
+    #[cfg_attr(test, ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
 }
@@ -278,16 +280,19 @@ pub struct JsonDoc {
     #[serde(rename = "sidebarMacro", skip_serializing_if = "Option::is_none")]
     pub sidebar_macro: Option<String>,
     pub source: Source,
+    #[cfg_attr(test, ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
     pub title: String,
     pub toc: Vec<TocEntry>,
+    #[cfg_attr(test, ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline: Option<&'static SupportStatusWithByKey>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
     pub browser_compat: Vec<String>,
     #[serde(rename = "pageType")]
     pub page_type: PageType,
+    #[cfg_attr(test, ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub flaws: Option<DisplayIssues>,
 }
@@ -430,10 +435,13 @@ pub struct JsonCurriculumDoc {
     pub title: String,
     pub summary: Option<String>,
     pub toc: Vec<TocEntry>,
+    #[cfg_attr(test, ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sidebar: Option<Vec<CurriculumSidebarEntry>>,
+    #[cfg_attr(test, ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub topic: Option<Topic>,
+    #[cfg_attr(test, ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -504,6 +512,7 @@ pub struct JsonBlogPostDoc {
     pub page_title: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub parents: Vec<Parent>,
+    #[cfg_attr(test, ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
     pub title: String,
