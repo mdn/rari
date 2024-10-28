@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
@@ -9,9 +10,16 @@ use tracing::{Event, Subscriber};
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
+static ISSUE_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+pub(crate) fn get_issue_couter() -> u64 {
+    ISSUE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Issue {
     pub req: u64,
+    pub ic: u64,
     pub fields: Vec<(&'static str, String)>,
     pub spans: Vec<(&'static str, String)>,
 }
@@ -19,6 +27,7 @@ pub struct Issue {
 #[derive(Debug, Default)]
 pub struct IssueEntries {
     req: u64,
+    ic: u64,
     entries: Vec<(&'static str, String)>,
 }
 
@@ -32,6 +41,7 @@ pub struct Issues<'a> {
 #[derive(Clone, Debug, Serialize)]
 pub struct TemplIssue<'a> {
     pub req: u64,
+    pub ic: u64,
     pub source: &'a str,
     pub file: &'a str,
     pub slug: &'a str,
@@ -44,6 +54,7 @@ pub struct TemplIssue<'a> {
 static UNKNOWN: &str = "unknown";
 static DEFAULT_TEMPL_ISSUE: TemplIssue<'static> = TemplIssue {
     req: 0,
+    ic: 0,
     source: UNKNOWN,
     file: UNKNOWN,
     slug: UNKNOWN,
@@ -126,6 +137,8 @@ impl Visit for IssueEntries {
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field.name() == "req" {
             self.req = value;
+        } else if field.name() == "ic" {
+            self.ic = value;
         }
     }
 }
@@ -139,6 +152,8 @@ impl Visit for Issue {
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field.name() == "req" {
             self.req = value;
+        } else if field.name() == "ic" {
+            self.ic = value;
         }
     }
 }
@@ -164,6 +179,7 @@ where
     fn on_event(&self, event: &Event, ctx: tracing_subscriber::layer::Context<S>) {
         let mut issue = Issue {
             req: 0,
+            ic: 0,
             fields: vec![],
             spans: vec![],
         };
@@ -173,7 +189,12 @@ where
             let ext = span.extensions();
             if let Some(entries) = ext.get::<IssueEntries>() {
                 if entries.req != 0 {
-                    issue.req = entries.req
+                    issue.req = entries.req;
+                }
+                if entries.ic != 0 {
+                    issue.ic = entries.ic;
+                } else {
+                    issue.ic = get_issue_couter();
                 }
                 issue.spans.extend(entries.entries.iter().rev().cloned());
             }
@@ -197,7 +218,7 @@ pub enum Additional {
 
 #[derive(Serialize, Debug, Default, Clone)]
 pub struct DisplayIssue {
-    pub id: usize,
+    pub id: u64,
     pub explanation: Option<String>,
     pub suggestion: Option<String>,
     pub fixable: Option<bool>,
@@ -213,7 +234,10 @@ pub type DisplayIssues = BTreeMap<&'static str, Vec<DisplayIssue>>;
 
 impl From<Issue> for DisplayIssue {
     fn from(value: Issue) -> Self {
-        let mut di = DisplayIssue::default();
+        let mut di = DisplayIssue {
+            id: value.ic,
+            ..Default::default()
+        };
         let mut additional = HashMap::new();
         for (key, value) in value.spans.into_iter().chain(value.fields.into_iter()) {
             match key {

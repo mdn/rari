@@ -13,6 +13,7 @@ use url::Url;
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
+use crate::issues::get_issue_couter;
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::curriculum::CurriculumPage;
 use crate::redirects::resolve_redirect;
@@ -102,24 +103,33 @@ pub fn post_process_html<T: PageLike>(
                                     .map(|height| format!("{:.0}", height)),
                             ),
                             Err(e) => {
+                                let ic = get_issue_couter();
                                 warn!(
                                     source = "image-check",
+                                    ic = ic,
                                     "Error parsing {}: {e}",
                                     file.display()
                                 );
+                                el.set_attribute("data-flaw", &ic.to_string())?;
                                 (None, None)
                             }
                         }
-                    } else if let Ok(dim) = imagesize::size(&file).inspect_err(|e| {
-                        warn!(
-                            source = "image-check",
-                            "Error opening {}: {e}",
-                            file.display()
-                        )
-                    }) {
-                        (Some(dim.width.to_string()), Some(dim.height.to_string()))
                     } else {
-                        (None, None)
+                        match imagesize::size(&file) {
+                            Ok(dim) => (Some(dim.width.to_string()), Some(dim.height.to_string())),
+                            Err(e) => {
+                                let ic = get_issue_couter();
+                                warn!(
+                                    source = "image-check",
+                                    ic = ic,
+                                    "Error opening {}: {e}",
+                                    file.display()
+                                );
+                                el.set_attribute("data-flaw", &ic.to_string())?;
+
+                                (None, None)
+                            }
+                        }
                     };
                     if let Some(width) = width {
                         el.set_attribute("width", &width)?;
@@ -185,21 +195,27 @@ pub fn post_process_html<T: PageLike>(
                                     .map(Cow::Owned)
                                     .unwrap_or(Cow::Borrowed(line));
                                 let line = line.as_ref();
+                                let ic = get_issue_couter();
                                 tracing::warn!(
                                     source = "redirected-link",
+                                    ic = ic,
                                     line = line,
                                     col = col,
                                     url = original_href,
                                     redirect = resolved_href.as_ref()
-                                )
+                                );
+                                el.set_attribute("data-flaw", &ic.to_string())?;
                             }
                         }
                     } else {
+                        let ic = get_issue_couter();
                         tracing::warn!(
                             source = "redirected-link",
+                            ic = ic,
                             url = original_href,
                             redirect = resolved_href.as_ref()
-                        )
+                        );
+                        el.set_attribute("data-flaw", &ic.to_string())?;
                     }
                 }
                 el.set_attribute(
