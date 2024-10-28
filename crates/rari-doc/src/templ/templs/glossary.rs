@@ -6,7 +6,10 @@ use crate::utils::dedup_whitespace;
 
 #[rari_f]
 pub fn glossary(term_name: String, display_name: Option<String>) -> Result<String, DocError> {
-    let url = format!("/Glossary/{}", dedup_whitespace(&term_name).replace(' ', "_"));
+    let url = format!(
+        "/Glossary/{}",
+        dedup_whitespace(&term_name).replace(' ', "_")
+    );
     RariApi::link(
         &url,
         Some(env.locale),
