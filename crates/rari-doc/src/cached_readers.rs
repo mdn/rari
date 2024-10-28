@@ -13,10 +13,8 @@
 //!   - `STATIC_DOC_PAGE_FILES_BY_PATH`: Stores documentation pages indexed by file path.
 //!
 //! - **Dynamic Caches**: These caches store documentation pages that can be modified during runtime.
-//!   - `CACHED_DOC_PAGE_FILES`: Stores documentation pages indexed by file path, wrapped in a `RwLock` for
-//!     thread-safe access.
-//!   - `CACHED_SIDEBAR_FILES`: Stores sidebar metadata indexed by name and locale, wrapped in a `RwLock` for
-//!     thread-safe access.
+//!   - `CACHED_DOC_PAGE_FILES`: Stores documentation pages indexed by file path.
+//!   - `CACHED_SIDEBAR_FILES`: Stores sidebar metadata indexed by name and locale.
 //!
 //! - **Specialized Caches**: These caches store specific types of documentation content.
 //!   - `CACHED_CURRICULUM`: Stores curriculum files, indexed by URL, path, and index,
