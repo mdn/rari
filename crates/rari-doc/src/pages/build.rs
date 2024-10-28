@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fs;
 use std::path::Path;
 
+use rari_md::m2h;
 use rari_types::fm_types::PageType;
 use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
@@ -9,8 +10,8 @@ use rari_utils::concat_strs;
 use scraper::Html;
 
 use super::json::{
-    BuiltDocy, Compat, ContributorSpotlightHyData, HyData, JsonBlogPost, JsonBlogPostDoc,
-    JsonCurriculum, JsonDoADoc, JsonDoc, JsonGenericHyData, JsonGenericPage, Prose, Section,
+    BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
+    JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, Prose, Section,
     Source, SpecificationSection, TocEntry, Translation,
 };
 use super::page::{Page, PageBuilder, PageLike};
@@ -27,17 +28,17 @@ use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Spli
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
-use crate::pages::json::JsonContributorSpotlight;
+use crate::pages::json::JsonContributorSpotlightPage;
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::curriculum::{
     build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
     prev_next_modules, prev_next_overview, CurriculumPage, Template,
 };
-use crate::pages::types::doc::{render_md_to_html, Doc};
+use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
-use crate::translations::get_translations_for;
+use crate::translations::get_other_translations_for;
 
 impl<'a> From<BuildSection<'a>> for Section {
     fn from(value: BuildSection) -> Self {
@@ -154,7 +155,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     } else {
         (Cow::Borrowed(page.content()), vec![], vec![])
     };
-    let encoded_html = render_md_to_html(&ks_rendered_doc, page.locale())?;
+    let encoded_html = m2h(&ks_rendered_doc, page.locale())?;
     let html = decode_ref(&encoded_html, &templs)?;
     let post_processed_html = post_process_html(&html, page, false)?;
 
@@ -195,7 +196,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     })
 }
 
-fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
+fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
     let PageContent {
         body,
         toc,
@@ -249,7 +250,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
         history.map(|entry| entry.hash.as_str()).unwrap_or_default()
     );
     let popularity = popularities().popularities.get(doc.url()).cloned();
-    let other_translations = get_translations_for(doc.slug(), doc.locale())
+    let other_translations = get_other_translations_for(doc.slug(), doc.locale())
         .into_iter()
         .map(|(locale, title)| Translation {
             native: locale.into(),
@@ -266,7 +267,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
         Default::default()
     };
 
-    Ok(BuiltDocy::Doc(Box::new(JsonDoADoc {
+    Ok(BuiltPage::Doc(Box::new(JsonDocPage {
         doc: JsonDoc {
             title: doc.title().to_string(),
             is_markdown: true,
@@ -299,13 +300,12 @@ fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
             flaws: None,
         },
         url: doc.meta.url.clone(),
-        ..Default::default()
     })))
 }
 
-fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
+fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
     let PageContent { body, toc, .. } = build_content(post)?;
-    Ok(BuiltDocy::BlogPost(Box::new(JsonBlogPost {
+    Ok(BuiltPage::BlogPost(Box::new(JsonBlogPostPage {
         doc: JsonBlogPostDoc {
             title: post.title().to_string(),
             mdn_url: post.url().to_owned(),
@@ -331,10 +331,10 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
     })))
 }
 
-fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
+fn build_generic_page(page: &GenericPage) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
     let PageContent { body, toc, .. } = built?;
-    Ok(BuiltDocy::GenericPage(Box::new(JsonGenericPage {
+    Ok(BuiltPage::GenericPage(Box::new(JsonGenericPage {
         hy_data: JsonGenericHyData {
             sections: body,
             title: page.meta.title.clone(),
@@ -350,11 +350,11 @@ fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
     })))
 }
 
-fn build_spa(spa: &SPA) -> Result<BuiltDocy, DocError> {
+fn build_spa(spa: &SPA) -> Result<BuiltPage, DocError> {
     spa.as_built_doc()
 }
 
-fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> {
+fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltPage, DocError> {
     let PageContent { body, toc, .. } = build_content(curriculum)?;
     let sidebar = build_sidebar().ok();
     let parents = parents(curriculum);
@@ -369,7 +369,7 @@ fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> 
         Template::Overview => prev_next_overview(curriculum.slug())?,
         _ => None,
     };
-    Ok(BuiltDocy::Curriculum(Box::new(JsonCurriculum {
+    Ok(BuiltPage::Curriculum(Box::new(JsonCurriculumPage {
         doc: super::json::JsonCurriculumDoc {
             title: curriculum.title().to_string(),
             locale: curriculum.locale(),
@@ -394,9 +394,9 @@ fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> 
     })))
 }
 
-fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDocy, DocError> {
+fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, DocError> {
     let PageContent { body, .. } = build_content(cs)?;
-    let hy_data = ContributorSpotlightHyData {
+    let contributor_spotlight_data = ContributorSpotlightHyData {
         sections: body,
         contributor_name: cs.meta.contributor_name.clone(),
         folder_name: cs.meta.folder_name.clone(),
@@ -406,16 +406,32 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDocy, D
         usernames: cs.meta.usernames.clone(),
         quote: cs.meta.quote.clone(),
     };
-    Ok(BuiltDocy::ContributorSpotlight(Box::new(
-        JsonContributorSpotlight {
+    Ok(BuiltPage::ContributorSpotlight(Box::new(
+        JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
             page_title: cs.meta.title.clone(),
-            hy_data: HyData::ContributorSpotlight(hy_data),
+            hy_data: contributor_spotlight_data,
         },
     )))
 }
 
-pub fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<(), DocError> {
+/// Copies additional files from one directory to another, excluding a specified file.
+///
+/// This function reads all files from the source directory, filters out the specified file to ignore,
+/// and copies the remaining files to the destination directory. This is useful for copying additional
+/// assets from a source directory to a destination directory, ususally excluding the original `index.md`
+/// file.
+///
+/// # Arguments
+///
+/// * `from` - A reference to a `Path` that specifies the source directory.
+/// * `to` - A reference to a `Path` that specifies the destination directory.
+/// * `ignore` - A reference to a `Path` that specifies the file to be ignored during the copy process.
+///
+/// # Returns
+///
+/// * `Result<(), DocError>` - Returns `Ok(())` if all files are copied successfully, or a `DocError` if an error occurs.
+pub(crate) fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<(), DocError> {
     for from in fs::read_dir(from)?
         .filter_map(Result::ok)
         .map(|f| f.path())
@@ -430,7 +446,7 @@ pub fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<()
 }
 
 impl PageBuilder for Page {
-    fn build(&self) -> Result<BuiltDocy, DocError> {
+    fn build(&self) -> Result<BuiltPage, DocError> {
         match self {
             Self::Doc(doc) => build_doc(doc),
             Self::BlogPost(post) => build_blog_post(post),

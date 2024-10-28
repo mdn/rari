@@ -10,12 +10,12 @@ use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 
-use crate::cached_readers::{blog_auhtor_by_name, blog_files};
+use crate::cached_readers::{blog_author_by_name, blog_files};
 use crate::error::DocError;
-use crate::pages::json::{PrevNextBlog, SlugNTitle};
+use crate::pages::json::{PrevNextBySlug, SlugNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
 use crate::resolve::build_url;
-use crate::utils::{locale_and_typ_from_path, modified_dt, readtime, split_fm};
+use crate::utils::{calculate_read_time_minutes, locale_and_typ_from_path, modified_dt, split_fm};
 
 #[derive(Clone, Debug, Default)]
 pub struct Author {
@@ -82,8 +82,8 @@ pub struct BlogMeta {
     #[serde(serialize_with = "modified_dt")]
     pub date: NaiveDateTime,
     pub author: AuthorLink,
-    #[serde(skip_serializing_if = "PrevNextBlog::is_none")]
-    pub links: PrevNextBlog,
+    #[serde(skip_serializing_if = "PrevNextBySlug::is_none")]
+    pub links: PrevNextBySlug,
     pub read_time: usize,
 }
 
@@ -129,7 +129,7 @@ impl From<&BlogPostBuildMeta> for BlogMeta {
             sponsored,
             date: NaiveDateTime::from(date),
             read_time,
-            author: blog_auhtor_by_name(&author)
+            author: blog_author_by_name(&author)
                 .map(|a| AuthorLink::from_author(&a, &author))
                 .unwrap_or(AuthorLink {
                     name: Some(author),
@@ -298,7 +298,7 @@ fn read_blog_post(path: impl Into<PathBuf>) -> Result<BlogPost, DocError> {
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     let fm: BlogPostFrontmatter = serde_yaml_ng::from_str(fm)?;
 
-    let read_time = readtime(&raw[content_start..]);
+    let read_time = calculate_read_time_minutes(&raw[content_start..]);
     Ok(BlogPost {
         meta: BlogPostBuildMeta::from_fm(fm, full_path, read_time)?,
         raw,
@@ -306,10 +306,10 @@ fn read_blog_post(path: impl Into<PathBuf>) -> Result<BlogPost, DocError> {
     })
 }
 
-fn prev_next(url: &str) -> PrevNextBlog {
+fn prev_next(url: &str) -> PrevNextBySlug {
     let sorted_meta = &blog_files().sorted_meta;
     if let Some(i) = sorted_meta.iter().position(|m| m.url == url) {
-        PrevNextBlog {
+        PrevNextBySlug {
             previous: if i > 0 {
                 sorted_meta.get(i - 1).map(|m| SlugNTitle {
                     slug: m.slug.clone(),

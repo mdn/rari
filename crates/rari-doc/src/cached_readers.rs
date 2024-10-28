@@ -1,3 +1,28 @@
+//! # Cached Readers Module
+//!
+//! The `cached_readers` module provides functionality for managing and accessing cached data
+//! related to various types of pages. This includes documentation pages, blog posts, curriculum pages,
+//! generic pages, contributor spotlights, and more. The module utilizes various caching mechanisms
+//! to improve the efficiency of reading and processing documentation content.
+//!
+//! ## Key Components
+//!
+//! - **Static Caches**: These caches store pre-loaded documentation pages and are initialized once.
+//!   - `STATIC_DOC_PAGE_FILES`: Stores documentation pages indexed by locale and URL.
+//!   - `STATIC_DOC_PAGE_TRANSLATED_FILES`: Stores translated documentation pages indexed by locale and URL.
+//!   - `STATIC_DOC_PAGE_FILES_BY_PATH`: Stores documentation pages indexed by file path.
+//!
+//! - **Dynamic Caches**: These caches store documentation pages that can be modified during runtime.
+//!   - `CACHED_DOC_PAGE_FILES`: Stores documentation pages indexed by file path, wrapped in a `RwLock` for
+//!     thread-safe access.
+//!   - `CACHED_SIDEBAR_FILES`: Stores sidebar metadata indexed by name and locale, wrapped in a `RwLock` for
+//!     thread-safe access.
+//!
+//! - **Specialized Caches**: These caches store specific types of documentation content.
+//!   - `CACHED_CURRICULUM`: Stores curriculum files, indexed by URL, path, and index,
+//!   - `GENERIC_PAGES_FILES`: Stores generic pages indexed by URL.
+//!   - `CONTRIBUTOR_SPOTLIGHT_FILES`: Stores contributor spotlight pages indexed by URL.
+
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -26,26 +51,55 @@ use crate::translations::init_translations_from_static_docs;
 use crate::utils::split_fm;
 use crate::walker::walk_builder;
 
-pub static STATIC_DOC_PAGE_FILES: OnceLock<HashMap<(Locale, Cow<'_, str>), Page>> = OnceLock::new();
-pub static STATIC_DOC_PAGE_TRANSLATED_FILES: OnceLock<HashMap<(Locale, Cow<'_, str>), Page>> =
+pub(crate) static STATIC_DOC_PAGE_FILES: OnceLock<HashMap<(Locale, Cow<'_, str>), Page>> =
     OnceLock::new();
-pub static STATIC_DOC_PAGE_FILES_BY_PATH: OnceLock<HashMap<PathBuf, Page>> = OnceLock::new();
+pub(crate) static STATIC_DOC_PAGE_TRANSLATED_FILES: OnceLock<
+    HashMap<(Locale, Cow<'_, str>), Page>,
+> = OnceLock::new();
+pub(crate) static STATIC_DOC_PAGE_FILES_BY_PATH: OnceLock<HashMap<PathBuf, Page>> = OnceLock::new();
 pub static CACHED_DOC_PAGE_FILES: OnceLock<Arc<RwLock<HashMap<PathBuf, Page>>>> = OnceLock::new();
 type SidebarFilesCache = Arc<RwLock<HashMap<(String, Locale), Arc<MetaSidebar>>>>;
-pub static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
+pub(crate) static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
     LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
-pub static CACHED_CURRICULUM: OnceLock<CurriculumFiles> = OnceLock::new();
-pub static GENERIC_PAGES_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
-pub static CONTRIBUTOR_SPOTLIGHT_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
+pub(crate) static CACHED_CURRICULUM: OnceLock<CurriculumFiles> = OnceLock::new();
+pub(crate) static GENERIC_PAGES_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
+pub(crate) static CONTRIBUTOR_SPOTLIGHT_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
 
+/// Represents the cached files for blog posts.
+///
+/// The `BlogFiles` struct contains the cached data for blog posts, including the posts themselves,
+/// the authors, and the sorted metadata for the blog posts. This is used to efficiently manage
+/// and access blog-related data during the build process.
+///
+/// # Fields
+///
+/// * `posts` - A `HashMap<String, Page>` that holds the blog posts, where the key is the post identifier and
+///   the value is the `Page` representing the blog post.
+/// * `authors` - A `HashMap<String, Arc<Author>>` that holds the authors of the blog posts, where the key
+///   is the author identifier and the value is an `Arc` pointing to the `Author`.
+/// * `sorted_meta` - A `Vec<BlogPostBuildMeta>` that holds the metadata for the blog posts, sorted by `date`, `title`.
 #[derive(Debug, Default, Clone)]
 pub struct BlogFiles {
     pub posts: HashMap<String, Page>,
     pub authors: HashMap<String, Arc<Author>>,
     pub sorted_meta: Vec<BlogPostBuildMeta>,
 }
-pub static BLOG_FILES: OnceLock<BlogFiles> = OnceLock::new();
+pub(crate) static BLOG_FILES: OnceLock<BlogFiles> = OnceLock::new();
 
+/// Represents the cached files for curriculum pages.
+///
+/// The `CurriculumFiles` struct contains the cached data for curriculum pages, including
+/// mappings from URLs and file paths to pages, as well as an index of curriculum entries.
+/// This is used to efficiently manage and access curriculum-related data during the build process.
+///
+/// # Fields
+///
+/// * `by_url` - A `HashMap<String, Page>` that holds the curriculum pages, where the key is the URL of the
+///   page and the value is the `Page` representing the curriculum page.
+/// * `by_path` - A `HashMap<PathBuf, Page>` that holds the curriculum pages, where the key is the file path
+///   of the page and the value is the `Page` representing the curriculum page.
+/// * `index` - A `Vec<CurriculumIndexEntry>` that holds the sorted index entries for the horizontal navigation
+///   of curriculum pages (prev/next).
 #[derive(Debug, Default, Clone)]
 pub struct CurriculumFiles {
     pub by_url: HashMap<String, Page>,
@@ -53,6 +107,30 @@ pub struct CurriculumFiles {
     pub index: Vec<CurriculumIndexEntry>,
 }
 
+/// Reads and returns a sidebar for the given name, locale, and slug.
+///
+/// This function attempts to read a sidebar based on the provided name, locale, and slug.
+/// If the name is "jsref", it generates the sidebar using the `jsref::sidebar` function.
+/// For other names, it constructs the file path to the sidebar YAML file, reads the file,
+/// and parses it into a `Sidebar` object. The resulting sidebar is then cached for future use
+/// if caching is enabled.
+///
+/// # Arguments
+///
+/// * `name` - A string slice that holds the name of the sidebar.
+/// * `locale` - A `Locale` that specifies the locale of the sidebar.
+/// * `slug` - A string slice that holds the slug of the sidebar.
+///
+/// # Returns
+///
+/// * `Result<Arc<MetaSidebar>, DocError>` - Returns an `Arc` containing the `MetaSidebar` if successful,
+///   or a `DocError` if an error occurs while reading or parsing the sidebar.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - An error occurs while reading the sidebar file.
+/// - An error occurs while parsing the sidebar YAML content.
 pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSidebar>, DocError> {
     let sidebar = match name {
         "jsref" => Arc::new(jsref::sidebar(slug, locale)?),
@@ -79,37 +157,77 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
     Ok(sidebar)
 }
 
-pub fn doc_page_from_slug(slug: &str, locale: Locale) -> Option<Result<Page, DocError>> {
+/// Retrieves a documentation page from the cache based on the given slug and locale.
+///
+/// This function attempts to retrieve a documentation page from the static cache using the provided slug and locale.
+/// If the locale is `en-US`, it uses the `STATIC_DOC_PAGE_FILES` cache; otherwise, it uses the
+/// `STATIC_DOC_PAGE_TRANSLATED_FILES` cache.
+///
+/// If the page is found in the cache, it returns `Ok(page)`.
+/// If the page is not found, it returns a `DocError::NotFoundInStaticCache` error.
+/// If there is aproblem with the cache, it returns a `DocError::FileCacheBroken` error.
+///
+/// # Arguments
+///
+/// * `slug` - A string slice that holds the slug of the documentation page.
+/// * `locale` - A `Locale` that specifies the locale of the documentation page.
+///
+/// # Returns
+///
+/// * `Result<Page, DocError>` - Returns `Ok(Page)` if the page is found in the cache, or
+///   `Err(DocError)` if the page is not found..
+pub fn doc_page_from_slug(slug: &str, locale: Locale) -> Result<Page, DocError> {
     let cache = if locale == Locale::EnUs {
         &STATIC_DOC_PAGE_FILES
     } else {
         &STATIC_DOC_PAGE_TRANSLATED_FILES
     };
-    cache.get().map(|static_files| {
-        if let Some(page) = static_files.get(&(locale, Cow::Borrowed(slug))) {
-            return Ok(page.clone());
-        }
-        Err(DocError::NotFoundInStaticCache(concat_strs!(
-            "/",
-            locale.as_url_str(),
-            "/docs/",
-            slug
-        )))
-    })
+    cache.get().map_or_else(
+        || Err(DocError::FileCacheBroken),
+        |static_files| {
+            if let Some(page) = static_files.get(&(locale, Cow::Borrowed(slug))) {
+                return Ok(page.clone());
+            }
+            Err(DocError::NotFoundInStaticCache(concat_strs!(
+                "/",
+                locale.as_url_str(),
+                "/docs/",
+                slug
+            )))
+        },
+    )
 }
 
-pub fn doc_page_from_static_files(path: &Path) -> Option<Result<Page, DocError>> {
-    STATIC_DOC_PAGE_FILES_BY_PATH.get().map(|static_files| {
-        if let Some(page) = static_files.get(path) {
-            return Ok(page.clone());
-        }
-        Err(DocError::NotFoundInStaticCache(
-            path.to_string_lossy().to_string(),
-        ))
-    })
+/// Retrieves a documentation page from the static cache based on the given file path.
+///
+/// This function attempts to retrieve a documentation page from the static cache using the provided file path.
+/// If the cache is not available, it returns a `DocError::FileCacheBroken` error. If the page is found in the
+/// cache, it returns the page wrapped in an `Ok` variant. If the page is not found, it returns a
+/// `DocError::NotFoundInStaticCache` error.
+///
+/// # Arguments
+///
+/// * `path` - A reference to a `Path` that holds the file path of the documentation page.
+///
+/// # Returns
+///
+/// * `Result<Page, DocError>` - Returns `Ok(Page)` if the page is found in the cache,
+///   or `Err(DocError)` if the page is not found or the cache is not available.
+pub fn doc_page_from_static_files(path: &Path) -> Result<Page, DocError> {
+    STATIC_DOC_PAGE_FILES_BY_PATH.get().map_or_else(
+        || Err(DocError::FileCacheBroken),
+        |static_files| {
+            if let Some(page) = static_files.get(path) {
+                return Ok(page.clone());
+            }
+            Err(DocError::NotFoundInStaticCache(
+                path.to_string_lossy().to_string(),
+            ))
+        },
+    )
 }
 
-pub fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
+fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
     if let Some(blog_root) = blog_root() {
         let post_root = blog_root.join("posts");
         Ok(read_docs_parallel::<BlogPost>(&[post_root], None)?
@@ -121,7 +239,7 @@ pub fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
     }
 }
 
-pub fn gather_generic_pages() -> Result<HashMap<String, Page>, DocError> {
+fn gather_generic_pages() -> Result<HashMap<String, Page>, DocError> {
     if let Some(root) = generic_pages_root() {
         Ok(read_docs_parallel::<GenericPage>(&[root], Some("*.md"))?
             .into_iter()
@@ -145,7 +263,7 @@ pub fn gather_generic_pages() -> Result<HashMap<String, Page>, DocError> {
     }
 }
 
-pub fn gather_curriculum() -> Result<CurriculumFiles, DocError> {
+fn gather_curriculum() -> Result<CurriculumFiles, DocError> {
     if let Some(curriculum_root) = curriculum_root() {
         let curriculum_root = curriculum_root.join("curriculum");
         let pages: Vec<Page> =
@@ -198,7 +316,7 @@ pub fn gather_curriculum() -> Result<CurriculumFiles, DocError> {
     }
 }
 
-pub fn gather_contributre_spotlight() -> Result<HashMap<String, Page>, DocError> {
+fn gather_contributre_spotlight() -> Result<HashMap<String, Page>, DocError> {
     if let Some(root) = contributor_spotlight_root() {
         Ok(read_docs_parallel::<ContributorSpotlight>(&[root], None)?
             .into_iter()
@@ -222,6 +340,16 @@ pub fn gather_contributre_spotlight() -> Result<HashMap<String, Page>, DocError>
     }
 }
 
+/// Retrieves the all curriculum pages. It uses the `CACHED_CURRICULUM` if caching is enabled.
+///
+/// This function returns a `Cow<'static, CurriculumFiles>` containing the curriculum pages maps.
+/// If caching is enabled (as determined by `cache_content()`), the returned value is cached, otherwise
+/// pages are read on every call.
+///
+/// # Returns
+///
+/// * `Cow<'static, CurriculumFiles>` - Returns a `Cow::Borrowed` containing the cached curriculum files
+///   if caching is enabled. Otherwise, returns a `Cow::Owned` containing the gathered curriculum files.
 pub fn curriculum_files() -> Cow<'static, CurriculumFiles> {
     if cache_content() {
         Cow::Borrowed(CACHED_CURRICULUM.get_or_init(|| {
@@ -239,7 +367,7 @@ pub fn curriculum_files() -> Cow<'static, CurriculumFiles> {
     }
 }
 
-pub fn gather_blog_authors() -> Result<HashMap<String, Arc<Author>>, DocError> {
+fn gather_blog_authors() -> Result<HashMap<String, Arc<Author>>, DocError> {
     if let Some(blog_authors_path) = blog_root().map(|br| br.join("authors")) {
         Ok(walk_builder(&[blog_authors_path], None)?
             .build()
@@ -265,6 +393,16 @@ pub fn gather_blog_authors() -> Result<HashMap<String, Arc<Author>>, DocError> {
     }
 }
 
+/// Retrieves all blog pages.
+///
+/// This function returns a `Cow<'static, BlogFiles>` containing the blog pages maps.
+/// If caching is enabled (as determined by `cache_content()`), the returned value is cached, otherwise
+/// pages are read on every call.
+///
+/// # Returns
+///
+/// * `Cow<'static, BlogFiles>` - Returns a `Cow::Borrowed` containing the cached blog data
+///   if caching is enabled. Otherwise, returns it in a `Cow::Owned`.
 pub fn blog_files() -> Cow<'static, BlogFiles> {
     fn gather() -> BlogFiles {
         let posts = gather_blog_posts().unwrap_or_else(|e| {
@@ -303,10 +441,42 @@ pub fn blog_files() -> Cow<'static, BlogFiles> {
     }
 }
 
-pub fn blog_auhtor_by_name(name: &str) -> Option<Arc<Author>> {
+/// Retrieves a blog author by their name from the (cached) blog files.
+///
+/// This function attempts to retrieve a blog author from the cached blog files using the provided name.
+/// If the author is found, it returns `Some(Arc<Author>)` pointing to the `Author` struct.
+/// If the author is not found, it returns `None`.
+///
+/// # Arguments
+///
+/// * `name` - A string slice that holds the name of the blog author to be retrieved.
+///
+/// # Returns
+///
+/// * `Option<Arc<Author>>` - Returns `Some(Arc<Author>)` if the author is found in the cache,
+///   or `None` if the author is not found.
+pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
     blog_files().authors.get(name).cloned()
 }
 
+/// Reads all documentation pages from the content root and translated content root directories, fills the
+/// interanl cache structures and returns a vector of `Page` objects.
+///
+/// This function reads documentation pages in parallel from the content root directory and caches them
+/// in the `STATIC_DOC_PAGE_FILES` static variable. If a translated content root directory is available,
+/// it also reads translated documentation pages and caches them in the `STATIC_DOC_PAGE_TRANSLATED_FILES`
+/// static variable. Additionally, it initializes `TRANSLATIONS_BY_SLUG` fills `STATIC_DOC_PAGE_FILES_BY_PATH`
+/// static variable.
+///
+/// # Returns
+///
+/// * `Result<Vec<Page>, DocError>` - Returns a vector of `Page` objects if successful,
+///   or a `DocError` if an error occurs while reading the documentation pages.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - An error occurs while reading the documentation pages from the content root or translated content root directories.
 pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
     let mut docs = read_docs_parallel::<Doc>(&[content_root()], None)?;
     STATIC_DOC_PAGE_FILES
@@ -342,8 +512,20 @@ pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
     Ok(docs)
 }
 
+/// A type alias for a hashmap that maps URLs to pages.
 pub type UrlToPageMap = HashMap<String, Page>;
 
+/// Retrieves all generic pages, using the cache if it is enabled.
+///
+/// This function returns a `Cow<'static, UrlToPageMap>` containing the generic pages.
+/// If caching is enabled (as determined by `cache_content()`), it attempts to get the cached
+/// generic pages from `GENERIC_PAGES_FILES`, initializing it if needed.
+/// If caching is not enabled, it directly reads the generic pages and returns them.
+///
+/// # Returns
+///
+/// * `Cow<'static, UrlToPageMap>` - Returns a `Cow::Borrowed` containing the cached generic pages
+///   if caching is enabled. Otherwise, returns a `Cow::Owned` containing the read-in generic pages.
 pub fn generic_pages_files() -> Cow<'static, UrlToPageMap> {
     fn gather() -> UrlToPageMap {
         gather_generic_pages().unwrap_or_else(|e| {
@@ -358,6 +540,17 @@ pub fn generic_pages_files() -> Cow<'static, UrlToPageMap> {
     }
 }
 
+/// Retrieves the contributor spotlight pages, using the cacche if it is enabled.
+///
+/// This function returns a `Cow<'static, UrlToPageMap>` containing the contributor spotlight pages.
+/// If caching is enabled (as determined by `cache_content()`), it attempts to get the cached
+/// contributor spotlight pages from `CONTRIBUTOR_SPOTLIGHT_FILES`, initializing it if needed.
+/// If caching is not enabled, it directly reads the contributor spotlight pages and returns them.
+///
+/// # Returns
+///
+/// * `Cow<'static, UrlToPageMap>` - Returns a `Cow::Borrowed` containing the cached contributor spotlight pages
+///   if caching is enabled. Otherwise, returns a `Cow::Owned` containing the read-in contributor spotlight pages.
 pub fn contributor_spotlight_files() -> Cow<'static, UrlToPageMap> {
     fn gather() -> UrlToPageMap {
         gather_contributre_spotlight().unwrap_or_else(|e| {

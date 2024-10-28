@@ -11,6 +11,10 @@ use thiserror::Error;
 use crate::helpers::l10n::L10nError;
 use crate::pages::page::PageCategory;
 
+/// Represents various errors that can occur when processing pages.
+///
+/// Each variant corresponds to a specific error type and includes relevant
+/// error messages and associated data.
 #[derive(Debug, Error)]
 pub enum DocError {
     #[error("Cannot parse templ index")]
@@ -105,12 +109,17 @@ pub enum DocError {
     SlugRequiredForSidebarEntry,
 }
 
+/// Converts a `PoisonError` into a `DocError`.
+///
+/// This implementation of the `From` trait allows a `PoisonError` to be converted into a `DocError`.
+/// Specifically, it maps any `PoisonError` to the `FileCachePoisoned` variant of `DocError`.
 impl<T> From<PoisonError<T>> for DocError {
     fn from(_: PoisonError<T>) -> Self {
         Self::FileCachePoisoned
     }
 }
 
+/// Represents various errors that can occur while processing URLs.
 #[derive(Debug, Error)]
 pub enum UrlError {
     #[error("invalid url")]
@@ -121,6 +130,7 @@ pub enum UrlError {
     EnvError(#[from] EnvError),
 }
 
+/// Represents various errors that can occur while handling file operations.
 #[derive(Debug, Error)]
 pub enum FileError {
     #[error("not a subpath")]

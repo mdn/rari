@@ -17,8 +17,8 @@ use crate::cached_readers::blog_files;
 use crate::error::DocError;
 use crate::helpers::title::page_title;
 use crate::pages::json::{
-    BlogIndex, BuiltDocy, HyData, ItemContainer, JsonBasicSPA, JsonBlogPost, JsonBlogPostDoc,
-    JsonHomePageSPA, JsonHomePageSPAHyData,
+    BlogIndex, BuiltPage, ItemContainer, JsonBlogPostDoc, JsonBlogPostPage, JsonHomePage,
+    JsonHomePageSPAHyData, JsonSPAPage,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::types::blog::BlogMeta;
@@ -104,9 +104,9 @@ impl SPA {
             .collect()
     }
 
-    pub fn as_built_doc(&self) -> Result<BuiltDocy, DocError> {
+    pub fn as_built_doc(&self) -> Result<BuiltPage, DocError> {
         match &self.data {
-            SPAData::BlogIndex => Ok(BuiltDocy::BlogPost(Box::new(JsonBlogPost {
+            SPAData::BlogIndex => Ok(BuiltPage::BlogPost(Box::new(JsonBlogPostPage {
                 doc: JsonBlogPostDoc {
                     title: self.title().to_string(),
                     mdn_url: self.url().to_owned(),
@@ -118,7 +118,7 @@ impl SPA {
                 url: self.url().to_owned(),
                 locale: self.locale(),
                 blog_meta: None,
-                hy_data: Some(HyData::BlogIndex(BlogIndex {
+                hy_data: Some(BlogIndex {
                     posts: blog_files()
                         .sorted_meta
                         .iter()
@@ -129,11 +129,11 @@ impl SPA {
                             m
                         })
                         .collect(),
-                })),
+                }),
                 page_title: self.title().to_owned(),
                 ..Default::default()
             }))),
-            SPAData::BasicSPA(basic_spa) => Ok(BuiltDocy::BasicSPA(Box::new(JsonBasicSPA {
+            SPAData::BasicSPA(basic_spa) => Ok(BuiltPage::SPA(Box::new(JsonSPAPage {
                 slug: self.slug,
                 page_title: self.page_title,
                 page_description: self.page_description,
@@ -142,7 +142,7 @@ impl SPA {
                 page_not_found: false,
                 url: concat_strs!(self.base_slug.as_ref(), self.slug),
             }))),
-            SPAData::NotFound => Ok(BuiltDocy::BasicSPA(Box::new(JsonBasicSPA {
+            SPAData::NotFound => Ok(BuiltPage::SPA(Box::new(JsonSPAPage {
                 slug: self.slug,
                 page_title: self.page_title,
                 page_description: self.page_description,
@@ -151,7 +151,7 @@ impl SPA {
                 page_not_found: true,
                 url: concat_strs!(self.base_slug.as_ref(), self.slug),
             }))),
-            SPAData::HomePage => Ok(BuiltDocy::HomePageSPA(Box::new(JsonHomePageSPA {
+            SPAData::HomePage => Ok(BuiltPage::Home(Box::new(JsonHomePage {
                 url: concat_strs!("/", self.locale().as_url_str(), "/", self.slug),
                 page_title: self.page_title,
                 hy_data: JsonHomePageSPAHyData {

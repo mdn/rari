@@ -7,7 +7,7 @@ use rari_types::globals::blog_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 
-use super::json::BuiltDocy;
+use super::json::BuiltPage;
 use super::types::contributors::contributor_spotlight_from_url;
 use super::types::generic::GenericPage;
 use crate::error::DocError;
@@ -19,6 +19,10 @@ use crate::pages::types::spa::SPA;
 use crate::resolve::{strip_locale_from_url, url_meta_from, UrlMeta};
 use crate::utils::locale_and_typ_from_path;
 
+/// Represents a page in the documentation system.
+///
+/// The `Page` enum is used to define different types of pages that can be part of the documentation.
+/// It provides methods to create instances from URLs and to check the existence of pages.
 #[derive(Debug, Clone)]
 #[enum_dispatch]
 pub enum Page {
@@ -30,6 +34,10 @@ pub enum Page {
     GenericPage(Arc<GenericPage>),
 }
 
+/// Represents the category of a page in the documentation system.
+///
+/// The `PageCategory` enum is used to classify different types of pages within the documentation.
+/// Each variant corresponds to a specific category of pages.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PageCategory {
     Doc,
@@ -41,22 +49,51 @@ pub enum PageCategory {
 }
 
 impl Page {
+    /// Creates an instance of `Page` from the given URL if it exists.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to create the `Page` instance from.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, DocError>` - Returns an instance of `Page` on success, or a `DocError` on failure,
+    ///   usually if the Page's file cannot be found.
     pub fn from_url(url: &str) -> Result<Self, DocError> {
-        Self::internal_from_url_with_other_locale_and_fallback(url, None, true)
+        Self::internal_from_url(url, None, false)
     }
 
-    pub fn from_url_no_fallback(url: &str) -> Result<Self, DocError> {
-        Self::internal_from_url_with_other_locale_and_fallback(url, None, false)
+    /// Creates a `Page` from the given URL with a fallback to the
+    /// default `Locale` if the page cannot be found in the given URL's `Locale`.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to create the instance from.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, DocError>` - Returns an instance of `Self` on success, or a `DocError` on failure.
+    pub fn from_url_with_fallback(url: &str) -> Result<Self, DocError> {
+        Self::internal_from_url(url, None, true)
     }
 
-    pub fn from_url_with_other_locale_and_fallback(
-        url: &str,
-        locale: Option<Locale>,
-    ) -> Result<Self, DocError> {
-        Self::internal_from_url_with_other_locale_and_fallback(url, locale, true)
+    /// Creates a `Page` from the given URL and a specified `Locale`. The page will be searched
+    /// for in the passed-in `Locale`, overriding the URL's `Locale`. If not found, the default `Locale`
+    /// is searched as a fallback.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to create the instance from.
+    /// * `locale` - A `Locale` that specifies the `Locale` the URL is searched in.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, DocError>` - Returns an instance of `Self` on success, or a `DocError` on failure.
+    pub fn from_url_with_locale_and_fallback(url: &str, locale: Locale) -> Result<Self, DocError> {
+        Self::internal_from_url(url, Some(locale), true)
     }
 
-    fn internal_from_url_with_other_locale_and_fallback(
+    fn internal_from_url(
         url: &str,
         locale: Option<Locale>,
         fallback: bool,
@@ -98,7 +135,16 @@ impl Page {
         }
     }
 
-    pub fn ignore(url: &str) -> bool {
+    /// Determines if the given URL should be ignored for link-checking.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to be checked.
+    ///
+    /// # Returns
+    ///
+    /// * `bool` - Returns `true` if the URL gets a free pass on link-checking, otherwise returns `false`.
+    pub fn ignore_link_check(url: &str) -> bool {
         if url == "/discord" {
             return true;
         }
@@ -120,6 +166,16 @@ impl Page {
 
         false
     }
+
+    /// Checks if a `Page` for a given URL exists.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to be checked.
+    ///
+    /// # Returns
+    ///
+    /// * `bool` - Returns `true` if the `Page` for the given URL exists, otherwise `false`.
     pub fn exists(url: &str) -> bool {
         if url == "/discord" {
             return true;
@@ -137,7 +193,7 @@ impl Page {
             return true;
         }
 
-        Page::from_url(url).is_ok()
+        Page::from_url_with_fallback(url).is_ok()
     }
 }
 
@@ -242,14 +298,51 @@ impl<T: PageLike> PageLike for Arc<T> {
     }
 }
 
+/// A trait for reading pages in the documentation system.
+///
+/// The `PageReader` trait defines a method for reading pages from a specified path,
+/// optionally considering a locale.
 pub trait PageReader {
+    /// Reads a page from the given path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - An implementation of `Into<PathBuf>` that specifies the path to the page.
+    /// * `locale` - An optional `Locale` that specifies the locale to be considered while reading the page.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Page, DocError>` - Returns a `Page` on success, or a `DocError` on failure.
     fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError>;
 }
 
+/// A trait for writing pages in the documentation system.
+///
+/// The `PageWriter` trait defines a method for writing the current state of a page
+/// to the file system.
 pub trait PageWriter {
+    /// Writes the current state of the page to the file system.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), DocError>` - Returns `Ok(())` if the write operation is successful,
+    ///   or a `DocError` if an error occurs during the write process.
     fn write(&self) -> Result<(), DocError>;
 }
 
+/// A trait for building pages in the documentation system.
+///
+/// The `PageBuilder` trait defines a method for constructing a page and returning
+/// a `BuiltDocy` (A JSON represenatation of the build artifact). Implementors of
+/// this trait are responsible for handling the specifics of the build process,
+/// which could involve compiling content, applying templates, and performing
+/// any necessary transformations.
 pub trait PageBuilder {
-    fn build(&self) -> Result<BuiltDocy, DocError>;
+    /// Builds the page and returns the built `BuiltDocy` artifact.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<BuiltDocy, DocError>` - Returns `Ok(BuiltDocy)` if the build process is successful,
+    ///   or a `DocError` if an error occurs during the build process.
+    fn build(&self) -> Result<BuiltPage, DocError>;
 }

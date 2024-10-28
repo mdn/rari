@@ -161,7 +161,7 @@ pub fn post_process_html<T: PageLike>(
                 if resolved_href_no_hash == page.url() {
                     el.set_attribute("aria-current", "page")?;
                 }
-                if !Page::exists(resolved_href_no_hash) && !Page::ignore(href) {
+                if !Page::exists(resolved_href_no_hash) && !Page::ignore_link_check(href) {
                     tracing::debug!("{resolved_href_no_hash} {href}");
                     let class = el.get_attribute("class").unwrap_or_default();
                     el.set_attribute(

@@ -85,7 +85,7 @@ fn do_move(
     dry_run: bool,
 ) -> Result<Vec<(String, String)>, ToolError> {
     let old_url = build_url(old_slug, locale, PageCategory::Doc)?;
-    let doc = page::Page::from_url(&old_url)?;
+    let doc = page::Page::from_url_with_fallback(&old_url)?;
     let real_old_slug = doc.slug();
 
     let new_parent_slug = parent_slug(new_slug)?;

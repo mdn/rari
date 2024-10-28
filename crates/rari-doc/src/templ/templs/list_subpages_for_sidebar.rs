@@ -23,14 +23,14 @@ pub fn list_subpages_for_sidebar(
     }
     let code = !no_code.map(|b| b.as_bool()).unwrap_or_default();
     if include_parent {
-        let parent = Page::from_url(&url)?;
+        let parent = Page::from_url_with_fallback(&url)?;
         sub_pages.insert(0, parent);
     }
 
     out.push_str("<ol>");
     for page in sub_pages {
         let locale_page = if env.locale != Default::default() {
-            &Page::from_url_with_other_locale_and_fallback(page.url(), Some(env.locale))?
+            &Page::from_url_with_locale_and_fallback(page.url(), env.locale)?
         } else {
             &page
         };

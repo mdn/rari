@@ -7,7 +7,7 @@ use axum::response::{IntoResponse, Response};
 use axum::{Json, Router};
 use rari_doc::error::DocError;
 use rari_doc::issues::{to_display_issues, InMemoryLayer};
-use rari_doc::pages::json::BuiltDocy;
+use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use tracing::{error, span, Level};
 
@@ -16,13 +16,13 @@ static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
 async fn get_json_handler(
     State(memory_layer): State<Arc<InMemoryLayer>>,
     req: Request,
-) -> Result<Json<BuiltDocy>, AppError> {
+) -> Result<Json<BuiltPage>, AppError> {
     let req_id = REQ_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let span = span!(Level::WARN, "serve", req = req_id);
     let _enter1 = span.enter();
     let url = req.uri().path();
     let mut json = get_json(url)?;
-    if let BuiltDocy::Doc(json_doc) = &mut json {
+    if let BuiltPage::Doc(json_doc) = &mut json {
         let m = memory_layer.get_events();
         let mut issues = m.lock().unwrap();
         let req_isses: Vec<_> = issues
@@ -36,11 +36,11 @@ async fn get_json_handler(
     Ok(Json(json))
 }
 
-fn get_json(url: &str) -> Result<BuiltDocy, DocError> {
+fn get_json(url: &str) -> Result<BuiltPage, DocError> {
     let span = span!(Level::ERROR, "url", "{}", url);
     let _enter1 = span.enter();
     let url = url.strip_suffix("/index.json").unwrap_or(url);
-    let page = Page::from_url(url)?;
+    let page = Page::from_url_with_fallback(url)?;
 
     let slug = &page.slug();
     let locale = page.locale();

@@ -151,8 +151,8 @@ impl Doc {
 impl PageReader for Doc {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
-        if let Some(doc) = doc_page_from_static_files(&path) {
-            return doc;
+        if let Ok(doc) = doc_page_from_static_files(&path) {
+            return Ok(doc);
         }
 
         if let Some(cache) = CACHED_DOC_PAGE_FILES.get() {
@@ -381,11 +381,6 @@ fn fm_to_string(fm: &FrontMatter) -> Result<String, DocError> {
     )?)
 }
 
-pub fn render_md_to_html(input: &str, locale: Locale) -> Result<String, DocError> {
-    let html = m2h(input, locale)?;
-    Ok(html)
-}
-
 #[cfg(test)]
 mod tests {
     use indoc::indoc;
@@ -415,7 +410,6 @@ mod tests {
             r#"
             title: "007"
             slug: foo
-            page-type: none
             browser-compat:
               - foo
               - bar

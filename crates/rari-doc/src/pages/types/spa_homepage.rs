@@ -20,7 +20,7 @@ use crate::pages::page::{Page, PageLike};
 
 pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
     urls.iter()
-        .filter_map(|url| match Page::from_url(url) {
+        .filter_map(|url| match Page::from_url_with_fallback(url) {
             Ok(Page::BlogPost(post)) => Some(Ok(HomePageLatestNewsItem {
                 url: post.url().to_string(),
                 title: post.title().to_string(),
@@ -46,7 +46,7 @@ pub fn featured_articles(
 ) -> Result<Vec<HomePageFeaturedArticle>, DocError> {
     urls.iter()
         .filter_map(
-            |url| match Page::from_url_with_other_locale_and_fallback(url, Some(locale)) {
+            |url| match Page::from_url_with_locale_and_fallback(url, locale) {
                 Ok(Page::BlogPost(post)) => Some(Ok(HomePageFeaturedArticle {
                     mdn_url: post.url().to_string(),
                     summary: post.meta.description.clone(),

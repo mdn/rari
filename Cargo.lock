@@ -2692,7 +2692,7 @@ dependencies = [
  "dialoguer",
  "fake",
  "indoc",
- "rand 0.8.5",
+ "rand 0.7.3",
  "rari-doc",
  "rari-types",
  "rari-utils",
