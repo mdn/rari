@@ -17,9 +17,7 @@ use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
 use itertools::Itertools;
 use jsonpath_lib::Compiled;
-use lol_html::{
-    element, rewrite_str, ElementContentHandlers, ElementHandler, RewriteStrSettings, Selector,
-};
+use lol_html::{element, rewrite_str, ElementContentHandlers, RewriteStrSettings, Selector};
 use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
@@ -193,8 +191,6 @@ const IGNORE: &[&str] = &[
 
 static WS_DIFF: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
-static DATA_FLAW_SRC: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#" data-flaw-src="[^"]+""#).unwrap());
 
 static DIFF_MAP: LazyLock<Arc<DashMap<String, String>>> =
     LazyLock::new(|| Arc::new(DashMap::new()));
@@ -285,8 +281,6 @@ fn full_diff(
                 if is_html(&lhs) && is_html(&rhs) {
                     let lhs_t = WS_DIFF.replace_all(&lhs, "$x$y");
                     let rhs_t = WS_DIFF.replace_all(&rhs, "$x$y");
-                    // let lhs_t = DATA_FLAW_SRC.replace_all(&lhs_t, "");
-                    // let rhs_t = DATA_FLAW_SRC.replace_all(&rhs_t, "");
                     let lhs_t = rewrite_str(
                         &lhs_t,
                         RewriteStrSettings {

@@ -296,28 +296,32 @@ pub fn post_process_html<T: PageLike>(
             el.set_attribute("class", &class)?;
             Ok(())
         }),
-        element!("pre[class*=brush]:not(.hidden)", |el| {
+        element!("pre[class*=brush]", |el| {
             let class = el.get_attribute("class");
             let class = class.as_deref().unwrap_or_default();
+            let is_hidden = class.split_ascii_whitespace().any(|c| c == "hidden");
             let name = class
                 .split_ascii_whitespace()
                 .skip_while(|s| *s != "brush:")
                 .nth(1)
                 .unwrap_or_default();
+
             if !name.is_empty() && name != "plain" {
-                el.before(
-              &concat_strs!(
-                r#"<div class="code-example"><div class='example-header'><span class="language-name">"#, name, "</span></div>"
-              ),
-              ContentType::Html
-            );
+                el.prepend("<code>", ContentType::Html);
+                el.append("</code>", ContentType::Html);
+            }
+            if is_hidden {
+                el.before(r#"<div class="code-example">"#, ContentType::Html);
+                el.after("</div>", ContentType::Html);
+            } else if !name.is_empty() && name != "plain" {
+                el.before(&concat_strs!(
+                  r#"<div class="code-example"><div class='example-header'><span class="language-name">"#,
+                  name,
+                  "</span></div>"),
+                  ContentType::Html
+                );
                 el.after("</div>", ContentType::Html);
             }
-            Ok(())
-        }),
-        element!("pre[class*=brush].hidden", |el| {
-            el.before(r#"<div class="code-example">"#, ContentType::Html);
-            el.after("</div>", ContentType::Html);
             Ok(())
         }),
         element!(
