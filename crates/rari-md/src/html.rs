@@ -727,7 +727,8 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                         match self.plugins.render.codefence_syntax_highlighter {
                             None => {
                                 pre_attributes.extend(code_attributes);
-                                let with_code = if let Some(cls) = pre_attributes.get_mut("class") {
+                                let _with_code = if let Some(cls) = pre_attributes.get_mut("class")
+                                {
                                     if !ncb.info.is_empty() {
                                         let langs = ncb
                                             .info
@@ -746,17 +747,8 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                                     false
                                 };
                                 write_opening_tag(self.output, "pre", pre_attributes)?;
-                                if with_code {
-                                    self.output.write_all(b"<code>")?;
-                                }
-
                                 self.escape(literal)?;
-
-                                if with_code {
-                                    self.output.write_all(b"</code></pre>")?;
-                                } else {
-                                    self.output.write_all(b"</pre>\n")?
-                                }
+                                self.output.write_all(b"</pre>\n")?
                             }
                             Some(highlighter) => {
                                 highlighter.write_pre_tag(self.output, pre_attributes)?;

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cmp::max;
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
@@ -16,6 +17,7 @@ use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
 use itertools::Itertools;
 use jsonpath_lib::Compiled;
+use lol_html::{element, rewrite_str, ElementContentHandlers, RewriteStrSettings, Selector};
 use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
@@ -189,11 +191,26 @@ const IGNORE: &[&str] = &[
 
 static WS_DIFF: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
-static DATA_FLAW_SRC: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#" data-flaw-src="[^"]+""#).unwrap());
 
 static DIFF_MAP: LazyLock<Arc<DashMap<String, String>>> =
     LazyLock::new(|| Arc::new(DashMap::new()));
+
+/// Run html content through these handlers to clean up the html before minifying and diffing.
+fn pre_diff_element_massaging_handlers<'a>() -> Vec<(Cow<'a, Selector>, ElementContentHandlers<'a>)>
+{
+    vec![
+        // remove data-flaw-src attributes
+        element!("*[data-flaw-src]", |el| {
+            el.remove_attribute("data-flaw-src");
+            Ok(())
+        }),
+        // remove ids from notecards, example-headers, code-examples
+        element!("div.notecard, div.example-header, div.code-example", |el| {
+            el.remove_attribute("id");
+            Ok(())
+        }),
+    ]
+}
 
 fn full_diff(
     lhs: &Value,
@@ -264,8 +281,22 @@ fn full_diff(
                 if is_html(&lhs) && is_html(&rhs) {
                     let lhs_t = WS_DIFF.replace_all(&lhs, "$x$y");
                     let rhs_t = WS_DIFF.replace_all(&rhs, "$x$y");
-                    let lhs_t = DATA_FLAW_SRC.replace_all(&lhs_t, "");
-                    let rhs_t = DATA_FLAW_SRC.replace_all(&rhs_t, "");
+                    let lhs_t = rewrite_str(
+                        &lhs_t,
+                        RewriteStrSettings {
+                            element_content_handlers: pre_diff_element_massaging_handlers(),
+                            ..RewriteStrSettings::new()
+                        },
+                    )
+                    .expect("lolhtml processing failed");
+                    let rhs_t = rewrite_str(
+                        &rhs_t,
+                        RewriteStrSettings {
+                            element_content_handlers: pre_diff_element_massaging_handlers(),
+                            ..RewriteStrSettings::new()
+                        },
+                    )
+                    .expect("lolhtml processing failed");
                     lhs = fmt_html(&html_minifier::minify(lhs_t).unwrap());
                     rhs = fmt_html(&html_minifier::minify(rhs_t).unwrap());
                 }

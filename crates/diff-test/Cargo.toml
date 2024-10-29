@@ -25,3 +25,4 @@ quick-xml = "0.36"
 sha2 = "0.10"
 clap = { version = "4.5.1", features = ["derive"] }
 dashmap = "6"
+lol_html = "2"
