@@ -6,6 +6,7 @@ use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings}
 use rari_md::ext::DELIM_START;
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
+use rari_types::globals::settings;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use tracing::warn;
@@ -51,6 +52,7 @@ pub fn post_process_html<T: PageLike>(
         if url.ends_with('/') { "" } else { "/" }
     ))?;
     let base_url = options.base_url(Some(&base));
+    let data_issues = settings().data_issues;
 
     let mut element_content_handlers = vec![
         element!("*[id]", |el| {
@@ -110,7 +112,9 @@ pub fn post_process_html<T: PageLike>(
                                     "Error parsing {}: {e}",
                                     file.display()
                                 );
-                                el.set_attribute("data-flaw", &ic.to_string())?;
+                                if data_issues {
+                                    el.set_attribute("data-flaw", &ic.to_string())?;
+                                }
                                 (None, None)
                             }
                         }
@@ -125,7 +129,9 @@ pub fn post_process_html<T: PageLike>(
                                     "Error opening {}: {e}",
                                     file.display()
                                 );
-                                el.set_attribute("data-flaw", &ic.to_string())?;
+                                if data_issues {
+                                    el.set_attribute("data-flaw", &ic.to_string())?;
+                                }
 
                                 (None, None)
                             }
@@ -171,7 +177,9 @@ pub fn post_process_html<T: PageLike>(
                 if resolved_href_no_hash == page.url() {
                     el.set_attribute("aria-current", "page")?;
                 }
-                if !Page::exists(resolved_href_no_hash) && !Page::ignore_link_check(href) {
+                let remove_href = if !Page::exists(resolved_href_no_hash)
+                    && !Page::ignore_link_check(href)
+                {
                     tracing::debug!("{resolved_href_no_hash} {href}");
                     let class = el.get_attribute("class").unwrap_or_default();
                     el.set_attribute(
@@ -182,8 +190,12 @@ pub fn post_process_html<T: PageLike>(
                             "page-not-created"
                         ),
                     )?;
+                    el.remove_attribute("href");
                     el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
-                }
+                    true
+                } else {
+                    false
+                };
                 if original_href != resolved_href {
                     if let Some(pos) = el.get_attribute("data-sourcepos") {
                         if let Some((start, _)) = pos.split_once('-') {
@@ -204,7 +216,9 @@ pub fn post_process_html<T: PageLike>(
                                     url = original_href,
                                     redirect = resolved_href.as_ref()
                                 );
-                                el.set_attribute("data-flaw", &ic.to_string())?;
+                                if data_issues {
+                                    el.set_attribute("data-flaw", &ic.to_string())?;
+                                }
                             }
                         }
                     } else {
@@ -215,17 +229,23 @@ pub fn post_process_html<T: PageLike>(
                             url = original_href,
                             redirect = resolved_href.as_ref()
                         );
-                        el.set_attribute("data-flaw", &ic.to_string())?;
+                        if data_issues {
+                            el.set_attribute("data-flaw", &ic.to_string())?;
+                        }
                     }
                 }
-                el.set_attribute(
-                    "href",
-                    if no_locale {
-                        strip_locale_from_url(&resolved_href).1
-                    } else {
-                        &resolved_href
-                    },
-                )?;
+                if remove_href {
+                    el.remove_attribute("href");
+                } else {
+                    el.set_attribute(
+                        "href",
+                        if no_locale {
+                            strip_locale_from_url(&resolved_href).1
+                        } else {
+                            &resolved_href
+                        },
+                    )?;
+                }
             } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
                 let class = el.get_attribute("class").unwrap_or_default();
                 if !class.split(' ').any(|s| s == "external") {

@@ -23,6 +23,7 @@ pub struct Settings {
     pub interactive_examples_base_url: String,
     pub additional_locales_for_generics_and_spas: Vec<Locale>,
     pub reader_ignores_gitignore: bool,
+    pub data_issues: bool,
 }
 
 impl Settings {

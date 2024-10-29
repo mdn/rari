@@ -145,6 +145,8 @@ struct BuildArgs {
     templ_stats: bool,
     #[arg(long)]
     issues: Option<PathBuf>,
+    #[arg(long)]
+    data_issues: bool,
 }
 
 enum Cache {
@@ -187,6 +189,7 @@ fn main() -> Result<(), Error> {
             let mut settings = Settings::new()?;
             settings.deny_warnings = args.deny_warnings;
             settings.cache_content = args.cache_content;
+            settings.data_issues = args.data_issues;
             let _ = SETTINGS.set(settings);
 
             let templ_stats = if args.templ_stats {
@@ -340,6 +343,7 @@ fn main() -> Result<(), Error> {
             let mut settings = Settings::new()?;
             settings.deny_warnings = args.deny_warnings;
             settings.cache_content = args.cache_content;
+            settings.data_issues = true;
             let _ = SETTINGS.set(settings);
             serve::serve(memory_layer.clone())?
         }
