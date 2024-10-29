@@ -195,7 +195,7 @@ static WS_DIFF: LazyLock<Regex> =
 static DIFF_MAP: LazyLock<Arc<DashMap<String, String>>> =
     LazyLock::new(|| Arc::new(DashMap::new()));
 
-/// Run html content through these handlers to clean up the hatml before minifying and diffing.
+/// Run html content through these handlers to clean up the html before minifying and diffing.
 fn pre_diff_element_massaging_handlers<'a>() -> Vec<(Cow<'a, Selector>, ElementContentHandlers<'a>)>
 {
     vec![
