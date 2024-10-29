@@ -74,7 +74,7 @@ pub(crate) fn strip_locale_from_url(url: &str) -> (Option<Locale>, &str) {
     }
     let i = url[1..].find('/').map(|i| i + 1).unwrap_or(url.len());
     let locale = Locale::from_str(&url[1..i]).ok();
-    (locale, &url[i..])
+    (locale, &url[if locale.is_none() { 0 } else { i }..])
 }
 
 /// Represents metadata extracted from a URL.
