@@ -819,6 +819,7 @@ dependencies = [
  "ignore",
  "itertools",
  "jsonpath_lib",
+ "lol_html",
  "prettydiff",
  "quick-xml 0.36.2",
  "rayon",
