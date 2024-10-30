@@ -189,7 +189,7 @@ const IGNORED_KEYS: &[&str] = &[
     "doc.summary",
 ];
 
-static WHITELIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
+static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
     vec![
         // ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.0.value.content"),
         // ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.4.value.content"),
@@ -239,7 +239,7 @@ fn full_diff(
         }
     }
     let key = make_key(path);
-    if WHITELIST.contains(&(file, &key)) {
+    if ALLOWLIST.contains(&(file, &key)) {
         return;
     }
 
