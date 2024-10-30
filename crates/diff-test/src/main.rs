@@ -191,9 +191,22 @@ const IGNORED_KEYS: &[&str] = &[
 
 static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
     vec![
-        // ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.0.value.content"),
-        // ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.4.value.content"),
-        // ("docs/glossary/http/index.json", "doc.body.0.value.content"),
+        // Wrong auto-linking of example.com properly escaped link, unfixable in yari
+        ("docs/glossary/http/index.json", "doc.body.0.value.content"),
+        (
+            "docs/learn/html/multimedia_and_embedding/other_embedding_technologies/index.json",
+            "doc.body.4.value.content",
+        ),
+        // Relative link to MDN Playground gets rendered as dead link in yari, correct in rari
+        (
+            "docs/learn/learning_and_getting_help/index.json",
+            "doc.body.3.value.content",
+        ),
+        // 'unsupported templ: livesamplelink' in rari, remove when supported
+        (
+            "docs/learn/forms/form_validation/index.json",
+            "doc.body.12.value.content",
+        ),
     ]
     .into_iter()
     .collect()
@@ -212,6 +225,10 @@ fn pre_diff_element_massaging_handlers<'a>() -> Vec<(Cow<'a, Selector>, ElementC
         // remove data-flaw-src attributes
         element!("*[data-flaw-src]", |el| {
             el.remove_attribute("data-flaw-src");
+            Ok(())
+        }),
+        element!("*[data-flaw]", |el| {
+            el.remove_attribute("data-flaw");
             Ok(())
         }),
         // remove ids from notecards, example-headers, code-examples
