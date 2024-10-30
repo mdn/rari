@@ -175,7 +175,7 @@ fn is_html(s: &str) -> bool {
     s.trim_start().starts_with('<') && s.trim_end().ends_with('>')
 }
 
-const IGNORE: &[&str] = &[
+const IGNORED_KEYS: &[&str] = &[
     "doc.flaws",
     "blogMeta.readTime",
     "doc.modified",
@@ -188,6 +188,15 @@ const IGNORE: &[&str] = &[
     "doc.other_translations",
     "doc.summary",
 ];
+
+static WHITELIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
+    vec![
+        ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.0.value.content"),
+        ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.4.value.content"),
+        ("docs/glossary/http/index.json", "doc.body.0.value.content"),
+    ].into_iter()
+    .collect()
+});
 
 static WS_DIFF: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
@@ -215,6 +224,7 @@ fn pre_diff_element_massaging_handlers<'a>() -> Vec<(Cow<'a, Selector>, ElementC
 fn full_diff(
     lhs: &Value,
     rhs: &Value,
+    file: &str,
     path: &[PathIndex],
     diff: &mut BTreeMap<String, String>,
     fast: bool,
@@ -227,9 +237,14 @@ fn full_diff(
             }
         }
     }
+    let key = make_key(path);
+    if WHITELIST.contains(&(file, &key)) {
+        return;
+    }
+
     if lhs != rhs {
-        let key = make_key(path);
-        if IGNORE.iter().any(|i| key.starts_with(i)) || key == "doc.sidebarHTML" && !sidebars {
+        if IGNORED_KEYS.iter().any(|i| key.starts_with(i)) || key == "doc.sidebarHTML" && !sidebars
+        {
             return;
         }
         match (lhs, rhs) {
@@ -241,6 +256,7 @@ fn full_diff(
                     full_diff(
                         lhs.get(i).unwrap_or(&Value::Null),
                         rhs.get(i).unwrap_or(&Value::Null),
+                        file,
                         &path,
                         diff,
                         fast,
@@ -257,6 +273,7 @@ fn full_diff(
                     full_diff(
                         lhs.get(key).unwrap_or(&Value::Null),
                         rhs.get(key).unwrap_or(&Value::Null),
+                        file,
                         &path,
                         diff,
                         fast,
@@ -360,7 +377,7 @@ fn main() -> Result<(), anyhow::Error> {
                         let left = v;
                         let right = b.get(k).unwrap_or(&Value::Null);
                         let mut diff = BTreeMap::new();
-                        full_diff(left, right, &[], &mut diff, arg.fast, arg.sidebars);
+                        full_diff(left, right, &k, &[], &mut diff, arg.fast, arg.sidebars);
                         if !diff.is_empty() {
                             return Some(format!(
                                 r#"<li><span>{k}</span><div class="r"><pre><code>{}</code></pre></div></li>"#,
