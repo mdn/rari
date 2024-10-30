@@ -191,10 +191,11 @@ const IGNORED_KEYS: &[&str] = &[
 
 static WHITELIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
     vec![
-        ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.0.value.content"),
-        ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.4.value.content"),
-        ("docs/glossary/http/index.json", "doc.body.0.value.content"),
-    ].into_iter()
+        // ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.0.value.content"),
+        // ("docs/games/tutorials/2d_breakout_game_phaser/load_the_assets_and_print_them_on_screen/index.json", "doc.body.4.value.content"),
+        // ("docs/glossary/http/index.json", "doc.body.0.value.content"),
+    ]
+    .into_iter()
     .collect()
 });
 
@@ -377,7 +378,7 @@ fn main() -> Result<(), anyhow::Error> {
                         let left = v;
                         let right = b.get(k).unwrap_or(&Value::Null);
                         let mut diff = BTreeMap::new();
-                        full_diff(left, right, &k, &[], &mut diff, arg.fast, arg.sidebars);
+                        full_diff(left, right, k, &[], &mut diff, arg.fast, arg.sidebars);
                         if !diff.is_empty() {
                             return Some(format!(
                                 r#"<li><span>{k}</span><div class="r"><pre><code>{}</code></pre></div></li>"#,
