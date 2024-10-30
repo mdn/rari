@@ -7,7 +7,6 @@ use rari_md::ext::DELIM_START;
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::globals::settings;
-use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use tracing::warn;
 use url::Url;
@@ -164,9 +163,13 @@ pub fn post_process_html<T: PageLike>(
                     .strip_prefix("https://developer.mozilla.org")
                     .map(|href| if href.is_empty() { "/" } else { href })
                     .unwrap_or(&original_href);
+                let href_no_hash = &href[..href.find('#').unwrap_or(href.len())];
                 let no_locale = strip_locale_from_url(href).0.is_none();
+                if no_locale && Page::ignore_link_check(href_no_hash) {
+                    return Ok(());
+                }
                 let maybe_prefixed_href = if no_locale {
-                    Cow::Owned(concat_strs!("/", Locale::default().as_url_str(), href))
+                    Cow::Owned(concat_strs!("/", page.locale().as_url_str(), href))
                 } else {
                     Cow::Borrowed(href)
                 };
@@ -196,6 +199,11 @@ pub fn post_process_html<T: PageLike>(
                 } else {
                     false
                 };
+                let resolved_href = if no_locale {
+                    strip_locale_from_url(&resolved_href).1
+                } else {
+                    resolved_href.as_ref()
+                };
                 if original_href != resolved_href {
                     if let Some(pos) = el.get_attribute("data-sourcepos") {
                         if let Some((start, _)) = pos.split_once('-') {
@@ -214,7 +222,7 @@ pub fn post_process_html<T: PageLike>(
                                     line = line,
                                     col = col,
                                     url = original_href,
-                                    redirect = resolved_href.as_ref()
+                                    redirect = resolved_href
                                 );
                                 if data_issues {
                                     el.set_attribute("data-flaw", &ic.to_string())?;
@@ -227,24 +235,19 @@ pub fn post_process_html<T: PageLike>(
                             source = "redirected-link",
                             ic = ic,
                             url = original_href,
-                            redirect = resolved_href.as_ref()
+                            redirect = resolved_href
                         );
                         if data_issues {
                             el.set_attribute("data-flaw", &ic.to_string())?;
                         }
                     }
+
+                    if !remove_href {
+                        el.set_attribute("href", resolved_href)?;
+                    }
                 }
                 if remove_href {
                     el.remove_attribute("href");
-                } else {
-                    el.set_attribute(
-                        "href",
-                        if no_locale {
-                            strip_locale_from_url(&resolved_href).1
-                        } else {
-                            &resolved_href
-                        },
-                    )?;
                 }
             } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
                 let class = el.get_attribute("class").unwrap_or_default();

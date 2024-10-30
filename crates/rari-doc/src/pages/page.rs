@@ -3,9 +3,10 @@ use std::sync::Arc;
 
 use enum_dispatch::enum_dispatch;
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::globals::blog_root;
+use rari_types::globals::{blog_root, curriculum_root};
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
+use rari_utils::concat_strs;
 
 use super::json::BuiltPage;
 use super::types::contributors::contributor_spotlight_from_url;
@@ -169,6 +170,9 @@ impl Page {
 
     /// Checks if a `Page` for a given URL exists.
     ///
+    /// Checks for non SPAs owned by the front-end and then calls [Page::from_url_with_fallback].
+    /// Also checks if there's no locale and in that case returns wether the page exists for the default locale.
+    ///
     /// # Arguments
     ///
     /// * `url` - A string slice that holds the URL to be checked.
@@ -177,23 +181,25 @@ impl Page {
     ///
     /// * `bool` - Returns `true` if the `Page` for the given URL exists, otherwise `false`.
     pub fn exists(url: &str) -> bool {
-        if url == "/discord" {
-            return true;
-        }
-        if url.starts_with("/users/") {
-            return true;
-        }
         if url.starts_with("/en-US/blog") && blog_root().is_none() {
             return true;
         }
-        if url.starts_with("/en-US/curriculum") {
+        if url.starts_with("/en-US/curriculum") && curriculum_root().is_none() {
             return true;
         }
         if strip_locale_from_url(url).1 == "/" {
             return true;
         }
 
-        Page::from_url_with_fallback(url).is_ok()
+        if Page::from_url_with_fallback(url).is_ok() {
+            return true;
+        }
+
+        if let (None, url) = strip_locale_from_url(url) {
+            let url_with_default_locale = concat_strs!("/", Locale::default().as_url_str(), url);
+            return Self::exists(&url_with_default_locale);
+        }
+        false
     }
 }
 
