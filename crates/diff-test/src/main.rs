@@ -143,6 +143,8 @@ struct BuildArgs {
     #[arg(long)]
     html: bool,
     #[arg(long)]
+    csv: bool,
+    #[arg(long)]
     inline: bool,
     #[arg(long)]
     ignore_html_whitespace: bool,
@@ -193,21 +195,49 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
     vec![
         // Wrong auto-linking of example.com properly escaped link, unfixable in yari
         ("docs/glossary/http/index.json", "doc.body.0.value.content"),
-        (
-            "docs/learn/html/multimedia_and_embedding/other_embedding_technologies/index.json",
-            "doc.body.4.value.content",
-        ),
+        ("docs/learn/html/multimedia_and_embedding/other_embedding_technologies/index.json", "doc.body.4.value.content"),
         // Relative link to MDN Playground gets rendered as dead link in yari, correct in rari
-        (
-            "docs/learn/learning_and_getting_help/index.json",
-            "doc.body.3.value.content",
-        ),
+        ("docs/learn/learning_and_getting_help/index.json", "doc.body.3.value.content"),
         // 'unsupported templ: livesamplelink' in rari, remove when supported
-        (
-            "docs/learn/forms/form_validation/index.json",
-            "doc.body.12.value.content",
-        ),
-    ]
+        ("docs/learn/forms/form_validation/index.json", "doc.body.12.value.content"),
+        ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.9.value.content"),
+        // p tag removal in lists
+        ("docs/learn/server-side/express_nodejs/deployment/index.json", "doc.body.11.value.content"),
+        // link element re-structure, better in rari
+        ("docs/learn/common_questions/design_and_accessibility/design_for_all_types_of_users/index.json", "doc.body.5.value.content"),
+        ("docs/learn/html/multimedia_and_embedding/video_and_audio_content/index.json", "doc.body.2.value.content"),
+        // id changes, no problem
+        ("docs/learn/css/howto/css_faq/index.json", "doc.body.11.value.id"),
+        ("docs/learn/forms/property_compatibility_table_for_form_controls/index.json", "doc.body.2.value.content"),
+        ("docs/learn/html/howto/define_terms_with_html/index.json", "doc.body.0.value.content"),
+        ("docs/learn/tools_and_testing/client-side_javascript_frameworks/react_interactivity_filtering_conditional_rendering/index.json", "doc.toc.3.id"),
+        ("docs/learn/tools_and_testing/client-side_javascript_frameworks/react_interactivity_filtering_conditional_rendering/index.json", "doc.body.4.value.id"),
+        ("docs/mdn/mdn_product_advisory_board/index.json", "doc.body.1.value.content"),
+        ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.11.value.content"),
+        ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.12.value.content"),
+        ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.3.value.content"),
+        // absolute to relative link change, no problem
+        ("docs/learn/forms/styling_web_forms/index.json", "doc.body.10.value.content"),
+        ("docs/mdn/kitchensink/index.json", "doc.body.24.value.content"),
+        // encoding changes, no problem
+        ("docs/learn/html/introduction_to_html/html_text_fundamentals/index.json", "doc.body.15.value.content"),
+        ("docs/learn/tools_and_testing/client-side_javascript_frameworks/vue_computed_properties/index.json", "doc.body.1.value.content"),
+        ("docs/learn/tools_and_testing/client-side_javascript_frameworks/react_interactivity_filtering_conditional_rendering/index.json", "doc.body.4.value.i"),
+        ("docs/mdn/writing_guidelines/page_structures/links/index.json", "doc.body.3.value.content"),
+        ("docs/mdn/writing_guidelines/page_structures/links/index.json", "doc.body.4.value.content"),
+        ("docs/mdn/writing_guidelines/page_structures/macros/commonly_used_macros/index.json", "doc.body.14.value.content"),
+        // internal linking fixed in rari
+        ("docs/mdn/community/discussions/index.json", "doc.body.0.value.content"),
+        // baseline change no problem
+        ("docs/mdn/kitchensink/index.json", "doc.baseline"),
+        ("docs/mdn/writing_guidelines/page_structures/compatibility_tables/index.json", "doc.baseline"),
+        // whitespace changes no problem
+        ("docs/mdn/kitchensink/index.json", "doc.body.23.value.title"),
+        ("docs/mdn/writing_guidelines/howto/write_an_api_reference/index.json", "doc.body.8.value.content"),
+        ("docs/mdn/writing_guidelines/page_structures/code_examples/index.json", "doc.body.7.value.content"),
+        // bug in yari
+        ("docs/mdn/writing_guidelines/howto/write_an_api_reference/information_contained_in_a_webidl_file/index.json", "doc.body.23.value.content"),
+        ]
     .into_iter()
     .collect()
 });
@@ -451,11 +481,45 @@ fn main() -> Result<(), anyhow::Error> {
                 let mut file = File::create(&arg.out)?;
                 file.write_all(html(&out.into_iter().collect::<String>()).as_bytes())?;
             }
+            if arg.csv {
+                let mut out = Vec::new();
+                out.push("File;JSON Path\n".to_string());
+                out.extend(
+                    a.par_iter()
+                        .filter_map(|(k, v)| {
+                            if b.get(k) == Some(v) {
+                                same.fetch_add(1, Relaxed);
+                                return None;
+                            }
+
+                            let left = v;
+                            let right = b.get(k).unwrap_or(&Value::Null);
+                            let mut diff = BTreeMap::new();
+                            full_diff(left, right, k, &[], &mut diff, arg.fast, arg.sidebars);
+                            if !diff.is_empty() {
+                                return Some(format!(
+                                    "{}\n",
+                                    diff.into_keys()
+                                        .map(|jsonpath| format!("{};{}", k, jsonpath))
+                                        .collect::<Vec<_>>()
+                                        .join("\n")
+                                ));
+                            } else {
+                                same.fetch_add(1, Relaxed);
+                            }
+                            None
+                        })
+                        .collect::<Vec<_>>(),
+                );
+                let mut file = File::create(&arg.out)?;
+                file.write_all(out.into_iter().collect::<String>().as_bytes())?;
+            }
 
             println!(
-                "Took: {:?} - {}/{hits}",
+                "Took: {:?} - {}/{hits} ok, {} remaining",
                 start.elapsed(),
-                same.load(Relaxed)
+                same.load(Relaxed),
+                hits - same.load(Relaxed)
             );
         }
     }
