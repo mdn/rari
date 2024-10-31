@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.16](https://github.com/mdn/rari/compare/v0.0.15...v0.0.16) (2024-10-31)
+
+
+### Features
+
+* **html:** no href for page-not-found ([1a0695b](https://github.com/mdn/rari/commit/1a0695b9db2c7a048d757023a3b2889e7b3e6605))
+* **issues:** issue counter ([bf9984e](https://github.com/mdn/rari/commit/bf9984e374b9c34183e009b15e119c0418f9badb))
+
+
+### Bug Fixes
+
+* **html:** unify code tags in pre ([d66b941](https://github.com/mdn/rari/commit/d66b94114fa89b19c4b708643b061595e1f1ffec))
+* **release-please:** update self package ([14c6b97](https://github.com/mdn/rari/commit/14c6b97d9409e6018997fba8e8710d9b0bc3891b))
+* **templ:** fix summary and inheritancediagram ([c0890a4](https://github.com/mdn/rari/commit/c0890a4c1c6962a70099f57bc5dd2830e343d229))
+
 ## [0.0.15](https://github.com/mdn/rari/compare/v0.0.14...v0.0.15) (2024-10-25)
 
 
