@@ -9,7 +9,6 @@ use crate::helpers::api_inheritance::inheritance;
 
 #[rari_f]
 pub fn inheritance_diagram(interface: Option<String>) -> Result<String, DocError> {
-    println!("{interface:?}");
     let main_if = interface
         .as_deref()
         .or_else(|| {
