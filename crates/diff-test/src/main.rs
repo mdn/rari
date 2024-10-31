@@ -215,6 +215,8 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
 static WS_DIFF: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
 
+static EMPTY_P_DIFF: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"<p>[\n ]*</p>"#).unwrap());
+
 static DIFF_MAP: LazyLock<Arc<DashMap<String, String>>> =
     LazyLock::new(|| Arc::new(DashMap::new()));
 
@@ -316,6 +318,8 @@ fn full_diff(
                 if is_html(&lhs) && is_html(&rhs) {
                     let lhs_t = WS_DIFF.replace_all(&lhs, "$x$y");
                     let rhs_t = WS_DIFF.replace_all(&rhs, "$x$y");
+                    let lhs_t = EMPTY_P_DIFF.replace_all(&lhs_t, "");
+                    let rhs_t = EMPTY_P_DIFF.replace_all(&rhs_t, "");
                     let lhs_t = rewrite_str(
                         &lhs_t,
                         RewriteStrSettings {
