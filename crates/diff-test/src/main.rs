@@ -216,6 +216,7 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/learn/html/multimedia_and_embedding/other_embedding_technologies/index.json", "doc.body.4.value.content"),
         // Relative link to MDN Playground gets rendered as dead link in yari, correct in rari
         ("docs/learn/learning_and_getting_help/index.json", "doc.body.3.value.content"),
+        ("docs/web/media/formats/video_codecs/index.json", "doc.body.6.value.content"),
         // 'unsupported templ: livesamplelink' in rari, remove when supported
         ("docs/learn/forms/form_validation/index.json", "doc.body.12.value.content"),
         ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.9.value.content"),
@@ -234,9 +235,20 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.11.value.content"),
         ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.12.value.content"),
         ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.3.value.content"),
+        ("docs/web/performance/speculative_loading/index.json", "doc.body.9.value.id"),
+        ("docs/web/manifest/shortcuts/index.json", "doc.toc.1.id"),
+        ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.3.value.id"),
+        ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.4.value.id"),
+        ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.5.value.id"),
+        ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.6.value.id"),
         // absolute to relative link change, no problem
         ("docs/learn/forms/styling_web_forms/index.json", "doc.body.10.value.content"),
         ("docs/mdn/kitchensink/index.json", "doc.body.24.value.content"),
+        ("docs/web/svg/attribute/begin/index.json", "doc.body.3.value.content"),
+        ("docs/web/svg/attribute/begin/index.json", "doc.body.4.value.content"),
+        ("docs/web/svg/attribute/begin/index.json", "doc.body.5.value.content"),
+        ("docs/web/svg/attribute/begin/index.json", "doc.body.6.value.content"),
+        ("docs/web/svg/attribute/begin/index.json", "doc.body.7.value.content"),
         // encoding changes, no problem
         ("docs/learn/html/introduction_to_html/html_text_fundamentals/index.json", "doc.body.15.value.content"),
         ("docs/learn/tools_and_testing/client-side_javascript_frameworks/vue_computed_properties/index.json", "doc.body.1.value.content"),
@@ -244,17 +256,33 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/mdn/writing_guidelines/page_structures/links/index.json", "doc.body.3.value.content"),
         ("docs/mdn/writing_guidelines/page_structures/links/index.json", "doc.body.4.value.content"),
         ("docs/mdn/writing_guidelines/page_structures/macros/commonly_used_macros/index.json", "doc.body.14.value.content"),
+        ("docs/web/svg/attribute/d/index.json", "doc.body.7.value.content"),
+        ("docs/web/svg/attribute/d/index.json", "doc.body.8.value.content"),
         // internal linking fixed in rari
         ("docs/mdn/community/discussions/index.json", "doc.body.0.value.content"),
-        // baseline change no problem
+        // baseline/specification change no problem
         ("docs/mdn/kitchensink/index.json", "doc.baseline"),
         ("docs/mdn/writing_guidelines/page_structures/compatibility_tables/index.json", "doc.baseline"),
+        ("docs/web/svg/attribute/data-_star_/index.json", "doc.body.1.value.specifications.0"),
         // whitespace changes no problem
         ("docs/mdn/kitchensink/index.json", "doc.body.23.value.title"),
         ("docs/mdn/writing_guidelines/howto/write_an_api_reference/index.json", "doc.body.8.value.content"),
         ("docs/mdn/writing_guidelines/page_structures/code_examples/index.json", "doc.body.7.value.content"),
         // bug in yari
         ("docs/mdn/writing_guidelines/howto/write_an_api_reference/information_contained_in_a_webidl_file/index.json", "doc.body.23.value.content"),
+        ("docs/web/accessibility/aria/attributes/aria-autocomplete/index.json", "doc.body.4.value.specifications.1.bcdSpecificationURL"),
+        ("docs/web/accessibility/aria/attributes/aria-autocomplete/index.json", "doc.body.4.value.specifications.2"),
+        ("docs/web/accessibility/aria/roles/combobox_role/index.json", "doc.body.5.value.specifications.1.bcdSpecificationURL"),
+        ("docs/web/accessibility/aria/roles/combobox_role/index.json", "doc.body.5.value.specifications.2"),
+        ("docs/web/security/practical_implementation_guides/tls/index.json", "doc.body.10.value.content"),
+        // image dimension rounding error
+        ("docs/web/media/formats/video_concepts/index.json", "doc.body.3.value.content"),
+        // rari macro improvement
+        ("docs/web/manifest/index.json", "doc.body.1.value.content"),
+        ("docs/web/manifest/orientation/index.json", "doc.body.6.value.content"),
+        // attribute order, no problem
+        ("docs/web/svg/attribute/end/index.json", "doc.body.1.value.content")
+
         ]
     .into_iter()
     .collect()
