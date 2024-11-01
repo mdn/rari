@@ -73,6 +73,9 @@ pub enum Token {
 
 fn to_arg(pair: Pair<'_, Rule>) -> Option<Arg> {
     match pair.as_rule() {
+        Rule::single_quoted_string => pair.into_inner().next().and_then(to_arg),
+        Rule::double_quoted_string => pair.into_inner().next().and_then(to_arg),
+        Rule::backquoted_quoted_string => pair.into_inner().next().and_then(to_arg),
         Rule::sq_string => {
             let s = pair.as_span().as_str();
             Some(Arg::String(
