@@ -82,11 +82,11 @@ pub fn get_id(html: &Html, node_id: NodeId) -> Option<String> {
 /// * `node_id` - The identifier of the node whose children will be wrapped with a link.
 ///
 /// # Details
-/// This function calls `get_id` to retrieve the `id` of the specified node and, if successful, surrounds its children
+/// This function calls `get_id` to retrieve the `id` of the specified node and, if successful, wraps its children
 /// with an anchor (`<a>`) link element using that `id` as the `href` attribute.
-pub fn surround_children_with_link_to_id(html: &mut Html, node_id: NodeId) {
+pub fn wrap_children_with_link_to_id(html: &mut Html, node_id: NodeId) {
     if let Some(id) = get_id(html, node_id) {
-        surround_children_with_link(html, node_id, id);
+        wrap_children_with_link(html, node_id, id);
     }
 }
 
@@ -100,7 +100,7 @@ pub fn surround_children_with_link_to_id(html: &mut Html, node_id: NodeId) {
 /// # Details
 /// This function creates an anchor (`<a>`) element with the given `href`, then appends it as a child to the specified
 /// node and reparents the node’s children to be inside the new link element.
-pub fn surround_children_with_link(html: &mut Html, node_id: NodeId, href: String) {
+pub fn wrap_children_with_link(html: &mut Html, node_id: NodeId, href: String) {
     let attribute = Attribute {
         name: QualName {
             prefix: None,
@@ -144,7 +144,7 @@ pub fn insert_self_links_for_dts(html: &mut Html) -> Result<(), DocError> {
     let selector = Selector::parse("dt:not(:has(> a)").unwrap();
     let subs = html.select(&selector).map(|el| el.id()).collect::<Vec<_>>();
     for el_id in subs {
-        surround_children_with_link_to_id(html, el_id);
+        wrap_children_with_link_to_id(html, el_id);
     }
     Ok(())
 }
