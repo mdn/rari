@@ -97,16 +97,43 @@ pub fn post_process_html<T: PageLike>(
                     let file = page.full_path().parent().unwrap().join(&src);
                     let (width, height) = if src.ends_with(".svg") {
                         match svg_metadata::Metadata::parse_file(&file) {
-                            Ok(meta) => (
-                                meta.width
-                                    .map(|width| width.width)
-                                    .or(meta.view_box.map(|vb| vb.width))
-                                    .map(|width| format!("{:.0}", width)),
-                                meta.height
-                                    .map(|height| height.height)
-                                    .or(meta.view_box.map(|vb| vb.height))
-                                    .map(|height| format!("{:.0}", height)),
-                            ),
+                            // If only width _and_ viewbox are given, use width and scale
+                            // the height according to the viewbox size ratio.
+                            // If width and height are given, use these.
+                            // If only a viewbox is given, use the viewbax values.
+                            // If only height and viewbox are givene, use height and scale
+                            // the height according to the viewbox size ratio.
+                            Ok(meta) => {
+                                let width = meta.width.map(|w| w.width);
+                                let height = meta.height.map(|h| h.height);
+                                let view_box = meta.view_box;
+
+                                let (final_width, final_height) = match (width, height, view_box) {
+                                    // Both width and height are given
+                                    (Some(w), Some(h), _) => (Some(w), Some(h)),
+                                    // Only width and viewbox are given
+                                    (Some(w), None, Some(vb)) => {
+                                        (Some(w), Some(w * vb.height / vb.width))
+                                    }
+                                    // Only height and viewbox are given
+                                    (None, Some(h), Some(vb)) => {
+                                        (Some(h * vb.width / vb.height), Some(h))
+                                    }
+                                    // Only viewbox is given
+                                    (None, None, Some(vb)) => (Some(vb.width), Some(vb.height)),
+                                    // Only width is given
+                                    (Some(w), None, None) => (Some(w), None),
+                                    // Only height is given
+                                    (None, Some(h), None) => (None, Some(h)),
+                                    // Neither width, height, nor viewbox are given
+                                    (None, None, None) => (None, None),
+                                };
+
+                                (
+                                    final_width.map(|w| format!("{:.0}", w)),
+                                    final_height.map(|h| format!("{:.0}", h)),
+                                )
+                            }
                             Err(e) => {
                                 let ic = get_issue_couter();
                                 warn!(
