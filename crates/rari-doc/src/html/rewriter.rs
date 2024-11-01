@@ -97,11 +97,11 @@ pub fn post_process_html<T: PageLike>(
                     let file = page.full_path().parent().unwrap().join(&src);
                     let (width, height) = if src.ends_with(".svg") {
                         match svg_metadata::Metadata::parse_file(&file) {
-                            // If only width _and_ viewbox are given, use width and scale
+                            // If only width and viewbox are given, use width and scale
                             // the height according to the viewbox size ratio.
                             // If width and height are given, use these.
-                            // If only a viewbox is given, use the viewbax values.
-                            // If only height and viewbox are givene, use height and scale
+                            // If only a viewbox is given, use the viewbox values.
+                            // If only height and viewbox are given, use height and scale
                             // the height according to the viewbox size ratio.
                             Ok(meta) => {
                                 let width = meta.width.map(|w| w.width);
