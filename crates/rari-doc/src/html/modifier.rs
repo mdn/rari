@@ -9,7 +9,7 @@ use scraper::node::{self};
 use scraper::{ElementRef, Html, Node, Selector};
 
 use crate::error::DocError;
-/// Adds an attribute to a specified HTML node.
+/// Inserts an attribute to a specified HTML node.
 ///
 /// # Parameters
 /// - `html`: A mutable reference to the HTML document structure.
@@ -19,7 +19,7 @@ use crate::error::DocError;
 ///
 /// If the node exists and is an element, this function adds or updates
 /// the specified attribute in the node's attributes list.
-pub fn add_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str) {
+pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str) {
     if let Some(mut details) = html.tree.get_mut(node_id) {
         if let Node::Element(ref mut el) = details.value() {
             el.attrs.insert(
@@ -250,7 +250,7 @@ pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
             })
             .collect::<Vec<_>>();
     for (el_id, id) in subs {
-        add_attribute(html, el_id, "id", &id);
+        insert_attribute(html, el_id, "id", &id);
         remove_attribute(html, el_id, "data-update-id");
     }
     Ok(())

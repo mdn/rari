@@ -154,7 +154,7 @@ mod test {
 
     #[test]
     fn custom() {
-        let p = parse(r#"Foo {{jsxref("Array",,1,true) }}bar {{ foo }}"#);
+        let p = parse(r#"Foo {{jsxref("Array",,1,true, ' ') }}bar {{ foo }}"#);
         println!("{:#?}", p);
     }
 

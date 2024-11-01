@@ -107,7 +107,7 @@ pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
                             id,
                         });
                     }
-                    "section" if element.id() == Some("Quick_links") => {
+                    "section" if matches!(element.id(), Some("Quick_links" | "quick_links")) => {
                         if let Some(section) = maybe_section.take() {
                             sections.push(section);
                         }

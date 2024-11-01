@@ -10,7 +10,7 @@ use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize};
 
 use super::links::{render_link_from_page, render_link_via_page, LinkModifier};
-use super::modifier::add_attribute;
+use super::modifier::insert_attribute;
 use super::rewriter::post_process_html;
 use crate::cached_readers::read_sidebar;
 use crate::error::DocError;
@@ -77,10 +77,10 @@ fn expand_details_and_mark_current(html: &mut Html, a_selector: Selector) -> Res
         }
     }
     if let Some(parent_id) = parent_id {
-        add_attribute(html, parent_id, "data-rewriter", "em");
+        insert_attribute(html, parent_id, "data-rewriter", "em");
     }
     for details in details {
-        add_attribute(html, details, "open", "");
+        insert_attribute(html, details, "open", "");
     }
 
     Ok(())

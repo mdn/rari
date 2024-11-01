@@ -57,29 +57,34 @@ pub fn post_process_html<T: PageLike>(
             if let Some(id) = el.get_attribute("id") {
                 if id.contains(DELIM_START) {
                     el.set_attribute("data-update-id", "")?;
-                } else if ids.contains(id.as_str()) {
-                    let (prefix, mut count) = if let Some((prefix, counter)) = id.rsplit_once('_') {
-                        if counter.chars().all(|c| c.is_ascii_digit()) {
-                            let count = counter.parse::<i64>().unwrap_or_default() + 1;
-                            (prefix, count)
-                        } else {
-                            (id.as_str(), 2)
+                } else {
+                    let id = id.to_lowercase();
+                    if ids.contains(id.as_str()) {
+                        let (prefix, mut count) =
+                            if let Some((prefix, counter)) = id.rsplit_once('_') {
+                                if counter.chars().all(|c| c.is_ascii_digit()) {
+                                    let count = counter.parse::<i64>().unwrap_or_default() + 1;
+                                    (prefix, count)
+                                } else {
+                                    (id.as_str(), 2)
+                                }
+                            } else {
+                                (id.as_str(), 2)
+                            };
+                        let mut id = format!("{prefix}_{count}");
+                        while ids.contains(&id) && count < 666 {
+                            count += 1;
+                            id = format!("{prefix}_{count}");
+                        }
+
+                        if !ids.contains(&id) && count < 666 {
+                            el.set_attribute("id", &id)?;
+                            ids.insert(id);
                         }
                     } else {
-                        (id.as_str(), 2)
-                    };
-                    let mut id = format!("{prefix}_{count}");
-                    while ids.contains(&id) && count < 666 {
-                        count += 1;
-                        id = format!("{prefix}_{count}");
-                    }
-
-                    if !ids.contains(&id) && count < 666 {
                         el.set_attribute("id", &id)?;
                         ids.insert(id);
                     }
-                } else {
-                    ids.insert(id);
                 }
             }
             Ok(())

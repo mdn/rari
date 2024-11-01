@@ -1,5 +1,6 @@
 # TODO's
 
+## rari
 - [ ] Change compat macro to no args only and refactor `data-multiple`
 - [ ] browser_compat sections should be able to contain content in yari ?!
 - [ ] land curriculum has implementation
@@ -13,3 +14,7 @@
 - [x] deal with summary() in templs
 - [ ] list groups badges and titles
 - [ ] WebKitCSSMatrix title
+
+## translated content
+
+- [ ] lower case codefences attributes
