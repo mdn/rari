@@ -191,6 +191,14 @@ const IGNORED_KEYS: &[&str] = &[
     "doc.summary",
 ];
 
+static SKIP_GLOB_LIST: LazyLock<Vec<&str>> = LazyLock::new(|| {
+    vec![
+        "docs/mdn/writing_guidelines/",
+        "docs/mozilla/add-ons/webextensions/",
+        "docs/mozilla/firefox/releases/",
+    ]
+});
+
 static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
     vec![
         // Wrong auto-linking of example.com properly escaped link, unfixable in yari
@@ -288,6 +296,11 @@ fn full_diff(
         }
     }
     let key = make_key(path);
+
+    if SKIP_GLOB_LIST.iter().any(|i| file.starts_with(i)) {
+        return;
+    }
+
     if ALLOWLIST.contains(&(file, &key)) {
         return;
     }
