@@ -22,7 +22,7 @@ use crate::error::DocError;
 use crate::helpers::parents::parents;
 use crate::helpers::title::{page_title, transform_title};
 use crate::html::bubble_up::bubble_up_curriculum_page;
-use crate::html::modifier::{add_missing_ids, remove_empty_p};
+use crate::html::modifier::{add_missing_ids, insert_self_links_for_dts, remove_empty_p};
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
 use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Splitted};
 use crate::html::sidebar::{
@@ -165,6 +165,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     }
     remove_empty_p(&mut fragment)?;
     add_missing_ids(&mut fragment)?;
+    insert_self_links_for_dts(&mut fragment)?;
     expand_details_and_mark_current_for_inline_sidebar(&mut fragment, page.url())?;
     let Splitted {
         sections,

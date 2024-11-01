@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 
-use lol_html::html_content::{ContentType, Element};
+use lol_html::html_content::ContentType;
 use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings};
 use rari_md::ext::DELIM_START;
 use rari_md::node_card::NoteCard;
@@ -42,7 +42,6 @@ pub fn post_process_html<T: PageLike>(
 ) -> Result<String, DocError> {
     let mut output = vec![];
     let mut ids = HashSet::new();
-    let open_dt_a = std::rc::Rc::new(std::cell::RefCell::new(false));
     let options = Url::options();
     let url = page.url();
     let base = Url::parse(&concat_strs!(
@@ -262,35 +261,6 @@ pub fn post_process_html<T: PageLike>(
                 }
             }
 
-            Ok(())
-        }),
-        element!("dt[data-add-link]", |el: &mut Element| {
-            el.remove_attribute("data-add-link");
-            if let Some(id) = el.get_attribute("id") {
-                el.prepend(&concat_strs!("<a href=\"#", &id, "\">"), ContentType::Html);
-                let mut s = open_dt_a.borrow_mut();
-                *s = true;
-                let open_dt_a = open_dt_a.clone();
-                // We need this handler if there's only a text node in the dl.
-                if let Some(handlers) = el.end_tag_handlers() {
-                    handlers.push(Box::new(move |end| {
-                        let mut s = open_dt_a.borrow_mut();
-                        if *s {
-                            end.before("</a>", ContentType::Html);
-                            *s = false;
-                        }
-                        Ok(())
-                    }));
-                }
-            }
-            Ok(())
-        }),
-        element!("dt[data-add-link] *:first-child", |el| {
-            let mut s = open_dt_a.borrow_mut();
-            if *s {
-                el.after("</a>", ContentType::Html);
-                *s = false;
-            }
             Ok(())
         }),
         element!("pre:not(.notranslate)", |el| {
