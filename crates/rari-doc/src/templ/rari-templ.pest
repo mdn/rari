@@ -27,9 +27,9 @@ bq_char = {
 dq_string = @{ (!("\"") ~ dq_char )* }
 sq_string = @{ (!("\'") ~ sq_char )* }
 bq_string = @{ (!("`") ~ bq_char )* }
-double_quoted_string  = _{ "\"" ~ dq_string ~ "\""}
-single_quoted_string  = _{ "\'" ~ sq_string ~ "\'"}
-backquoted_quoted_string  = _{ "`" ~ bq_string ~ "`"}
+double_quoted_string  = ${ "\"" ~ dq_string ~ "\""}
+single_quoted_string  = ${ "\'" ~ sq_string ~ "\'"}
+backquoted_quoted_string  = ${ "`" ~ bq_string ~ "`"}
 
 string = _{
     double_quoted_string |
