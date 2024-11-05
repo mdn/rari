@@ -214,6 +214,7 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         // Wrong auto-linking of example.com properly escaped link, unfixable in yari
         ("docs/glossary/http/index.json", "doc.body.0.value.content"),
         ("docs/learn/html/multimedia_and_embedding/other_embedding_technologies/index.json", "doc.body.4.value.content"),
+        ("docs/web/http/headers/content-security-policy/frame-ancestors/index.json", "doc.body.2.value.content"),
         // Relative link to MDN Playground gets rendered as dead link in yari, correct in rari
         ("docs/learn/learning_and_getting_help/index.json", "doc.body.3.value.content"),
         ("docs/web/media/formats/video_codecs/index.json", "doc.body.6.value.content"),
@@ -222,9 +223,11 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.9.value.content"),
         // p tag removal in lists
         ("docs/learn/server-side/express_nodejs/deployment/index.json", "doc.body.11.value.content"),
+        ("docs/web/http/headers/set-login/index.json", "doc.body.2.value.content"),
         // link element re-structure, better in rari
         ("docs/learn/common_questions/design_and_accessibility/design_for_all_types_of_users/index.json", "doc.body.5.value.content"),
         ("docs/learn/html/multimedia_and_embedding/video_and_audio_content/index.json", "doc.body.2.value.content"),
+        ("docs/web/http/headers/content-security-policy/sources/index.json", "doc.body.1.value.content"),
         // id changes, no problem
         ("docs/learn/css/howto/css_faq/index.json", "doc.body.11.value.id"),
         ("docs/learn/forms/property_compatibility_table_for_form_controls/index.json", "doc.body.2.value.content"),
@@ -241,6 +244,7 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.4.value.id"),
         ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.5.value.id"),
         ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.6.value.id"),
+        ("docs/web/mathml/element/mfenced/index.json", "doc.body.4.value.content"),
         // absolute to relative link change, no problem
         ("docs/learn/forms/styling_web_forms/index.json", "doc.body.10.value.content"),
         ("docs/mdn/kitchensink/index.json", "doc.body.24.value.content"),
@@ -260,10 +264,12 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/svg/attribute/d/index.json", "doc.body.8.value.content"),
         // internal linking fixed in rari
         ("docs/mdn/community/discussions/index.json", "doc.body.0.value.content"),
+        ("docs/web/http/headers/te/index.json", "doc.body.1.value.content"),
         // baseline/specification change no problem
         ("docs/mdn/kitchensink/index.json", "doc.baseline"),
         ("docs/mdn/writing_guidelines/page_structures/compatibility_tables/index.json", "doc.baseline"),
         ("docs/web/svg/attribute/data-_star_/index.json", "doc.body.1.value.specifications.0"),
+        ("docs/web/http/headers/permissions-policy/screen-wake-lock/index.json", "doc.baseline"),
         // whitespace changes no problem
         ("docs/mdn/kitchensink/index.json", "doc.body.23.value.title"),
         ("docs/mdn/writing_guidelines/howto/write_an_api_reference/index.json", "doc.body.8.value.content"),
@@ -277,11 +283,36 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/security/practical_implementation_guides/tls/index.json", "doc.body.10.value.content"),
         // image dimension rounding error
         ("docs/web/media/formats/video_concepts/index.json", "doc.body.3.value.content"),
+        ("docs/web/svg/tutorial/introduction/index.json", "doc.body.0.value.content"),
         // rari macro improvement
         ("docs/web/manifest/index.json", "doc.body.1.value.content"),
         ("docs/web/manifest/orientation/index.json", "doc.body.6.value.content"),
         // attribute order, no problem
-        ("docs/web/svg/attribute/end/index.json", "doc.body.1.value.content")
+        ("docs/web/svg/attribute/end/index.json", "doc.body.1.value.content"),
+        // added <p> tags, no problem
+        ("docs/web/svg/attribute/index.json", "doc.body.30.value.content"),
+        ("docs/web/svg/attribute/index.json", "doc.body.31.value.content"),
+        ("docs/web/svg/element/animatemotion/index.json", "doc.body.4.value.content"),
+        ("docs/web/svg/element/font-face-format/index.json", "doc.body.2.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.18.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.19.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.20.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.21.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.22.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.23.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.24.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.25.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.27.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.28.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.29.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.30.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.31.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.32.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.33.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.34.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.35.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.38.value.content"),
+        ("docs/web/svg/element/index.json", "doc.body.39.value.content"),
 
         ]
     .into_iter()
