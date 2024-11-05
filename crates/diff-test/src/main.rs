@@ -396,6 +396,25 @@ fn full_diff(
         match (lhs, rhs) {
             (Value::Array(lhs), Value::Array(rhs)) => {
                 let len = max(lhs.len(), rhs.len());
+                let (lhs, rhs) = if key.ends_with("specifications") {
+                    // sort specs by `bcdSpecificationURL` to make the diff more stable
+                    // example docs/web/mathml/global_attributes/index.json
+                    let mut lhs_sorted = lhs.clone();
+                    let mut rhs_sorted = rhs.clone();
+                    lhs_sorted.sort_by_key(|v| {
+                        v.get("bcdSpecificationURL")
+                            .unwrap_or(&Value::Null)
+                            .to_string()
+                    });
+                    rhs_sorted.sort_by_key(|v| {
+                        v.get("bcdSpecificationURL")
+                            .unwrap_or(&Value::Null)
+                            .to_string()
+                    });
+                    (&lhs_sorted.clone(), &lhs_sorted.clone())
+                } else {
+                    (lhs, rhs)
+                };
                 for i in 0..len {
                     let mut path = path.to_vec();
                     path.push(PathIndex::Array(i));
