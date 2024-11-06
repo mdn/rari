@@ -147,7 +147,7 @@ pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
                                         section.query = Some(query.into());
                                     } else {
                                         // We have already something in body.
-                                        // Yari does something weird so we do that to:
+                                        // Yari does something weird so we do that too:
                                         // We push compat section and put prose after that 🤷.
 
                                         let heading = section.heading.take();
@@ -178,7 +178,7 @@ pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
                                         section.spec_urls = urls.map(String::from);
                                     } else {
                                         // We have already something in body.
-                                        // Yari does something weird so we do that to:
+                                        // Yari does something weird so we do that too:
                                         // We push compat section and put prose after that 🤷.
 
                                         let heading = section.heading.take();
@@ -203,7 +203,11 @@ pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
                                 let html = ElementRef::wrap(current).unwrap().html();
                                 if let Some(ref mut section) =
                                     maybe_section.as_mut().and_then(|section| {
-                                        if !matches!(section.typ, BuildSectionType::Compat) {
+                                        if !matches!(
+                                            section.typ,
+                                            BuildSectionType::Compat
+                                                | BuildSectionType::Specification
+                                        ) {
                                             Some(section)
                                         } else {
                                             None
