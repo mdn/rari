@@ -222,11 +222,13 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/learn/forms/form_validation/index.json", "doc.body.12.value.content"),
         ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.9.value.content"),
         ("docs/web/html/element/img/index.json", "doc.body.15.value.content"),
+        ("docs/web/css/_colon_-moz-window-inactive/index.json", "doc.body.5.value.content"),
         // p tag removal in lists
         ("docs/learn/server-side/express_nodejs/deployment/index.json", "doc.body.11.value.content"),
         ("docs/web/http/headers/set-login/index.json", "doc.body.2.value.content"),
         ("docs/web/html/element/a/index.json", "doc.body.2.value.content"),
-
+        ("docs/web/css/background-size/index.json", "doc.body.4.value.content"),
+        ("docs/web/css/color_value/color-mix/index.json", "doc.body.2.value.content"),
         // link element re-structure, better in rari
         ("docs/learn/common_questions/design_and_accessibility/design_for_all_types_of_users/index.json", "doc.body.5.value.content"),
         ("docs/learn/html/multimedia_and_embedding/video_and_audio_content/index.json", "doc.body.2.value.content"),
@@ -250,6 +252,11 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/mathml/element/mfenced/index.json", "doc.body.4.value.content"),
         ("docs/web/javascript/reference/classes/index.json", "doc.body.3.value.content"),
         ("docs/web/javascript/reference/operators/nullish_coalescing/index.json", "doc.body.8.value.id"),
+        ("docs/web/css/css_containment/container_size_and_style_queries/index.json", "doc.toc.0.id"),
+        ("docs/web/css/css_containment/container_size_and_style_queries/index.json", "doc.toc.2.id"),
+        ("docs/web/css/@property/syntax/index.json", "doc.body.4.value.content"),
+        ("docs/web/css/css_nesting/nesting_and_specificity/index.json", "doc.body.1.value.id"),
+        ("docs/web/css/css_scroll_snap/using_scroll_snap_events/index.json", "doc.body.10.value.content"),
         // absolute to relative link change, no problem
         ("docs/learn/forms/styling_web_forms/index.json", "doc.body.10.value.content"),
         ("docs/mdn/kitchensink/index.json", "doc.body.24.value.content"),
@@ -258,6 +265,7 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/svg/attribute/begin/index.json", "doc.body.5.value.content"),
         ("docs/web/svg/attribute/begin/index.json", "doc.body.6.value.content"),
         ("docs/web/svg/attribute/begin/index.json", "doc.body.7.value.content"),
+        ("docs/web/javascript/reference/global_objects/set/index.json", "doc.body.4.value.content"),
         // encoding changes, no problem
         ("docs/learn/html/introduction_to_html/html_text_fundamentals/index.json", "doc.body.15.value.content"),
         ("docs/learn/tools_and_testing/client-side_javascript_frameworks/vue_computed_properties/index.json", "doc.body.1.value.content"),
@@ -312,6 +320,9 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.5.value.query"),
         ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.5.value.title"),
         ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.6"),
+        ("docs/web/css/color_value/hwb/index.json", "doc.baseline"),
+        ("docs/web/css/@media/dynamic-range/index.json", "doc.baseline"),
+        ("docs/web/css/color_value/hwb/index.json", "doc.baseline"),
         // whitespace changes no problem
         ("docs/mdn/kitchensink/index.json", "doc.body.23.value.title"),
         ("docs/mdn/writing_guidelines/howto/write_an_api_reference/index.json", "doc.body.8.value.content"),
@@ -323,7 +334,7 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/accessibility/aria/roles/combobox_role/index.json", "doc.body.5.value.specifications.1.bcdSpecificationURL"),
         ("docs/web/accessibility/aria/roles/combobox_role/index.json", "doc.body.5.value.specifications.2"),
         ("docs/web/security/practical_implementation_guides/tls/index.json", "doc.body.10.value.content"),
-        // improvement by p-tag removal
+        // improvement by p-tag removal/addition
         ("docs/web/html/element/input/button/index.json", "doc.body.11.value.content"),
         ("docs/web/html/element/input/color/index.json", "doc.body.12.value.content"),
         ("docs/web/html/element/input/date/index.json", "doc.body.16.value.content"),
@@ -348,12 +359,19 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/html/element/input/checkbox/index.json", "doc.body.14.value.content"),
         ("docs/web/html/element/input/reset/index.json", "doc.body.11.value.content"),
         ("docs/web/html/element/input/submit/index.json", "doc.body.16.value.content"),
+        ("docs/web/css/-webkit-mask-position-x/index.json", "doc.body.9.value.content"),
+        ("docs/web/css/-webkit-mask-position-y/index.json", "doc.body.9.value.content"),
+        ("docs/web/css/-webkit-mask-repeat-x/index.json", "doc.body.10.value.content"),
+        ("docs/web/css/-webkit-mask-repeat-y/index.json", "doc.body.10.value.content"),
+
         // image dimension rounding error
         ("docs/web/media/formats/video_concepts/index.json", "doc.body.3.value.content"),
         ("docs/web/svg/tutorial/introduction/index.json", "doc.body.0.value.content"),
         // rari macro improvement
         ("docs/web/manifest/index.json", "doc.body.1.value.content"),
         ("docs/web/manifest/orientation/index.json", "doc.body.6.value.content"),
+        ("docs/web/css/-moz-orient/index.json", "doc.body.3.value.content"),
+        ("docs/web/css/css_namespaces/index.json", "doc.body.0.value.content"),
         // attribute order, no problem
         ("docs/web/svg/attribute/end/index.json", "doc.body.1.value.content"),
         ("docs/web/html/element/track/index.json", "doc.body.5.value.content"),
@@ -382,7 +400,14 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/svg/element/index.json", "doc.body.35.value.content"),
         ("docs/web/svg/element/index.json", "doc.body.38.value.content"),
         ("docs/web/svg/element/index.json", "doc.body.39.value.content"),
-
+        ("docs/web/css/@font-face/font-stretch/index.json", "doc.body.7.value.content"),
+        ("docs/web/css/@starting-style/index.json", "doc.body.4.value.content"),
+        ("docs/web/css/css_multicol_layout/index.json", "doc.body.0.value.content"),
+        ("docs/web/css/font-variation-settings/index.json", "doc.body.5.value.content"),
+        // outdated and unsupported in rari
+        ("docs/web/css/-moz-image-region/index.json", "doc.body.3.value.content"),
+        // webref version mismatch
+        ("docs/web/css/@import/index.json", "doc.body.3.value.content")
         ]
     .into_iter()
     .collect()
