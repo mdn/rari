@@ -90,6 +90,10 @@ pub fn post_process_html<T: PageLike>(
             Ok(())
         }),
         element!("img[src]", |el| {
+            // Leave dimensions alone if we have a `width` attribute
+            if el.get_attribute("width").is_some() {
+                return Ok(());
+            }
             if let Some(src) = el.get_attribute("src") {
                 let url = base_url.parse(&src)?;
                 if url.host() == base.host() && !url.path().starts_with("/assets/") {
