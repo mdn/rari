@@ -41,6 +41,7 @@ pub enum PageType {
     CssSelector,
     CssShorthandProperty,
     CssType,
+    ExsltFunction,
     GlossaryDefinition,
     GlossaryDisambiguation,
     HtmlAttribute,
@@ -110,7 +111,8 @@ pub enum PageType {
     BlogPost,
     Curriculum,
     GenericPage,
+    SPA,
 
     #[serde(other)]
-    SPA,
+    Unknown,
 }
