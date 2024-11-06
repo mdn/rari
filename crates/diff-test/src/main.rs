@@ -415,6 +415,14 @@ fn pre_diff_element_massaging_handlers<'a>(
             el.remove_attribute("id");
             Ok(())
         }),
+        // lowercase ids
+        element!("*[id]", |el| {
+            el.set_attribute(
+                "id",
+                &el.get_attribute("id").unwrap_or_default().to_lowercase(),
+            )?;
+            Ok(())
+        }),
     ];
     if !args.check_dts {
         handlers.extend([
