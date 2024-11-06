@@ -281,7 +281,7 @@ fn add_additional_applies_to<'a>(
     ));
 }
 
-fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
+pub fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
     if let Some(data) = mdn_data_files().css_l10n.get(key) {
         let data = get_for_locale(locale, data);
         if !data.is_null() {
