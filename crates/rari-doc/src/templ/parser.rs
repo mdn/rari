@@ -136,15 +136,6 @@ pub fn parse(input: &str) -> Result<Vec<Token>, DocError> {
     Ok(tokens)
 }
 
-fn _strip_escape_residues(s: &str) -> &str {
-    let s = s.strip_prefix("&gt;").or(s.strip_prefix('>')).unwrap_or(s);
-    let s = s
-        .strip_suffix("!&lt;")
-        .or(s.strip_suffix("!<"))
-        .unwrap_or(s);
-    s
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
