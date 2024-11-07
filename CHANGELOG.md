@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.17](https://github.com/mdn/rari/compare/v0.0.16...v0.0.17) (2024-11-07)
+
+
+### Features
+
+* **diff:** update html template ([7432365](https://github.com/mdn/rari/commit/74323653ae2cb44b86cf03d725519c88ed6e0442))
+* **html:** post process dts ([#34](https://github.com/mdn/rari/issues/34)) ([ef6fbd7](https://github.com/mdn/rari/commit/ef6fbd7321a4d3c3aa9ce96b73ddfe0a37e82461))
+
+
+### Bug Fixes
+
+* **cssinfo:** add warning on empty result ([bdcca17](https://github.com/mdn/rari/commit/bdcca17a667c9fe00910f584b040b1cdc3af6f7c))
+* **frontmatter:** update fm_types ([53f3711](https://github.com/mdn/rari/commit/53f371149ffabbe5cdcf491e7443226cbf7638f2))
+* **html:** split out prose after specification ([a0af5e8](https://github.com/mdn/rari/commit/a0af5e8569cd8d7beea8e2289ec79ad8b2fcaabf))
+* **templ:** don't trim string args ([dbb6d42](https://github.com/mdn/rari/commit/dbb6d425d7d9946e6dce40f0a0528a5a722fa1b8))
+* **templ:** escape closing curly braces ([ef70385](https://github.com/mdn/rari/commit/ef70385545513fc66ca237027e5f75a747d04457))
+* **templ:** fix listsubpages order ([6175e8f](https://github.com/mdn/rari/commit/6175e8f9842b829889a7b9c01d2d311dfaba3a68))
+* **templ:** natural sort for utf8 ([3e86604](https://github.com/mdn/rari/commit/3e8660491d7f88a594360aeca828b4bb087e860a))
+
 ## [0.0.16](https://github.com/mdn/rari/compare/v0.0.15...v0.0.16) (2024-10-31)
 
 
