@@ -1,10 +1,13 @@
 use std::fmt::Write;
 
 use rari_templ_func::rari_f;
+use rari_utils::concat_strs;
 use serde_json::Value;
 
 use crate::error::DocError;
-use crate::helpers::css_info::{css_info_properties, mdn_data_files, write_computed_output};
+use crate::helpers::css_info::{
+    css_info_properties, get_css_l10n_for_locale, mdn_data_files, write_computed_output,
+};
 
 #[rari_f]
 pub fn cssinfo() -> Result<String, DocError> {
@@ -27,10 +30,19 @@ pub fn cssinfo() -> Result<String, DocError> {
     } else {
         data.css_properties.get(&name).unwrap_or(&Value::Null)
     };
+    let props = css_info_properties(at_rule, env.locale, css_info_data)?;
+
+    if props.is_empty() {
+        return Ok(concat_strs!(
+            "<span style=\"color:red;\">",
+            get_css_l10n_for_locale("missing", env.locale),
+            "</span>"
+        ));
+    }
 
     let mut out = String::new();
     out.push_str(r#"<table class="properties"><tbody>"#);
-    for (name, label) in css_info_properties(at_rule, env.locale, css_info_data)? {
+    for (name, label) in props {
         write!(&mut out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write_computed_output(env, &mut out, env.locale, css_info_data, name, at_rule)?;
         write!(&mut out, r#"</td></tr>"#)?;
