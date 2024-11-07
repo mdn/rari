@@ -78,7 +78,12 @@ impl Settings {
         }
         let s = s
             .add_source(File::with_name(".config.toml").required(false))
-            .add_source(Environment::default())
+            .add_source(
+                Environment::default()
+                    .list_separator(",")
+                    .with_list_parse_key("additional_locales_for_generics_and_spas")
+                    .try_parsing(true),
+            )
             .build()?;
 
         let mut settings: Self = s.try_deserialize::<Self>()?.validate();
