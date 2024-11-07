@@ -257,6 +257,12 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/css/@property/syntax/index.json", "doc.body.4.value.content"),
         ("docs/web/css/css_nesting/nesting_and_specificity/index.json", "doc.body.1.value.id"),
         ("docs/web/css/css_scroll_snap/using_scroll_snap_events/index.json", "doc.body.10.value.content"),
+        ("docs/web/css/css_nesting/nesting_and_specificity/index.json", "doc.toc.0.id"),
+        ("docs/web/css/nesting_selector/index.json", "doc.body.2.value.id"),
+        ("docs/web/css/offset/index.json", "doc.body.5.value.content"),
+        ("docs/web/css/position-try-fallbacks/index.json", "doc.body.7.value.content"),
+        ("docs/web/css/position-try/index.json", "doc.body.5.value.content"),
+        ("docs/web/css/position-area_value/index.json", "doc.toc.5.id"),
         // absolute to relative link change, no problem
         ("docs/learn/forms/styling_web_forms/index.json", "doc.body.10.value.content"),
         ("docs/mdn/kitchensink/index.json", "doc.body.24.value.content"),
@@ -323,6 +329,8 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/css/color_value/hwb/index.json", "doc.baseline"),
         ("docs/web/css/@media/dynamic-range/index.json", "doc.baseline"),
         ("docs/web/css/color_value/hwb/index.json", "doc.baseline"),
+        ("docs/web/css/cursor/index.json", "doc.body.5.value.content"),
+        ("docs/web/css/font-stretch/index.json", "doc.body.8.value.content"),
         // whitespace changes no problem
         ("docs/mdn/kitchensink/index.json", "doc.body.23.value.title"),
         ("docs/mdn/writing_guidelines/howto/write_an_api_reference/index.json", "doc.body.8.value.content"),
@@ -334,6 +342,7 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/accessibility/aria/roles/combobox_role/index.json", "doc.body.5.value.specifications.1.bcdSpecificationURL"),
         ("docs/web/accessibility/aria/roles/combobox_role/index.json", "doc.body.5.value.specifications.2"),
         ("docs/web/security/practical_implementation_guides/tls/index.json", "doc.body.10.value.content"),
+        ("docs/web/css/reference/index.json", "doc.body.4.value.content"),
         // improvement by p-tag removal/addition
         ("docs/web/html/element/input/button/index.json", "doc.body.11.value.content"),
         ("docs/web/html/element/input/color/index.json", "doc.body.12.value.content"),
@@ -363,15 +372,26 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         ("docs/web/css/-webkit-mask-position-y/index.json", "doc.body.9.value.content"),
         ("docs/web/css/-webkit-mask-repeat-x/index.json", "doc.body.10.value.content"),
         ("docs/web/css/-webkit-mask-repeat-y/index.json", "doc.body.10.value.content"),
-
-        // image dimension rounding error
+        // image dimension rounding error or similar, ok
         ("docs/web/media/formats/video_concepts/index.json", "doc.body.3.value.content"),
         ("docs/web/svg/tutorial/introduction/index.json", "doc.body.0.value.content"),
-        // rari macro improvement
+        ("docs/web/css/css_flexible_box_layout/basic_concepts_of_flexbox/index.json", "doc.body.2.value.content"),
+        ("docs/web/css/css_flexible_box_layout/basic_concepts_of_flexbox/index.json", "doc.body.3.value.content"),
+        // rari improvement over yari
         ("docs/web/manifest/index.json", "doc.body.1.value.content"),
         ("docs/web/manifest/orientation/index.json", "doc.body.6.value.content"),
         ("docs/web/css/-moz-orient/index.json", "doc.body.3.value.content"),
         ("docs/web/css/css_namespaces/index.json", "doc.body.0.value.content"),
+        ("docs/web/css/shape-outside/index.json", "doc.body.4.value.content"),
+        ("docs/web/css/stroke-dasharray/index.json", "doc.body.3.value.content"),
+        ("docs/web/css/stroke-dashoffset/index.json", "doc.body.3.value.content"),
+        ("docs/web/css/stroke-width/index.json", "doc.body.3.value.content"),
+        ("docs/web/css/text-anchor/index.json", "doc.body.3.value.content"),
+        ("docs/web/css/text-transform/index.json", "doc.body.15.value.content"), // <-- percent-encoded/plain iframe src param
+        ("docs/web/css/x/index.json", "doc.body.3.value.content"),
+        ("docs/web/css/y/index.json", "doc.body.3.value.content"),
+        // ("docs/web/css/stop-opacity/index.json", "doc.body.3.value.content"),
+        ("docs/web/css/stop-opacity/index.json", "doc.body.4.value.content"),
         // attribute order, no problem
         ("docs/web/svg/attribute/end/index.json", "doc.body.1.value.content"),
         ("docs/web/html/element/track/index.json", "doc.body.5.value.content"),
@@ -407,7 +427,40 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         // outdated and unsupported in rari
         ("docs/web/css/-moz-image-region/index.json", "doc.body.3.value.content"),
         // webref version mismatch
-        ("docs/web/css/@import/index.json", "doc.body.3.value.content")
+        ("docs/web/css/@import/index.json", "doc.body.3.value.content"),
+        ("docs/web/css/@supports/index.json", "doc.body.8.value.content"),
+        ("docs/web/css/attr/index.json", "doc.body.4.value.content"),
+        ("docs/web/css/calc-size/index.json", "doc.body.8.value.content"),
+        ("docs/web/css/calc-sum/index.json", "doc.body.2.value.content"),
+        ("docs/web/css/content/index.json", "doc.body.5.value.content"),
+        ("docs/web/css/stop-color/index.json", "doc.body.3.value.content"),
+        ("docs/web/css/stop-color/index.json", "doc.body.4.value.content"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.type"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.value.content"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.value.id"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.value.query"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.value.title"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.11"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.8.value.content"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.type"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.value.content"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.value.id"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.value.query"),
+        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.value.title"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.10.type"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.10.value.content"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.10.value.id"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.10.value.query"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.10.value.title"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.11.type"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.11.value.content"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.11.value.id"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.11.value.query"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.11.value.title"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.12"),
+        ("docs/web/css/text-overflow/index.json", "doc.body.9.value.content"),
+        ("docs/web/css/outline-color/index.json", "doc.body.7.value.content"),
+        ("docs/web/css/outline/index.json", "doc.body.8.value.content"),
         ]
     .into_iter()
     .collect()
