@@ -338,7 +338,7 @@ pub fn css_inital(locale: Locale) -> Result<String, DocError> {
     )
 }
 
-fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
+pub fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
     let missing = l10n_json_data("CSS", "missing", locale)?;
     Ok(write!(out, "<span style=\"color:red;\">{missing}</span>")?)
 }

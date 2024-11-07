@@ -488,6 +488,10 @@ fn pre_diff_element_massaging_handlers<'a>(
             el.remove_attribute("data-flaw");
             Ok(())
         }),
+        element!("*.page-not-created", |el| {
+            el.remove_attribute("class");
+            Ok(())
+        }),
         // remove ids from notecards, example-headers, code-examples
         element!("div.notecard, div.example-header, div.code-example", |el| {
             el.remove_attribute("id");
@@ -734,15 +738,13 @@ fn main() -> Result<(), anyhow::Error> {
                             .as_ref()
                             .map(|(l, r)| (l.as_str(), r.as_str()))
                             .unwrap_or((left, right));
-                        let broken_link = r#" class="page-not-created" title="This is a link to an unwritten page""#;
-                        let left = left.replace(broken_link, "");
                         if left == right {
                             println!("only broken links differ");
                             same.fetch_add(1, Relaxed);
                             return None;
                         }
                         if arg.inline {
-                            println!("{}", diff_words(&left, right));
+                            println!("{}", diff_words(left, right));
                         }
                         Some((k.clone(), format!(
                     r#"<li><span>{k}</span><div class="a">{}</div><div class="b">{}</div></li>"#,

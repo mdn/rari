@@ -124,9 +124,7 @@ pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocEr
         for (i, sub_frag) in frag.splitn(2, DELIM_END).enumerate() {
             if i == 0 && has_ks {
                 frags.push(sub_frag);
-                //decode_macro(sub_frag, &mut decoded)?;
             } else {
-                //decoded.push_str(strip_escape_residues(sub_frag))
                 frags.push(sub_frag)
             }
         }
@@ -161,6 +159,15 @@ pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocEr
 fn push_text(out: &mut String, slice: &str) {
     let mut last = 0;
     for (i, _) in slice.match_indices("\\{") {
+        push_text_inner(out, &slice[last..i]);
+        last = i + 1;
+    }
+    push_text_inner(out, &slice[last..]);
+}
+
+fn push_text_inner(out: &mut String, slice: &str) {
+    let mut last = 0;
+    for (i, _) in slice.match_indices("\\}") {
         out.push_str(&slice[last..i]);
         last = i + 1;
     }
@@ -170,6 +177,13 @@ fn push_text(out: &mut String, slice: &str) {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_push_text() {
+        let mut out = String::new();
+        push_text(&mut out, "foo \\\\{ bar \\\\} \\} 2000");
+        assert_eq!(out, "foo \\{ bar \\} } 2000")
+    }
 
     #[test]
     fn test_basic() -> Result<(), DocError> {
