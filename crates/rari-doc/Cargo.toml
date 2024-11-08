@@ -25,6 +25,8 @@ indexmap.workspace = true
 sha2.workspace = true
 tracing-subscriber.workspace = true
 dashmap.workspace = true
+crossbeam-channel.workspace = true
+ignore.workspace = true
 
 serde_yaml_ng = "0.10"
 yaml-rust = "0.4"
@@ -42,8 +44,6 @@ html-escape = "0.2"
 html5ever = "0.27"
 ego-tree = "0.6"
 
-ignore = "0.4"
-crossbeam-channel = "0.5"
 rayon = "1"
 enum_dispatch = "0.3"
 icu_collator = "1"

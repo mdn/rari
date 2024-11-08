@@ -1,12 +1,17 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
+use ignore::types::TypesBuilder;
+use ignore::WalkBuilder;
 use rari_doc::error::DocError;
 use rari_doc::pages::page::{Page, PageLike};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
-use rari_types::globals::{content_root, content_translated_root};
+use rari_types::globals::{content_root, content_translated_root, settings};
 use rari_types::locale::Locale;
+use tracing::error;
 
 use crate::error::ToolError;
 use crate::redirects::{self, redirects_path};
@@ -40,6 +45,64 @@ pub(crate) fn read_all_doc_pages() -> Result<HashMap<(Locale, Cow<'static, str>)
         )
     }
     Ok(docs_hash)
+}
+
+// read raw file contents into strings
+pub(crate) fn read_files_parallel(
+    paths: &[impl AsRef<Path>],
+) -> Result<Vec<(String, String)>, DocError> {
+    let (tx, rx) = crossbeam_channel::bounded::<Result<(String, String), DocError>>(100);
+    let stdout_thread = std::thread::spawn(move || rx.into_iter().collect());
+    let ignore_gitignore = !settings().reader_ignores_gitignore;
+    md_walk_builder(paths)?
+        .git_ignore(ignore_gitignore)
+        .build_parallel()
+        .run(|| {
+            let tx = tx.clone();
+            Box::new(move |result| {
+                if let Ok(f) = result {
+                    if f.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                        let p = f.into_path();
+
+                        match fs::read_to_string(&p) {
+                            Ok(doc) => {
+                                tx.send(Ok((p.to_string_lossy().to_string(), doc))).unwrap();
+                            }
+                            Err(e) => {
+                                error!("{e}");
+                            }
+                        }
+                    }
+                }
+                ignore::WalkState::Continue
+            })
+        });
+
+    drop(tx);
+    stdout_thread.join().unwrap()
+}
+
+pub(crate) fn md_walk_builder(paths: &[impl AsRef<Path>]) -> Result<WalkBuilder, ignore::Error> {
+    let mut types = TypesBuilder::new();
+    types.add_def(&format!("markdown:{}", "index.md"))?;
+    types.select("markdown");
+    let mut paths_iter = paths.iter();
+    let mut builder = if let Some(path) = paths_iter.next() {
+        let mut builder = ignore::WalkBuilder::new(path);
+        for path in paths_iter {
+            builder.add(path);
+        }
+        builder
+    } else {
+        let mut builder = ignore::WalkBuilder::new(content_root());
+        if let Some(root) = content_translated_root() {
+            builder.add(root);
+        }
+        builder
+    };
+    builder.git_ignore(!settings().reader_ignores_gitignore);
+    builder.types(types.build()?);
+    Ok(builder)
 }
 
 pub(crate) fn get_redirects_map(locale: Locale) -> HashMap<String, String> {

@@ -81,16 +81,17 @@ html-escape = "0.2"
 ignore = "0.4"
 rayon = "1"
 reqwest = { version = "0.12", default-features = false, features = [
-    "blocking",
-    "json",
-    "rustls-tls",
-    "gzip",
+  "blocking",
+  "json",
+  "rustls-tls",
+  "gzip",
 ] }
 indoc = "2"
 base64 = "0.22"
 console = "0.15"
 sha2 = "0.10"
 dashmap = "6"
+crossbeam-channel = "0.5"
 
 
 [dependencies]
