@@ -45,7 +45,7 @@ impl RariApi {
 
     pub fn link(
         link: &str,
-        locale: Option<Locale>,
+        locale: Locale,
         content: Option<&str>,
         code: bool,
         title: Option<&str>,

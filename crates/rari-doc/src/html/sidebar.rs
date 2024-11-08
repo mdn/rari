@@ -418,7 +418,7 @@ impl SidebarMetaEntry {
                 title,
             } => {
                 let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));
-                render_link_via_page(out, link, Some(locale), title, self.code, None, true)?;
+                render_link_via_page(out, link, locale, title, self.code, None, true)?;
             }
             SidebarMetaEntryContent::Link { link: None, title } => {
                 let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));

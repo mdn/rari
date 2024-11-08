@@ -74,7 +74,7 @@ fn generate_release_link<T: Display>(
     render_link_via_page(
         out,
         &format!("/Mozilla/Firefox/Releases/{version}"),
-        Some(locale),
+        locale,
         Some(&format!("Firefox {version} {for_developers}")),
         false,
         None,

@@ -8,6 +8,7 @@ use tracing::warn;
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike};
+use crate::resolve::locale_from_url;
 use crate::templ::api::RariApi;
 use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 
@@ -81,7 +82,7 @@ pub fn render_link_from_page(
 pub fn render_link_via_page(
     out: &mut String,
     link: &str,
-    locale: Option<Locale>,
+    locale: Locale,
     content: Option<&str>,
     code: bool,
     title: Option<&str>,
@@ -89,11 +90,9 @@ pub fn render_link_via_page(
 ) -> Result<(), DocError> {
     let mut url = Cow::Borrowed(link);
     if let Some(link) = link.strip_prefix('/') {
-        if let Some(locale) = locale {
-            if !link.starts_with(Locale::default().as_url_str()) {
-                url = Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", link));
-            }
-        };
+        if locale_from_url(&url).is_none() {
+            url = Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", link));
+        }
         let (url, anchor) = url.split_once('#').unwrap_or((&url, ""));
         match RariApi::get_page(url) {
             Ok(page) => {
@@ -122,9 +121,9 @@ pub fn render_link_via_page(
                     title,
                     &LinkModifier {
                         badges: if with_badges { page.status() } else { &[] },
-                        badge_locale: locale.unwrap_or(page.locale()),
+                        badge_locale: locale,
                         code,
-                        only_en_us: page.locale() != locale.unwrap_or_default(),
+                        only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
                     },
                 );
             }

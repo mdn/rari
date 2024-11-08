@@ -67,5 +67,5 @@ pub fn cssxref_internal(
     } else {
         maybe_display_name.to_string()
     };
-    RariApi::link(&url, None, Some(&display_name), true, None, false)
+    RariApi::link(&url, locale, Some(&display_name), true, None, false)
 }

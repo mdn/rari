@@ -230,7 +230,7 @@ pub fn css_ref() -> Result<String, DocError> {
                 "<li>",
                 &RariApi::link(
                     &concat_strs!("/Web/CSS/", url.as_ref()),
-                    Some(env.locale),
+                    env.locale,
                     Some(&html_escape::encode_text(&label)),
                     true,
                     None,

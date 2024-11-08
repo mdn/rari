@@ -114,7 +114,7 @@ pub fn css_info_properties(
             "animationType",
             Cow::Owned(RariApi::link(
                 "/Web/CSS/CSS_animated_properties",
-                Some(locale),
+                locale,
                 Some(get_css_l10n_for_locale("animationType", locale)),
                 false,
                 None,
@@ -306,7 +306,7 @@ pub fn css_computed(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_csscomputed", locale)?;
     RariApi::link(
         "/Web/CSS/computed_value",
-        Some(locale),
+        locale,
         Some(copy),
         false,
         None,
@@ -318,7 +318,7 @@ pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinherited", locale)?;
     RariApi::link(
         "/Web/CSS/inheritance",
-        Some(locale),
+        locale,
         Some(copy),
         false,
         None,
@@ -330,7 +330,7 @@ pub fn css_inital(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinitial", locale)?;
     RariApi::link(
         "/Web/CSS/initial_value",
-        Some(locale),
+        locale,
         Some(copy),
         false,
         None,
