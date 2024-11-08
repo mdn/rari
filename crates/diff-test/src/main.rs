@@ -166,6 +166,8 @@ struct BuildArgs {
     sidebars: bool,
     #[arg(long)]
     check_dts: bool,
+    #[arg(long)]
+    ignore_ps: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -506,6 +508,12 @@ fn pre_diff_element_massaging_handlers<'a>(
             Ok(())
         }),
     ];
+    if args.ignore_ps {
+        handlers.extend([element!("p", |el| {
+            el.remove_and_keep_content();
+            Ok(())
+        })]);
+    }
     if !args.check_dts {
         handlers.extend([
             element!("dt", |el| {
