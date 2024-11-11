@@ -76,6 +76,11 @@ pub fn replace_deprecated_macros(locale: Locale) -> Result<(), ToolError> {
         .build()
         .unwrap();
 
+    let todo_re = RegexBuilder::new(r"\{\{\s*todo[^}]*\s*\}\}")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+
     let mut count = 0;
     files.iter().for_each(|(path, content)| {
         let result = event_re.replace_all(content, |caps: &regex::Captures| {
@@ -87,6 +92,9 @@ pub fn replace_deprecated_macros(locale: Locale) -> Result<(), ToolError> {
         let result = page_re.replace_all(&result, |caps: &regex::Captures| {
             process_page_macro(locale, caps)
         });
+        let result = todo_re.replace_all(&result, |caps: &regex::Captures| {
+            process_todo_macro(locale, caps)
+        });
         if result != *content {
             fs::write(path, &*result).expect("could not write file");
             count += 1;
@@ -97,6 +105,10 @@ pub fn replace_deprecated_macros(locale: Locale) -> Result<(), ToolError> {
     Ok(())
 }
 
+fn process_todo_macro(_locale: Locale, _caps: &regex::Captures) -> String {
+    "<! TODO: add content -->".to_string()
+}
+
 fn process_page_macro(_locale: Locale, caps: &regex::Captures) -> String {
     let args = collect_args(caps);
     // println!("cap: {} args: {:#?}", caps.get(0).unwrap().as_str(), args);
@@ -104,8 +116,16 @@ fn process_page_macro(_locale: Locale, caps: &regex::Captures) -> String {
         match section.to_lowercase().as_str() {
             "specifications" => return "{{Specifications}}".to_string(),
             "browser_compatibility" => return "{{Compat}}".to_string(),
-            _ => return String::default(),
-            // _ => return caps.get(0).unwrap().as_str().to_string(),
+            _ => {
+                return format!(
+                    "<!-- TODO: page macro not supported: {} -->",
+                    caps.get(0)
+                        .unwrap()
+                        .as_str()
+                        .replace("{", "")
+                        .replace("}", "")
+                )
+            }
         }
     }
     // caps.get(0).unwrap().as_str().to_string()
