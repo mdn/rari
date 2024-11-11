@@ -81,6 +81,21 @@ pub fn replace_deprecated_macros(locale: Locale) -> Result<(), ToolError> {
         .build()
         .unwrap();
 
+    let xref_cssinitial_re = RegexBuilder::new(r"\{\{\s*xref_cssinitial[^}]*\s*\}\}")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+
+    let xref_csscomputed_re = RegexBuilder::new(r"\{\{\s*xref_csscomputed[^}]*\s*\}\}")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+
+    let xref_cssinherited_re = RegexBuilder::new(r"\{\{\s*xref_cssinherited[^}]*\s*\}\}")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+
     let mut count = 0;
     files.iter().for_each(|(path, content)| {
         let result = event_re.replace_all(content, |caps: &regex::Captures| {
@@ -95,6 +110,17 @@ pub fn replace_deprecated_macros(locale: Locale) -> Result<(), ToolError> {
         let result = todo_re.replace_all(&result, |caps: &regex::Captures| {
             process_todo_macro(locale, caps)
         });
+
+        let result = xref_cssinitial_re.replace_all(&result, |caps: &regex::Captures| {
+            process_xref_cssinitial_macro(locale, caps)
+        });
+        let result = xref_csscomputed_re.replace_all(&result, |caps: &regex::Captures| {
+            process_xref_csscomputed_macro(locale, caps)
+        });
+        let result = xref_cssinherited_re.replace_all(&result, |caps: &regex::Captures| {
+            process_xref_cssinherited_macro(locale, caps)
+        });
+
         if result != *content {
             fs::write(path, &*result).expect("could not write file");
             count += 1;
@@ -103,6 +129,66 @@ pub fn replace_deprecated_macros(locale: Locale) -> Result<(), ToolError> {
     println!("Changed {} files", count);
 
     Ok(())
+}
+
+fn process_xref_cssinitial_macro(locale: Locale, _caps: &regex::Captures) -> String {
+    let text = match locale {
+        Locale::De => "Initialer Wert".to_string(),
+        Locale::EnUs => "Initial value".to_string(),
+        Locale::Es => "Valor inicial".to_string(),
+        Locale::Fr => "Valeur initiale".to_string(),
+        Locale::Ja => "初期値".to_string(),
+        Locale::Ko => "초기값".to_string(),
+        Locale::PtBr => "Valor inicial".to_string(),
+        Locale::Ru => "Начальное значение".to_string(),
+        Locale::ZhCn => "初始值".to_string(),
+        Locale::ZhTw => "預設值".to_string(),
+    };
+    format!(
+        "[{}](/{}/docs/Web/CSS/initial_value)",
+        text,
+        locale.as_url_str()
+    )
+}
+
+fn process_xref_csscomputed_macro(locale: Locale, _caps: &regex::Captures) -> String {
+    let text = match locale {
+        Locale::De => "Berechneter Wert".to_string(),
+        Locale::EnUs => "Computed value".to_string(),
+        Locale::Es => "Valor calculado".to_string(),
+        Locale::Fr => "Valeur calculée".to_string(),
+        Locale::Ja => "計算値".to_string(),
+        Locale::Ko => "계산 값".to_string(),
+        Locale::PtBr => "Valor computado".to_string(),
+        Locale::Ru => "Обработка значения".to_string(),
+        Locale::ZhCn => "计算值".to_string(),
+        Locale::ZhTw => "计算值".to_string(),
+    };
+    format!(
+        "[{}](/{}/docs/Web/CSS/computed_value)",
+        text,
+        locale.as_url_str()
+    )
+}
+
+fn process_xref_cssinherited_macro(locale: Locale, _caps: &regex::Captures) -> String {
+    let text = match locale {
+        Locale::De => "Vererbt".to_string(),
+        Locale::EnUs => "Inherited".to_string(),
+        Locale::Es => "Heredable".to_string(),
+        Locale::Fr => "Héritée".to_string(),
+        Locale::Ja => "継承".to_string(),
+        Locale::Ko => "상속".to_string(),
+        Locale::PtBr => "Herdado".to_string(),
+        Locale::Ru => "Наследуется".to_string(),
+        Locale::ZhCn => "是否是继承属性".to_string(),
+        Locale::ZhTw => "繼承與否".to_string(),
+    };
+    format!(
+        "[{}](/{}/docs/Web/CSS/inheritance)",
+        text,
+        locale.as_url_str()
+    )
 }
 
 fn process_todo_macro(_locale: Locale, _caps: &regex::Captures) -> String {
@@ -134,10 +220,10 @@ fn process_page_macro(_locale: Locale, caps: &regex::Captures) -> String {
 
 fn process_no_tag_omission_macro(locale: Locale, _caps: &regex::Captures) -> String {
     match locale {
-        Locale::EnUs => "None, both the starting and ending tag are mandatory.".to_string(),
         Locale::De => {
             "Keine, sowohl das Start- als auch das End-Tag sind obligatorisch.".to_string()
         }
+        Locale::EnUs => "None, both the starting and ending tag are mandatory.".to_string(),
         Locale::Fr => {
             "Aucune, la balise d'ouverture et la balise de fermeture sont obligatoires.".to_string()
         }
@@ -173,37 +259,6 @@ fn process_event_macro(locale: Locale, caps: &regex::Captures) -> String {
         .expect("Redirect map for locale not loaded")
         .get(&url.to_lowercase())
         .unwrap_or(&url);
-
-    // let UrlMeta {
-    //     slug,
-    //     folder_path: _,
-    //     locale: _,
-    //     page_category: _,
-    // } = url_meta_from(&url).unwrap();
-    // println!("url meta slug: {:#?}", slug);
-    // let doc_exists = DOCS
-    //     .get(&(locale, std::borrow::Cow::Borrowed(slug)))
-    //     .is_some();
-    // If the target does not exist, check local redirects, the en-us redirects
-    // let url = if !doc_exists {
-    //     REDIRECT_MAPS
-    //         .get(&locale)
-    //         .expect("Redirect map for locale not loaded")
-    //         .get(&url.to_lowercase())
-    //         .unwrap_or_else(|| {
-    //             let en_us_url_lc =
-    //                 concat_strs!("/", Locale::EnUs.as_folder_str(), "/docs/", slug).to_lowercase();
-    //             REDIRECT_MAPS
-    //                 .get(&Locale::EnUs)
-    //                 .expect("Redirect map for locale en-us not loaded")
-    //                 .get(&en_us_url_lc)
-    //                 .unwrap_or(&url)
-    //         })
-    // } else {
-    //     &url
-    // };
-
-    // println!("resolved url: {url}");
 
     format!("[`{}`]({}{})", link_text, url, anchor)
 }
