@@ -192,7 +192,7 @@ fn process_xref_cssinherited_macro(locale: Locale, _caps: &regex::Captures) -> S
 }
 
 fn process_todo_macro(_locale: Locale, _caps: &regex::Captures) -> String {
-    "<! TODO: add content -->".to_string()
+    "<!-- TODO: add content -->".to_string()
 }
 
 fn process_page_macro(_locale: Locale, caps: &regex::Captures) -> String {
@@ -214,8 +214,14 @@ fn process_page_macro(_locale: Locale, caps: &regex::Captures) -> String {
             }
         }
     }
-    // caps.get(0).unwrap().as_str().to_string()
-    String::default()
+    format!(
+        "<!-- TODO: page macro not supported: {} -->",
+        caps.get(0)
+            .unwrap()
+            .as_str()
+            .replace("{", "")
+            .replace("}", "")
+    )
 }
 
 fn process_no_tag_omission_macro(locale: Locale, _caps: &regex::Captures) -> String {
