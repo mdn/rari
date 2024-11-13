@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
@@ -10,16 +10,18 @@ use tracing::{Event, Subscriber};
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
-static ISSUE_COUNTER: AtomicU64 = AtomicU64::new(1);
+static ISSUE_COUNTER: AtomicI64 = AtomicI64::new(0);
 
-pub(crate) fn get_issue_couter() -> u64 {
+pub(crate) fn get_issue_couter() -> i64 {
     ISSUE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct Issue {
     pub req: u64,
-    pub ic: u64,
+    pub ic: i64,
+    pub col: i64,
+    pub line: i64,
     pub fields: Vec<(&'static str, String)>,
     pub spans: Vec<(&'static str, String)>,
 }
@@ -27,7 +29,9 @@ pub struct Issue {
 #[derive(Debug, Default)]
 pub struct IssueEntries {
     req: u64,
-    ic: u64,
+    ic: i64,
+    col: i64,
+    line: i64,
     entries: Vec<(&'static str, String)>,
 }
 
@@ -41,26 +45,26 @@ pub struct Issues<'a> {
 #[derive(Clone, Debug, Serialize)]
 pub struct TemplIssue<'a> {
     pub req: u64,
-    pub ic: u64,
+    pub ic: i64,
     pub source: &'a str,
     pub file: &'a str,
     pub slug: &'a str,
     pub locale: &'a str,
-    pub line: &'a str,
-    pub col: &'a str,
+    pub line: i64,
+    pub col: i64,
     pub tail: Vec<(&'static str, &'a str)>,
 }
 
 static UNKNOWN: &str = "unknown";
 static DEFAULT_TEMPL_ISSUE: TemplIssue<'static> = TemplIssue {
     req: 0,
-    ic: 0,
+    ic: -1,
     source: UNKNOWN,
     file: UNKNOWN,
     slug: UNKNOWN,
     locale: UNKNOWN,
-    line: UNKNOWN,
-    col: UNKNOWN,
+    line: -1,
+    col: -1,
     tail: vec![],
 };
 
@@ -78,8 +82,6 @@ impl<'a> From<&'a Issue> for TemplIssue<'a> {
                 "locale" => {
                     tissue.locale = value.as_str();
                 }
-                "line" => tissue.line = value.as_str(),
-                "col" => tissue.col = value.as_str(),
                 "source" => {
                     tissue.source = value.as_str();
                 }
@@ -87,6 +89,8 @@ impl<'a> From<&'a Issue> for TemplIssue<'a> {
                 _ => tissue.tail.push((key, value.as_str())),
             }
         }
+        tissue.col = value.col;
+        tissue.line = value.line;
         tissue
     }
 }
@@ -103,7 +107,7 @@ pub fn issues_by(issues: &[Issue]) -> Issues {
                 .find_map(|(key, value)| if *key == "templ" { Some(value) } else { None })
         {
             templ.entry(templ_name).or_default().push(issue);
-        } else if issue.line != UNKNOWN {
+        } else if issue.line != -1 {
             other.entry(issue.source).or_default().push(issue)
         } else {
             no_pos.entry(issue.source).or_default().push(issue);
@@ -137,8 +141,15 @@ impl Visit for IssueEntries {
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field.name() == "req" {
             self.req = value;
-        } else if field.name() == "ic" {
+        }
+    }
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        if field.name() == "ic" {
             self.ic = value;
+        } else if field.name() == "col" {
+            self.col = value;
+        } else if field.name() == "line" {
+            self.line = value;
         }
     }
 }
@@ -152,8 +163,15 @@ impl Visit for Issue {
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field.name() == "req" {
             self.req = value;
-        } else if field.name() == "ic" {
+        }
+    }
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        if field.name() == "ic" {
             self.ic = value;
+        } else if field.name() == "col" {
+            self.col = value;
+        } else if field.name() == "line" {
+            self.line = value;
         }
     }
 }
@@ -180,6 +198,8 @@ where
         let mut issue = Issue {
             req: 0,
             ic: 0,
+            col: 0,
+            line: 0,
             fields: vec![],
             spans: vec![],
         };
@@ -190,6 +210,12 @@ where
             if let Some(entries) = ext.get::<IssueEntries>() {
                 if entries.req != 0 {
                     issue.req = entries.req;
+                }
+                if entries.col != 0 {
+                    issue.col = entries.col;
+                }
+                if entries.line != 0 {
+                    issue.line = entries.line;
                 }
                 if entries.ic != 0 {
                     issue.ic = entries.ic;
@@ -212,20 +238,23 @@ pub enum Additional {
     BrokenLink {
         href: String,
     },
+    MacroBrokenLink {
+        href: String,
+    },
     #[default]
     None,
 }
 
 #[derive(Serialize, Debug, Default, Clone)]
 pub struct DisplayIssue {
-    pub id: u64,
+    pub id: i64,
     pub explanation: Option<String>,
     pub suggestion: Option<String>,
     pub fixable: Option<bool>,
     pub fixed: bool,
     pub name: String,
-    pub line: Option<usize>,
-    pub col: Option<usize>,
+    pub line: Option<i64>,
+    pub col: Option<i64>,
     #[serde(flatten)]
     pub additional: Additional,
 }
@@ -236,13 +265,22 @@ impl From<Issue> for DisplayIssue {
     fn from(value: Issue) -> Self {
         let mut di = DisplayIssue {
             id: value.ic,
+            col: if value.col == 0 {
+                None
+            } else {
+                Some(value.col)
+            },
+            line: if value.line == 0 {
+                None
+            } else {
+                Some(value.line)
+            },
             ..Default::default()
         };
         let mut additional = HashMap::new();
+        println!("{value:?}");
         for (key, value) in value.spans.into_iter().chain(value.fields.into_iter()) {
             match key {
-                "line" => di.line = value.parse().ok(),
-                "col" => di.col = value.parse().ok(),
                 "source" => {
                     di.name = value;
                 }
@@ -262,6 +300,13 @@ impl From<Issue> for DisplayIssue {
                     href: additional.remove("url").unwrap_or_default(),
                 }
             }
+            "macro-redirected-link" => {
+                di.fixed = false;
+                di.fixable = Some(true);
+                Additional::MacroBrokenLink {
+                    href: additional.remove("url").unwrap_or_default(),
+                }
+            }
             _ => Additional::None,
         };
         di.additional = additional;
@@ -276,6 +321,10 @@ pub fn to_display_issues(issues: Vec<Issue>) -> DisplayIssues {
         match &di.additional {
             Additional::BrokenLink { .. } => {
                 let entry: &mut Vec<_> = map.entry("broken_links").or_default();
+                entry.push(di);
+            }
+            Additional::MacroBrokenLink { .. } => {
+                let entry: &mut Vec<_> = map.entry("macros").or_default();
                 entry.push(di);
             }
             Additional::None => {

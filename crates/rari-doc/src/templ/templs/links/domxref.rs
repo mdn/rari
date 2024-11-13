@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use rari_templ_func::rari_f;
 use rari_types::{AnyArg, ArgError};
+use tracing::{span, Level};
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
@@ -13,6 +14,8 @@ pub fn domxref(
     anchor: Option<String>,
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
+    let span = span!(Level::ERROR, "domxref", basepath = "/docs/Web/API/");
+    let _enter = span.enter();
     let display = display.as_deref().filter(|s| !s.is_empty());
     let mut display_with_fallback = Cow::Borrowed(display.unwrap_or(api_name.as_str()));
     let api = api_name

@@ -69,13 +69,9 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
             Token::Macro(mac) => {
                 let ident = &mac.ident;
                 let name = ident.to_ascii_lowercase();
-                let span = span!(
-                    Level::ERROR,
-                    "templ",
-                    templ = name,
-                    line = mac.pos.0 + offset,
-                    col = mac.pos.1
-                );
+                let line = i64::try_from(mac.pos.0 + offset).unwrap_or(-1);
+                let col = i64::try_from(mac.pos.1).unwrap_or(-1);
+                let span = span!(Level::ERROR, "templ", templ = name, line = line, col = col);
                 let _enter = span.enter();
                 match invoke(env, &name, mac.args) {
                     Ok((rendered, is_sidebar)) => {
