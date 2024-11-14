@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.19](https://github.com/mdn/rari/compare/v0.0.18...v0.0.19) (2024-11-13)
+
+
+### Features
+
+* **issues:** add initial support for macro issues ([5e23b0f](https://github.com/mdn/rari/commit/5e23b0fb3424fb5bc7d89a5a6de38ba851750338))
+* **templ:** livesamplelink ([a95f39b](https://github.com/mdn/rari/commit/a95f39b4b70a9dbe00bcff09f4740735e23ae4ab))
+
 ## [0.0.18](https://github.com/mdn/rari/compare/v0.0.17...v0.0.18) (2024-11-08)
 
 
