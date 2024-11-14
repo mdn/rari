@@ -18,6 +18,7 @@ use rari_types::locale::Locale;
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
 use crate::redirects::add_redirects;
+use crate::sidebars::update_sidebars;
 use crate::utils::parent_slug;
 use crate::wikihistory::update_wiki_history;
 
@@ -184,6 +185,9 @@ fn do_move(
 
     // Update Wiki history for entries that have an entry for the old slug.
     update_wiki_history(locale, &pairs)?;
+
+    // Update the sidebars
+    update_sidebars(&pairs)?;
 
     // Update the redirect map. Create pairs of URLs from the slug pairs.
     let url_pairs = pairs

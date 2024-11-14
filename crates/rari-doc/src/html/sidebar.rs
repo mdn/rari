@@ -197,35 +197,47 @@ impl MetaSidebar {
     }
 }
 
+// used for skipping serialization if the field has the defaul value
+fn is_default<T: PartialEq + Default>(value: &T) -> bool {
+    value == &T::default()
+}
+fn details_is_none(details: &Details) -> bool {
+    matches!(details, Details::None)
+}
+
 #[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(rename_all = "camelCase", tag = "type")]
+#[serde(rename_all = "camelCase")]
 pub struct BasicEntry {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub link: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_default")]
     pub code: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<SidebarEntry>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "details_is_none")]
     pub details: Details,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(rename_all = "camelCase", tag = "type")]
+#[serde(rename_all = "camelCase")]
 pub struct SubPageEntry {
     pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub link: Option<String>,
     #[serde(deserialize_with = "t_or_vec", default)]
     pub tags: Vec<PageType>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "details_is_none")]
     pub details: Details,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_default")]
     pub include_parent: bool,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(rename_all = "camelCase", tag = "type")]
+#[serde(rename_all = "camelCase")]
 pub struct WebExtApiEntry {
     pub title: String,
 }
