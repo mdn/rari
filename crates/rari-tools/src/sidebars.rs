@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, iter};
 
 use rari_doc::html::sidebar::{BasicEntry, Sidebar, SidebarEntry, SubPageEntry, WebExtApiEntry};
 use rari_types::globals::content_root;
@@ -27,6 +27,23 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
         })
         .collect::<Vec<(std::path::PathBuf, Sidebar)>>();
 
+    let pairs = &pairs
+        .iter()
+        .map(|(from, to)| {
+            let from = if from.starts_with('/') {
+                from.to_string()
+            } else {
+                format!("/{}", from)
+            };
+            let to = if to.starts_with('/') {
+                to.to_string()
+            } else {
+                format!("/{}", to)
+            };
+            (from, to)
+        })
+        .collect::<Vec<(String, String)>>();
+
     for mut parsed_sidebar in sidebars {
         let path = parsed_sidebar.0.clone();
         let entries = parsed_sidebar
@@ -44,7 +61,21 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
     Ok(())
 }
 
-fn process_entry(entry: SidebarEntry, _pairs: &[(String, String)]) -> SidebarEntry {
+fn replace_pairs(pairs: &[(String, String)]) -> impl FnMut(Option<String>) -> Option<String> + '_ {
+    move |link: Option<String>| match link {
+        Some(link) => {
+            for (from, to) in pairs {
+                if link == *from {
+                    return Some(to.clone());
+                }
+            }
+            Some(link)
+        }
+        None => None,
+    }
+}
+
+fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntry {
     match entry {
         SidebarEntry::Section(BasicEntry {
             link,
@@ -53,10 +84,13 @@ fn process_entry(entry: SidebarEntry, _pairs: &[(String, String)]) -> SidebarEnt
             children,
             details,
         }) => SidebarEntry::Section(BasicEntry {
-            link,
+            link: iter::once(link).map(replace_pairs(pairs)).collect(),
             title,
             code,
-            children,
+            children: children
+                .into_iter()
+                .map(|c| process_entry(c, pairs))
+                .collect(),
             details,
         }),
         SidebarEntry::ListSubPages(SubPageEntry {
@@ -69,7 +103,7 @@ fn process_entry(entry: SidebarEntry, _pairs: &[(String, String)]) -> SidebarEnt
         }) => SidebarEntry::ListSubPages(SubPageEntry {
             details,
             tags,
-            link,
+            link: iter::once(link).map(replace_pairs(pairs)).collect(),
             title,
             path,
             include_parent,
@@ -84,25 +118,33 @@ fn process_entry(entry: SidebarEntry, _pairs: &[(String, String)]) -> SidebarEnt
         }) => SidebarEntry::ListSubPagesGrouped(SubPageEntry {
             details,
             tags,
-            link,
+            link: iter::once(link).map(replace_pairs(pairs)).collect(),
             title,
             path,
             include_parent,
         }),
         SidebarEntry::Default(BasicEntry {
-            link: _link,
+            link,
             title,
             code,
             children,
             details,
         }) => SidebarEntry::Default(BasicEntry {
-            link: _link, //Some("Hey".to_string()),
+            link: iter::once(link).map(replace_pairs(pairs)).collect(),
             title,
             code,
-            children,
+            children: children
+                .into_iter()
+                .map(|c| process_entry(c, pairs))
+                .collect(),
             details,
         }),
-        SidebarEntry::Link(link) => SidebarEntry::Link(link),
+        SidebarEntry::Link(link) => SidebarEntry::Link(
+            iter::once(Some(link))
+                .map(replace_pairs(pairs))
+                .collect::<Option<String>>()
+                .unwrap(),
+        ),
         SidebarEntry::WebExtApi(WebExtApiEntry { title }) => {
             SidebarEntry::WebExtApi(WebExtApiEntry { title })
         }
