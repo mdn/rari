@@ -6,6 +6,7 @@ use dashmap::DashMap;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
 use rari_types::locale::Locale;
+use rari_utils::concat_strs;
 use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize};
 
@@ -200,8 +201,9 @@ impl MetaSidebar {
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub struct BasicEntry {
-    pub link: Option<String>,
     pub title: Option<String>,
+    pub link: Option<String>,
+    pub hash: Option<String>,
     #[serde(default)]
     pub code: bool,
     #[serde(default)]
@@ -216,6 +218,7 @@ pub struct SubPageEntry {
     pub path: String,
     pub title: Option<String>,
     pub link: Option<String>,
+    pub hash: Option<String>,
     #[serde(deserialize_with = "t_or_vec", default)]
     pub tags: Vec<PageType>,
     #[serde(default)]
@@ -259,7 +262,25 @@ pub enum SidebarMetaEntryContent {
         link: Option<String>,
         title: Option<String>,
     },
+    LinkWithHash {
+        link: String,
+        title: Option<String>,
+        hash: String,
+    },
     Page(Page),
+}
+
+impl SidebarMetaEntryContent {
+    pub fn from_link_title_hash(
+        link: Option<String>,
+        title: Option<String>,
+        hash: Option<String>,
+    ) -> Self {
+        match (link, title, hash) {
+            (Some(link), title, Some(hash)) => Self::LinkWithHash { link, title, hash },
+            (link, title, _) => Self::Link { link, title },
+        }
+    }
 }
 
 impl Default for SidebarMetaEntryContent {
@@ -304,6 +325,7 @@ impl From<SidebarEntry> for SidebarMetaEntry {
         match value {
             SidebarEntry::Section(BasicEntry {
                 link,
+                hash,
                 title,
                 code,
                 children,
@@ -312,7 +334,7 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 section: true,
                 details,
                 code,
-                content: SidebarMetaEntryContent::Link { link, title },
+                content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
                 children: if children.is_empty() {
                     MetaChildren::None
                 } else {
@@ -323,6 +345,7 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 details,
                 tags,
                 link,
+                hash,
                 title,
                 path,
                 include_parent,
@@ -330,13 +353,14 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 section: false,
                 details,
                 code: false,
-                content: SidebarMetaEntryContent::Link { link, title },
+                content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
                 children: MetaChildren::ListSubPages(path, tags, include_parent),
             },
             SidebarEntry::ListSubPagesGrouped(SubPageEntry {
                 details,
                 tags,
                 link,
+                hash,
                 title,
                 path,
                 include_parent,
@@ -344,11 +368,12 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 section: false,
                 details,
                 code: false,
-                content: SidebarMetaEntryContent::Link { link, title },
+                content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
                 children: MetaChildren::ListSubPagesGrouped(path, tags, include_parent),
             },
             SidebarEntry::Default(BasicEntry {
                 link,
+                hash,
                 title,
                 code,
                 children,
@@ -357,7 +382,7 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 section: false,
                 details,
                 code,
-                content: SidebarMetaEntryContent::Link { link, title },
+                content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
                 children: if children.is_empty() {
                     MetaChildren::None
                 } else {
@@ -368,20 +393,14 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 section: false,
                 details: Details::None,
                 code: false,
-                content: SidebarMetaEntryContent::Link {
-                    link: Some(link),
-                    title: None,
-                },
+                content: SidebarMetaEntryContent::from_link_title_hash(Some(link), None, None),
                 children: MetaChildren::None,
             },
             SidebarEntry::WebExtApi(WebExtApiEntry { title }) => SidebarMetaEntry {
                 section: false,
                 code: false,
                 details: Details::Closed,
-                content: SidebarMetaEntryContent::Link {
-                    link: None,
-                    title: Some(title),
-                },
+                content: SidebarMetaEntryContent::from_link_title_hash(None, Some(title), None),
                 children: MetaChildren::WebExtApi,
             },
         }
@@ -413,6 +432,12 @@ impl SidebarMetaEntry {
         }
         out.push('>');
         match &self.content {
+            SidebarMetaEntryContent::LinkWithHash { link, title, hash } => {
+                let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));
+                let hash = l10n.lookup(hash.as_str(), locale);
+                let link = concat_strs!(link.as_str(), "#", hash);
+                render_link_via_page(out, &link, locale, title, self.code, None, true)?;
+            }
             SidebarMetaEntryContent::Link {
                 link: Some(link),
                 title,
