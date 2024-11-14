@@ -1,6 +1,5 @@
 use std::fs;
 
-use fake::{faker, Fake};
 use rari_types::globals::content_root;
 
 pub(crate) struct SidebarFixtures {
@@ -24,10 +23,8 @@ impl SidebarFixtures {
         if !path.exists() {
             fs::create_dir(&path).unwrap();
         }
-
-        for d in data {
-            let mut name: String = faker::lorem::en::Word().fake();
-            name.push_str(".yaml");
+        for (ct, d) in data.into_iter().enumerate() {
+            let name = format!("sidebar_{ct}.yaml");
             fs::write(path.join(name), d.as_bytes()).unwrap();
         }
 

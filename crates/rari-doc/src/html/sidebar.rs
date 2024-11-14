@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 pub use std::ops::Deref;
 use std::sync::{Arc, LazyLock};
 
@@ -138,7 +138,9 @@ pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(transparent)]
 pub struct SidebarL10n {
-    l10n: HashMap<Locale, HashMap<String, String>>,
+    // Keep the translations sorted with BTreeMaps,
+    // so Sidebar manipulations are deterministic.
+    l10n: BTreeMap<Locale, BTreeMap<String, String>>,
 }
 
 impl SidebarL10n {

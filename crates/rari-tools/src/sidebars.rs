@@ -2,6 +2,7 @@ use std::{fs, iter};
 
 use rari_doc::html::sidebar::{BasicEntry, Sidebar, SidebarEntry, SubPageEntry, WebExtApiEntry};
 use rari_types::globals::content_root;
+use rari_utils::concat_strs;
 
 use crate::error::ToolError;
 
@@ -11,6 +12,7 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
     path.push("sidebars");
     let entries = fs::read_dir(&path).unwrap();
 
+    // map and parse sidebars into a vector of (path, Sidebar)
     let sidebars = entries
         .filter(|entry| {
             let entry = entry.as_ref().unwrap();
@@ -21,12 +23,13 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
             let entry = entry.unwrap();
             let path = entry.path();
             let content = fs::read_to_string(&path).unwrap();
-            println!("content: {}", content);
+            println!("input content {}: \n\n{}", path.to_string_lossy(), content);
             let sidebar: Sidebar = serde_yaml_ng::from_str(&content).unwrap();
             (path, sidebar)
         })
         .collect::<Vec<(std::path::PathBuf, Sidebar)>>();
 
+    // add leading slash to pairs, because that is what the sidebars use
     let pairs = &pairs
         .iter()
         .map(|(from, to)| {
@@ -44,6 +47,8 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
         })
         .collect::<Vec<(String, String)>>();
 
+    // walk the sidebars and potentially replace the links
+    // process_entry is called recursively to process all children
     for mut parsed_sidebar in sidebars {
         let path = parsed_sidebar.0.clone();
         let entries = parsed_sidebar
@@ -52,10 +57,13 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
             .into_iter()
             .map(|entry| process_entry(entry, pairs))
             .collect();
-        parsed_sidebar.1.sidebar = entries;
 
+        // TODO: write the modified data back to the sidebar file
+        parsed_sidebar.1.sidebar = entries;
+        const PREFIX: &str = "# Do not add comments to this file. They will be lost.\n\n";
         let y = serde_yaml_ng::to_string(&parsed_sidebar.1).unwrap();
-        println!("sidebar {}: \n{}", path.to_string_lossy(), y);
+        let yaml = concat_strs!(PREFIX, &y);
+        println!("output content {}: \n\n{}", path.to_string_lossy(), yaml);
     }
 
     Ok(())
@@ -171,6 +179,8 @@ mod test {
     fn test_update_sidebars() {
         let sb = indoc!(
             r#"
+            # Do not add comments to this file. They will be lost.
+
             sidebar:
               - type: section
                 link: /Web/CSS
@@ -219,5 +229,6 @@ mod test {
         ];
         let res = update_sidebars(&pairs);
         assert!(res.is_ok());
+        // re-read the files and check if the changes are there
     }
 }
