@@ -105,7 +105,10 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
             tags,
             link: iter::once(link).map(replace_pairs(pairs)).collect(),
             title,
-            path,
+            path: iter::once(Some(path))
+                .map(replace_pairs(pairs))
+                .collect::<Option<String>>()
+                .unwrap(),
             include_parent,
         }),
         SidebarEntry::ListSubPagesGrouped(SubPageEntry {
@@ -120,7 +123,10 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
             tags,
             link: iter::once(link).map(replace_pairs(pairs)).collect(),
             title,
-            path,
+            path: iter::once(Some(path))
+                .map(replace_pairs(pairs))
+                .collect::<Option<String>>()
+                .unwrap(),
             include_parent,
         }),
         SidebarEntry::Default(BasicEntry {
