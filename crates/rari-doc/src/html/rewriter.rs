@@ -228,6 +228,9 @@ pub fn post_process_html<T: PageLike>(
                             "page-not-created"
                         ),
                     )?;
+                    if let Some(href) = el.get_attribute("href") {
+                        el.set_attribute("data-href", &href)?;
+                    }
                     el.remove_attribute("href");
                     el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
                     true
