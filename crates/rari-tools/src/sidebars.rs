@@ -122,12 +122,14 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
     match entry {
         SidebarEntry::Section(BasicEntry {
             link,
+            hash,
             title,
             code,
             children,
             details,
         }) => SidebarEntry::Section(BasicEntry {
             link: iter::once(link).map(replace_pairs(pairs)).collect(),
+            hash,
             title,
             code,
             children: children
@@ -140,6 +142,7 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
             details,
             tags,
             link,
+            hash,
             title,
             path,
             include_parent,
@@ -147,6 +150,7 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
             details,
             tags,
             link: iter::once(link).map(replace_pairs(pairs)).collect(),
+            hash,
             title,
             path: iter::once(Some(path))
                 .map(replace_pairs(pairs))
@@ -158,6 +162,7 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
             details,
             tags,
             link,
+            hash,
             title,
             path,
             include_parent,
@@ -165,6 +170,7 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
             details,
             tags,
             link: iter::once(link).map(replace_pairs(pairs)).collect(),
+            hash,
             title,
             path: iter::once(Some(path))
                 .map(replace_pairs(pairs))
@@ -174,12 +180,14 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
         }),
         SidebarEntry::Default(BasicEntry {
             link,
+            hash,
             title,
             code,
             children,
             details,
         }) => SidebarEntry::Default(BasicEntry {
             link: iter::once(link).map(replace_pairs(pairs)).collect(),
+            hash,
             title,
             code,
             children: children
