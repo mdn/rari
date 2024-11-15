@@ -4,8 +4,8 @@ version = "0.0.19"
 edition = "2021"
 license = "MPL-2.0"
 authors = [
-    "Florian Dieminger <me@fiji-flo.de>",
-    "The MDN Engineering Team <mdn-dev@mozilla.com>",
+  "Florian Dieminger <me@fiji-flo.de>",
+  "The MDN Engineering Team <mdn-dev@mozilla.com>",
 ]
 homepage = "https://github.com/mdn/rari"
 repository = "https://github.com/mdn/rari"
@@ -30,27 +30,27 @@ codegen-units = 1
 [workspace]
 resolver = "2"
 members = [
-    "crates/rari-data",
-    "crates/rari-utils",
-    "crates/rari-deps",
-    "crates/rari-types",
-    "crates/rari-templ-func",
-    "crates/rari-md",
-    "crates/rari-doc",
-    "crates/rari-linter",
-    "crates/rari-tools",
-    "crates/css-syntax",
-    "crates/css-syntax-types",
-    "crates/css-definition-syntax",
-    "crates/diff-test",
+  "crates/rari-data",
+  "crates/rari-utils",
+  "crates/rari-deps",
+  "crates/rari-types",
+  "crates/rari-templ-func",
+  "crates/rari-md",
+  "crates/rari-doc",
+  "crates/rari-linter",
+  "crates/rari-tools",
+  "crates/css-syntax",
+  "crates/css-syntax-types",
+  "crates/css-definition-syntax",
+  "crates/diff-test",
 ]
 
 [workspace.package]
 edition = "2021"
 license = "MPL-2.0"
 authors = [
-    "Florian Dieminger <me@fiji-flo.de>",
-    "The MDN Engineering Team <mdn-dev@mozilla.com>",
+  "Florian Dieminger <me@fiji-flo.de>",
+  "The MDN Engineering Team <mdn-dev@mozilla.com>",
 ]
 rust-version = "1.81"
 
@@ -81,17 +81,19 @@ html-escape = "0.2"
 ignore = "0.4"
 rayon = "1"
 reqwest = { version = "0.12", default-features = false, features = [
-    "blocking",
-    "json",
-    "rustls-tls",
-    "gzip",
+  "blocking",
+  "json",
+  "rustls-tls",
+  "gzip",
 ] }
 indoc = "2"
 base64 = "0.22"
 console = "0.15"
 sha2 = "0.10"
 dashmap = "6"
-
+serde_yaml_ng = "0.10"
+pretty_yaml = "0.5"
+yaml_parser = "0.2"
 
 [dependencies]
 rari-doc.workspace = true
@@ -107,9 +109,9 @@ anyhow.workspace = true
 dashmap.workspace = true
 
 self_update = { version = "0.41", default-features = false, features = [
-    "rustls",
-    "compression-flate2",
-    "compression-zip-deflate",
+  "rustls",
+  "compression-flate2",
+  "compression-zip-deflate",
 ] }
 clap = { version = "4.5.1", features = ["derive"] }
 clap-verbosity-flag = "2"

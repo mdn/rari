@@ -136,7 +136,7 @@ pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
     Ok(if out.is_empty() { None } else { Some(out) })
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(transparent)]
 pub struct SidebarL10n {
     // Keep the translations in order of insertion,
@@ -158,7 +158,7 @@ impl SidebarL10n {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 pub struct Sidebar {
     pub sidebar: Vec<SidebarEntry>,
     #[serde(default)]
@@ -208,22 +208,22 @@ fn details_is_none(details: &Details) -> bool {
     matches!(details, Details::None)
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BasicEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub link: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "details_is_none")]
+    pub details: Details,
     #[serde(default, skip_serializing_if = "is_default")]
     pub code: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<SidebarEntry>,
-    #[serde(default, skip_serializing_if = "details_is_none")]
-    pub details: Details,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SubPageEntry {
     pub path: String,
@@ -239,13 +239,13 @@ pub struct SubPageEntry {
     pub include_parent: bool,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WebExtApiEntry {
     pub title: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SidebarEntry {
     Section(BasicEntry),

@@ -1,5 +1,6 @@
 use std::{fs, iter};
 
+use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_doc::html::sidebar::{BasicEntry, Sidebar, SidebarEntry, SubPageEntry, WebExtApiEntry};
 use rari_types::globals::content_root;
 use rari_utils::concat_strs;
@@ -52,6 +53,8 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
     // `process_entry`` is called recursively to process all children
     for mut parsed_sidebar in sidebars {
         let path = parsed_sidebar.0.clone();
+        // Store a clone to detect changes later
+        let original = parsed_sidebar.1.clone();
         let entries = parsed_sidebar
             .1
             .sidebar
@@ -59,10 +62,26 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
             .map(|entry| process_entry(entry, pairs))
             .collect();
 
-        parsed_sidebar.1.sidebar = entries;
-        let y = serde_yaml_ng::to_string(&parsed_sidebar.1).unwrap();
-        let yaml = concat_strs!(PREFIX, &y);
-        fs::write(&path, &yaml).unwrap();
+        // If the sidebar contents have changed, write it back to the file.
+        if original.sidebar != entries {
+            parsed_sidebar.1.sidebar = entries;
+
+            let y = serde_yaml_ng::to_string(&parsed_sidebar.1).unwrap();
+            // Format yaml a bit prettier than serde does
+            let y = pretty_yaml::format_text(
+                &y,
+                &FormatOptions {
+                    language: LanguageOptions {
+                        quotes: pretty_yaml::config::Quotes::PreferDouble,
+                        indent_block_sequence_in_map: true,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            )?;
+            let yaml = concat_strs!(PREFIX, &y);
+            fs::write(&path, &yaml).unwrap();
+        }
     }
 
     Ok(())

@@ -2698,6 +2698,7 @@ dependencies = [
  "dialoguer",
  "fake",
  "indoc",
+ "pretty_yaml",
  "rand 0.8.5",
  "rari-doc",
  "rari-types",
@@ -2712,6 +2713,7 @@ dependencies = [
  "thiserror",
  "tracing",
  "url",
+ "yaml_parser",
 ]
 
 [[package]]

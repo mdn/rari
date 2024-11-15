@@ -24,12 +24,12 @@ indoc.workspace = true
 rayon.workspace = true
 console.workspace = true
 sha2.workspace = true
+serde_yaml_ng.workspace = true
+pretty_yaml.workspace = true
+yaml_parser.workspace = true
 
 dialoguer = "0.11"
 csv = "1"
-serde_yaml_ng = "0.10"
-# yaml-rust = "0.4"
-# pretty_yaml = "0.5"
 
 [dev-dependencies]
 serial_test = { version = "3", features = ["file_locks"] }

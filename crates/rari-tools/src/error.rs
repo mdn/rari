@@ -33,7 +33,8 @@ pub enum ToolError {
     RariIoError(#[from] RariIoError),
     #[error(transparent)]
     JsonError(#[from] serde_json::Error),
-
+    #[error(transparent)]
+    YamlError(#[from] yaml_parser::SyntaxError),
     #[error("Invalid Redirection: {0}")]
     InvalidRedirectionEntry(String),
     #[error("Error reading redirects file: {0}")]

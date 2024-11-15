@@ -187,7 +187,11 @@ fn do_move(
     update_wiki_history(locale, &pairs)?;
 
     // Update the sidebars, changing links and paths where necessary.
-    update_sidebars(&pairs)?;
+    // But only for the default locale. Translated content cannot change
+    // sidebars.
+    if locale == Locale::default() {
+        update_sidebars(&pairs)?;
+    }
 
     // Update the redirect map. Create pairs of URLs from the slug pairs.
     let url_pairs = pairs
