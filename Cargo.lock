@@ -2698,6 +2698,7 @@ dependencies = [
  "dialoguer",
  "fake",
  "indoc",
+ "lazy_static",
  "pretty_yaml",
  "rand 0.8.5",
  "rari-doc",

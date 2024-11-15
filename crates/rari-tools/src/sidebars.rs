@@ -1,13 +1,19 @@
 use std::{fs, iter};
 
+use lazy_static::lazy_static;
 use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_doc::html::sidebar::{BasicEntry, Sidebar, SidebarEntry, SubPageEntry, WebExtApiEntry};
 use rari_types::globals::content_root;
+use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
 use crate::error::ToolError;
 
 const PREFIX: &str = "# Do not add comments to this file. They will be lost.\n\n";
+
+lazy_static! {
+    static ref SIDEBAR_PATH_PREFIX: String = format!("/{}/docs", Locale::default().as_url_str());
+}
 
 pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolError> {
     // read all sidebars
@@ -90,9 +96,20 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
 fn replace_pairs(pairs: &[(String, String)]) -> impl FnMut(Option<String>) -> Option<String> + '_ {
     move |link: Option<String>| match link {
         Some(link) => {
+            let mut has_prefix = false;
+            let link = if let Some(l) = link.strip_prefix(SIDEBAR_PATH_PREFIX.as_str()) {
+                has_prefix = true;
+                l.to_string()
+            } else {
+                link
+            };
             for (from, to) in pairs {
                 if link == *from {
-                    return Some(to.clone());
+                    if has_prefix {
+                        return Some(format!("{}{}", SIDEBAR_PATH_PREFIX.as_str(), to));
+                    } else {
+                        return Some(to.clone());
+                    }
                 }
             }
             Some(link)
@@ -223,6 +240,12 @@ mod test {
                 children:
                   - /Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
                   - /Web/CSS/CSS_Box_Model/Mastering_margin_collapsing
+              - type: listSubPages
+                path: /en-US/docs/Web/HTTP/Headers
+                title: Headers
+                tags: []
+                details: closed
+
             l10n:
               en-US:
                 Backgrounds_and_Borders: Tutorials
@@ -245,6 +268,10 @@ mod test {
                 "Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Grid_Layout".to_string(),
                 "Web/CSS/CSS_Box_Alignment/Also_New".to_string(),
             ),
+            (
+                "Web/HTTP/Headers".to_string(),
+                "Web/HTTP/Headers_New".to_string(),
+            ),
         ];
         let res = update_sidebars(&pairs);
         assert!(res.is_ok());
@@ -254,6 +281,7 @@ mod test {
         path.push("sidebars");
         path.push("sidebar_0.yaml");
         let content = fs::read_to_string(&path).unwrap();
+        // println!("{}", content);
         let sb = serde_yaml_ng::from_str::<Sidebar>(&content).unwrap();
 
         let third_item_first_child =
@@ -282,5 +310,11 @@ mod test {
             panic!("Expected a Link entry");
         };
         assert_eq!(link, "/Web/CSS/CSS_Box_Alignment/Also_New".to_string());
+
+        if let SidebarEntry::ListSubPages(SubPageEntry { path, .. }) = &sb.sidebar[4] {
+            assert_eq!(path, "/en-US/docs/Web/HTTP/Headers_New");
+        } else {
+            panic!("Expected a listSubPages entry with a path field as the 4th entry");
+        };
     }
 }
