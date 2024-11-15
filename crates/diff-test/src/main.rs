@@ -377,9 +377,7 @@ static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
         // image dimension rounding error or similar, ok
         ("docs/web/media/formats/video_concepts/index.json", "doc.body.3.value.content"),
         ("docs/web/svg/tutorial/introduction/index.json", "doc.body.0.value.content"),
-        ("docs/web/css/css_flexible_box_layout/basic_concepts_of_flexbox/index.json", "doc.body.2.value.content"),
-        ("docs/web/css/css_flexible_box_layout/basic_concepts_of_flexbox/index.json", "doc.body.3.value.content"),
-        // rari improvement over yari
+        // rari macro improvement
         ("docs/web/manifest/index.json", "doc.body.1.value.content"),
         ("docs/web/manifest/orientation/index.json", "doc.body.6.value.content"),
         ("docs/web/css/-moz-orient/index.json", "doc.body.3.value.content"),
