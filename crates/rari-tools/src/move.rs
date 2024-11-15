@@ -186,7 +186,7 @@ fn do_move(
     // Update Wiki history for entries that have an entry for the old slug.
     update_wiki_history(locale, &pairs)?;
 
-    // Update the sidebars
+    // Update the sidebars, changing links and paths where necessary.
     update_sidebars(&pairs)?;
 
     // Update the redirect map. Create pairs of URLs from the slug pairs.
