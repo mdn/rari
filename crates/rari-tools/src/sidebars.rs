@@ -6,6 +6,8 @@ use rari_utils::concat_strs;
 
 use crate::error::ToolError;
 
+const PREFIX: &str = "# Do not add comments to this file. They will be lost.\n\n";
+
 pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolError> {
     // read all sidebars
     let mut path = content_root().to_path_buf();
@@ -23,7 +25,6 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
             let entry = entry.unwrap();
             let path = entry.path();
             let content = fs::read_to_string(&path).unwrap();
-            println!("input content {}: \n\n{}", path.to_string_lossy(), content);
             let sidebar: Sidebar = serde_yaml_ng::from_str(&content).unwrap();
             (path, sidebar)
         })
@@ -47,8 +48,8 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
         })
         .collect::<Vec<(String, String)>>();
 
-    // walk the sidebars and potentially replace the links
-    // process_entry is called recursively to process all children
+    // Walk the sidebars and potentially replace the links.
+    // `process_entry`` is called recursively to process all children
     for mut parsed_sidebar in sidebars {
         let path = parsed_sidebar.0.clone();
         let entries = parsed_sidebar
@@ -58,12 +59,10 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
             .map(|entry| process_entry(entry, pairs))
             .collect();
 
-        // TODO: write the modified data back to the sidebar file
         parsed_sidebar.1.sidebar = entries;
-        const PREFIX: &str = "# Do not add comments to this file. They will be lost.\n\n";
         let y = serde_yaml_ng::to_string(&parsed_sidebar.1).unwrap();
         let yaml = concat_strs!(PREFIX, &y);
-        println!("output content {}: \n\n{}", path.to_string_lossy(), yaml);
+        fs::write(&path, &yaml).unwrap();
     }
 
     Ok(())
@@ -175,6 +174,7 @@ mod test {
 
     use super::*;
     use crate::tests::fixtures::sidebars::SidebarFixtures;
+
     #[test]
     fn test_update_sidebars() {
         let sb = indoc!(
@@ -229,6 +229,39 @@ mod test {
         ];
         let res = update_sidebars(&pairs);
         assert!(res.is_ok());
+
         // re-read the files and check if the changes are there
+        let mut path = content_root().to_path_buf().to_path_buf();
+        path.push("sidebars");
+        path.push("sidebar_0.yaml");
+        let content = fs::read_to_string(&path).unwrap();
+        let sb = serde_yaml_ng::from_str::<Sidebar>(&content).unwrap();
+
+        let third_item_first_child =
+            if let SidebarEntry::Default(BasicEntry { children, .. }) = &sb.sidebar[2] {
+                children.first().unwrap()
+            } else {
+                panic!("Expected a Section entry with children");
+            };
+        let link = if let SidebarEntry::Default(BasicEntry { link: l, .. }) = third_item_first_child
+        {
+            l.clone().unwrap()
+        } else {
+            panic!("Expected a Link entry");
+        };
+        assert_eq!(link, "/Web/CSS/CSS_Box_Alignment/Something_New".to_string());
+
+        let third_item_third_child =
+            if let SidebarEntry::Default(BasicEntry { children, .. }) = &sb.sidebar[2] {
+                children.get(2).unwrap()
+            } else {
+                panic!("Expected a Section entry with children");
+            };
+        let link = if let SidebarEntry::Link(l) = third_item_third_child {
+            l.clone()
+        } else {
+            panic!("Expected a Link entry");
+        };
+        assert_eq!(link, "/Web/CSS/CSS_Box_Alignment/Also_New".to_string());
     }
 }
