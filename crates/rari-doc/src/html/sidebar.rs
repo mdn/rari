@@ -1,8 +1,9 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 pub use std::ops::Deref;
 use std::sync::{Arc, LazyLock};
 
 use dashmap::DashMap;
+use indexmap::IndexMap;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
 use rari_types::locale::Locale;
@@ -138,9 +139,9 @@ pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(transparent)]
 pub struct SidebarL10n {
-    // Keep the translations sorted with BTreeMaps,
+    // Keep the translations in order of insertion,
     // so Sidebar manipulations are deterministic.
-    l10n: BTreeMap<Locale, BTreeMap<String, String>>,
+    l10n: IndexMap<Locale, IndexMap<String, String>>,
 }
 
 impl SidebarL10n {
@@ -150,7 +151,7 @@ impl SidebarL10n {
             return s.map(|s| s.as_str()).unwrap_or(key);
         }
         self.l10n
-            .get(&Default::default())
+            .get(&Locale::default())
             .and_then(|l| l.get(key))
             .map(|s| s.as_str())
             .unwrap_or(key)
