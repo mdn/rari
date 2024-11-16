@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.20](https://github.com/mdn/rari/compare/v0.0.19...v0.0.20) (2024-11-16)
+
+
+### Features
+
+* **issues:** add data-href to broken links ([02833be](https://github.com/mdn/rari/commit/02833be0e5a11c705c2a9f7285748ada68adf2c8))
+* **serve:** fast local search-index ([7076a81](https://github.com/mdn/rari/commit/7076a81092303b413b898d7e81d017c132d8faa1))
+* **sidebars:** support hash links ([26a7a13](https://github.com/mdn/rari/commit/26a7a13f0e47123302bee47386d084a676495a4e))
+
 ## [0.0.19](https://github.com/mdn/rari/compare/v0.0.18...v0.0.19) (2024-11-13)
 
 
