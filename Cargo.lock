@@ -2568,6 +2568,7 @@ dependencies = [
  "rari-doc",
  "rari-tools",
  "rari-types",
+ "rari-utils",
  "self_update",
  "serde",
  "serde_json",

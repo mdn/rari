@@ -98,6 +98,7 @@ rari-doc.workspace = true
 rari-tools.workspace = true
 rari-deps.workspace = true
 rari-types.workspace = true
+rari-utils.workspace = true
 
 serde.workspace = true
 serde_json.workspace = true

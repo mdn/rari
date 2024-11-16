@@ -1,18 +1,33 @@
+use std::cmp::Ordering;
+use std::str::FromStr;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
-use axum::extract::{Request, State};
+use axum::extract::{Path, Request, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use axum::routing::get;
 use axum::{Json, Router};
 use rari_doc::error::DocError;
 use rari_doc::issues::{to_display_issues, InMemoryLayer};
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
+use rari_doc::pages::types::doc::Doc;
+use rari_doc::reader::read_docs_parallel;
+use rari_types::globals::{content_root, content_translated_root};
+use rari_types::locale::Locale;
+use rari_types::Popularities;
+use rari_utils::io::read_to_string;
+use serde::Serialize;
 use tracing::{error, span, Level};
 
 static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
 
+#[derive(Debug, Serialize)]
+struct SearchItem {
+    title: String,
+    url: String,
+}
 async fn get_json_handler(
     State(memory_layer): State<Arc<InMemoryLayer>>,
     req: Request,
@@ -51,11 +66,63 @@ fn get_json(url: &str) -> Result<BuiltPage, DocError> {
     Ok(json)
 }
 
+async fn get_search_index_handler(
+    Path(locale): Path<String>,
+) -> Result<Json<Vec<SearchItem>>, AppError> {
+    tracing::info!("search index for: {locale}");
+    let locale = Locale::from_str(&locale)?;
+    Ok(Json(get_search_index(locale)?))
+}
+
+fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
+    let in_file = content_root()
+        .join(Locale::EnUs.as_folder_str())
+        .join("popularities.json");
+    let json_str = read_to_string(in_file)?;
+    let popularities: Popularities = serde_json::from_str(&json_str)?;
+    let docs = read_docs_parallel::<Doc>(
+        &[&if locale == Locale::EnUs {
+            content_root()
+        } else {
+            content_translated_root().expect("no TRANSLATED_CONTENT_ROOT set")
+        }
+        .join(locale.as_folder_str())],
+        None,
+    )?;
+
+    let mut index = docs
+        .iter()
+        .map(|doc| {
+            (
+                doc,
+                popularities
+                    .popularities
+                    .get(doc.url())
+                    .cloned()
+                    .unwrap_or_default(),
+            )
+        })
+        .collect::<Vec<(&Page, f64)>>();
+    index.sort_by(|(da, a), (db, b)| match b.partial_cmp(a) {
+        None | Some(Ordering::Equal) => da.title().cmp(db.title()),
+        Some(ord) => ord,
+    });
+    let out = index
+        .into_iter()
+        .map(|(doc, _)| SearchItem {
+            title: doc.title().to_string(),
+            url: doc.url().to_string(),
+        })
+        .collect::<Vec<_>>();
+
+    Ok(out)
+}
+
 struct AppError(anyhow::Error);
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷‍♂️: {}", self.0)).into_response()
+        (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response()
     }
 }
 impl<E> From<E> for AppError
@@ -74,6 +141,7 @@ pub fn serve(memory_layer: InMemoryLayer) -> Result<(), anyhow::Error> {
         .unwrap()
         .block_on(async {
             let app = Router::new()
+                .route("/:locale/search-index.json", get(get_search_index_handler))
                 .fallback(get_json_handler)
                 .with_state(Arc::new(memory_layer));
 
