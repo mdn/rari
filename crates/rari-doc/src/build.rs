@@ -16,8 +16,9 @@ use sha2::{Digest, Sha256};
 use tracing::{span, Level};
 
 use crate::cached_readers::{
-    blog_files, contributor_spotlight_files, curriculum_files, generic_pages_files,
+    blog_files, contributor_spotlight_files, curriculum_files, generic_pages_files, wiki_histories,
 };
+use crate::contributors::contributors_txt;
 use crate::error::DocError;
 use crate::pages::build::copy_additional_files;
 use crate::pages::json::BuiltPage;
@@ -70,6 +71,16 @@ pub fn build_single_page(page: &Page) -> Result<(), DocError> {
         let meta_file = File::create(meta_out_file).unwrap();
         let meta_buffed = BufWriter::new(meta_file);
         serde_json::to_writer(meta_buffed, &json.doc.as_meta(format!("{hash:x}")))?;
+        let wiki_histories = wiki_histories();
+        let wiki_history = wiki_histories
+            .get(&page.locale())
+            .and_then(|wh| wh.get(page.slug()));
+        let github_file_url = json.doc.source.github_url.as_str();
+        let contributors_txt_str = contributors_txt(wiki_history, github_file_url);
+        let contributors_out_file = out_path.join("contributors.txt");
+        let contributors_file = File::create(contributors_out_file).unwrap();
+        let mut contributors_buffed = BufWriter::new(contributors_file);
+        contributors_buffed.write_all(contributors_txt_str.as_bytes())?;
     } else {
         serde_json::to_writer(buffed, &built_page)?;
     }
