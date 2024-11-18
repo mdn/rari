@@ -11,5 +11,5 @@ pub fn svgattr(name: String) -> Result<String, DocError> {
         name,
     );
 
-    RariApi::link(&url, None, Some(&name), true, None, false)
+    RariApi::link(&url, env.locale, Some(&name), true, None, false)
 }

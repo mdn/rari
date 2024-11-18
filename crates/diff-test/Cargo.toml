@@ -1,6 +1,6 @@
 [package]
 name = "diff-test"
-version = "0.0.15"
+version = "0.0.20"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -21,7 +21,8 @@ prettydiff = "0.7"
 html-minifier = "5"
 ansi-to-html = "0.2"
 similar = "2"
-quick-xml = "0.36"
+quick-xml = "0.37"
 sha2 = "0.10"
 clap = { version = "4.5.1", features = ["derive"] }
 dashmap = "6"
+lol_html = "2"

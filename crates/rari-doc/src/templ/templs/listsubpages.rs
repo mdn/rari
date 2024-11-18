@@ -31,7 +31,7 @@ pub fn list_sub_pages(
             &mut out,
             url,
             env.locale,
-            Some(SubPagesSorter::SlugNatural),
+            Some(SubPagesSorter::TitleNatural),
             &[],
         )?;
     } else {
@@ -40,7 +40,7 @@ pub fn list_sub_pages(
             url,
             env.locale,
             Some(depth),
-            Some(SubPagesSorter::SlugNatural),
+            Some(SubPagesSorter::TitleNatural),
             &[],
             false,
         )?;

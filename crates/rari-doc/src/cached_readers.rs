@@ -13,10 +13,8 @@
 //!   - `STATIC_DOC_PAGE_FILES_BY_PATH`: Stores documentation pages indexed by file path.
 //!
 //! - **Dynamic Caches**: These caches store documentation pages that can be modified during runtime.
-//!   - `CACHED_DOC_PAGE_FILES`: Stores documentation pages indexed by file path, wrapped in a `RwLock` for
-//!     thread-safe access.
-//!   - `CACHED_SIDEBAR_FILES`: Stores sidebar metadata indexed by name and locale, wrapped in a `RwLock` for
-//!     thread-safe access.
+//!   - `CACHED_DOC_PAGE_FILES`: Stores documentation pages indexed by file path.
+//!   - `CACHED_SIDEBAR_FILES`: Stores sidebar metadata indexed by name and locale.
 //!
 //! - **Specialized Caches**: These caches store specific types of documentation content.
 //!   - `CACHED_CURRICULUM`: Stores curriculum files, indexed by URL, path, and index,
@@ -26,6 +24,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::{Arc, LazyLock, OnceLock};
 
 use dashmap::DashMap;
@@ -38,6 +37,7 @@ use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use tracing::error;
 
+use crate::contributors::{WikiHistories, WikiHistory};
 use crate::error::DocError;
 use crate::html::sidebar::{MetaSidebar, Sidebar};
 use crate::pages::page::{Page, PageLike};
@@ -65,6 +65,7 @@ pub(crate) static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
 pub(crate) static CACHED_CURRICULUM: OnceLock<CurriculumFiles> = OnceLock::new();
 pub(crate) static GENERIC_PAGES_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
 pub(crate) static CONTRIBUTOR_SPOTLIGHT_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
+pub(crate) static WIKI_HISTORY: OnceLock<WikiHistories> = OnceLock::new();
 
 /// Represents the cached files for blog posts.
 ///
@@ -563,5 +564,105 @@ pub fn contributor_spotlight_files() -> Cow<'static, UrlToPageMap> {
         Cow::Borrowed(CONTRIBUTOR_SPOTLIGHT_FILES.get_or_init(gather))
     } else {
         Cow::Owned(gather())
+    }
+}
+
+/// Retrieves the wiki histories for all supported locales, including English (en-US).
+///
+/// This function gathers historical data about the MDN wiki pages from `_wikihistory.json` files
+/// stored in content and translated-content. It returns a `Cow<'static, WikiHistories>` to allow
+/// for efficient caching and re-use of data when possible.
+///
+/// ### Behavior
+///
+/// - **Caching**: If content caching is enabled (via `cache_content()`), the function retrieves
+///   the wiki histories from a global, static cache (`WIKI_HISTORY`) or initializes the cache
+///   if it hasn't been loaded yet.
+/// - **Dynamic Loading**: If caching is disabled, the function reads the histories directly
+///   from disk at runtime.
+///
+/// ### File Structure
+///
+/// - Each locale's wiki history is stored in a `_wikihistory.json` file, located in the
+///   corresponding locale's directory under the translated content root.
+/// - The English (en-US) wiki history is always loaded from the default content root.
+///
+/// ### Error Handling
+///
+/// - Errors encountered while reading directories or JSON files are logged, and the function
+///   defaults to returning an empty `WikiHistories` map in these cases.
+///
+/// ### Returns
+///
+/// - A `Cow<'static, WikiHistories>`:
+///   - If caching is enabled, a borrowed reference to the cached `WikiHistories` is returned.
+///   - If caching is disabled, an owned instance of `WikiHistories` is returned.
+///
+/// ### Example
+///
+/// ```
+/// let wiki_histories = wiki_histories();
+/// if let Some(en_us_history) = wiki_histories.get(&Locale::EnUs) {
+///     println!("Loaded en-US wiki history: {:?}", en_us_history);
+/// } else {
+///     println!("No en-US wiki history found.");
+/// }
+/// ```
+///
+/// ### Panics
+///
+/// - Panics if the translated content root or individual directory names are invalid.
+/// - Panics if the `_wikihistory.json` file is missing or contains malformed JSON.
+pub(crate) fn wiki_histories() -> Cow<'static, WikiHistories> {
+    fn gather() -> Result<WikiHistories, DocError> {
+        let mut map = HashMap::new();
+        if let Some(ctr) = content_translated_root() {
+            for locale in ctr
+                .read_dir()
+                .expect("unable to read translated content root")
+                .filter_map(|dir| {
+                    dir.map_err(|e| {
+                        error!("Error: reading translated content root: {e}");
+                    })
+                    .ok()
+                    .and_then(|dir| {
+                        Locale::from_str(
+                            dir.file_name()
+                                .as_os_str()
+                                .to_str()
+                                .expect("invalid folder"),
+                        )
+                        .map_err(|e| error!("Invalid folder {:?}: {e}", dir.file_name()))
+                        .ok()
+                    })
+                })
+            {
+                let json_str =
+                    read_to_string(ctr.join(locale.as_folder_str()).join("_wikihistory.json"))?;
+                let history: WikiHistory = serde_json::from_str(&json_str)?;
+                map.insert(locale, history);
+            }
+        }
+        let json_str = read_to_string(
+            content_root()
+                .join(Locale::EnUs.as_folder_str())
+                .join("_wikihistory.json"),
+        )?;
+        let history: WikiHistory = serde_json::from_str(&json_str)?;
+        map.insert(Locale::EnUs, history);
+        Ok(map)
+    }
+    if cache_content() {
+        Cow::Borrowed(WIKI_HISTORY.get_or_init(|| {
+            gather()
+                .inspect_err(|e| tracing::error!("Error reading wiki histories: {e}"))
+                .unwrap_or_default()
+        }))
+    } else {
+        Cow::Owned(
+            gather()
+                .inspect_err(|e| tracing::error!("Error reading wiki histories: {e}"))
+                .unwrap_or_default(),
+        )
     }
 }

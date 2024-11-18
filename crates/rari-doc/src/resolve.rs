@@ -74,7 +74,7 @@ pub(crate) fn strip_locale_from_url(url: &str) -> (Option<Locale>, &str) {
     }
     let i = url[1..].find('/').map(|i| i + 1).unwrap_or(url.len());
     let locale = Locale::from_str(&url[1..i]).ok();
-    (locale, &url[i..])
+    (locale, &url[if locale.is_none() { 0 } else { i }..])
 }
 
 /// Represents metadata extracted from a URL.
@@ -149,6 +149,37 @@ pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, UrlError> {
         locale,
         page_category,
     })
+}
+
+/// Extracts the `Locale` from a given URL path.
+///
+/// This function takes a URL path as input and attempts to parse the first
+/// path segment as a locale. If the first segment corresponds to a valid locale,
+/// it returns `Some(Locale)`, otherwise, it returns `None`.
+///
+/// # Arguments
+///
+/// * `url` - A string slice that holds the URL path, potentially with a leading `/`.
+///
+/// # Returns
+///
+/// * `Option<Locale>` - `Some(Locale)` if the first path segment is a valid locale,
+///   or `None` if it isn't.
+///
+/// # Examples
+///
+/// ```
+/// # use rari_doc::resolve::locale_from_url;
+/// # use rari_types::locale::Locale;
+///
+/// assert_eq!(locale_from_url("/en-US/some/path"), Some(Locale::EnUs));
+/// assert_eq!(locale_from_url("fr/page"), Some(Locale::Fr));
+/// assert_eq!(locale_from_url("invalid/path"), None);
+/// ```
+pub fn locale_from_url(url: &str) -> Option<Locale> {
+    let url = url.strip_prefix("/").unwrap_or(url);
+    url.split_once('/')
+        .and_then(|(l, _)| Locale::from_str(l).ok())
 }
 
 /// Builds a URL for a given slug, locale, and page category.

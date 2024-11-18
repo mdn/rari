@@ -9,5 +9,12 @@ pub fn csp(directive: String) -> Result<String, DocError> {
         "/{}/docs/Web/HTTP/Headers/Content-Security-Policy/{directive}",
         env.locale.as_url_str()
     );
-    RariApi::link(&url, None, Some(directive.as_ref()), true, None, false)
+    RariApi::link(
+        &url,
+        env.locale,
+        Some(directive.as_ref()),
+        true,
+        None,
+        false,
+    )
 }

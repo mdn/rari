@@ -41,9 +41,6 @@ pub fn live_sample(
             }
         }
     }
-    if let Some(allowed_features) = allowed_features {
-        write!(&mut out, r#"allow="{}" "#, allowed_features)?;
-    }
     write!(
         &mut out,
         r#"src="{}{}{}runner.html?id={}" "#,
@@ -52,6 +49,9 @@ pub fn live_sample(
         if env.url.ends_with('/') { "" } else { "/" },
         id
     )?;
+    if let Some(allowed_features) = allowed_features {
+        write!(&mut out, r#"allow="{}" "#, allowed_features)?;
+    }
     out.push_str(r#"sandbox="allow-same-origin allow-scripts" "#);
     out.push_str(r#"loading="lazy"></iframe></div>"#);
     Ok(out)

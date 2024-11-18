@@ -473,37 +473,6 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
         }
     }
 
-    fn collect_first_child_text<'a>(node: &'a AstNode<'a>, output: &mut Vec<u8>) {
-        if let Some(child) = node.children().next() {
-            if matches!(child.data.borrow().value, NodeValue::Paragraph) {
-                if let Some(child) = child.children().next() {
-                    if !matches!(child.data.borrow().value, NodeValue::HtmlInline(_)) {
-                        return Self::collect_text(child, output);
-                    }
-                }
-            }
-            Self::collect_text(child, output)
-        } else {
-            Self::collect_text(node, output)
-        }
-    }
-
-    fn next_is_link<'a>(node: &'a AstNode<'a>) -> bool {
-        if let Some(child) = node.children().next() {
-            if matches!(child.data.borrow().value, NodeValue::Link(_)) {
-                return true;
-            }
-            if matches!(child.data.borrow().value, NodeValue::Paragraph) {
-                if let Some(child) = child.children().next() {
-                    if matches!(child.data.borrow().value, NodeValue::Link(_)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
-
     fn format_node<'a>(
         &mut self,
         node: &'a AstNode<'a>,
@@ -597,19 +566,7 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
             NodeValue::DescriptionTerm => {
                 if entering {
                     self.cr()?;
-                    let mut text_content = Vec::with_capacity(20);
-                    Self::collect_first_child_text(node, &mut text_content);
-                    let raw_id = String::from_utf8_lossy(&text_content);
-                    let is_templ = raw_id.contains(DELIM_START);
-                    if is_templ {
-                        write!(self.output, "<dt data-update-id")?;
-                    } else {
-                        let id = self.anchorizer.anchorize(&raw_id);
-                        write!(self.output, "<dt id=\"{}\"", id)?;
-                    };
-                    if !is_templ && !Self::next_is_link(node) {
-                        write!(self.output, " data-add-link")?;
-                    }
+                    self.output.write_all(b"<dt")?;
                     self.render_sourcepos(node)?;
                     self.output.write_all(b">")?;
                 } else {
@@ -727,7 +684,8 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                         match self.plugins.render.codefence_syntax_highlighter {
                             None => {
                                 pre_attributes.extend(code_attributes);
-                                let with_code = if let Some(cls) = pre_attributes.get_mut("class") {
+                                let _with_code = if let Some(cls) = pre_attributes.get_mut("class")
+                                {
                                     if !ncb.info.is_empty() {
                                         let langs = ncb
                                             .info
@@ -746,17 +704,8 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                                     false
                                 };
                                 write_opening_tag(self.output, "pre", pre_attributes)?;
-                                if with_code {
-                                    self.output.write_all(b"<code>")?;
-                                }
-
                                 self.escape(literal)?;
-
-                                if with_code {
-                                    self.output.write_all(b"</code></pre>")?;
-                                } else {
-                                    self.output.write_all(b"</pre>\n")?
-                                }
+                                self.output.write_all(b"</pre>\n")?
                             }
                             Some(highlighter) => {
                                 highlighter.write_pre_tag(self.output, pre_attributes)?;

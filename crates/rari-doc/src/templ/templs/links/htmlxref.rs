@@ -36,5 +36,5 @@ pub fn htmlxref(
         url.push_str(&anchor);
     }
 
-    RariApi::link(&url, None, Some(display.as_ref()), code, None, false)
+    RariApi::link(&url, env.locale, Some(display.as_ref()), code, None, false)
 }

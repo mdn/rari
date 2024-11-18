@@ -73,6 +73,9 @@ pub enum Token {
 
 fn to_arg(pair: Pair<'_, Rule>) -> Option<Arg> {
     match pair.as_rule() {
+        Rule::single_quoted_string => pair.into_inner().next().and_then(to_arg),
+        Rule::double_quoted_string => pair.into_inner().next().and_then(to_arg),
+        Rule::backquoted_quoted_string => pair.into_inner().next().and_then(to_arg),
         Rule::sq_string => {
             let s = pair.as_span().as_str();
             Some(Arg::String(
@@ -133,15 +136,6 @@ pub fn parse(input: &str) -> Result<Vec<Token>, DocError> {
     Ok(tokens)
 }
 
-fn _strip_escape_residues(s: &str) -> &str {
-    let s = s.strip_prefix("&gt;").or(s.strip_prefix('>')).unwrap_or(s);
-    let s = s
-        .strip_suffix("!&lt;")
-        .or(s.strip_suffix("!<"))
-        .unwrap_or(s);
-    s
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -154,7 +148,7 @@ mod test {
 
     #[test]
     fn custom() {
-        let p = parse(r#"Foo {{jsxref("Array",,1,true) }}bar {{ foo }}"#);
+        let p = parse(r#"Foo {{jsxref("Array",,1,true, ' ') }}bar {{ foo }}"#);
         println!("{:#?}", p);
     }
 

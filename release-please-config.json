@@ -19,6 +19,11 @@
           "type": "json",
           "path": "rari-npm/package-lock.json",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "rari-npm/package-lock.json",
+          "jsonpath": "$.packages[''].version"
         }
       ]
     }

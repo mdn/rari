@@ -276,7 +276,7 @@ fn split_into_parts(s: &str) -> Vec<(bool, &str)> {
     let mut end = 0;
     let mut in_number = false;
 
-    for c in s.chars() {
+    for (i, c) in s.char_indices() {
         if c.is_ascii_digit() || c == '.' {
             if !in_number {
                 if start != end {
@@ -292,7 +292,7 @@ fn split_into_parts(s: &str) -> Vec<(bool, &str)> {
             }
             in_number = false;
         }
-        end += 1
+        end = i + c.len_utf8()
     }
 
     if start != end {

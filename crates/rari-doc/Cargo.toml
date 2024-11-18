@@ -1,6 +1,6 @@
 [package]
 name = "rari-doc"
-version = "0.0.15"
+version = "0.0.20"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -33,14 +33,14 @@ yaml_parser = "0.2"
 percent-encoding = "2"
 pest = "2"
 pest_derive = "2"
-validator = { version = "0.18", features = ["derive"] }
+validator = { version = "0.19", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 
-scraper = { version = "0.20", features = ["deterministic"] }
+scraper = { version = "0.21", features = ["deterministic"] }
 lol_html = "2"
 html-escape = "0.2"
-html5ever = "0.27"
-ego-tree = "0.6"
+html5ever = "0.29"
+ego-tree = "0.9"
 
 ignore = "0.4"
 crossbeam-channel = "0.5"

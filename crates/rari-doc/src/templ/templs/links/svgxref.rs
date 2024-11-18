@@ -18,5 +18,5 @@ pub fn svgxref_internal(element_name: &str, locale: Locale) -> Result<String, Do
         element_name,
     );
 
-    RariApi::link(&url, None, Some(display.as_ref()), true, None, false)
+    RariApi::link(&url, locale, Some(display.as_ref()), true, None, false)
 }

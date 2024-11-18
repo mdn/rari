@@ -35,7 +35,7 @@ pub fn api_list_alpha() -> Result<String, DocError> {
             "<li>",
             &RariApi::link(
                 page.url(),
-                Some(env.locale),
+                env.locale,
                 None,
                 true,
                 Some(page.short_title().unwrap_or(page.title())),

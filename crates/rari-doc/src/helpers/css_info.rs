@@ -114,7 +114,7 @@ pub fn css_info_properties(
             "animationType",
             Cow::Owned(RariApi::link(
                 "/Web/CSS/CSS_animated_properties",
-                Some(locale),
+                locale,
                 Some(get_css_l10n_for_locale("animationType", locale)),
                 false,
                 None,
@@ -281,7 +281,7 @@ fn add_additional_applies_to<'a>(
     ));
 }
 
-fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
+pub fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
     if let Some(data) = mdn_data_files().css_l10n.get(key) {
         let data = get_for_locale(locale, data);
         if !data.is_null() {
@@ -306,7 +306,7 @@ pub fn css_computed(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_csscomputed", locale)?;
     RariApi::link(
         "/Web/CSS/computed_value",
-        Some(locale),
+        locale,
         Some(copy),
         false,
         None,
@@ -318,7 +318,7 @@ pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinherited", locale)?;
     RariApi::link(
         "/Web/CSS/inheritance",
-        Some(locale),
+        locale,
         Some(copy),
         false,
         None,
@@ -330,7 +330,7 @@ pub fn css_inital(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinitial", locale)?;
     RariApi::link(
         "/Web/CSS/initial_value",
-        Some(locale),
+        locale,
         Some(copy),
         false,
         None,
@@ -338,7 +338,7 @@ pub fn css_inital(locale: Locale) -> Result<String, DocError> {
     )
 }
 
-fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
+pub fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
     let missing = l10n_json_data("CSS", "missing", locale)?;
     Ok(write!(out, "<span style=\"color:red;\">{missing}</span>")?)
 }

@@ -264,7 +264,7 @@ pub(crate) fn redirects_path(locale: Locale) -> Result<PathBuf, ToolError> {
 fn validate_pairs(pairs: &HashMap<String, String>, locale: Locale) -> Result<(), ToolError> {
     for (from, to) in pairs {
         validate_from_url(from, locale)?;
-        validate_to_url(to)?;
+        validate_to_url(to, locale)?;
     }
     Ok(())
 }
@@ -291,16 +291,16 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
     let url = url.to_lowercase();
     if !url.starts_with('/') {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL must start with a '/' but was '{}'",
-            url
+            "From-URL must start with a '/' but was '{}' for locale '{}'.",
+            url, locale
         )));
     }
 
     let parts: Vec<&str> = url.split('/').collect();
     if parts.len() < 4 {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL '{}' does not have enough parts for locale validation.",
-            url
+            "From-URL '{}' does not have enough parts for locale validation for locale '{}'.",
+            url, locale
         )));
     }
 
@@ -314,8 +314,8 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 
     if parts[2] != "docs" {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL '{}' must contain '/docs/'",
-            url
+            "From-URL '{}' must contain '/docs/' (locale: '{}').",
+            url, locale
         )));
     }
 
@@ -324,9 +324,10 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
     // Check for existing file/folder.
     if let Ok(page) = Page::from_url(&url) {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL '{}' resolves to an existing folder at '{}'.",
+            "From-URL '{}' resolves to an existing folder at '{}' for locale '{}'.",
             url,
-            page.path().display()
+            page.path().display(),
+            locale
         )));
     }
 
@@ -349,7 +350,7 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
 ///
 /// * `Ok(())` if the URL is valid.
 /// * `Err(ToolError)` if the URL is invalid.
-fn validate_to_url(url: &str) -> Result<(), ToolError> {
+fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
     if is_vanity_redirect_url(url) {
         return Ok(());
     }
@@ -360,13 +361,19 @@ fn validate_to_url(url: &str) -> Result<(), ToolError> {
             Url::parse(url).map_err(|e| ToolError::InvalidRedirectToURL(e.to_string()))?;
         if parsed_url.scheme() != "https" {
             return Err(ToolError::InvalidRedirectToURL(format!(
-                "We only redirect to 'https://', but got '{}://'",
-                parsed_url.scheme()
+                "We only redirect to 'https://', but got '{}://' (locale: '{}').",
+                parsed_url.scheme(),
+                locale
             )));
         }
     } else if url.starts_with('/') {
         // Internal URL, perform validations
-        check_url_invalid_symbols(url)?;
+        check_url_invalid_symbols(url).map_err(|e: ToolError| match e {
+            ToolError::InvalidRedirectToURL(msg) => {
+                ToolError::InvalidRedirectToURL(format!("Locale: '{}': {}", locale, msg))
+            }
+            _ => e,
+        })?;
 
         // Split by '#', take the bare URL
         let bare_url = url.split('#').next().unwrap_or("");
@@ -382,15 +389,16 @@ fn validate_to_url(url: &str) -> Result<(), ToolError> {
             .join(path);
         if !path.exists() {
             return Err(ToolError::InvalidRedirectToURL(format!(
-                "To-URL '{}' resolves to a non-existing file/folder at '{}'.",
+                "To-URL '{}' resolves to a non-existing file/folder at '{}' for locale '{}'.",
                 url,
-                path.display()
+                path.display(),
+                locale
             )));
         }
     } else {
         return Err(ToolError::InvalidRedirectToURL(format!(
-            "To-URL '{}' has to be external (https://) or start with '/'.",
-            url
+            "To-URL '{}' has to be external (https://) or start with '/' for locale '{}'.",
+            url, locale
         )));
     }
 
@@ -827,7 +835,7 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/A";
-        let result = validate_to_url(url);
+        let result = validate_to_url(url, Locale::EnUs);
         assert!(result.is_ok());
     }
 
@@ -836,7 +844,7 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/en-US/docs/B";
-        let result = validate_to_url(url);
+        let result = validate_to_url(url, Locale::EnUs);
         assert!(result.is_err());
     }
 
@@ -845,18 +853,18 @@ mod tests {
         let slugs = vec!["A".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let url = "/";
-        let result = validate_to_url(url);
+        let result = validate_to_url(url, Locale::EnUs);
         assert!(result.is_err());
 
         let url = "/en-US/A";
-        let result = validate_to_url(url);
+        let result = validate_to_url(url, Locale::EnUs);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_validate_to_url_invalid_symbols() {
         let url = "/en-US/docs/\nA";
-        let result = validate_to_url(url);
+        let result = validate_to_url(url, Locale::EnUs);
         assert!(result.is_err());
     }
 

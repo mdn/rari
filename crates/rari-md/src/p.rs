@@ -1,15 +1,9 @@
 use comrak::nodes::{AstNode, NodeValue};
-use itertools::Itertools;
 
 use crate::ext::{DELIM_END, DELIM_START};
 
 fn only_escaped_templ(b: &[u8], start: usize) -> bool {
-    let b = &b[..b
-        .iter()
-        .rev()
-        .find_position(|c| *c != &b'\n')
-        .map(|(i, _)| b.len() - i)
-        .unwrap_or(0)];
+    let b = b.trim_ascii_end();
     if b[start..].starts_with(DELIM_START.as_bytes()) {
         let start = start + DELIM_START.as_bytes().len();
         if let Some(end) = b[start..]
@@ -58,5 +52,7 @@ mod test {
         assert!(only_escaped_templ(b, 0));
         let b = "⟬0⟭⟬1⟭".as_bytes();
         assert!(only_escaped_templ(b, 0));
+        let b = "⟬0⟭,⟬1⟭".as_bytes();
+        assert!(!only_escaped_templ(b, 0));
     }
 }

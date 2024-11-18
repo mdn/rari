@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.0.15"
+version = "0.0.20"
 edition = "2021"
 license = "MPL-2.0"
 authors = [
@@ -98,6 +98,7 @@ rari-doc.workspace = true
 rari-tools.workspace = true
 rari-deps.workspace = true
 rari-types.workspace = true
+rari-utils.workspace = true
 
 serde.workspace = true
 serde_json.workspace = true
