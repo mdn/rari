@@ -1,19 +1,16 @@
-use std::{fs, iter};
+use std::fs;
 
-use lazy_static::lazy_static;
+use const_format::concatcp;
 use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_doc::html::sidebar::{BasicEntry, Sidebar, SidebarEntry, SubPageEntry, WebExtApiEntry};
 use rari_types::globals::content_root;
-use rari_types::locale::Locale;
+use rari_types::locale::default_locale;
 use rari_utils::concat_strs;
 
 use crate::error::ToolError;
 
 const PREFIX: &str = "# Do not add comments to this file. They will be lost.\n\n";
-
-lazy_static! {
-    static ref SIDEBAR_PATH_PREFIX: String = format!("/{}/docs", Locale::default().as_url_str());
-}
+static SIDEBAR_PATH_PREFIX: &str = concatcp!("/", default_locale().as_url_str(), "/docs");
 
 pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), ToolError> {
     let sidebars = read_sidebars()?;
@@ -109,13 +106,11 @@ fn read_sidebars() -> Result<Vec<(std::path::PathBuf, Sidebar)>, ToolError> {
         .collect()
 }
 
-fn replace_pairs(
-    pairs: &[(String, Option<String>)],
-) -> impl FnMut(Option<String>) -> Option<String> + '_ {
-    move |link: Option<String>| match link {
+fn replace_pairs(link: Option<String>, pairs: &[(String, Option<String>)]) -> Option<String> {
+    match link {
         Some(link) => {
             let mut has_prefix = false;
-            let link = if let Some(l) = link.strip_prefix(SIDEBAR_PATH_PREFIX.as_str()) {
+            let link = if let Some(l) = link.strip_prefix(SIDEBAR_PATH_PREFIX) {
                 has_prefix = true;
                 l.to_string()
             } else {
@@ -125,7 +120,7 @@ fn replace_pairs(
                 if link == *from {
                     if let Some(to) = to {
                         if has_prefix {
-                            return Some(format!("{}{}", SIDEBAR_PATH_PREFIX.as_str(), to));
+                            return Some(concat_strs!(SIDEBAR_PATH_PREFIX, to));
                         } else {
                             return Some(to.clone());
                         }
@@ -150,8 +145,7 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, Option<String>)]) -> Sid
             children,
             details,
         }) => {
-            let new_link: Option<String> =
-                iter::once(link.clone()).map(replace_pairs(pairs)).collect();
+            let new_link: Option<String> = replace_pairs(link.clone(), pairs);
             if link.is_some() && new_link.is_none() {
                 return SidebarEntry::None;
             }
@@ -176,15 +170,14 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, Option<String>)]) -> Sid
             path,
             include_parent,
         }) => {
-            let new_path: Option<String> =
-                iter::once(Some(path)).map(replace_pairs(pairs)).collect();
+            let new_path: Option<String> = replace_pairs(Some(path), pairs);
             if new_path.is_none() {
                 return SidebarEntry::None;
             }
             SidebarEntry::ListSubPages(SubPageEntry {
                 details,
                 tags,
-                link: iter::once(link.clone()).map(replace_pairs(pairs)).collect(),
+                link: replace_pairs(link.clone(), pairs),
                 hash,
                 title,
                 path: new_path.unwrap(),
@@ -200,15 +193,14 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, Option<String>)]) -> Sid
             path,
             include_parent,
         }) => {
-            let new_path: Option<String> =
-                iter::once(Some(path)).map(replace_pairs(pairs)).collect();
+            let new_path: Option<String> = replace_pairs(Some(path), pairs);
             if new_path.is_none() {
                 return SidebarEntry::None;
             }
             SidebarEntry::ListSubPagesGrouped(SubPageEntry {
                 details,
                 tags,
-                link: iter::once(link.clone()).map(replace_pairs(pairs)).collect(),
+                link: replace_pairs(link.clone(), pairs),
                 hash,
                 title,
                 path: new_path.unwrap(),
@@ -223,7 +215,7 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, Option<String>)]) -> Sid
             children,
             details,
         }) => SidebarEntry::Default(BasicEntry {
-            link: iter::once(link).map(replace_pairs(pairs)).collect(),
+            link: replace_pairs(link.clone(), pairs),
             hash,
             title,
             code,
@@ -234,8 +226,7 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, Option<String>)]) -> Sid
             details,
         }),
         SidebarEntry::Link(link) => {
-            let new_link: Option<String> =
-                iter::once(Some(link)).map(replace_pairs(pairs)).collect();
+            let new_link: Option<String> = replace_pairs(Some(link), pairs);
             if new_link.is_none() {
                 return SidebarEntry::None;
             }

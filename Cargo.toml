@@ -94,6 +94,7 @@ dashmap = "6"
 serde_yaml_ng = "0.10"
 pretty_yaml = "0.5"
 yaml_parser = "0.2"
+const_format = "0.2"
 
 [dependencies]
 rari-doc.workspace = true
