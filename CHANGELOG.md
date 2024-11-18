@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.21](https://github.com/mdn/rari/compare/v0.0.20...v0.0.21) (2024-11-18)
+
+
+### Features
+
+* **build:** generate contributors.txt ([b37d92b](https://github.com/mdn/rari/commit/b37d92b5ba76176a7702efbce2d222079f31dd16))
+* **serve:** support contributors.txt ([5dfe87a](https://github.com/mdn/rari/commit/5dfe87a57cf1a42002e43da32f2b9a1fb1631d26))
+
 ## [0.0.20](https://github.com/mdn/rari/compare/v0.0.19...v0.0.20) (2024-11-16)
 
 
