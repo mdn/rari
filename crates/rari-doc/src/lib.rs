@@ -9,6 +9,7 @@
 //! - `baseline`: Handles baseline configurations and settings.
 //! - `build`: Manages the build process for the documentation.
 //! - `cached_readers`: Provides cached readers for efficient file access.
+//! - `contributors`: Handles generating contributors.txt.
 //! - `error`: Defines error types used throughout the crate.
 //! - `helpers`: Contains helper functions and utilities.
 //! - `html`: Manages HTML rendering and processing.
@@ -35,6 +36,7 @@
 pub mod baseline;
 pub mod build;
 pub mod cached_readers;
+pub mod contributors;
 pub mod error;
 pub mod helpers;
 pub mod html;
