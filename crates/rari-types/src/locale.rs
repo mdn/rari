@@ -88,6 +88,10 @@ pub enum Locale {
     ZhTw,
 }
 
+pub const fn default_locale() -> Locale {
+    Locale::EnUs
+}
+
 impl Display for Locale {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(to_variant_name(self).map_err(|_| std::fmt::Error)?)

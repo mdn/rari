@@ -33,7 +33,8 @@ pub enum ToolError {
     RariIoError(#[from] RariIoError),
     #[error(transparent)]
     JsonError(#[from] serde_json::Error),
-
+    #[error(transparent)]
+    YamlError(#[from] yaml_parser::SyntaxError),
     #[error("Invalid Redirection: {0}")]
     InvalidRedirectionEntry(String),
     #[error("Error reading redirects file: {0}")]
@@ -46,7 +47,8 @@ pub enum ToolError {
     InvalidRedirectToURL(String),
     #[error(transparent)]
     RedirectError(#[from] RedirectError),
-
+    #[error("Invalid yaml {0}")]
+    InvalidFrontmatter(#[from] serde_yaml_ng::Error),
     #[error("Page has subpages: {0}")]
     HasSubpagesError(Cow<'static, str>),
 

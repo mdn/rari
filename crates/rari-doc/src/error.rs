@@ -102,6 +102,8 @@ pub enum DocError {
     RariIoError(#[from] rari_utils::error::RariIoError),
     #[error("Slug required for SidebarEntry")]
     SlugRequiredForSidebarEntry,
+    #[error("Invalid sidebar entry")]
+    InvalidSidebarEntry,
 }
 
 /// Represents various errors that can occur while processing URLs.

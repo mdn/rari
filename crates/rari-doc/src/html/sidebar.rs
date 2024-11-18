@@ -3,12 +3,13 @@ pub use std::ops::Deref;
 use std::sync::{Arc, LazyLock};
 
 use dashmap::DashMap;
+use indexmap::IndexMap;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use scraper::{Html, Node, Selector};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 use super::links::{render_link_from_page, render_link_via_page, LinkModifier};
 use super::modifier::insert_attribute;
@@ -19,7 +20,7 @@ use crate::helpers;
 use crate::helpers::subpages::{list_sub_pages_grouped_internal, list_sub_pages_internal};
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
-use crate::utils::t_or_vec;
+use crate::utils::{is_default, serialize_t_or_vec, t_or_vec};
 
 fn cache_side_bar(sidebar: &str) -> bool {
     cache_content()
@@ -136,10 +137,12 @@ pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
     Ok(if out.is_empty() { None } else { Some(out) })
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(transparent)]
 pub struct SidebarL10n {
-    l10n: HashMap<Locale, HashMap<String, String>>,
+    // Keep the translations in order of insertion,
+    // so Sidebar manipulations are deterministic.
+    l10n: IndexMap<Locale, IndexMap<String, String>>,
 }
 
 impl SidebarL10n {
@@ -149,15 +152,36 @@ impl SidebarL10n {
             return s.map(|s| s.as_str()).unwrap_or(key);
         }
         self.l10n
-            .get(&Default::default())
+            .get(&Locale::default())
             .and_then(|l| l.get(key))
             .map(|s| s.as_str())
             .unwrap_or(key)
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+// Serialize the sidebar entries, filtering out the None variant. This is
+// used on the top-level sidebar field and the basic entry children field.
+fn serialize_sidebar_entries<S>(sidebar: &[SidebarEntry], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    // Filter out the None variant
+    let filtered: Vec<&SidebarEntry> = sidebar
+        .iter()
+        .filter(|entry| !matches!(entry, SidebarEntry::None))
+        .collect();
+    filtered.serialize(serializer)
+}
+
+fn sidebar_entries_are_empty(entries: &[SidebarEntry]) -> bool {
+    entries
+        .iter()
+        .all(|entry| matches!(entry, SidebarEntry::None))
+}
+
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 pub struct Sidebar {
+    #[serde(serialize_with = "serialize_sidebar_entries")]
     pub sidebar: Vec<SidebarEntry>,
     #[serde(default)]
     pub l10n: SidebarL10n,
@@ -168,12 +192,18 @@ pub struct MetaSidebar {
     pub entries: Vec<SidebarMetaEntry>,
     pub l10n: SidebarL10n,
 }
-impl From<Sidebar> for MetaSidebar {
-    fn from(value: Sidebar) -> Self {
-        MetaSidebar {
-            entries: value.sidebar.into_iter().map(Into::into).collect(),
+impl TryFrom<Sidebar> for MetaSidebar {
+    type Error = DocError;
+
+    fn try_from(value: Sidebar) -> Result<Self, Self::Error> {
+        Ok(MetaSidebar {
+            entries: value
+                .sidebar
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, DocError>>()?,
             l10n: value.l10n,
-        }
+        })
     }
 }
 
@@ -198,42 +228,62 @@ impl MetaSidebar {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(rename_all = "camelCase", tag = "type")]
-pub struct BasicEntry {
-    pub title: Option<String>,
-    pub link: Option<String>,
-    pub hash: Option<String>,
-    #[serde(default)]
-    pub code: bool,
-    #[serde(default)]
-    pub children: Vec<SidebarEntry>,
-    #[serde(default)]
-    pub details: Details,
+// used for skipping serialization if the field has the defaul value
+fn details_is_none(details: &Details) -> bool {
+    matches!(details, Details::None)
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(rename_all = "camelCase", tag = "type")]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BasicEntry {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub link: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "details_is_none")]
+    pub details: Details,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub code: bool,
+    #[serde(
+        default,
+        skip_serializing_if = "sidebar_entries_are_empty",
+        serialize_with = "serialize_sidebar_entries"
+    )]
+    pub children: Vec<SidebarEntry>,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SubPageEntry {
     pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub link: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
-    #[serde(deserialize_with = "t_or_vec", default)]
+    #[serde(
+        default,
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub tags: Vec<PageType>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "details_is_none")]
     pub details: Details,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_default")]
     pub include_parent: bool,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(rename_all = "camelCase", tag = "type")]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct WebExtApiEntry {
     pub title: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SidebarEntry {
     Section(BasicEntry),
@@ -244,6 +294,8 @@ pub enum SidebarEntry {
     Default(BasicEntry),
     #[serde(untagged)]
     Link(String),
+    #[serde(untagged)]
+    None,
 }
 
 #[derive(Debug, Default)]
@@ -320,9 +372,10 @@ pub struct SidebarMetaEntry {
     pub children: MetaChildren,
 }
 
-impl From<SidebarEntry> for SidebarMetaEntry {
-    fn from(value: SidebarEntry) -> Self {
-        match value {
+impl TryFrom<SidebarEntry> for SidebarMetaEntry {
+    type Error = DocError;
+    fn try_from(value: SidebarEntry) -> Result<Self, Self::Error> {
+        let res = match value {
             SidebarEntry::Section(BasicEntry {
                 link,
                 hash,
@@ -338,7 +391,12 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 children: if children.is_empty() {
                     MetaChildren::None
                 } else {
-                    MetaChildren::Children(children.into_iter().map(Into::into).collect())
+                    MetaChildren::Children(
+                        children
+                            .into_iter()
+                            .map(TryInto::try_into)
+                            .collect::<Result<_, DocError>>()?,
+                    )
                 },
             },
             SidebarEntry::ListSubPages(SubPageEntry {
@@ -386,7 +444,12 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 children: if children.is_empty() {
                     MetaChildren::None
                 } else {
-                    MetaChildren::Children(children.into_iter().map(Into::into).collect())
+                    MetaChildren::Children(
+                        children
+                            .into_iter()
+                            .map(TryInto::try_into)
+                            .collect::<Result<_, DocError>>()?,
+                    )
                 },
             },
             SidebarEntry::Link(link) => SidebarMetaEntry {
@@ -403,7 +466,9 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 content: SidebarMetaEntryContent::from_link_title_hash(None, Some(title), None),
                 children: MetaChildren::WebExtApi,
             },
-        }
+            SidebarEntry::None => return Err(DocError::InvalidSidebarEntry),
+        };
+        Ok(res)
     }
 }
 
