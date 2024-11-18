@@ -20,7 +20,7 @@ use crate::helpers;
 use crate::helpers::subpages::{list_sub_pages_grouped_internal, list_sub_pages_internal};
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
-use crate::utils::{serialize_t_or_vec, t_or_vec};
+use crate::utils::{is_default, serialize_t_or_vec, t_or_vec};
 
 fn cache_side_bar(sidebar: &str) -> bool {
     cache_content()
@@ -229,9 +229,6 @@ impl MetaSidebar {
 }
 
 // used for skipping serialization if the field has the defaul value
-fn is_default<T: PartialEq + Default>(value: &T) -> bool {
-    value == &T::default()
-}
 fn details_is_none(details: &Details) -> bool {
     matches!(details, Details::None)
 }

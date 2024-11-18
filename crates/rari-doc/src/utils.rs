@@ -384,3 +384,7 @@ pub fn trim_fefore<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
     }
     input
 }
+
+pub fn is_default<T: PartialEq + Default>(value: &T) -> bool {
+    value == &T::default()
+}

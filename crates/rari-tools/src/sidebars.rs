@@ -30,13 +30,13 @@ pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), 
             let from = if from.starts_with('/') {
                 from.to_string()
             } else {
-                format!("/{}", from)
+                concat_strs!("/", from)
             };
             let to = if let Some(to) = to {
                 if to.starts_with('/') {
                     Some(to.to_string())
                 } else {
-                    Some(format!("/{}", to))
+                    Some(concat_strs!("/", to))
                 }
             } else {
                 None
@@ -47,12 +47,10 @@ pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), 
 
     // Walk the sidebars and potentially replace the links.
     // `process_entry`` is called recursively to process all children
-    for mut parsed_sidebar in sidebars {
-        let path = parsed_sidebar.0.clone();
+    for (path, mut parsed_sidebar) in sidebars {
         // Store a clone to detect changes later
-        let original = parsed_sidebar.1.clone();
+        let original = parsed_sidebar.clone();
         let entries = parsed_sidebar
-            .1
             .sidebar
             .into_iter()
             .map(|entry| process_entry(entry, pairs))
@@ -60,8 +58,8 @@ pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), 
 
         // If the sidebar contents have changed, write it back to the file.
         if original.sidebar != entries {
-            parsed_sidebar.1.sidebar = entries;
-            write_sidebar(&parsed_sidebar.1, &path)?;
+            parsed_sidebar.sidebar = entries;
+            write_sidebar(&parsed_sidebar, &path)?;
         }
     }
 
@@ -91,7 +89,7 @@ fn read_sidebars() -> Result<Vec<(std::path::PathBuf, Sidebar)>, ToolError> {
     // read all sidebars
     let mut path = content_root().to_path_buf();
     path.push("sidebars");
-    let entries = fs::read_dir(&path).unwrap();
+    let entries = fs::read_dir(&path)?;
 
     // map and parse sidebars into a vector of (path, Sidebar)
     entries
@@ -226,17 +224,23 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, Option<String>)]) -> Sid
             code,
             children,
             details,
-        }) => SidebarEntry::Default(BasicEntry {
-            link: replace_pairs(link.clone(), pairs),
-            hash,
-            title,
-            code,
-            children: children
-                .into_iter()
-                .map(|c| process_entry(c, pairs))
-                .collect(),
-            details,
-        }),
+        }) => {
+            let new_link: Option<String> = replace_pairs(link.clone(), pairs);
+            if link.is_some() && new_link.is_none() {
+                return SidebarEntry::None;
+            }
+            SidebarEntry::Default(BasicEntry {
+                link: replace_pairs(link.clone(), pairs),
+                hash,
+                title,
+                code,
+                children: children
+                    .into_iter()
+                    .map(|c| process_entry(c, pairs))
+                    .collect(),
+                details,
+            })
+        }
         SidebarEntry::Link(link) => {
             let new_link: Option<String> = replace_pairs(Some(link), pairs);
             if new_link.is_none() {
@@ -301,6 +305,7 @@ mod test {
                 title: Headers
                 tags: []
                 details: closed
+              - link: /Web/CSS/CSS_Box_Alignment
 
             l10n:
               en-US:
@@ -393,5 +398,8 @@ mod test {
         // second listSubPages was removed entirely
         let sixth_entry = &sb.sidebar.get(5);
         assert!(sixth_entry.is_none());
+        // last default entry was removed
+        let seventh_entry = &sb.sidebar.get(6);
+        assert!(seventh_entry.is_none());
     }
 }
