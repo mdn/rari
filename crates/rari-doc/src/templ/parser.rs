@@ -143,13 +143,25 @@ mod test {
     #[test]
     fn basic() {
         let p = RariTempl::parse(Rule::doc, r#"Foo {{jsxref("Array") }}bar {{ foo }}"#);
-        println!("{:#?}", p);
+        assert!(p.is_ok());
+        let p = format!("{:?}", p.unwrap());
+        // println!("{}", p);
+        assert_eq!(
+            p,
+            r#"[Pair { rule: doc, span: Span { str: "Foo {{jsxref(\"Array\") }}bar {{ foo }}", start: 0, end: 37 }, inner: [Pair { rule: text, span: Span { str: "Foo ", start: 0, end: 4 }, inner: [] }, Pair { rule: macro_tag, span: Span { str: "{{jsxref(\"Array\") }}", start: 4, end: 24 }, inner: [Pair { rule: fn_call, span: Span { str: "jsxref(\"Array\")", start: 6, end: 21 }, inner: [Pair { rule: ident, span: Span { str: "jsxref", start: 6, end: 12 }, inner: [] }, Pair { rule: kwargs, span: Span { str: "\"Array\"", start: 13, end: 20 }, inner: [Pair { rule: double_quoted_string, span: Span { str: "\"Array\"", start: 13, end: 20 }, inner: [Pair { rule: dq_string, span: Span { str: "Array", start: 14, end: 19 }, inner: [] }] }] }] }] }, Pair { rule: text, span: Span { str: "bar ", start: 24, end: 28 }, inner: [] }, Pair { rule: macro_tag, span: Span { str: "{{ foo }}", start: 28, end: 37 }, inner: [Pair { rule: ident, span: Span { str: "foo", start: 31, end: 34 }, inner: [] }] }] }]"#
+        );
     }
 
     #[test]
     fn custom() {
         let p = parse(r#"Foo {{jsxref("Array",,1,true, ' ') }}bar {{ foo }}"#);
-        println!("{:#?}", p);
+        assert!(p.is_ok());
+        let p = format!("{:?}", p.unwrap());
+        // println!("{}", p);
+        assert_eq!(
+            p,
+            r#"[Text(TextToken { start: 0, end: 4 }), Macro(MacroToken { start: 4, end: 37, ident: "jsxref", pos: (1, 5), args: [Some(String("Array", Double)), None, Some(Int(1)), Some(Bool(true)), Some(String(" ", Single))] }), Text(TextToken { start: 37, end: 41 }), Macro(MacroToken { start: 41, end: 50, ident: "foo", pos: (1, 42), args: [] })]"#
+        );
     }
 
     #[test]
@@ -157,24 +169,48 @@ mod test {
         let p = parse(
             r#"attribute of an `{{HTMLElement("input","&lt;input type=\"file\"&gt;")}}` element"#,
         );
-        println!("{:#?}", p);
+        assert!(p.is_ok());
+        let p = format!("{:?}", p.unwrap());
+        // println!("{}", p);
+        assert_eq!(
+            p,
+            r#"[Text(TextToken { start: 0, end: 17 }), Macro(MacroToken { start: 17, end: 71, ident: "HTMLElement", pos: (1, 18), args: [Some(String("input", Double)), Some(String("&lt;input type=\"file\"&gt;", Double))] }), Text(TextToken { start: 71, end: 80 })]"#
+        );
     }
 
     #[test]
     fn weird2() {
         let p = parse(r#"dasd \{{foo}} 200 {{bar}}"#);
-        println!("{:#?}", p);
+        assert!(p.is_ok());
+        let p = format!("{:?}", p.unwrap());
+        // println!("{}", p);
+        assert_eq!(
+            p,
+            r#"[Text(TextToken { start: 0, end: 18 }), Macro(MacroToken { start: 18, end: 25, ident: "bar", pos: (1, 19), args: [] })]"#
+        );
     }
 
     #[test]
     fn weird3() {
         let p = parse(r#"foo {{foo(0.1)}} bar"#);
-        println!("{:#?}", p);
+        assert!(p.is_ok());
+        let p = format!("{:?}", p.unwrap());
+        // println!("{}", p);
+        assert_eq!(
+            p,
+            r#"[Text(TextToken { start: 0, end: 4 }), Macro(MacroToken { start: 4, end: 16, ident: "foo", pos: (1, 5), args: [Some(Float(0.1))] }), Text(TextToken { start: 16, end: 20 })]"#
+        );
     }
 
     #[test]
     fn weird4() {
         let p = parse(r#"dasd \\{{foo}} 200 {{bar}}"#);
-        println!("{:#?}", p);
+        assert!(p.is_ok());
+        let p = format!("{:?}", p.unwrap());
+        // println!("{}", p);
+        assert_eq!(
+            p,
+            r#"[Text(TextToken { start: 0, end: 19 }), Macro(MacroToken { start: 19, end: 26, ident: "bar", pos: (1, 20), args: [] })]"#
+        );
     }
 }

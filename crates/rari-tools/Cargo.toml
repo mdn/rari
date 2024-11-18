@@ -3,8 +3,8 @@ name = "rari-tools"
 version = "0.0.20"
 edition.workspace = true
 authors = [
-    "Andi Pieper <apieper@mozilla.com>",
-    "The MDN Engineering Team <mdn-dev@mozilla.com>",
+  "Andi Pieper <apieper@mozilla.com>",
+  "The MDN Engineering Team <mdn-dev@mozilla.com>",
 ]
 license.workspace = true
 rust-version.workspace = true

@@ -199,6 +199,9 @@ pub fn remove_empty_p(html: &mut Html) -> Result<(), DocError> {
 /// # Example
 ///
 /// ```rust
+/// use scraper::html::Html;
+/// use rari_doc::html::modifier::add_missing_ids;
+///
 /// let mut html = Html::parse_document("<h2>Some Heading</h2>");
 /// add_missing_ids(&mut html);
 /// ```

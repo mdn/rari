@@ -600,7 +600,7 @@ pub fn contributor_spotlight_files() -> Cow<'static, UrlToPageMap> {
 ///
 /// ### Example
 ///
-/// ```
+/// ```rust,ignore
 /// let wiki_histories = wiki_histories();
 /// if let Some(en_us_history) = wiki_histories.get(&Locale::EnUs) {
 ///     println!("Loaded en-US wiki history: {:?}", en_us_history);
