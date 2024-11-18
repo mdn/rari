@@ -15,27 +15,8 @@ lazy_static! {
     static ref SIDEBAR_PATH_PREFIX: String = format!("/{}/docs", Locale::default().as_url_str());
 }
 
-pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolError> {
-    // read all sidebars
-    let mut path = content_root().to_path_buf();
-    path.push("sidebars");
-    let entries = fs::read_dir(&path).unwrap();
-
-    // map and parse sidebars into a vector of (path, Sidebar)
-    let sidebars = entries
-        .filter(|entry| {
-            let entry = entry.as_ref().unwrap();
-            let path = entry.path();
-            path.is_file() && path.extension().unwrap() == "yaml"
-        })
-        .map(|entry| {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            let content = fs::read_to_string(&path).unwrap();
-            let sidebar: Sidebar = serde_yaml_ng::from_str(&content).unwrap();
-            (path, sidebar)
-        })
-        .collect::<Vec<(std::path::PathBuf, Sidebar)>>();
+pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), ToolError> {
+    let sidebars = read_sidebars();
 
     // add leading slash to pairs, because that is what the sidebars use
     let pairs = &pairs
@@ -46,14 +27,18 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
             } else {
                 format!("/{}", from)
             };
-            let to = if to.starts_with('/') {
-                to.to_string()
+            let to = if let Some(to) = to {
+                if to.starts_with('/') {
+                    Some(to.to_string())
+                } else {
+                    Some(format!("/{}", to))
+                }
             } else {
-                format!("/{}", to)
+                None
             };
             (from, to)
         })
-        .collect::<Vec<(String, String)>>();
+        .collect::<Vec<(String, Option<String>)>>();
 
     // Walk the sidebars and potentially replace the links.
     // `process_entry`` is called recursively to process all children
@@ -93,7 +78,32 @@ pub(crate) fn update_sidebars(pairs: &[(String, String)]) -> Result<(), ToolErro
     Ok(())
 }
 
-fn replace_pairs(pairs: &[(String, String)]) -> impl FnMut(Option<String>) -> Option<String> + '_ {
+fn read_sidebars() -> Vec<(std::path::PathBuf, Sidebar)> {
+    // read all sidebars
+    let mut path = content_root().to_path_buf();
+    path.push("sidebars");
+    let entries = fs::read_dir(&path).unwrap();
+
+    // map and parse sidebars into a vector of (path, Sidebar)
+    entries
+        .filter(|entry| {
+            let entry = entry.as_ref().unwrap();
+            let path = entry.path();
+            path.is_file() && path.extension().unwrap() == "yaml"
+        })
+        .map(|entry| {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            let content = fs::read_to_string(&path).unwrap();
+            let sidebar: Sidebar = serde_yaml_ng::from_str(&content).unwrap();
+            (path, sidebar)
+        })
+        .collect::<Vec<(std::path::PathBuf, Sidebar)>>()
+}
+
+fn replace_pairs(
+    pairs: &[(String, Option<String>)],
+) -> impl FnMut(Option<String>) -> Option<String> + '_ {
     move |link: Option<String>| match link {
         Some(link) => {
             let mut has_prefix = false;
@@ -105,10 +115,14 @@ fn replace_pairs(pairs: &[(String, String)]) -> impl FnMut(Option<String>) -> Op
             };
             for (from, to) in pairs {
                 if link == *from {
-                    if has_prefix {
-                        return Some(format!("{}{}", SIDEBAR_PATH_PREFIX.as_str(), to));
+                    if let Some(to) = to {
+                        if has_prefix {
+                            return Some(format!("{}{}", SIDEBAR_PATH_PREFIX.as_str(), to));
+                        } else {
+                            return Some(to.clone());
+                        }
                     } else {
-                        return Some(to.clone());
+                        return None;
                     }
                 }
             }
@@ -118,7 +132,7 @@ fn replace_pairs(pairs: &[(String, String)]) -> impl FnMut(Option<String>) -> Op
     }
 }
 
-fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntry {
+fn process_entry(entry: SidebarEntry, pairs: &[(String, Option<String>)]) -> SidebarEntry {
     match entry {
         SidebarEntry::Section(BasicEntry {
             link,
@@ -127,17 +141,24 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
             code,
             children,
             details,
-        }) => SidebarEntry::Section(BasicEntry {
-            link: iter::once(link).map(replace_pairs(pairs)).collect(),
-            hash,
-            title,
-            code,
-            children: children
-                .into_iter()
-                .map(|c| process_entry(c, pairs))
-                .collect(),
-            details,
-        }),
+        }) => {
+            let new_link: Option<String> =
+                iter::once(link.clone()).map(replace_pairs(pairs)).collect();
+            if link.is_some() && new_link.is_none() {
+                return SidebarEntry::None;
+            }
+            SidebarEntry::Section(BasicEntry {
+                link: new_link,
+                hash,
+                title,
+                code,
+                children: children
+                    .into_iter()
+                    .map(|c| process_entry(c, pairs))
+                    .collect(),
+                details,
+            })
+        }
         SidebarEntry::ListSubPages(SubPageEntry {
             details,
             tags,
@@ -146,18 +167,22 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
             title,
             path,
             include_parent,
-        }) => SidebarEntry::ListSubPages(SubPageEntry {
-            details,
-            tags,
-            link: iter::once(link).map(replace_pairs(pairs)).collect(),
-            hash,
-            title,
-            path: iter::once(Some(path))
-                .map(replace_pairs(pairs))
-                .collect::<Option<String>>()
-                .unwrap(),
-            include_parent,
-        }),
+        }) => {
+            let new_path: Option<String> =
+                iter::once(Some(path)).map(replace_pairs(pairs)).collect();
+            if new_path.is_none() {
+                return SidebarEntry::None;
+            }
+            SidebarEntry::ListSubPages(SubPageEntry {
+                details,
+                tags,
+                link: iter::once(link.clone()).map(replace_pairs(pairs)).collect(),
+                hash,
+                title,
+                path: new_path.unwrap(),
+                include_parent,
+            })
+        }
         SidebarEntry::ListSubPagesGrouped(SubPageEntry {
             details,
             tags,
@@ -166,18 +191,22 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
             title,
             path,
             include_parent,
-        }) => SidebarEntry::ListSubPagesGrouped(SubPageEntry {
-            details,
-            tags,
-            link: iter::once(link).map(replace_pairs(pairs)).collect(),
-            hash,
-            title,
-            path: iter::once(Some(path))
-                .map(replace_pairs(pairs))
-                .collect::<Option<String>>()
-                .unwrap(),
-            include_parent,
-        }),
+        }) => {
+            let new_path: Option<String> =
+                iter::once(Some(path)).map(replace_pairs(pairs)).collect();
+            if new_path.is_none() {
+                return SidebarEntry::None;
+            }
+            SidebarEntry::ListSubPagesGrouped(SubPageEntry {
+                details,
+                tags,
+                link: iter::once(link.clone()).map(replace_pairs(pairs)).collect(),
+                hash,
+                title,
+                path: new_path.unwrap(),
+                include_parent,
+            })
+        }
         SidebarEntry::Default(BasicEntry {
             link,
             hash,
@@ -196,15 +225,18 @@ fn process_entry(entry: SidebarEntry, pairs: &[(String, String)]) -> SidebarEntr
                 .collect(),
             details,
         }),
-        SidebarEntry::Link(link) => SidebarEntry::Link(
-            iter::once(Some(link))
-                .map(replace_pairs(pairs))
-                .collect::<Option<String>>()
-                .unwrap(),
-        ),
+        SidebarEntry::Link(link) => {
+            let new_link: Option<String> =
+                iter::once(Some(link)).map(replace_pairs(pairs)).collect();
+            if new_link.is_none() {
+                return SidebarEntry::None;
+            }
+            SidebarEntry::Link(new_link.unwrap())
+        }
         SidebarEntry::WebExtApi(WebExtApiEntry { title }) => {
             SidebarEntry::WebExtApi(WebExtApiEntry { title })
         }
+        SidebarEntry::None => SidebarEntry::None,
     }
 }
 
@@ -253,6 +285,11 @@ mod test {
                 title: Headers
                 tags: []
                 details: closed
+              - type: listSubPages
+                path: /en-US/docs/Web/CSS/CSS_Box_Alignment
+                title: Headers
+                tags: []
+                details: closed
 
             l10n:
               en-US:
@@ -270,16 +307,21 @@ mod test {
         let pairs = vec![
             (
                 "Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Block_Abspos_Tables".to_string(),
-                "Web/CSS/CSS_Box_Alignment/Something_New".to_string(),
+                Some("Web/CSS/CSS_Box_Alignment/Something_New".to_string()),
             ),
             (
                 "Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Grid_Layout".to_string(),
-                "Web/CSS/CSS_Box_Alignment/Also_New".to_string(),
+                Some("Web/CSS/CSS_Box_Alignment/Also_New".to_string()),
             ),
             (
                 "Web/HTTP/Headers".to_string(),
-                "Web/HTTP/Headers_New".to_string(),
+                Some("Web/HTTP/Headers_New".to_string()),
             ),
+            (
+                "/Web/CSS/CSS_Box_Alignment/Box_Alignment_in_Multi-column_Layout".to_string(),
+                None,
+            ),
+            ("/Web/CSS/CSS_Box_Alignment".to_string(), None),
         ];
         let res = update_sidebars(&pairs);
         assert!(res.is_ok());
@@ -292,6 +334,7 @@ mod test {
         // println!("{}", content);
         let sb = serde_yaml_ng::from_str::<Sidebar>(&content).unwrap();
 
+        // replacement of link of the first child in the third item of the sidebar
         let third_item_first_child =
             if let SidebarEntry::Default(BasicEntry { children, .. }) = &sb.sidebar[2] {
                 children.first().unwrap()
@@ -306,6 +349,7 @@ mod test {
         };
         assert_eq!(link, "/Web/CSS/CSS_Box_Alignment/Something_New".to_string());
 
+        // replacement of link of the third child in the third item of the sidebar
         let third_item_third_child =
             if let SidebarEntry::Default(BasicEntry { children, .. }) = &sb.sidebar[2] {
                 children.get(2).unwrap()
@@ -319,10 +363,24 @@ mod test {
         };
         assert_eq!(link, "/Web/CSS/CSS_Box_Alignment/Also_New".to_string());
 
+        // replacement of the path of the fifth item in the sidebar (listSubPages)
         if let SidebarEntry::ListSubPages(SubPageEntry { path, .. }) = &sb.sidebar[4] {
             assert_eq!(path, "/en-US/docs/Web/HTTP/Headers_New");
         } else {
-            panic!("Expected a listSubPages entry with a path field as the 4th entry");
+            panic!("Expected a listSubPages entry with a path field as the fifth entry");
         };
+
+        // last child of the third item was removed, count 4 -> 5
+        let third_item_children =
+            if let SidebarEntry::Default(BasicEntry { children, .. }) = &sb.sidebar[2] {
+                children
+            } else {
+                panic!("Expected a Section entry with children on the third item");
+            };
+        assert_eq!(third_item_children.len(), 3);
+
+        // second listSubPages was removed entirely
+        let sixth_entry = &sb.sidebar.get(5);
+        assert!(sixth_entry.is_none());
     }
 }

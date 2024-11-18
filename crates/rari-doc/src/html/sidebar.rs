@@ -9,7 +9,7 @@ use rari_types::globals::cache_content;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use scraper::{Html, Node, Selector};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 use super::links::{render_link_from_page, render_link_via_page, LinkModifier};
 use super::modifier::insert_attribute;
@@ -159,8 +159,31 @@ impl SidebarL10n {
     }
 }
 
+// Serialize the sidebar entries, filtering out the None variant. This is
+// used on the top-level sidebar field and the basic entry children field.
+fn serialize_sidebar_entries<S>(sidebar: &[SidebarEntry], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    // Filter out the None variant
+    let filtered: Vec<&SidebarEntry> = sidebar
+        .iter()
+        .filter(|entry| !matches!(entry, SidebarEntry::None))
+        .collect();
+    filtered.serialize(serializer)
+}
+
+fn sidebar_entries_are_empty(entries: &[SidebarEntry]) -> bool {
+    entries
+        .iter()
+        .filter(|entry| !matches!(entry, SidebarEntry::None))
+        .collect::<Vec<_>>()
+        .is_empty()
+}
+
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 pub struct Sidebar {
+    #[serde(serialize_with = "serialize_sidebar_entries")]
     pub sidebar: Vec<SidebarEntry>,
     #[serde(default)]
     pub l10n: SidebarL10n,
@@ -222,7 +245,11 @@ pub struct BasicEntry {
     pub details: Details,
     #[serde(default, skip_serializing_if = "is_default")]
     pub code: bool,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        skip_serializing_if = "sidebar_entries_are_empty",
+        serialize_with = "serialize_sidebar_entries"
+    )]
     pub children: Vec<SidebarEntry>,
 }
 
@@ -234,6 +261,7 @@ pub struct SubPageEntry {
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub link: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
     #[serde(deserialize_with = "t_or_vec", default)]
     pub tags: Vec<PageType>,
@@ -260,6 +288,8 @@ pub enum SidebarEntry {
     Default(BasicEntry),
     #[serde(untagged)]
     Link(String),
+    #[serde(untagged)]
+    None,
 }
 
 #[derive(Debug, Default)]
@@ -418,6 +448,13 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 details: Details::Closed,
                 content: SidebarMetaEntryContent::from_link_title_hash(None, Some(title), None),
                 children: MetaChildren::WebExtApi,
+            },
+            SidebarEntry::None => SidebarMetaEntry {
+                section: false,
+                details: Details::None,
+                code: false,
+                content: SidebarMetaEntryContent::default(),
+                children: MetaChildren::None,
             },
         }
     }

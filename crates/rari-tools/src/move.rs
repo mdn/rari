@@ -188,9 +188,15 @@ fn do_move(
 
     // Update the sidebars, changing links and paths where necessary.
     // But only for the default locale. Translated content cannot change
-    // sidebars.
+    // sidebars. Map the pairs from (String, String) to (String, Option<String>)
+    // to match the function signature.
     if locale == Locale::default() {
-        update_sidebars(&pairs)?;
+        update_sidebars(
+            &pairs
+                .iter()
+                .map(|(from, to)| (from.clone(), Some(to.clone())))
+                .collect::<Vec<_>>(),
+        )?;
     }
 
     // Update the redirect map. Create pairs of URLs from the slug pairs.
