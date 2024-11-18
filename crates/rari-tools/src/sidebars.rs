@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 
 use const_format::concatcp;
 use pretty_yaml::config::{FormatOptions, LanguageOptions};
@@ -11,6 +12,13 @@ use crate::error::ToolError;
 
 const PREFIX: &str = "# Do not add comments to this file. They will be lost.\n\n";
 static SIDEBAR_PATH_PREFIX: &str = concatcp!("/", default_locale().as_url_str(), "/docs");
+
+pub fn fmt_sidebars() -> Result<(), ToolError> {
+    for (path, sidebar) in read_sidebars()? {
+        write_sidebar(&sidebar, &path)?;
+    }
+    Ok(())
+}
 
 pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), ToolError> {
     let sidebars = read_sidebars()?;
@@ -53,25 +61,29 @@ pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), 
         // If the sidebar contents have changed, write it back to the file.
         if original.sidebar != entries {
             parsed_sidebar.1.sidebar = entries;
-
-            let y = serde_yaml_ng::to_string(&parsed_sidebar.1).unwrap();
-            // Format yaml a bit prettier than serde does
-            let y = pretty_yaml::format_text(
-                &y,
-                &FormatOptions {
-                    language: LanguageOptions {
-                        quotes: pretty_yaml::config::Quotes::PreferDouble,
-                        indent_block_sequence_in_map: true,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            )?;
-            let yaml = concat_strs!(PREFIX, &y);
-            fs::write(&path, &yaml).unwrap();
+            write_sidebar(&parsed_sidebar.1, &path)?;
         }
     }
 
+    Ok(())
+}
+
+fn write_sidebar(sidebar: &Sidebar, path: &Path) -> Result<(), ToolError> {
+    let y = serde_yaml_ng::to_string(sidebar)?;
+    // Format yaml a bit prettier than serde does
+    let y = pretty_yaml::format_text(
+        &y,
+        &FormatOptions {
+            language: LanguageOptions {
+                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                indent_block_sequence_in_map: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    )?;
+    let yaml = concat_strs!(PREFIX, &y);
+    fs::write(path, &yaml)?;
     Ok(())
 }
 

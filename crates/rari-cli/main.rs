@@ -24,6 +24,7 @@ use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
 use rari_tools::remove::remove;
+use rari_tools::sidebars::fmt_sidebars;
 use rari_tools::sync_translated_content::sync_translated_content;
 use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
 use rari_types::locale::Locale;
@@ -71,6 +72,7 @@ enum ContentSubcommand {
     Delete(DeleteArgs),
     AddRedirect(AddRedirectArgs),
     SyncTranslatedContent(SyncTranslatedContentArgs),
+    FmtSidebars,
 }
 
 #[derive(Args)]
@@ -378,6 +380,9 @@ fn main() -> Result<(), Error> {
             ContentSubcommand::SyncTranslatedContent(args) => {
                 let locales = args.locales.as_deref().unwrap_or(Locale::translated());
                 sync_translated_content(locales, cli.verbose.is_present())?;
+            }
+            ContentSubcommand::FmtSidebars => {
+                fmt_sidebars()?;
             }
         },
         Commands::Update(args) => update(args.version)?,

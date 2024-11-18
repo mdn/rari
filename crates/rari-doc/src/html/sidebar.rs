@@ -20,7 +20,7 @@ use crate::helpers;
 use crate::helpers::subpages::{list_sub_pages_grouped_internal, list_sub_pages_internal};
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
-use crate::utils::t_or_vec;
+use crate::utils::{serialize_t_or_vec, t_or_vec};
 
 fn cache_side_bar(sidebar: &str) -> bool {
     cache_content()
@@ -267,7 +267,12 @@ pub struct SubPageEntry {
     pub link: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
-    #[serde(deserialize_with = "t_or_vec", default)]
+    #[serde(
+        default,
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub tags: Vec<PageType>,
     #[serde(default, skip_serializing_if = "details_is_none")]
     pub details: Details,
