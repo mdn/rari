@@ -613,7 +613,7 @@ pub fn contributor_spotlight_files() -> Cow<'static, UrlToPageMap> {
 ///
 /// - Panics if the translated content root or individual directory names are invalid.
 /// - Panics if the `_wikihistory.json` file is missing or contains malformed JSON.
-pub(crate) fn wiki_histories() -> Cow<'static, WikiHistories> {
+pub fn wiki_histories() -> Cow<'static, WikiHistories> {
     fn gather() -> Result<WikiHistories, DocError> {
         let mut map = HashMap::new();
         if let Some(ctr) = content_translated_root() {

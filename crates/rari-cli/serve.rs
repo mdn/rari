@@ -3,11 +3,14 @@ use std::str::FromStr;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
+use axum::body::Body;
 use axum::extract::{Path, Request, State};
-use axum::http::StatusCode;
+use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
+use rari_doc::cached_readers::wiki_histories;
+use rari_doc::contributors::contributors_txt;
 use rari_doc::error::DocError;
 use rari_doc::issues::{to_display_issues, InMemoryLayer};
 use rari_doc::pages::json::BuiltPage;
@@ -28,14 +31,23 @@ struct SearchItem {
     title: String,
     url: String,
 }
+
+async fn handler(state: State<Arc<InMemoryLayer>>, req: Request) -> Response<Body> {
+    if req.uri().path().ends_with("/contributors.txt") {
+        get_contributors_handler(req).await.into_response()
+    } else {
+        get_json_handler(state, req).await.into_response()
+    }
+}
+
 async fn get_json_handler(
     State(memory_layer): State<Arc<InMemoryLayer>>,
     req: Request,
 ) -> Result<Json<BuiltPage>, AppError> {
+    let url = req.uri().path();
     let req_id = REQ_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let span = span!(Level::WARN, "serve", req = req_id);
     let _enter1 = span.enter();
-    let url = req.uri().path();
     let mut json = get_json(url)?;
     if let BuiltPage::Doc(json_doc) = &mut json {
         let m = memory_layer.get_events();
@@ -64,6 +76,38 @@ fn get_json(url: &str) -> Result<BuiltPage, DocError> {
     let json = page.build()?;
     tracing::info!("{url}");
     Ok(json)
+}
+
+async fn get_contributors_handler(req: Request) -> impl IntoResponse {
+    let url = req.uri().path();
+    match get_contributors(url.strip_suffix("/contributors.txt").unwrap_or(url)) {
+        Ok(contributors_txt_str) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "text/plain")],
+            contributors_txt_str,
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!("error generating contributors.txt for {url}: {e:?}");
+            (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+        }
+    }
+}
+
+fn get_contributors(url: &str) -> Result<String, AppError> {
+    let page = Page::from_url_with_fallback(url)?;
+    let json = page.build()?;
+    let github_file_url = if let BuiltPage::Doc(ref doc) = json {
+        &doc.doc.source.github_url
+    } else {
+        ""
+    };
+    let wiki_histories = wiki_histories();
+    let wiki_history = wiki_histories
+        .get(&page.locale())
+        .and_then(|wh| wh.get(page.slug()));
+    let contributors_txt_str = contributors_txt(wiki_history, github_file_url);
+    Ok(contributors_txt_str)
 }
 
 async fn get_search_index_handler(
@@ -118,10 +162,11 @@ fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
     Ok(out)
 }
 
+#[derive(Debug)]
 struct AppError(anyhow::Error);
 
 impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
+    fn into_response(self) -> Response<Body> {
         (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response()
     }
 }
@@ -142,7 +187,7 @@ pub fn serve(memory_layer: InMemoryLayer) -> Result<(), anyhow::Error> {
         .block_on(async {
             let app = Router::new()
                 .route("/:locale/search-index.json", get(get_search_index_handler))
-                .fallback(get_json_handler)
+                .fallback(handler)
                 .with_state(Arc::new(memory_layer));
 
             let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();

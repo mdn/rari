@@ -4,12 +4,12 @@ use rari_types::locale::Locale;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
-pub(crate) struct WikiHistoryEntry {
+pub struct WikiHistoryEntry {
     pub contributors: Vec<String>,
 }
 
-pub(crate) type WikiHistory = HashMap<String, WikiHistoryEntry>;
-pub(crate) type WikiHistories = HashMap<Locale, WikiHistory>;
+pub type WikiHistory = HashMap<String, WikiHistoryEntry>;
+pub type WikiHistories = HashMap<Locale, WikiHistory>;
 
 /// Generates a contributors text report summarizing commit history and original Wiki contributors.
 ///
@@ -61,10 +61,7 @@ pub(crate) type WikiHistories = HashMap<Locale, WikiHistory>;
 /// // # Contributors by commit history
 /// // https://github.com/user/repo/commits/main/file.txt
 /// ```
-pub(crate) fn contributors_txt(
-    wiki_history: Option<&WikiHistoryEntry>,
-    github_file_url: &str,
-) -> String {
+pub fn contributors_txt(wiki_history: Option<&WikiHistoryEntry>, github_file_url: &str) -> String {
     let mut out = String::new();
     out.extend([
         "# Contributors by commit history\n",
