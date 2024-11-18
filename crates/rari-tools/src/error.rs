@@ -47,7 +47,8 @@ pub enum ToolError {
     InvalidRedirectToURL(String),
     #[error(transparent)]
     RedirectError(#[from] RedirectError),
-
+    #[error("Invalid yaml {0}")]
+    InvalidFrontmatter(#[from] serde_yaml_ng::Error),
     #[error("Page has subpages: {0}")]
     HasSubpagesError(Cow<'static, str>),
 

@@ -16,7 +16,7 @@ lazy_static! {
 }
 
 pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), ToolError> {
-    let sidebars = read_sidebars();
+    let sidebars = read_sidebars()?;
 
     // add leading slash to pairs, because that is what the sidebars use
     let pairs = &pairs
@@ -78,7 +78,7 @@ pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), 
     Ok(())
 }
 
-fn read_sidebars() -> Vec<(std::path::PathBuf, Sidebar)> {
+fn read_sidebars() -> Result<Vec<(std::path::PathBuf, Sidebar)>, ToolError> {
     // read all sidebars
     let mut path = content_root().to_path_buf();
     path.push("sidebars");
@@ -86,19 +86,27 @@ fn read_sidebars() -> Vec<(std::path::PathBuf, Sidebar)> {
 
     // map and parse sidebars into a vector of (path, Sidebar)
     entries
-        .filter(|entry| {
-            let entry = entry.as_ref().unwrap();
-            let path = entry.path();
-            path.is_file() && path.extension().unwrap() == "yaml"
+        .filter_map(|entry| {
+            entry.ok().and_then(|entry| {
+                let path = entry.path();
+                if path.is_file()
+                    && path
+                        .extension()
+                        .map(|ex| ex.to_string_lossy() == "yaml")
+                        .unwrap_or_default()
+                {
+                    Some(path)
+                } else {
+                    None
+                }
+            })
         })
-        .map(|entry| {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            let content = fs::read_to_string(&path).unwrap();
-            let sidebar: Sidebar = serde_yaml_ng::from_str(&content).unwrap();
-            (path, sidebar)
+        .map(|path| {
+            let content = fs::read_to_string(&path)?;
+            let sidebar: Sidebar = serde_yaml_ng::from_str(&content)?;
+            Ok((path, sidebar))
         })
-        .collect::<Vec<(std::path::PathBuf, Sidebar)>>()
+        .collect()
 }
 
 fn replace_pairs(

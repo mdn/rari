@@ -149,7 +149,7 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
             file.set_extension("yaml");
             let raw = read_to_string(&file)?;
             let sidebar: Sidebar = serde_yaml_ng::from_str(&raw)?;
-            let sidebar = Arc::new(MetaSidebar::from(sidebar));
+            let sidebar = Arc::new(MetaSidebar::try_from(sidebar)?);
             if cache_content() {
                 CACHED_SIDEBAR_FILES.insert(key, sidebar.clone());
             }

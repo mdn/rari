@@ -176,9 +176,7 @@ where
 fn sidebar_entries_are_empty(entries: &[SidebarEntry]) -> bool {
     entries
         .iter()
-        .filter(|entry| !matches!(entry, SidebarEntry::None))
-        .collect::<Vec<_>>()
-        .is_empty()
+        .all(|entry| matches!(entry, SidebarEntry::None))
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
@@ -194,12 +192,18 @@ pub struct MetaSidebar {
     pub entries: Vec<SidebarMetaEntry>,
     pub l10n: SidebarL10n,
 }
-impl From<Sidebar> for MetaSidebar {
-    fn from(value: Sidebar) -> Self {
-        MetaSidebar {
-            entries: value.sidebar.into_iter().map(Into::into).collect(),
+impl TryFrom<Sidebar> for MetaSidebar {
+    type Error = DocError;
+
+    fn try_from(value: Sidebar) -> Result<Self, Self::Error> {
+        Ok(MetaSidebar {
+            entries: value
+                .sidebar
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, DocError>>()?,
             l10n: value.l10n,
-        }
+        })
     }
 }
 
@@ -366,9 +370,10 @@ pub struct SidebarMetaEntry {
     pub children: MetaChildren,
 }
 
-impl From<SidebarEntry> for SidebarMetaEntry {
-    fn from(value: SidebarEntry) -> Self {
-        match value {
+impl TryFrom<SidebarEntry> for SidebarMetaEntry {
+    type Error = DocError;
+    fn try_from(value: SidebarEntry) -> Result<Self, Self::Error> {
+        let res = match value {
             SidebarEntry::Section(BasicEntry {
                 link,
                 hash,
@@ -384,7 +389,12 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 children: if children.is_empty() {
                     MetaChildren::None
                 } else {
-                    MetaChildren::Children(children.into_iter().map(Into::into).collect())
+                    MetaChildren::Children(
+                        children
+                            .into_iter()
+                            .map(TryInto::try_into)
+                            .collect::<Result<_, DocError>>()?,
+                    )
                 },
             },
             SidebarEntry::ListSubPages(SubPageEntry {
@@ -432,7 +442,12 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 children: if children.is_empty() {
                     MetaChildren::None
                 } else {
-                    MetaChildren::Children(children.into_iter().map(Into::into).collect())
+                    MetaChildren::Children(
+                        children
+                            .into_iter()
+                            .map(TryInto::try_into)
+                            .collect::<Result<_, DocError>>()?,
+                    )
                 },
             },
             SidebarEntry::Link(link) => SidebarMetaEntry {
@@ -449,14 +464,9 @@ impl From<SidebarEntry> for SidebarMetaEntry {
                 content: SidebarMetaEntryContent::from_link_title_hash(None, Some(title), None),
                 children: MetaChildren::WebExtApi,
             },
-            SidebarEntry::None => SidebarMetaEntry {
-                section: false,
-                details: Details::None,
-                code: false,
-                content: SidebarMetaEntryContent::default(),
-                children: MetaChildren::None,
-            },
-        }
+            SidebarEntry::None => return Err(DocError::InvalidSidebarEntry),
+        };
+        Ok(res)
     }
 }
 
