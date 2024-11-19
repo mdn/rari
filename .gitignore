@@ -5,3 +5,5 @@ tests/data/content/files/*
 !tests/data/content/files/.keep
 tests/data/translated_content/files/*
 !tests/data/translated_content/files/.keep
+rari-npm/schema.json
+rari-npm/lib/rari-types.d.ts

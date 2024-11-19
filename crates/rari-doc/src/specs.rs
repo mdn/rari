@@ -8,6 +8,7 @@ use std::sync::LazyLock;
 
 use rari_data::specs::{BCDSpecUrls, WebSpecs};
 use rari_types::globals::{data_dir, json_spec_data_lookup};
+use schemars::JsonSchema;
 use serde::Serialize;
 use tracing::warn;
 
@@ -52,7 +53,7 @@ static SPECS: LazyLock<SpecsData> = LazyLock::new(|| {
 ///
 /// * `bcd_specification_url` - A `String` that holds the URL to the BCD specification.
 /// * `title` - A `&'static str` that holds the title of the specification.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Specification {
     #[serde(rename = "bcdSpecificationURL")]
     pub bcd_specification_url: String,

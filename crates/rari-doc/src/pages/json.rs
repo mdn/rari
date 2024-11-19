@@ -10,6 +10,7 @@ use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use rari_data::baseline::SupportStatusWithByKey;
 use rari_types::fm_types::PageType;
 use rari_types::locale::{Locale, Native};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::types::contributors::Usernames;
@@ -32,7 +33,7 @@ use crate::utils::modified_dt;
 ///   contain HTML.
 /// * `id` - The `id` attribute of the target element in the page.
 /// ```
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct TocEntry {
     pub text: String,
     pub id: String,
@@ -49,7 +50,7 @@ pub struct TocEntry {
 /// * `github_url` - A `String` that holds the GitHUb URL to the spource file.
 /// * `last_commit_url` - A `String` that holds the URL to the last commit in the GitHub repository.
 /// * `filename` - A `String` that specifies the name of the source file.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Source {
     pub folder: PathBuf,
     pub github_url: String,
@@ -67,7 +68,7 @@ pub struct Source {
 ///
 /// * `uri` - A `String` that holds the URL of the parent entity.
 /// * `title` - A `String` that holds the title of the parent entity.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Parent {
     pub uri: String,
     pub title: String,
@@ -84,7 +85,7 @@ pub struct Parent {
 /// * `locale` - A `Locale` that specifies the locale of the translation.
 /// * `title` - A `String` that holds the translated title.
 /// * `native` - A `Native` representing the locale in a locale-native spelling, ie. "Deutsch".
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Translation {
     pub locale: Locale,
     pub title: String,
@@ -104,7 +105,7 @@ pub struct Translation {
 /// * `is_h3` - A `bool` that indicates whether the prose section's `title` will be rendered as a &lt;H3&gt;
 ///    heading. This field is serialized as `isH3`.
 /// * `content` - A `String` that holds the actual prose HTML content.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Prose {
     pub id: Option<String>,
     pub title: Option<String>,
@@ -129,7 +130,7 @@ pub struct Prose {
 /// * `query` - A `String` that holds the query string for BCD data.
 /// * `content` - An `Option<String>` that holds the optional content of the compatibility section. This field
 ///    is skipped during serialization if it is `None`.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Compat {
     pub id: Option<String>,
     pub title: Option<String>,
@@ -155,7 +156,7 @@ pub struct Compat {
 /// * `query` - A `String` that holds the BCD query string associated with the specification section.
 /// * `content` - An `Option<String>` that holds the optional content of the specification section. This field is
 ///   skipped during serialization if it is `None`.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct SpecificationSection {
     pub id: Option<String>,
     pub title: Option<String>,
@@ -184,7 +185,7 @@ pub struct SpecificationSection {
 /// * `BrowserCompatibility(Compat)` - A variant that holds a `Compat` struct, which includes compatibility information.
 /// * `Specifications(SpecificationSection)` - A variant that holds a `SpecificationSection` struct, which includes
 ///   one or more specifications.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(tag = "type", content = "value", rename_all = "snake_case")]
 pub enum Section {
     Prose(Prose),
@@ -229,7 +230,7 @@ pub enum Section {
 ///    during serialization if it is empty.
 /// * `page_type` - A `PageType` that specifies the type of the page, for example `LandingPage`, `LearnModule`, `CssAtRule` or
 ///    `HtmlAttribute`. Serialized as `pageType`.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct JsonDoc {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub body: Vec<Section>,
@@ -343,7 +344,7 @@ pub struct JsonDocMetadata<'a> {
 ///
 /// * `doc` - A `JsonDoc` that holds the main content and metadata of the documentation page.
 /// * `url` - A `String` that holds the URL of the documentation page.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct JsonDocPage {
     pub doc: JsonDoc,
     pub url: String,
@@ -357,7 +358,7 @@ pub struct JsonDocPage {
 /// # Fields
 ///
 /// * `posts` - A `Vec<BlogMeta>` that holds the metadata for each blog post.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct BlogIndex {
     pub posts: Vec<BlogMeta>,
 }
@@ -388,7 +389,7 @@ pub struct BlogIndex {
 /// * `prev_next` - An `Option<PrevNextByUrl>` that holds the previous and next URLs for navigation. Serialized as `prevNext` and skipped during
 ///    serialization if it is `None`.
 /// * `template` - A `Template` that specifies the template used for rendering the document.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct JsonCurriculumDoc {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub body: Vec<Section>,
@@ -429,7 +430,7 @@ pub struct JsonCurriculumDoc {
 /// * `url` - A `String` that holds the URL of the curriculum page.
 /// * `page_title` - A `String` that holds the title of the curriculum page. Serialized as `pageTitle`.
 /// * `locale` - A `Locale` that specifies the locale of the curriculum page.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct JsonCurriculumPage {
     pub doc: JsonCurriculumDoc,
     pub url: String,
@@ -461,7 +462,7 @@ pub struct JsonCurriculumPage {
 /// * `title` - A `String` that holds the title of the blog post.
 /// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the blog post. This field is
 ///   skipped during serialization if it is empty.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct JsonBlogPostDoc {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub body: Vec<Section>,
@@ -499,7 +500,7 @@ pub struct JsonBlogPostDoc {
 ///   Serialized as `blogMeta` and skipped during serialization if it is `None`.
 /// * `hy_data` - An `Option<BlogIndex>` that holds data related to the blog index, if available.
 ///   Serialized as `hyData` and skipped during serialization if it is `None`.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct JsonBlogPostPage {
     pub doc: JsonBlogPostDoc,
     pub locale: Locale,
@@ -529,7 +530,7 @@ pub struct JsonBlogPostPage {
 /// * `profile_img_alt` - A `String` that holds the alt text for the contributor's profile image. Serialized as `profileImgAlt`.
 /// * `usernames` - A `Usernames` struct that holds the usernames associated with the contributor.
 /// * `quote` - A `String` that holds a quote from the contributor.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct ContributorSpotlightHyData {
     pub sections: Vec<Section>,
     #[serde(rename = "contributorName")]
@@ -557,7 +558,7 @@ pub struct ContributorSpotlightHyData {
 /// * `url` - A `String` that holds the URL of the contributor spotlight page.
 /// * `page_title` - A `String` that holds the title of the contributor spotlight page. Serialized as `pageTitle`.
 /// * `hy_data` - A `ContributorSpotlightHyData` that holds the data related to the contributor. Serialized as `hyData`.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct JsonContributorSpotlightPage {
     pub url: String,
     #[serde(rename = "pageTitle")]
@@ -571,7 +572,7 @@ pub struct JsonContributorSpotlightPage {
 /// The `BuiltPage` enum is used to classify various types of built pages that can be
 /// generated by the system. Each variant corresponds to a specific type of page,
 /// encapsulated in a `Box` to allow for efficient memory management and dynamic dispatch.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(untagged)]
 pub enum BuiltPage {
     /// Represents a standard documentation page, backed by a Markdown source.
@@ -600,7 +601,7 @@ pub enum BuiltPage {
 ///
 /// * `previous` - An `Option<SlugNTitle>` that holds the the slug and title for the previous page, if available.
 /// * `next` - An `Option<SlugNTitle>` that holds the the slug and title for the next page, if available.
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, JsonSchema)]
 #[serde(default)]
 pub struct PrevNextBySlug {
     pub previous: Option<SlugNTitle>,
@@ -622,7 +623,7 @@ impl PrevNextBySlug {
 ///
 /// * `title` - A `String` that holds the title of the navigation link.
 /// * `slug` - A `String` that holds the slug of the navigation link.
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, JsonSchema)]
 pub struct SlugNTitle {
     pub title: String,
     pub slug: String,
@@ -638,7 +639,7 @@ pub struct SlugNTitle {
 ///
 /// * `previous` - An `Option<UrlNTitle>` that holds the the URL and title for the previous page, if available.
 /// * `next` - An `Option<UrlNTitle>` that holds the the URL and title for the next page, if available.
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, JsonSchema)]
 #[serde(default)]
 pub struct PrevNextByUrl {
     pub prev: Option<UrlNTitle>,
@@ -653,7 +654,7 @@ pub struct PrevNextByUrl {
 ///
 /// * `title` - A `String` that holds the title of the navigation link.
 /// * `url` - A `String` that holds the URL of the navigation link.
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, JsonSchema)]
 pub struct UrlNTitle {
     pub title: String,
     pub url: String,
@@ -674,7 +675,7 @@ pub struct UrlNTitle {
 /// * `no_indexing` - A `bool` that indicates whether the page should be excluded from indexing by search engines.
 /// * `page_not_found` - A `bool` that indicates whether the page represents a "Page Not Found" (404) error.
 /// * `url` - A `String` that holds the URL of the page.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonSPAPage {
     pub slug: &'static str,
@@ -699,7 +700,7 @@ pub struct JsonSPAPage {
 /// * `title` - A `String` that holds the title of the featured article.
 /// * `tag` - An `Option<Parent>` that holds an optional parent for the featured article, which is
 ///   used for categorization.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HomePageFeaturedArticle {
     pub mdn_url: String,
@@ -717,7 +718,7 @@ pub struct HomePageFeaturedArticle {
 /// * `contributor_name` - A `String` that holds the name of the featured contributor.
 /// * `url` - A `String` that holds the URL to the contributor's profile or related content.
 /// * `quote` - A `String` that holds a quote from the featured contributor.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HomePageFeaturedContributor {
     pub contributor_name: String,
@@ -732,7 +733,7 @@ pub struct HomePageFeaturedContributor {
 ///
 /// * `name` - A `String` that holds the name or title of the entity.
 /// * `url` - A `String` that holds the URL associated with the entity.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct NameUrl {
     pub name: String,
     pub url: String,
@@ -751,7 +752,7 @@ pub struct NameUrl {
 /// * `author` - An `Option<String>` that holds the name of the author of the news item, if available.
 /// * `source` - A `NameUrl` that holds the source of the news item, including the name and URL of the source.
 /// * `published_at` - A `NaiveDate` that specifies the publication date of the news item.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct HomePageLatestNewsItem {
     pub url: String,
     pub title: String,
@@ -773,7 +774,7 @@ pub struct HomePageLatestNewsItem {
 /// * `updated_at` - A `DateTime<Utc>` that specifies the time of the contribution.
 /// * `url` - A `String` that holds the URL to the contribution.
 /// * `repo` - A `NameUrl` that holds the repository information, including the name and URL of the repository.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct HomePageRecentContribution {
     pub number: i64,
     pub title: String,
@@ -795,7 +796,7 @@ pub struct HomePageRecentContribution {
 /// # Fields
 ///
 /// * `items` - A `Vec<T>` that holds the collection of items.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct ItemContainer<T>
 where
     T: Clone + Serialize,
@@ -815,7 +816,7 @@ where
 /// * `featured_contributor` - An `Option<HomePageFeaturedContributor>` that holds information about a featured contributor, if available.
 /// * `latest_news` - An `ItemContainer<HomePageLatestNewsItem>` that holds the latest news items to be displayed on the home page.
 /// * `recent_contributions` - An `ItemContainer<HomePageRecentContribution>` that holds the recent contributions to be displayed on the home page.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonHomePageSPAHyData {
     pub page_description: Option<&'static str>,
@@ -837,7 +838,7 @@ pub struct JsonHomePageSPAHyData {
 ///   including featured articles, contributors, latest news, and recent contributions.
 /// * `page_title` - A `&'static str` that holds the title of the home page.
 /// * `url` - A `String` that holds the URL of the page.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonHomePage {
     pub hy_data: JsonHomePageSPAHyData,
@@ -857,7 +858,7 @@ pub struct JsonHomePage {
 /// * `sections` - A `Vec<Section>` that holds the content sections of the generic page.
 /// * `title` - A `String` that holds the title of the generic page.
 /// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the generic page.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonGenericHyData {
     pub sections: Vec<Section>,
@@ -879,7 +880,7 @@ pub struct JsonGenericHyData {
 /// * `page_title` - A `String` that holds the title of the generic page.
 /// * `url` - A `String` that holds the URL of the generic page.
 /// * `id` - A `String` that holds the unique identifier for the generic page.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonGenericPage {
     pub hy_data: JsonGenericHyData,
