@@ -261,10 +261,10 @@ pub struct DisplayIssue {
 
 pub type DisplayIssues = BTreeMap<&'static str, Vec<DisplayIssue>>;
 
-impl From<Issue> for DisplayIssue {
-    fn from(value: Issue) -> Self {
+impl DisplayIssue {
+    fn from_issue_with_id(value: Issue, id: usize) -> Self {
         let mut di = DisplayIssue {
-            id: value.ic,
+            id: id as i64,
             col: if value.col == 0 {
                 None
             } else {
@@ -316,8 +316,8 @@ impl From<Issue> for DisplayIssue {
 
 pub fn to_display_issues(issues: Vec<Issue>) -> DisplayIssues {
     let mut map = BTreeMap::new();
-    for issue in issues {
-        let di = DisplayIssue::from(issue);
+    issues.into_iter().enumerate().for_each(|(id, issue)| {
+        let di = DisplayIssue::from_issue_with_id(issue, id);
         match &di.additional {
             Additional::BrokenLink { .. } => {
                 let entry: &mut Vec<_> = map.entry("broken_links").or_default();
@@ -332,6 +332,6 @@ pub fn to_display_issues(issues: Vec<Issue>) -> DisplayIssues {
                 entry.push(di);
             }
         }
-    }
+    });
     map
 }
