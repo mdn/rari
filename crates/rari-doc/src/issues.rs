@@ -10,6 +10,8 @@ use tracing::{Event, Subscriber};
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
+use crate::pages::page::{Page, PageLike};
+
 static ISSUE_COUNTER: AtomicI64 = AtomicI64::new(0);
 
 pub(crate) fn get_issue_couter() -> i64 {
@@ -246,6 +248,7 @@ pub enum Additional {
 }
 
 #[derive(Serialize, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct DisplayIssue {
     pub id: i64,
     pub explanation: Option<String>,
@@ -255,6 +258,8 @@ pub struct DisplayIssue {
     pub name: String,
     pub line: Option<i64>,
     pub col: Option<i64>,
+    pub source_context: Option<String>,
+    pub filepath: Option<String>,
     #[serde(flatten)]
     pub additional: Additional,
 }
@@ -262,24 +267,42 @@ pub struct DisplayIssue {
 pub type DisplayIssues = BTreeMap<&'static str, Vec<DisplayIssue>>;
 
 impl DisplayIssue {
-    fn from_issue_with_id(value: Issue, id: usize) -> Self {
+    fn from_issue_with_id(issue: Issue, page: &Page, id: usize) -> Self {
         let mut di = DisplayIssue {
             id: id as i64,
-            col: if value.col == 0 {
+            col: if issue.col == 0 {
                 None
             } else {
-                Some(value.col)
+                Some(issue.col)
             },
-            line: if value.line == 0 {
+            line: if issue.line == 0 {
                 None
             } else {
-                Some(value.line)
+                Some(issue.line)
             },
             ..Default::default()
         };
+        if let (Some(_col), Some(line)) = (di.col, di.line) {
+            let line = line - page.fm_offset() as i64;
+            let line_range = -3..3;
+            let mut context = String::default();
+            for i in line_range {
+                let x = page
+                    .content()
+                    .lines()
+                    .nth((line + i) as usize)
+                    .unwrap_or_default();
+                context.push_str(x);
+                context.push('\n');
+            }
+
+            di.source_context = Some(context);
+        }
+
+        di.filepath = Some(page.full_path().to_string_lossy().into_owned());
+
         let mut additional = HashMap::new();
-        println!("{value:?}");
-        for (key, value) in value.spans.into_iter().chain(value.fields.into_iter()) {
+        for (key, value) in issue.spans.into_iter().chain(issue.fields.into_iter()) {
             match key {
                 "source" => {
                     di.name = value;
@@ -314,10 +337,10 @@ impl DisplayIssue {
     }
 }
 
-pub fn to_display_issues(issues: Vec<Issue>) -> DisplayIssues {
+pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
     let mut map = BTreeMap::new();
     issues.into_iter().enumerate().for_each(|(id, issue)| {
-        let di = DisplayIssue::from_issue_with_id(issue, id);
+        let di = DisplayIssue::from_issue_with_id(issue, page, id);
         match &di.additional {
             Additional::BrokenLink { .. } => {
                 let entry: &mut Vec<_> = map.entry("broken_links").or_default();
