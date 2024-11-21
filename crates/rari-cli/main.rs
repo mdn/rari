@@ -23,6 +23,7 @@ use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
+use rari_tools::redirects::fix_redirects;
 use rari_tools::remove::remove;
 use rari_tools::sidebars::fmt_sidebars;
 use rari_tools::sync_translated_content::sync_translated_content;
@@ -73,6 +74,7 @@ enum ContentSubcommand {
     AddRedirect(AddRedirectArgs),
     SyncTranslatedContent(SyncTranslatedContentArgs),
     FmtSidebars,
+    FixRedirects,
 }
 
 #[derive(Args)]
@@ -383,6 +385,9 @@ fn main() -> Result<(), Error> {
             }
             ContentSubcommand::FmtSidebars => {
                 fmt_sidebars()?;
+            }
+            ContentSubcommand::FixRedirects => {
+                fix_redirects()?;
             }
         },
         Commands::Update(args) => update(args.version)?,
