@@ -18,7 +18,7 @@
 //!
 //! - **Specialized Caches**: These caches store specific types of documentation content.
 //!   - `CACHED_CURRICULUM`: Stores curriculum files, indexed by URL, path, and index,
-//!   - `GENERIC_PAGES_FILES`: Stores generic pages indexed by URL.
+//!   - `GENERIC_CONTENT_FILES`: Stores generic pages indexed by URL.
 //!   - `CONTRIBUTOR_SPOTLIGHT_FILES`: Stores contributor spotlight pages indexed by URL.
 
 use std::borrow::Cow;
@@ -30,7 +30,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use dashmap::DashMap;
 use rari_types::globals::{
     blog_root, cache_content, content_root, content_translated_root, contributor_spotlight_root,
-    curriculum_root, generic_pages_root,
+    curriculum_root, generic_content_root,
 };
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
@@ -63,7 +63,7 @@ type SidebarFilesCache = Arc<DashMap<(String, Locale), Arc<MetaSidebar>>>;
 pub(crate) static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
     LazyLock::new(|| Arc::new(DashMap::new()));
 pub(crate) static CACHED_CURRICULUM: OnceLock<CurriculumFiles> = OnceLock::new();
-pub(crate) static GENERIC_PAGES_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
+pub(crate) static GENERIC_CONTENT_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
 pub(crate) static CONTRIBUTOR_SPOTLIGHT_FILES: OnceLock<UrlToPageMap> = OnceLock::new();
 pub(crate) static WIKI_HISTORY: OnceLock<WikiHistories> = OnceLock::new();
 
@@ -241,8 +241,8 @@ fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
     }
 }
 
-fn gather_generic_pages() -> Result<HashMap<String, Page>, DocError> {
-    if let Some(root) = generic_pages_root() {
+fn gather_generic_content() -> Result<HashMap<String, Page>, DocError> {
+    if let Some(root) = generic_content_root() {
         Ok(read_docs_parallel::<GenericPage>(&[root], Some("*.md"))?
             .into_iter()
             .filter_map(|page| {
@@ -261,7 +261,7 @@ fn gather_generic_pages() -> Result<HashMap<String, Page>, DocError> {
             .map(|page| (page.url().to_ascii_lowercase(), page))
             .collect())
     } else {
-        Err(DocError::NoGenericPagesRoot)
+        Err(DocError::NoGenericContentRoot)
     }
 }
 
@@ -338,7 +338,7 @@ fn gather_contributre_spotlight() -> Result<HashMap<String, Page>, DocError> {
             .map(|page| (page.url().to_ascii_lowercase(), page))
             .collect())
     } else {
-        Err(DocError::NoGenericPagesRoot)
+        Err(DocError::NoGenericContentRoot)
     }
 }
 
@@ -521,22 +521,22 @@ pub type UrlToPageMap = HashMap<String, Page>;
 ///
 /// This function returns a `Cow<'static, UrlToPageMap>` containing the generic pages.
 /// If caching is enabled (as determined by `cache_content()`), it attempts to get the cached
-/// generic pages from `GENERIC_PAGES_FILES`, initializing it if needed.
+/// generic pages from `GENERIC_CONTENT_FILES`, initializing it if needed.
 /// If caching is not enabled, it directly reads the generic pages and returns them.
 ///
 /// # Returns
 ///
 /// * `Cow<'static, UrlToPageMap>` - Returns a `Cow::Borrowed` containing the cached generic pages
 ///   if caching is enabled. Otherwise, returns a `Cow::Owned` containing the read-in generic pages.
-pub fn generic_pages_files() -> Cow<'static, UrlToPageMap> {
+pub fn generic_content_files() -> Cow<'static, UrlToPageMap> {
     fn gather() -> UrlToPageMap {
-        gather_generic_pages().unwrap_or_else(|e| {
+        gather_generic_content().unwrap_or_else(|e| {
             error!("{e}");
             Default::default()
         })
     }
     if cache_content() {
-        Cow::Borrowed(GENERIC_PAGES_FILES.get_or_init(gather))
+        Cow::Borrowed(GENERIC_CONTENT_FILES.get_or_init(gather))
     } else {
         Cow::Owned(gather())
     }

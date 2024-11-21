@@ -12,7 +12,7 @@ pub struct Settings {
     pub content_translated_root: Option<PathBuf>,
     pub build_out_root: Option<PathBuf>,
     pub blog_root: Option<PathBuf>,
-    pub generic_pages_root: Option<PathBuf>,
+    pub generic_content_root: Option<PathBuf>,
     pub curriculum_root: Option<PathBuf>,
     pub contributor_spotlight_root: Option<PathBuf>,
     pub deny_warnings: bool,
