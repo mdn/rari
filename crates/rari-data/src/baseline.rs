@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 use std::path::Path;
 
 use rari_utils::io::read_to_string;
+use schemars::JsonSchema;
 use serde::de::{self, value, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use url::Url;
@@ -98,7 +99,7 @@ pub enum BrowserIdentifier {
     SafariIos,
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum BaselineHighLow {
     High,
@@ -107,7 +108,7 @@ pub enum BaselineHighLow {
     False(bool),
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct SupportStatus {
     /// Whether the feature is Baseline (low substatus), Baseline (high substatus), or not (false)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -122,7 +123,7 @@ pub struct SupportStatus {
     pub support: BTreeMap<BrowserIdentifier, String>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct SupportStatusWithByKey {
     /// Whether the feature is Baseline (low substatus), Baseline (high substatus), or not (false)
     #[serde(skip_serializing_if = "Option::is_none")]

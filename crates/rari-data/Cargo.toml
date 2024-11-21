@@ -14,3 +14,4 @@ serde_json.workspace = true
 url.workspace = true
 chrono.workspace = true
 indexmap.workspace = true
+schemars.workspace = true
