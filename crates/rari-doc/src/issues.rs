@@ -3,6 +3,7 @@ use std::fmt;
 use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, Mutex};
 
+use itertools::Itertools;
 use serde::Serialize;
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id};
@@ -284,17 +285,18 @@ impl DisplayIssue {
         };
         if let (Some(_col), Some(line)) = (di.col, di.line) {
             let line = line - page.fm_offset() as i64;
-            let line_range = -3..3;
-            let mut context = String::default();
-            for i in line_range {
-                let x = page
-                    .content()
-                    .lines()
-                    .nth((line + i) as usize)
-                    .unwrap_or_default();
-                context.push_str(x);
-                context.push('\n');
-            }
+            // take surrounding +- 3 lines (7 in total)
+            let (skip, take) = if line < 4 {
+                (0, 7 - (4 - line))
+            } else {
+                (line - 4, 7)
+            };
+            let context = page
+                .content()
+                .lines()
+                .skip(skip as usize)
+                .take(take as usize)
+                .join("\n");
 
             di.source_context = Some(context);
         }
@@ -339,7 +341,7 @@ impl DisplayIssue {
 
 pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
     let mut map = BTreeMap::new();
-    issues.into_iter().enumerate().for_each(|(id, issue)| {
+    for (id, issue) in issues.into_iter().enumerate() {
         let di = DisplayIssue::from_issue_with_id(issue, page, id);
         match &di.additional {
             Additional::BrokenLink { .. } => {
@@ -355,6 +357,6 @@ pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
                 entry.push(di);
             }
         }
-    });
+    }
     map
 }
