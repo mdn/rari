@@ -2,7 +2,6 @@ use std::fmt::Write;
 
 use rari_templ_func::rari_f;
 use rari_types::AnyArg;
-use rari_utils::concat_strs;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
