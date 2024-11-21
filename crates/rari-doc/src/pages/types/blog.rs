@@ -8,6 +8,7 @@ use rari_types::globals::blog_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::cached_readers::{blog_author_by_name, blog_files};
@@ -23,7 +24,7 @@ pub struct Author {
     pub path: PathBuf,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, JsonSchema)]
 pub struct AuthorLink {
     pub name: Option<String>,
     pub link: Option<String>,
@@ -45,14 +46,14 @@ impl AuthorLink {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, JsonSchema)]
 pub struct AuthorFrontmatter {
     pub name: Option<String>,
     pub link: Option<String>,
     pub avatar: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, JsonSchema)]
 #[serde(default)]
 pub struct AuthorMetadata {
     pub name: String,
@@ -60,7 +61,7 @@ pub struct AuthorMetadata {
     pub avatar_url: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, JsonSchema)]
 #[serde(default)]
 pub struct BlogImage {
     pub file: String,
@@ -69,7 +70,7 @@ pub struct BlogImage {
     pub creator: Option<AuthorMetadata>,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BlogMeta {
     pub slug: String,

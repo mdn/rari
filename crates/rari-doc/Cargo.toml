@@ -28,6 +28,7 @@ dashmap.workspace = true
 pretty_yaml.workspace = true
 serde_yaml_ng.workspace = true
 yaml_parser.workspace = true
+schemars.workspace = true
 
 yaml-rust = "0.4"
 percent-encoding = "2"
@@ -35,7 +36,6 @@ pest = "2"
 pest_derive = "2"
 validator = { version = "0.19", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
-
 scraper = { version = "0.21", features = ["deterministic"] }
 lol_html = "2"
 html-escape = "0.2"

@@ -69,7 +69,11 @@ impl SPA {
                         locale.as_url_str(),
                         "/",
                         build_spa.slug,
-                        if build_spa.trailing_slash { "/" } else { "" }
+                        if build_spa.trailing_slash && !build_spa.slug.is_empty() {
+                            "/"
+                        } else {
+                            ""
+                        }
                     ),
                     locale,
                     page_type: PageType::SPA,

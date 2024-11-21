@@ -38,6 +38,7 @@ members = [
   "crates/rari-md",
   "crates/rari-doc",
   "crates/rari-linter",
+  "crates/rari-sitemap",
   "crates/rari-tools",
   "crates/css-syntax",
   "crates/css-syntax-types",
@@ -63,6 +64,7 @@ rari-utils = { path = "crates/rari-utils" }
 rari-md = { path = "crates/rari-md" }
 rari-data = { path = "crates/rari-data" }
 rari-templ-func = { path = "crates/rari-templ-func" }
+rari-sitemap = { path = "crates/rari-sitemap" }
 
 tracing = "0.1"
 tracing-subscriber = "0.3"
@@ -92,6 +94,7 @@ console = "0.15"
 sha2 = "0.10"
 dashmap = "6"
 serde_yaml_ng = "0.10"
+schemars = { version = "0.8", features = ["chrono"] }
 pretty_yaml = "0.5"
 yaml_parser = "0.2"
 const_format = "0.2"
@@ -102,6 +105,7 @@ rari-tools.workspace = true
 rari-deps.workspace = true
 rari-types.workspace = true
 rari-utils.workspace = true
+rari-sitemap.workspace = true
 
 serde.workspace = true
 serde_json.workspace = true
@@ -109,6 +113,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
 dashmap.workspace = true
+schemars.workspace = true
 
 self_update = { version = "0.41", default-features = false, features = [
   "rustls",

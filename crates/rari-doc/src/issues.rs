@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, Mutex};
 
 use itertools::Itertools;
+use schemars::JsonSchema;
 use serde::Serialize;
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id};
@@ -235,7 +236,7 @@ where
     }
 }
 
-#[derive(Serialize, Debug, Default, Clone)]
+#[derive(Serialize, Debug, Default, Clone, JsonSchema)]
 #[serde(untagged)]
 pub enum Additional {
     BrokenLink {
@@ -248,7 +249,7 @@ pub enum Additional {
     None,
 }
 
-#[derive(Serialize, Debug, Default, Clone)]
+#[derive(Serialize, Debug, Default, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DisplayIssue {
     pub id: i64,
