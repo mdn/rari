@@ -21,17 +21,27 @@ impl RariApi {
     pub fn live_sample_base_url() -> &'static str {
         &settings().live_samples_base_url
     }
+    pub fn get_page_nowarn(url: &str) -> Result<Page, DocError> {
+        RariApi::get_page_internal(url, false)
+    }
+
     pub fn get_page(url: &str) -> Result<Page, DocError> {
+        RariApi::get_page_internal(url, true)
+    }
+
+    fn get_page_internal(url: &str, warn: bool) -> Result<Page, DocError> {
         let redirect = resolve_redirect(url);
         let url = match redirect.as_ref() {
             Some(redirect) => {
-                let ic = get_issue_couter();
-                tracing::warn!(
-                    source = "macro-redirected-link",
-                    ic = ic,
-                    url = url,
-                    href = redirect.as_ref()
-                );
+                if warn {
+                    let ic = get_issue_couter();
+                    tracing::warn!(
+                        source = "macro-redirected-link",
+                        ic = ic,
+                        url = url,
+                        href = redirect.as_ref()
+                    );
+                }
                 if deny_warnings() {
                     return Err(DocError::RedirectedLink {
                         from: url.to_string(),
