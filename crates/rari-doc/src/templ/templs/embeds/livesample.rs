@@ -2,6 +2,7 @@ use std::fmt::Write;
 
 use rari_templ_func::rari_f;
 use rari_types::AnyArg;
+use rari_utils::concat_strs;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
@@ -21,11 +22,13 @@ pub fn live_sample(
     let title = dedup_whitespace(&id.replace('_', " "));
     let id = RariApi::anchorize(&id);
     let mut out = String::new();
-    out.push_str(r#"<div class="code-example"><div class="example-header"></div><iframe class="sample-code-frame" title=""#);
-    out.push_str(&html_escape::encode_quoted_attribute(&title));
-    out.push_str(r#" sample" id="frame_"#);
-    out.push_str(&id);
-    out.push_str(r#"" "#);
+    out.extend([
+        r#"<div class="code-example"><div class="example-header"></div><iframe class="sample-code-frame" title=""#,
+        &html_escape::encode_quoted_attribute(&title),
+        r#" sample" id="frame_"#,
+        &id,
+        r#"" "#
+    ]);
     if let Some(width) = width {
         if !width.is_empty() {
             write!(&mut out, r#"width="{}" "#, width)?;
@@ -41,18 +44,17 @@ pub fn live_sample(
             }
         }
     }
-    write!(
-        &mut out,
-        r#"src="{}{}{}runner.html?id={}" "#,
-        RariApi::live_sample_base_url(),
+    out.extend([
+        r#"src="about:blank" data-live-path=""#,
         env.url,
         if env.url.ends_with('/') { "" } else { "/" },
-        id
-    )?;
+        r#"" data-live-id=""#,
+        &id,
+        r#"" "#,
+    ]);
     if let Some(allowed_features) = allowed_features {
         write!(&mut out, r#"allow="{}" "#, allowed_features)?;
     }
-    out.push_str(r#"sandbox="allow-same-origin allow-scripts" "#);
-    out.push_str(r#"loading="lazy"></iframe></div>"#);
+    out.push_str(r#"sandbox="allow-same-origin allow-scripts" loading="lazy"></iframe></div>"#);
     Ok(out)
 }
