@@ -9,13 +9,14 @@ use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::utils::split_fm;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Usernames {
     pub github: String,

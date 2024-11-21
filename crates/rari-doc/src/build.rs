@@ -17,7 +17,8 @@ use sha2::{Digest, Sha256};
 use tracing::{span, Level};
 
 use crate::cached_readers::{
-    blog_files, contributor_spotlight_files, curriculum_files, generic_pages_files, wiki_histories,
+    blog_files, contributor_spotlight_files, curriculum_files, generic_content_files,
+    wiki_histories,
 };
 use crate::contributors::contributors_txt;
 use crate::error::DocError;
@@ -234,7 +235,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
 /// This function will return an error if:
 /// - An error occurs while building any of the generic pages.
 pub fn build_generic_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
-    generic_pages_files()
+    generic_content_files()
         .values()
         .map(|page| {
             build_single_page(page).map(|_| SitemapMeta {

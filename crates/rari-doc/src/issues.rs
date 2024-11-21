@@ -3,12 +3,16 @@ use std::fmt;
 use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, Mutex};
 
+use itertools::Itertools;
+use schemars::JsonSchema;
 use serde::Serialize;
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id};
 use tracing::{Event, Subscriber};
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
+
+use crate::pages::page::{Page, PageLike};
 
 static ISSUE_COUNTER: AtomicI64 = AtomicI64::new(0);
 
@@ -232,7 +236,7 @@ where
     }
 }
 
-#[derive(Serialize, Debug, Default, Clone)]
+#[derive(Serialize, Debug, Default, Clone, JsonSchema)]
 #[serde(untagged)]
 pub enum Additional {
     BrokenLink {
@@ -245,7 +249,8 @@ pub enum Additional {
     None,
 }
 
-#[derive(Serialize, Debug, Default, Clone)]
+#[derive(Serialize, Debug, Default, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct DisplayIssue {
     pub id: i64,
     pub explanation: Option<String>,
@@ -255,31 +260,52 @@ pub struct DisplayIssue {
     pub name: String,
     pub line: Option<i64>,
     pub col: Option<i64>,
+    pub source_context: Option<String>,
+    pub filepath: Option<String>,
     #[serde(flatten)]
     pub additional: Additional,
 }
 
 pub type DisplayIssues = BTreeMap<&'static str, Vec<DisplayIssue>>;
 
-impl From<Issue> for DisplayIssue {
-    fn from(value: Issue) -> Self {
+impl DisplayIssue {
+    fn from_issue_with_id(issue: Issue, page: &Page, id: usize) -> Self {
         let mut di = DisplayIssue {
-            id: value.ic,
-            col: if value.col == 0 {
+            id: id as i64,
+            col: if issue.col == 0 {
                 None
             } else {
-                Some(value.col)
+                Some(issue.col)
             },
-            line: if value.line == 0 {
+            line: if issue.line == 0 {
                 None
             } else {
-                Some(value.line)
+                Some(issue.line)
             },
             ..Default::default()
         };
+        if let (Some(_col), Some(line)) = (di.col, di.line) {
+            let line = line - page.fm_offset() as i64;
+            // take surrounding +- 3 lines (7 in total)
+            let (skip, take) = if line < 4 {
+                (0, 7 - (4 - line))
+            } else {
+                (line - 4, 7)
+            };
+            let context = page
+                .content()
+                .lines()
+                .skip(skip as usize)
+                .take(take as usize)
+                .join("\n");
+
+            di.source_context = Some(context);
+        }
+
+        di.filepath = Some(page.full_path().to_string_lossy().into_owned());
+
         let mut additional = HashMap::new();
-        println!("{value:?}");
-        for (key, value) in value.spans.into_iter().chain(value.fields.into_iter()) {
+        for (key, value) in issue.spans.into_iter().chain(issue.fields.into_iter()) {
             match key {
                 "source" => {
                     di.name = value;
@@ -314,10 +340,10 @@ impl From<Issue> for DisplayIssue {
     }
 }
 
-pub fn to_display_issues(issues: Vec<Issue>) -> DisplayIssues {
+pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
     let mut map = BTreeMap::new();
-    for issue in issues {
-        let di = DisplayIssue::from(issue);
+    for (id, issue) in issues.into_iter().enumerate() {
+        let di = DisplayIssue::from_issue_with_id(issue, page, id);
         match &di.additional {
             Additional::BrokenLink { .. } => {
                 let entry: &mut Vec<_> = map.entry("broken_links").or_default();

@@ -3,13 +3,16 @@ use std::iter::once;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use thiserror::Error;
 
 use crate::globals::{content_translated_root, settings};
 
-#[derive(PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord)]
+#[derive(
+    PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord, JsonSchema,
+)]
 pub enum Native {
     #[default]
     #[serde(rename = "English (US)")]
@@ -62,7 +65,18 @@ pub enum LocaleError {
 }
 
 #[derive(
-    PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Deserialize, Serialize, Default, Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Debug,
+    Clone,
+    Copy,
+    Deserialize,
+    Serialize,
+    Default,
+    Hash,
+    JsonSchema,
 )]
 pub enum Locale {
     #[default]

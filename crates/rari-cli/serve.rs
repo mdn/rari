@@ -47,8 +47,17 @@ async fn get_json_handler(
     let url = req.uri().path();
     let req_id = REQ_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let span = span!(Level::WARN, "serve", req = req_id);
+    let _enter0 = span.enter();
+    let span = span!(Level::ERROR, "url", "{}", url);
     let _enter1 = span.enter();
-    let mut json = get_json(url)?;
+    let url = url.strip_suffix("/index.json").unwrap_or(url);
+    let page = Page::from_url_with_fallback(url)?;
+    let slug = &page.slug();
+    let locale = page.locale();
+    let span = span!(Level::ERROR, "page", "{}:{}", locale, slug);
+    let _enter2 = span.enter();
+    let mut json = page.build()?;
+    tracing::info!("{url}");
     if let BuiltPage::Doc(json_doc) = &mut json {
         let m = memory_layer.get_events();
         let mut issues = m.lock().unwrap();
@@ -58,24 +67,9 @@ async fn get_json_handler(
             .cloned()
             .collect();
         issues.retain_mut(|i| i.req != req_id);
-        json_doc.doc.flaws = Some(to_display_issues(req_isses));
+        json_doc.doc.flaws = Some(to_display_issues(req_isses, &page));
     }
     Ok(Json(json))
-}
-
-fn get_json(url: &str) -> Result<BuiltPage, DocError> {
-    let span = span!(Level::ERROR, "url", "{}", url);
-    let _enter1 = span.enter();
-    let url = url.strip_suffix("/index.json").unwrap_or(url);
-    let page = Page::from_url_with_fallback(url)?;
-
-    let slug = &page.slug();
-    let locale = page.locale();
-    let span = span!(Level::ERROR, "page", "{}:{}", locale, slug);
-    let _enter2 = span.enter();
-    let json = page.build()?;
-    tracing::info!("{url}");
-    Ok(json)
 }
 
 async fn get_contributors_handler(req: Request) -> impl IntoResponse {
