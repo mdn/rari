@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.22](https://github.com/mdn/rari/compare/v0.0.21...v0.0.22) (2024-11-21)
+
+
+### Features
+
+* **npm:** export ts types, json schema ([#42](https://github.com/mdn/rari/issues/42)) ([242b078](https://github.com/mdn/rari/commit/242b078d430eee15ef51e0a41da73d7bc898c4c5))
+* **sitemaps:** write xml sitemaps ([a450474](https://github.com/mdn/rari/commit/a45047430772e9830e7055253c02bc403680cc5c))
+* **templ:** new embedlivesample iframe ([e5382ca](https://github.com/mdn/rari/commit/e5382ca43e150b94a4391b36e3b9494073355270))
+
+
+### Bug Fixes
+
+* **templ:** cssxref and jsxref double issue reporting ([c20851b](https://github.com/mdn/rari/commit/c20851bcfb2b9bd94eff1afdc24905efcec0fff3))
+
 ## [0.0.21](https://github.com/mdn/rari/compare/v0.0.20...v0.0.21) (2024-11-18)
 
 
