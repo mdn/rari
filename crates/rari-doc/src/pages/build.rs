@@ -223,7 +223,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         .unwrap_or_default()
         .to_string_lossy()
         .to_string();
-    let history = git_history().get(&doc.meta.path);
+    let history = git_history().get(doc.path());
     let modified = history.map(|entry| entry.modified).unwrap_or_default();
     let short_title = doc
         .short_title()

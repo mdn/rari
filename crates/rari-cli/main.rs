@@ -19,6 +19,7 @@ use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
+use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
@@ -290,21 +291,15 @@ fn main() -> Result<(), Error> {
                 );
             }
             if !args.skip_sitemap && args.files.is_empty() && !urls.is_empty() {
+                let sitemaps = Sitemaps { sitemap_meta: urls };
                 let start = std::time::Instant::now();
                 let out_path = build_out_root()?;
                 fs::create_dir_all(out_path).unwrap();
-                let out_file = out_path.join("sitemap.txt");
-                let file = File::create(out_file).unwrap();
-                let mut buffed = BufWriter::new(file);
-                urls.sort();
-                for url in &urls {
-                    buffed.write_all(url.as_bytes())?;
-                    buffed.write_all(b"\n")?;
-                }
+                sitemaps.write_all_sitemaps(out_path)?;
                 println!(
-                    "Took: {: >10.3?} to write sitemap.txt ({})",
+                    "Took: {: >10.3?} to write sitemaps ({})",
                     start.elapsed(),
-                    urls.len()
+                    sitemaps.sitemap_meta.len()
                 );
             }
             if let Some((recorder_handler, tx)) = templ_stats {

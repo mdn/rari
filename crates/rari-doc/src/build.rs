@@ -9,7 +9,8 @@ use std::io::{BufWriter, Write};
 use std::iter::once;
 use std::path::PathBuf;
 
-use rari_types::globals::build_out_root;
+use chrono::NaiveDateTime;
+use rari_types::globals::{build_out_root, git_history};
 use rari_types::locale::Locale;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sha2::{Digest, Sha256};
@@ -25,6 +26,13 @@ use crate::pages::json::BuiltPage;
 use crate::pages::page::{Page, PageBuilder, PageLike};
 use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
+
+#[derive(Clone, Default)]
+pub struct SitemapMeta<'a> {
+    pub url: Cow<'a, str>,
+    pub modified: Option<NaiveDateTime>,
+    pub locale: Locale,
+}
 
 /// Builds a single documentation page and writes the output to a JSON file.
 ///
@@ -103,16 +111,25 @@ pub fn build_single_page(page: &Page) -> Result<(), DocError> {
 ///
 /// # Returns
 ///
-/// * `Result<Vec<Cow<'_, str>>, DocError>` - Returns a vector of `Cow<'_, str>` containing the URLs of the built
-///   pages if successful, or a `DocError` if an error occurs during the process.
+/// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
+///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///    the process.
 ///
 /// # Errors
 ///
 /// This function will return an error if:
 /// - An error occurs while building any of the documentation pages.
-pub fn build_docs(docs: &[Page]) -> Result<Vec<Cow<'_, str>>, DocError> {
+pub fn build_docs<'a, 'b: 'a>(docs: &'b [Page]) -> Result<Vec<SitemapMeta<'a>>, DocError> {
     docs.into_par_iter()
-        .map(|page| build_single_page(page).map(|_| Cow::Borrowed(page.url())))
+        .map(|page| {
+            let history = git_history().get(page.path());
+            let modified = history.map(|entry| entry.modified);
+            build_single_page(page).map(|_| SitemapMeta {
+                url: Cow::Borrowed(page.url()),
+                locale: page.locale(),
+                modified,
+            })
+        })
         .collect()
 }
 
@@ -123,18 +140,25 @@ pub fn build_docs(docs: &[Page]) -> Result<Vec<Cow<'_, str>>, DocError> {
 ///
 /// # Returns
 ///
-/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of
-///   the built pages if successful, or a `DocError` if an error occurs during the process.
+/// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
+///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///    the process.
 ///
 /// # Errors
 ///
 /// This function will return an error if:
 /// - An error occurs while building any of the curriculum pages.
-pub fn build_curriculum_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+pub fn build_curriculum_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     curriculum_files()
         .by_path
         .values()
-        .map(|page| build_single_page(page).map(|_| Cow::Owned(page.url().to_string())))
+        .map(|page| {
+            build_single_page(page).map(|_| SitemapMeta {
+                url: Cow::Owned(page.url().to_string()),
+                locale: page.locale(),
+                ..Default::default()
+            })
+        })
         .collect()
 }
 
@@ -169,21 +193,28 @@ fn copy_blog_author_avatars() -> Result<(), DocError> {
 ///
 /// # Returns
 ///
-/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of
-///   the built pages if successful, or a `DocError` if an error occurs during the process.
+/// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
+///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///    the process.
 ///
 /// # Errors
 ///
 /// This function will return an error if:
 /// - An error occurs while copying blog author avatars.
 /// - An error occurs while building any of the blog pages.
-pub fn build_blog_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     copy_blog_author_avatars()?;
     blog_files()
         .posts
         .values()
         .chain(once(&SPA::from_url("/en-US/blog/").unwrap()))
-        .map(|page| build_single_page(page).map(|_| Cow::Owned(page.url().to_string())))
+        .map(|page| {
+            build_single_page(page).map(|_| SitemapMeta {
+                url: Cow::Owned(page.url().to_string()),
+                locale: page.locale(),
+                ..Default::default()
+            })
+        })
         .collect()
 }
 
@@ -194,17 +225,24 @@ pub fn build_blog_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
 ///
 /// # Returns
 ///
-/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of the
-///   built pages if successful, or a `DocError` if an error occurs during the process.
+/// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
+///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///    the process.
 ///
 /// # Errors
 ///
 /// This function will return an error if:
 /// - An error occurs while building any of the generic pages.
-pub fn build_generic_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+pub fn build_generic_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     generic_pages_files()
         .values()
-        .map(|page| build_single_page(page).map(|_| Cow::Owned(page.url().to_string())))
+        .map(|page| {
+            build_single_page(page).map(|_| SitemapMeta {
+                url: Cow::Owned(page.url().to_string()),
+                locale: page.locale(),
+                ..Default::default()
+            })
+        })
         .collect()
 }
 
@@ -215,17 +253,24 @@ pub fn build_generic_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
 ///
 /// # Returns
 ///
-/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of
-///   the built pages if successful, or a `DocError` if an error occurs during the process.
+/// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
+///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///    the process.
 ///
 /// # Errors
 ///
 /// This function will return an error if:
 /// - An error occurs while building any of the contributor spotlight pages.
-pub fn build_contributor_spotlight_pages() -> Result<Vec<Cow<'static, str>>, DocError> {
+pub fn build_contributor_spotlight_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     contributor_spotlight_files()
         .values()
-        .map(|page| build_single_page(page).map(|_| Cow::Owned(page.url().to_string())))
+        .map(|page| {
+            build_single_page(page).map(|_| SitemapMeta {
+                url: Cow::Owned(page.url().to_string()),
+                locale: page.locale(),
+                ..Default::default()
+            })
+        })
         .collect()
 }
 
@@ -236,17 +281,24 @@ pub fn build_contributor_spotlight_pages() -> Result<Vec<Cow<'static, str>>, Doc
 ///
 /// # Returns
 ///
-/// * `Result<Vec<Cow<'static, str>>, DocError>` - Returns a vector of `Cow<'static, str>` containing the URLs of
-///   the built SPAs if successful, or a `DocError` if an error occurs during the process.
+/// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
+///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///    the process.
 ///
 /// # Errors
 ///
 /// This function will return an error if:
 /// - An error occurs while building any of the SPAs.
-pub fn build_spas() -> Result<Vec<Cow<'static, str>>, DocError> {
+pub fn build_spas<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     SPA::all()
         .iter()
         .filter_map(|(slug, locale)| SPA::from_slug(slug, *locale))
-        .map(|page| build_single_page(&page).map(|_| Cow::Owned(page.url().to_string())))
+        .map(|page| {
+            build_single_page(&page).map(|_| SitemapMeta {
+                url: Cow::Owned(page.url().to_string()),
+                locale: page.locale(),
+                ..Default::default()
+            })
+        })
         .collect()
 }
