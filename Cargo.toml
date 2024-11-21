@@ -38,6 +38,7 @@ members = [
   "crates/rari-md",
   "crates/rari-doc",
   "crates/rari-linter",
+  "crates/rari-sitemap",
   "crates/rari-tools",
   "crates/css-syntax",
   "crates/css-syntax-types",
@@ -63,6 +64,7 @@ rari-utils = { path = "crates/rari-utils" }
 rari-md = { path = "crates/rari-md" }
 rari-data = { path = "crates/rari-data" }
 rari-templ-func = { path = "crates/rari-templ-func" }
+rari-sitemap = { path = "crates/rari-sitemap" }
 
 tracing = "0.1"
 tracing-subscriber = "0.3"
@@ -102,6 +104,7 @@ rari-tools.workspace = true
 rari-deps.workspace = true
 rari-types.workspace = true
 rari-utils.workspace = true
+rari-sitemap.workspace = true
 
 serde.workspace = true
 serde_json.workspace = true
