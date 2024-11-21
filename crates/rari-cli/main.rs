@@ -25,6 +25,7 @@ use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
 use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
+use rari_tools::redirects::fix_redirects;
 use rari_tools::remove::remove;
 use rari_tools::sidebars::fmt_sidebars;
 use rari_tools::sync_translated_content::sync_translated_content;
@@ -65,6 +66,7 @@ enum Commands {
     Popularities,
     Update(UpdateArgs),
     ExportSchema(ExportSchemaArgs),
+    /// Subcommands for altering content programmatically
     #[command(subcommand)]
     Content(ContentSubcommand),
 }
@@ -76,12 +78,23 @@ struct ExportSchemaArgs {
 
 #[derive(Subcommand)]
 enum ContentSubcommand {
-    /// Moves content from one slug to another
+    /// Moves content pages from one slug to another.
     Move(MoveArgs),
+    /// Deletes content pages.
     Delete(DeleteArgs),
+    /// Adds a redirect from->to pair to the redirect map.
+    ///
+    /// The locale is inferred from the from_url.
     AddRedirect(AddRedirectArgs),
+    /// Syncs translated content for all or a list of locales.
     SyncTranslatedContent(SyncTranslatedContentArgs),
+    /// Formats all sidebars.
     FmtSidebars,
+    /// Fixes redirects across all locales.
+    ///
+    /// This shortens multiple redirect chains to single ones.
+    /// This is also run as part of sync_translated_content.
+    FixRedirects,
 }
 
 #[derive(Args)]
@@ -386,6 +399,9 @@ fn main() -> Result<(), Error> {
             }
             ContentSubcommand::FmtSidebars => {
                 fmt_sidebars()?;
+            }
+            ContentSubcommand::FixRedirects => {
+                fix_redirects()?;
             }
         },
         Commands::Update(args) => update(args.version)?,

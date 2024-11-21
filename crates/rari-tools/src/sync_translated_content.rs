@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
-use crate::redirects::add_redirects;
+use crate::redirects::{add_redirects, fix_redirects};
 use crate::utils::{get_redirects_map, read_all_doc_pages};
 use crate::wikihistory::update_wiki_history;
 
@@ -31,10 +31,15 @@ pub fn sync_translated_content(
         println!(
             "{}",
             green.apply_to(format!(
-                "Syncing translated content for locales: {:?}. Reading documents.",
+                "Syncing translated content for locales: {:?}.\nFixing cross-locale redirects.",
                 locales
             )),
         );
+    }
+    fix_redirects()?;
+
+    if verbose {
+        println!("{}", green.apply_to("Reading all documents."));
     }
 
     let docs = read_all_doc_pages()?;
