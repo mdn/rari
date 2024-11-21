@@ -63,18 +63,29 @@ enum Commands {
     GitHistory,
     Popularities,
     Update(UpdateArgs),
+    /// Subcommands for altering content programmatically
     #[command(subcommand)]
     Content(ContentSubcommand),
 }
 
 #[derive(Subcommand)]
 enum ContentSubcommand {
-    /// Moves content from one slug to another
+    /// Moves content pages from one slug to another.
     Move(MoveArgs),
+    /// Deletes content pages.
     Delete(DeleteArgs),
+    /// Adds a redirect from->to pair to the redirect map.
+    ///
+    /// The locale is inferred from the from_url.
     AddRedirect(AddRedirectArgs),
+    /// Syncs translated content for all or a list of locales.
     SyncTranslatedContent(SyncTranslatedContentArgs),
+    /// Formats all sidebars.
     FmtSidebars,
+    /// Fixes redirects across all locales.
+    ///
+    /// This shortens multiple redirect chains to single ones.
+    /// This is also run as part of sync_translated_content.
     FixRedirects,
 }
 

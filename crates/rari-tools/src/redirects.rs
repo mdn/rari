@@ -240,6 +240,20 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
     Ok(())
 }
 
+/// Optimizes redirect rules based on all suported locales.
+///
+/// It loads all redirects into a singel structure and runs the short_cuts algorithm on it.
+/// The goal is to optimize redirects across locale boundaries.
+///
+/// This function overwrites all redirect files.
+///
+/// # Returns
+///
+/// - `Ok(())` if all operations complete successfully.
+/// - `Err(ToolError)` if any step fails, such as:
+///     - Invalid locale strings that cannot be parsed.
+///     - I/O errors during file reading or writing.
+///     - Errors from the `short_cuts` processing function.
 pub fn fix_redirects() -> Result<(), ToolError> {
     let locales = Locale::for_generic_and_spas();
     let mut pairs = HashMap::new();
