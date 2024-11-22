@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.23](https://github.com/mdn/rari/compare/v0.0.22...v0.0.23) (2024-11-22)
+
+
+### Features
+
+* **generics:** use config for generic content and some spas ([a717537](https://github.com/mdn/rari/commit/a7175374dc087372dffca0ee517fe48fb5d276f5))
+
+
+### Bug Fixes
+
+* **rari-npm:** don't ignore types an schema ([811ca0e](https://github.com/mdn/rari/commit/811ca0ee0a5a45fda44be9532706759b059cce9b))
+* **sitemaps:** fix xml ([857d3f2](https://github.com/mdn/rari/commit/857d3f236a06a987933c72cad1e2814150d2a8a8))
+
 ## [0.0.22](https://github.com/mdn/rari/compare/v0.0.21...v0.0.22) (2024-11-21)
 
 
