@@ -28,6 +28,8 @@ pub enum DocError {
     NoCurriculumRoot,
     #[error("No generic content root set")]
     NoGenericContentRoot,
+    #[error("No generic content config found")]
+    NoGenericContentConfig,
     #[error("No H1 found")]
     NoH1,
     #[error(transparent)]

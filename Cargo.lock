@@ -2662,8 +2662,6 @@ dependencies = [
  "percent-encoding",
  "pest",
  "pest_derive",
- "phf 0.11.2",
- "phf_macros 0.11.2",
  "pretty_yaml",
  "rari-data",
  "rari-md",

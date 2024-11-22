@@ -164,6 +164,8 @@ struct BuildArgs {
     #[arg(long)]
     skip_spas: bool,
     #[arg(long)]
+    skip_generics: bool,
+    #[arg(long)]
     skip_sitemap: bool,
     #[arg(long)]
     templ_stats: bool,
@@ -280,8 +282,12 @@ fn main() -> Result<(), Error> {
             if !args.skip_spas && args.files.is_empty() {
                 let start = std::time::Instant::now();
                 urls.extend(build_spas()?);
-                urls.extend(build_generic_pages()?);
                 println!("Took: {: >10.3?} to build spas", start.elapsed());
+            }
+            if !args.skip_generics && args.files.is_empty() {
+                let start = std::time::Instant::now();
+                urls.extend(build_generic_pages()?);
+                println!("Took: {: >10.3?} to build generics", start.elapsed());
             }
             if !args.skip_content {
                 let start = std::time::Instant::now();
