@@ -5,3 +5,7 @@ tests/data/content/files/*
 !tests/data/content/files/.keep
 tests/data/translated_content/files/*
 !tests/data/translated_content/files/.keep
+
+# Must be top level so these are included in npm publish.
+rari-npm/schema.json
+rari-npm/lib/rari-types.d.ts
