@@ -109,7 +109,7 @@ impl<'a> TryFrom<&Sitemap<'a>> for String {
 
     fn try_from(value: &Sitemap<'a>) -> Result<Self, Self::Error> {
         let mut out = String::new();
-        out.write_str(r#"<?xml version="1.0" encoding="UTF-8"?>\n"#)?;
+        out.write_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")?;
         quick_xml::se::to_writer(&mut out, &value)?;
         Ok(out)
     }
@@ -119,7 +119,7 @@ impl<'a> TryFrom<&SitemapIndex<'a>> for String {
 
     fn try_from(value: &SitemapIndex<'a>) -> Result<Self, Self::Error> {
         let mut out = String::new();
-        out.write_str(r#"<?xml version="1.0" encoding="UTF-8"?>\n"#)?;
+        out.write_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")?;
         quick_xml::se::to_writer(&mut out, &value)?;
         Ok(out)
     }
