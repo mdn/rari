@@ -20,9 +20,20 @@ struct EmbedRequest {
 
 #[axum::debug_handler]
 async fn post_embed_handler(Json(payload): Json<EmbedRequest>) -> impl IntoResponse {
-    info!("embed {:#?} texts", payload.texts);
+    let start = std::time::Instant::now();
+    let chars = payload.texts.join(" ").len();
+    let tlen = payload.texts.len();
+
     match embeds(payload.texts) {
-        Ok(embeddings) => (StatusCode::OK, Json(EmbedResponse { embeddings })).into_response(),
+        Ok(embeddings) => {
+            info!(
+                "embed {} chars over {} texts in {}ms",
+                chars,
+                tlen,
+                start.elapsed().as_millis()
+            );
+            (StatusCode::OK, Json(EmbedResponse { embeddings })).into_response()
+        }
         Err(e) => {
             tracing::error!("error embeddings: {e:?}");
             (StatusCode::INTERNAL_SERVER_ERROR).into_response()

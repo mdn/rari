@@ -16,5 +16,9 @@ tracing-subscriber.workspace = true
 axum = { version = "0.7", features = ["macros"] }
 tokio = "1"
 fastembed = "4"
-ort-sys = "=2.0.0-rc.8"
+ort-sys = { version = "=2.0.0-rc.9", features = ["coreml"] }
+ort = { version = "=2.0.0-rc.9", features = ["coreml"] }
 tower-http = { version = "0", features = ["trace"] }
+
+# troubleshooting coreml lining: https://ort.pyke.io/perf/execution-providers#troubleshooting
+# RUSTFLAGS="-Clink-arg=-fapple-link-rtlib" cargo build

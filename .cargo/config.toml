@@ -3,3 +3,10 @@ TESTING_CONTENT_ROOT = { value = "tests/data/content/files", relative = true }
 TESTING_CONTENT_TRANSLATED_ROOT = { value = "tests/data/translated_content/files", relative = true }
 TESTING_CACHE_CONTENT = "0"
 TESTING_READER_IGNORES_GITIGNORE = "1"
+
+# see https://ort.pyke.io/perf/execution-providers#troubleshooting
+[target.aarch64-apple-darwin]
+rustflags = ["-Clink-arg=-fapple-link-rtlib"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-Clink-arg=-fapple-link-rtlib"]

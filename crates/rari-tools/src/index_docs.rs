@@ -1,5 +1,7 @@
+use html2text::from_read;
 use meilisearch_sdk::client::Client;
-use rari_doc::pages::page::PageLike;
+use rari_doc::pages::json::{BuiltPage, Section};
+use rari_doc::pages::page::{Page, PageBuilder};
 use rari_types::locale::Locale;
 use serde::{Deserialize, Serialize};
 use xxhash_rust::xxh64::xxh64;
@@ -12,6 +14,7 @@ struct MDoc {
     id: String,
     title: String,
     body: String,
+    url: String,
 }
 
 const MEILISEARCH_URL: &str = "http://localhost:7700";
@@ -30,19 +33,58 @@ pub fn index_meili_docs() -> Result<(), ToolError> {
             let mdocs = read_all_doc_pages()
                 .unwrap()
                 .into_iter()
-                .filter(|((locale, _), _)| *locale == Locale::EnUs)
-                // .take(5000)
-                .map(|((_, path), page)| {
-                    let body = page.content().to_string();
-                    let title = page.title().to_string();
-                    let id = hash_string(&path);
-                    let doc = MDoc { id, title, body };
-                    println!("Indexing: {}", doc.title);
-                    doc
+                .filter(|((locale, _), page)| {
+                    *locale == Locale::EnUs && matches!(page, Page::Doc(_))
                 })
+                // .take(100)
+                .filter_map(|((_, _path), page)| {
+                    let built_page = page.build().unwrap();
+                    match &built_page {
+                        BuiltPage::Doc(d) => {
+                            let doc = d.doc.clone();
+                            let body = doc.body;
+                            let mdocs = body
+                                .into_iter()
+                                .filter_map(|section| match section {
+                                    Section::Prose(prose) => {
+                                        let body =
+                                            from_read(std::io::Cursor::new(&prose.content), 80)
+                                                .unwrap_or_default();
+                                        if body.is_empty() {
+                                            return None;
+                                        }
+                                        let title = format!(
+                                            "{} - {}",
+                                            doc.title,
+                                            prose.title.unwrap_or_default()
+                                        );
+                                        Some(MDoc {
+                                            id: hash_string(&title),
+                                            title,
+                                            body,
+                                            url: d.url.clone(),
+                                        })
+                                    }
+                                    _ => None,
+                                })
+                                .collect::<Vec<_>>();
+                            Some(mdocs)
+                        }
+                        _ => None,
+                    }
+                })
+                .flatten()
                 .collect::<Vec<_>>();
+            println!(
+                "mdocs: {}",
+                mdocs
+                    .iter()
+                    .map(|mdoc| format!("{}\n\n{}", mdoc.title, mdoc.url))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
             index
-                .add_documents_in_batches(&mdocs, Some(10), Some("id"))
+                .add_documents_in_batches(&mdocs, Some(50), Some("id"))
                 .await
                 .unwrap();
         });
