@@ -3,6 +3,7 @@ use meilisearch_sdk::client::Client;
 use rari_doc::pages::json::{BuiltPage, Section};
 use rari_doc::pages::page::{Page, PageBuilder};
 use rari_types::locale::Locale;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use xxhash_rust::xxh64::xxh64;
 
@@ -32,7 +33,7 @@ pub fn index_meili_docs() -> Result<(), ToolError> {
         .block_on(async move {
             let mdocs = read_all_doc_pages()
                 .unwrap()
-                .into_iter()
+                .into_par_iter()
                 .filter(|((locale, _), page)| {
                     *locale == Locale::EnUs && matches!(page, Page::Doc(_))
                 })
@@ -58,6 +59,7 @@ pub fn index_meili_docs() -> Result<(), ToolError> {
                                             doc.title,
                                             prose.title.unwrap_or_default()
                                         );
+                                        println!("title: {}", title);
                                         Some(MDoc {
                                             id: hash_string(&title),
                                             title,
@@ -75,16 +77,16 @@ pub fn index_meili_docs() -> Result<(), ToolError> {
                 })
                 .flatten()
                 .collect::<Vec<_>>();
-            println!(
-                "mdocs: {}",
-                mdocs
-                    .iter()
-                    .map(|mdoc| format!("{}\n\n{}", mdoc.title, mdoc.url))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            );
+            // println!(
+            //     "mdocs: {}",
+            //     mdocs
+            //         .iter()
+            //         .map(|mdoc| format!("{}\n\n{}", mdoc.title, mdoc.url))
+            //         .collect::<Vec<_>>()
+            //         .join("\n")
+            // );
             index
-                .add_documents_in_batches(&mdocs, Some(50), Some("id"))
+                .add_documents_in_batches(&mdocs, Some(500), Some("id"))
                 .await
                 .unwrap();
         });
