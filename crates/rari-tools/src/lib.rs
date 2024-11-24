@@ -2,6 +2,7 @@ pub mod add_redirect;
 pub mod error;
 pub mod git;
 pub mod history;
+pub mod index_docs;
 pub mod r#move;
 pub mod popularities;
 pub mod redirects;

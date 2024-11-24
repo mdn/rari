@@ -20,9 +20,11 @@ use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
+use rari_embed::serve::serve as serve_embed;
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
+use rari_tools::index_docs::index_meili_docs;
 use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
 use rari_tools::redirects::fix_redirects;
@@ -62,6 +64,7 @@ enum Commands {
     Build(BuildArgs),
     Foo(BuildArgs),
     Serve(ServeArgs),
+    ServeEmbeddings,
     GitHistory,
     Popularities,
     Update(UpdateArgs),
@@ -95,6 +98,7 @@ enum ContentSubcommand {
     /// This shortens multiple redirect chains to single ones.
     /// This is also run as part of sync_translated_content.
     FixRedirects,
+    IndexDocs,
 }
 
 #[derive(Args)]
@@ -191,6 +195,7 @@ fn main() -> Result<(), Error> {
 
     let fmt_filter = filter::Targets::new()
         .with_target("rari_doc", cli.verbose.log_level_filter().as_trace())
+        .with_target("rari_embed", Level::DEBUG)
         .with_target("rari", cli.verbose.log_level_filter().as_trace());
 
     let memory_filter = filter::Targets::new()
@@ -403,9 +408,11 @@ fn main() -> Result<(), Error> {
             ContentSubcommand::FixRedirects => {
                 fix_redirects()?;
             }
+            ContentSubcommand::IndexDocs => index_meili_docs()?,
         },
         Commands::Update(args) => update(args.version)?,
         Commands::ExportSchema(args) => export_schema(args)?,
+        Commands::ServeEmbeddings => serve_embed()?,
     }
     Ok(())
 }

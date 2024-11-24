@@ -31,6 +31,10 @@ const_format.workspace = true
 
 dialoguer = "0.11"
 csv = "1"
+meilisearch-sdk = "0"
+xxhash-rust = { version = "0", features = ["xxh64"] }
+itertools = "0"
+tokio = "1"
 
 [dev-dependencies]
 serial_test = { version = "3", features = ["file_locks"] }

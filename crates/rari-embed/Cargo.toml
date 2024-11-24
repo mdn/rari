@@ -1,0 +1,20 @@
+[package]
+name = "rari-embed"
+version = "0.0.1"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+serde.workspace = true
+tracing-subscriber.workspace = true
+
+axum = { version = "0.7", features = ["macros"] }
+tokio = "1"
+fastembed = "4"
+ort-sys = "=2.0.0-rc.8"
+tower-http = { version = "0", features = ["trace"] }

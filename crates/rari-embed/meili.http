@@ -1,0 +1,110 @@
+@auth = Bearer dFdgYlqSf3TaQRqgMC35PAQFclolikAJo6V5-jI4xeE
+
+### enable vector store
+PATCH http://localhost:7700/experimental-features/
+Content-Type: application/json
+Authorization: {{auth}}
+
+{
+  "vectorStore": true
+}
+
+### drop the index
+DELETE http://localhost:7700/indexes/mdn
+Authorization: {{auth}}
+
+### create the index
+POST http://localhost:7700/indexes
+Authorization: {{auth}}
+Content-Type: application/json
+
+{
+  "uid": "mdn",
+  "primaryKey": "id"
+}
+
+### get index settings
+GET http://localhost:7700/indexes/mdn/settings
+Authorization: {{auth}}
+
+
+### add the rari embedder to the index
+PATCH http://localhost:7700/indexes/mdn/settings
+Authorization: {{auth}}
+Content-Type: application/json
+
+{
+  "embedders": {
+    "rari": {
+      "source": "rest",
+      "apiKey": "",
+      "dimensions": 384,
+      "documentTemplate": "{{doc.title}} {{doc.body}}",
+      "url": "http://localhost:8084/",
+      "request": {
+        "texts": [
+          "{{text}}",
+          "{{..}}"
+        ]
+      },
+      "response": {
+        "embeddings": [
+          "{{embedding}}",
+          "{{..}}"
+        ]
+      }
+    }
+  }
+}
+
+
+
+### get index embedders
+GET http://localhost:7700/indexes/mdn/settings/embedders
+Authorization: {{auth}}
+
+### index documents
+POST http://localhost:7700/indexes/mdn/documents
+Authorization: {{auth}}
+Content-Type: application/json
+
+[
+  {
+    "id": "test5",
+    "title": "HTTP Status 410",
+    "body": "This response is sent when the requested content has been permanently deleted from server, with no forwarding address. Clients are expected to remove their caches and links to the resource. The HTTP specification intends this status code to be used for limited-time, promotional services. APIs should not feel compelled to indicate resources that have been deleted with this status code."
+  },
+  {
+    "id": "test6",
+    "title": "Element",
+    "body":   "**`Element`** is the most general base class from which all element objects (i.e. objects that represent elements) in a Document inherit. It only has methods and properties common to all kinds of elements. More specific classes inherit from `Element`."
+  }
+]
+
+
+### make a search
+POST http://localhost:7700/indexes/mdn/search
+Authorization: {{auth}}
+Content-Type: application/json
+
+{
+  "q": "gonesd löaskdjf öasjdf öalsdjföj",
+  "hybrid": {
+    "embedder": "rari",
+    "semanticRatio": 1.0
+  }
+}
+
+
+### test embedding servic on rari
+POST http://localhost:8084/
+Content-type: application/json
+
+{
+  "texts": [
+    "show me some content",
+    "galopp",
+    "A Century of Progress International Exposition, also known as the Chicago World's Fair, was a world's fair held in the city of Chicago, Illinois, United States, from 1933 to 1934. The fair, registered under the Bureau International des Expositions (BIE), celebrated the city's centennial. Designed largely in Art Deco style, the theme of the fair was technological innovation, and its motto was Science Finds, Industry Applies, Man Conforms, trumpeting the message that science and American life were wedded.[1] Its architectural symbol was the Sky Ride, a transporter bridge perpendicular to the shore on which one could ride from one side of the fair to the other. One description of the fair noted that the world, then still mired in the malaise of the Great Depression, could glimpse a happier not-too-distant future, all driven by innovation in science and technology. Fair visitors saw the latest wonders in rail travel, automobiles, architecture and even cigarette-smoking robots. The exposition emphasized technology and progress, a utopia, or perfect world, founded on democracy and manufacturing."
+  ]
+}
+
