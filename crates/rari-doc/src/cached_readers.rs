@@ -697,6 +697,7 @@ pub fn wiki_histories() -> Cow<'static, WikiHistories> {
                         error!("Error: reading translated content root: {e}");
                     })
                     .ok()
+                    .filter(|dir| dir.path().is_dir())
                     .and_then(|dir| {
                         Locale::from_str(
                             dir.file_name()

@@ -28,6 +28,7 @@ static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
                     error!("Error: reading translated content root: {e}");
                 })
                 .ok()
+                .filter(|dir| dir.path().is_dir())
                 .and_then(|dir| {
                     Locale::from_str(
                         dir.file_name()
