@@ -6,6 +6,7 @@ use crate::error::MarkdownError;
 use crate::p::{fix_p, is_empty_p, is_escaped_templ_p};
 
 pub mod anchor;
+pub(crate) mod character_set;
 pub(crate) mod ctype;
 pub(crate) mod dl;
 pub mod error;
