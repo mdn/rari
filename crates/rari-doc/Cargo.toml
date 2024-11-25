@@ -1,6 +1,6 @@
 [package]
 name = "rari-doc"
-version = "0.0.23"
+version = "0.0.24"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true

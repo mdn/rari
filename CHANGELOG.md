@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.24](https://github.com/mdn/rari/compare/v0.0.23...v0.0.24) (2024-11-25)
+
+
+### Features
+
+* **rari-npm:** use bin folder ([be311ef](https://github.com/mdn/rari/commit/be311ef84e1edc7da2d4cb50cfddaff3aed58b9a))
+
+
+### Bug Fixes
+
+* **build:** don't display error for files in files ([f3d4d15](https://github.com/mdn/rari/commit/f3d4d15eca4c3bddda738cd0ca53a03589e5164f))
+
 ## [0.0.23](https://github.com/mdn/rari/compare/v0.0.22...v0.0.23) (2024-11-22)
 
 
