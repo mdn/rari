@@ -20,20 +20,8 @@ struct EmbedRequest {
 
 #[axum::debug_handler]
 async fn post_embed_handler(Json(payload): Json<EmbedRequest>) -> impl IntoResponse {
-    let start = std::time::Instant::now();
-    let chars = payload.texts.join(" ").len();
-    let tlen = payload.texts.len();
-
     match embeds(payload.texts) {
-        Ok(embeddings) => {
-            info!(
-                "embed {} chars over {} texts in {}ms",
-                chars,
-                tlen,
-                start.elapsed().as_millis()
-            );
-            (StatusCode::OK, Json(EmbedResponse { embeddings })).into_response()
-        }
+        Ok(embeddings) => (StatusCode::OK, Json(EmbedResponse { embeddings })).into_response(),
         Err(e) => {
             tracing::error!("error embeddings: {e:?}");
             (StatusCode::INTERNAL_SERVER_ERROR).into_response()
@@ -67,7 +55,7 @@ pub fn serve() -> Result<(), anyhow::Error> {
             let app = Router::new().route("/", post(post_embed_handler)).layer(
                 TraceLayer::new_for_http()
                     .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
-                    .on_response(trace::DefaultOnResponse::new().level(Level::ERROR)),
+                    .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
             );
             info!("listening on http://localhost:8084");
             let listener = tokio::net::TcpListener::bind("0.0.0.0:8084").await.unwrap();

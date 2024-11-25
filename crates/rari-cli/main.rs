@@ -195,7 +195,7 @@ fn main() -> Result<(), Error> {
 
     let fmt_filter = filter::Targets::new()
         .with_target("rari_doc", cli.verbose.log_level_filter().as_trace())
-        .with_target("rari_embed", Level::DEBUG)
+        .with_target("tower_http", cli.verbose.log_level_filter().as_trace())
         .with_target("rari", cli.verbose.log_level_filter().as_trace());
 
     let memory_filter = filter::Targets::new()

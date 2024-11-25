@@ -99,12 +99,12 @@ Content-Type: application/json
   "q": "read from a visual device",
   "hybrid": {
     "embedder": "rari",
-    "semanticRatio": 1.0
+    "semanticRatio": 0.6
   }
 }
 
 ### get running tasks
-GET http://localhost:7700/tasks?statuses=enqueued,processing,failed
+GET http://localhost:7700/tasks?statuses=enqueued,processing,succeeded,failed
 Authorization: {{auth}}
 
 
@@ -120,3 +120,53 @@ Content-type: application/json
   ]
 }
 
+### test embedding servic on remote rari
+POST http://192.168.0.181:8084/
+Content-type: application/json
+
+{
+  "texts": [
+    "A Century of Progress International Exposition, also known as the Chicago World's Fair, was a world's fair held in the city of Chicago, Illinois, United States, from 1933 to 1934. The fair, registered under the Bureau International des Expositions (BIE), celebrated the city's centennial. Designed largely in Art Deco style, the theme of the fair was technological innovation, and its motto was Science Finds, Industry Applies, Man Conforms, trumpeting the message that science and American life were wedded.[1] Its architectural symbol was the Sky Ride, a transporter bridge perpendicular to the shore on which one could ride from one side of the fair to the other. One description of the fair noted that the world, then still mired in the malaise of the Great Depression, could glimpse a happier not-too-distant future, all driven by innovation in science and technology. Fair visitors saw the latest wonders in rail travel, automobiles, architecture and even cigarette-smoking robots. The exposition emphasized technology and progress, a utopia, or perfect world, founded on democracy and manufacturing. A Century of Progress International Exposition, also known as the Chicago World's Fair, was a world's fair held in the city of Chicago, Illinois, United States, from 1933 to 1934. The fair, registered under the Bureau International des Expositions (BIE), celebrated the city's centennial. Designed largely in Art Deco style, the theme of the fair was technological innovation, and its motto was Science Finds, Industry Applies, Man Conforms, trumpeting the message that science and American life were wedded.[1] Its architectural symbol was the Sky Ride, a transporter bridge perpendicular to the shore on which one could ride from one side of the fair to the other. One description of the fair noted that the world, then still mired in the malaise of the Great Depression, could glimpse a happier not-too-distant future, all driven by innovation in science and technology. Fair visitors saw the latest wonders in rail travel, automobiles, architecture and even cigarette-smoking robots. The exposition emphasized technology and progress, a utopia, or perfect world, founded on democracy and manufacturing. A Century of Progress International Exposition, also known as the Chicago World's Fair, was a world's fair held in the city of Chicago, Illinois, United States, from 1933 to 1934. The fair, registered under the Bureau International des Expositions (BIE), celebrated the city's centennial. Designed largely in Art Deco style, the theme of the fair was technological innovation, and its motto was Science Finds, Industry Applies, Man Conforms, trumpeting the message that science and American life were wedded.[1] Its architectural symbol was the Sky Ride, a transporter bridge perpendicular to the shore on which one could ride from one side of the fair to the other. One description of the fair noted that the world, then still mired in the malaise of the Great Depression, could glimpse a happier not-too-distant future, all driven by innovation in science and technology. Fair visitors saw the latest wonders in rail travel, automobiles, architecture and even cigarette-smoking robots. The exposition emphasized technology and progress, a utopia, or perfect world, founded on democracy and manufacturing. A Century of Progress International Exposition, also known as the Chicago World's Fair, was a world's fair held in the city of Chicago, Illinois, United States, from 1933 to 1934. The fair, registered under the Bureau International des Expositions (BIE), celebrated the city's centennial. Designed largely in Art Deco style, the theme of the fair was technological innovation, and its motto was Science Finds, Industry Applies, Man Conforms, trumpeting the message that science and American life were wedded.[1] Its architectural symbol was the Sky Ride, a transporter bridge perpendicular to the shore on which one could ride from one side of the fair to the other. One description of the fair noted that the world, then still mired in the malaise of the Great Depression, could glimpse a happier not-too-distant future, all driven by innovation in science and technology. Fair visitors saw the latest wonders in rail travel, automobiles, architecture and even cigarette-smoking robots. The exposition emphasized technology and progress, a utopia, or perfect world, founded on democracy and manufacturing. A Century of Progress International Exposition, also known as the Chicago World's Fair, was a world's fair held in the city of Chicago, Illinois, United States, from 1933 to 1934. The fair, registered under the Bureau International des Expositions (BIE), celebrated the city's centennial. Designed largely in Art Deco style, the theme of the fair was technological innovation, and its motto was Science Finds, Industry Applies, Man Conforms, trumpeting the message that science and American life were wedded.[1] Its architectural symbol was the Sky Ride, a transporter bridge perpendicular to the shore on which one could ride from one side of the fair to the other. One description of the fair noted that the world, then still mired in the malaise of the Great Depression, could glimpse a happier not-too-distant future, all driven by innovation in science and technology. Fair visitors saw the latest wonders in rail travel, automobiles, architecture and even cigarette-smoking robots. The exposition emphasized technology and progress, a utopia, or perfect world, founded on democracy and manufacturing.",
+    "A Century of Progress International Exposition, also known as the Chicago World's Fair, was a world's fair held in the city of Chicago, Illinois, United States, from 1933 to 1934. The fair, registered under the Bureau International des Expositions (BIE), celebrated the city's centennial. Designed largely in Art Deco style, the theme of the fair was technological innovation, and its motto was Science Finds, Industry Applies, Man Conforms, trumpeting the message that science and American life were wedded.[1] Its architectural symbol was the Sky Ride, a transporter bridge perpendicular to the shore on which one could ride from one side of the fair to the other. One description of the fair noted that the world, then still mired in the malaise of the Great Depression, could glimpse a happier not-too-distant future, all driven by innovation in science and technology. Fair visitors saw the latest wonders in rail travel, automobiles, architecture and even cigarette-smoking robots. The exposition emphasized technology and progress, a utopia, or perfect world, founded on democracy and manufacturing."
+  ]
+}
+
+
+################################################################################################
+################################################################################################
+####################################### without vector search ##################################
+################################################################################################
+################################################################################################
+
+
+### create the index
+POST http://localhost:7700/indexes
+Authorization: {{auth}}
+Content-Type: application/json
+
+{
+  "uid": "mdn2",
+  "primaryKey": "id"
+}
+
+### set the url as the distinct attribute for the index
+PUT http://localhost:7700/indexes/mdn2/settings/distinct-attribute
+Authorization: {{auth}}
+Content-Type: application/json
+
+"url"
+
+### get index settings
+GET http://localhost:7700/indexes/mdn2/settings
+Authorization: {{auth}}
+
+
+
+### make a search
+POST http://localhost:7700/indexes/mdn2/search
+Authorization: {{auth}}
+Content-Type: application/json
+
+{
+  "q": "read from a visual device"
+}

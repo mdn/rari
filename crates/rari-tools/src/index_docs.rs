@@ -20,11 +20,13 @@ struct MDoc {
 
 const MEILISEARCH_URL: &str = "http://localhost:7700";
 const MEILISEARCH_API_KEY: &str = "dFdgYlqSf3TaQRqgMC35PAQFclolikAJo6V5-jI4xeE";
+// const MEILISEARCH_INDEX: &str = "mdn";
+const MEILISEARCH_INDEX: &str = "mdn2";
 
 pub fn index_meili_docs() -> Result<(), ToolError> {
     let client = Client::new(MEILISEARCH_URL, Some(MEILISEARCH_API_KEY)).unwrap();
 
-    let index = client.index("mdn");
+    let index = client.index(MEILISEARCH_INDEX);
 
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
