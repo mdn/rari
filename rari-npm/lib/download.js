@@ -8,7 +8,7 @@ import path from "node:path";
 import { x } from "tar";
 import extract from "extract-zip";
 
-import * as packageJson from "../package.json" with { type: "json" };
+import packageJson from "../package.json" with { type: "json" };
 
 const tmpDir = path.join(tmpdir(), `rari-cache-${packageJson.version}`);
 const isWindows = platform() === "win32";
