@@ -341,11 +341,11 @@ fn build_generic_page(page: &GenericPage) -> Result<BuiltPage, DocError> {
             title: page.meta.title.clone(),
             toc,
         },
-        page_title: concat_strs!(
-            page.meta.title.as_str(),
-            " | ",
-            page.meta.title_suffix.as_str()
-        ),
+        page_title: if let Some(suffix) = &page.meta.title_suffix {
+            concat_strs!(page.meta.title.as_str(), " | ", suffix)
+        } else {
+            page.meta.title.clone()
+        },
         url: page.meta.url.clone(),
         id: page.meta.page.clone(),
     })))

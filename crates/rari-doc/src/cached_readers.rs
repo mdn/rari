@@ -35,6 +35,7 @@ use rari_types::globals::{
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
+use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::contributors::{WikiHistories, WikiHistory};
@@ -517,6 +518,77 @@ pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
 /// A type alias for a hashmap that maps URLs to pages.
 pub type UrlToPageMap = HashMap<String, Page>;
 
+/// Represents the configuration for generic pages.
+///
+/// # Fields
+///
+/// * `slug_prefix` - The prefix for the slug, defaults to None.
+///
+/// * `title_suffix` - A suffix to add to the page title.
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GenericPagesConfig {
+    pub slug_prefix: Option<String>,
+    pub title_suffix: Option<String>,
+}
+/// Represents the configuration for all generic content.
+///
+/// # Fields
+///
+/// * `pages` - A `HashMap<String, GenericPagesConfig>` mapping pages sections to their
+///   according `GenericPagesConfig`.
+///
+/// * `title_suffix` - A suffix to add to the page title.
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct GenericContentConfig {
+    pub pages: HashMap<String, GenericPagesConfig>,
+    pub spas: HashMap<String, BuildSPA>,
+}
+
+static GENERIC_CONTENT_CONFIG: OnceLock<GenericContentConfig> = OnceLock::new();
+
+fn read_generic_content_config() -> Result<GenericContentConfig, DocError> {
+    if let Some(root) = generic_content_root() {
+        let json_str = read_to_string(root.join("config.json"))?;
+        let config: GenericContentConfig = serde_json::from_str(&json_str)?;
+        Ok(config)
+    } else {
+        Err(DocError::NoGenericContentConfig)
+    }
+}
+
+/// Provides access to the generic content configuration.
+///
+/// This function returns the generic content configuration, either from a
+/// cached, lazily-initialized global value (`GENERIC_CONTENT_CONFIG`) or by
+/// re-reading the configuration file, depending on the value of `cache_content()`.
+///
+/// - If `cache_content()` is true, the configuration is cached and re-used
+///   across calls.
+/// - If `cache_content()` is false, the configuration is re-read from the
+///   `config.json` file on each call.
+///
+/// Any errors encountered during the reading or parsing of the configuration
+/// are logged, and a default configuration is returned.
+///
+/// # Returns
+/// A `Cow<'static, GenericContentConfig>` representing the configuration.
+/// - If the configuration is cached, a borrowed reference is returned.
+/// - If the configuration is re-read, an owned copy is returned.
+pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
+    fn gather() -> GenericContentConfig {
+        read_generic_content_config().unwrap_or_else(|e| {
+            error!("{e}");
+            Default::default()
+        })
+    }
+    if cache_content() {
+        Cow::Borrowed(GENERIC_CONTENT_CONFIG.get_or_init(gather))
+    } else {
+        Cow::Owned(gather())
+    }
+}
+
 /// Retrieves all generic pages, using the cache if it is enabled.
 ///
 /// This function returns a `Cow<'static, UrlToPageMap>` containing the generic pages.
@@ -665,4 +737,32 @@ pub fn wiki_histories() -> Cow<'static, WikiHistories> {
                 .unwrap_or_default(),
         )
     }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BasicSPA {
+    pub only_follow: bool,
+    pub no_indexing: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SPAData {
+    BlogIndex,
+    HomePage,
+    NotFound,
+    #[serde(untagged)]
+    BasicSPA(BasicSPA),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildSPA {
+    pub slug: Cow<'static, str>,
+    pub page_title: Cow<'static, str>,
+    pub page_description: Option<Cow<'static, str>>,
+    pub trailing_slash: bool,
+    pub en_us_only: bool,
+    pub data: SPAData,
 }

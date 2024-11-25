@@ -1,6 +1,6 @@
 {
   "name": "@mdn/rari",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "description": "npm package for rari",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",

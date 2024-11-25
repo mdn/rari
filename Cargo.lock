@@ -719,14 +719,14 @@ dependencies = [
 
 [[package]]
 name = "css-definition-syntax"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "css-syntax"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "anyhow",
  "css-definition-syntax",
@@ -743,7 +743,7 @@ dependencies = [
 
 [[package]]
 name = "css-syntax-types"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "regress",
  "serde",
@@ -984,7 +984,7 @@ dependencies = [
 
 [[package]]
 name = "diff-test"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "ansi-to-html",
  "anyhow",
@@ -3358,7 +3358,7 @@ dependencies = [
 
 [[package]]
 name = "rari"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "anyhow",
  "axum",
@@ -3385,7 +3385,7 @@ dependencies = [
 
 [[package]]
 name = "rari-data"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "chrono",
  "indexmap",
@@ -3399,7 +3399,7 @@ dependencies = [
 
 [[package]]
 name = "rari-deps"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "chrono",
  "css-syntax-types",
@@ -3414,7 +3414,7 @@ dependencies = [
 
 [[package]]
 name = "rari-doc"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "chrono",
  "constcat",
@@ -3437,8 +3437,6 @@ dependencies = [
  "percent-encoding",
  "pest",
  "pest_derive",
- "phf 0.11.2",
- "phf_macros 0.11.2",
  "pretty_yaml",
  "rari-data",
  "rari-md",
@@ -3484,14 +3482,14 @@ dependencies = [
 
 [[package]]
 name = "rari-linter"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "rari-md"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3504,7 +3502,7 @@ dependencies = [
 
 [[package]]
 name = "rari-sitemap"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "chrono",
  "flate2",
@@ -3518,7 +3516,7 @@ dependencies = [
 
 [[package]]
 name = "rari-templ-func"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "anyhow",
  "quote",
@@ -3528,7 +3526,7 @@ dependencies = [
 
 [[package]]
 name = "rari-tools"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "chrono",
  "console",
@@ -3561,7 +3559,7 @@ dependencies = [
 
 [[package]]
 name = "rari-types"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "chrono",
  "config",
@@ -3578,7 +3576,7 @@ dependencies = [
 
 [[package]]
 name = "rari-utils"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "serde",
  "serde_json",
