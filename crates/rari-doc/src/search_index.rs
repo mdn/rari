@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufWriter;
 
-use rari_types::globals::{build_out_root, content_root};
+use rari_types::globals::{self, build_out_root};
 use rari_types::locale::Locale;
 use rari_types::Popularities;
 use rari_utils::error::RariIoError;
@@ -47,8 +47,8 @@ struct SearchItem<'a> {
 /// - The popularity data cannot be parsed.
 /// - An error occurs while creating or writing to the search index files.
 pub fn build_search_index(docs: &[Page]) -> Result<(), DocError> {
-    let in_file = content_root()
-        .join(Locale::EnUs.as_folder_str())
+    let in_file = globals::data_dir()
+        .join("popularities")
         .join("popularities.json");
     let json_str = read_to_string(in_file)?;
     let popularities: Popularities = serde_json::from_str(&json_str)?;

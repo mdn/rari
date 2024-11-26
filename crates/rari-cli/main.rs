@@ -23,7 +23,6 @@ use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
-use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
 use rari_tools::redirects::fix_redirects;
 use rari_tools::remove::remove;
@@ -63,7 +62,6 @@ enum Commands {
     Foo(BuildArgs),
     Serve(ServeArgs),
     GitHistory,
-    Popularities,
     Update(UpdateArgs),
     ExportSchema(ExportSchemaArgs),
     /// Subcommands for altering content programmatically
@@ -189,6 +187,7 @@ fn main() -> Result<(), Error> {
         rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;
         rari_deps::mdn_data::update_mdn_data(rari_types::globals::data_dir())?;
         rari_deps::web_ext_examples::update_web_ext_examples(rari_types::globals::data_dir())?;
+        rari_deps::popularities::update_popularities(rari_types::globals::data_dir())?;
     }
 
     let fmt_filter = filter::Targets::new()
@@ -375,12 +374,6 @@ fn main() -> Result<(), Error> {
             println!("Gathering history 📜");
             let start = std::time::Instant::now();
             gather_history()?;
-            println!("Took: {:?}", start.elapsed());
-        }
-        Commands::Popularities => {
-            println!("Calculating popularities 🥇");
-            let start = std::time::Instant::now();
-            update_popularities(20000);
             println!("Took: {:?}", start.elapsed());
         }
         Commands::Content(content_subcommand) => match content_subcommand {

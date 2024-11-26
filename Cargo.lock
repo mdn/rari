@@ -2637,7 +2637,9 @@ version = "0.0.24"
 dependencies = [
  "chrono",
  "css-syntax-types",
+ "csv",
  "flate2",
+ "rari-types",
  "rari-utils",
  "reqwest",
  "serde",

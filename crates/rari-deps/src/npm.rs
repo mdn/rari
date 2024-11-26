@@ -2,20 +2,14 @@ use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use flate2::read::GzDecoder;
 use rari_utils::io::read_to_string;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tar::Archive;
 
+use crate::current::Current;
 use crate::error::DepsError;
-
-#[derive(Deserialize, Serialize, Default, Debug)]
-pub struct Current {
-    pub latest_last_check: Option<DateTime<Utc>>,
-    pub version: String,
-}
 
 /// Download and unpack an npm package for a given version (defaults to latest).
 pub fn get_package(

@@ -31,6 +31,10 @@ pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocErro
                 },
                 published_at: post.meta.date,
             })),
+            Err(DocError::PageNotFound(url, category)) => {
+                tracing::warn!("page not found {url} ({category:?})");
+                None
+            }
             Err(e) => Some(Err(e)),
             x => {
                 tracing::debug!("{x:?}");
@@ -62,6 +66,10 @@ pub fn featured_articles(
                     title: doc.title().to_string(),
                     tag: parents(page).get(1).cloned(),
                 })),
+                Err(DocError::PageNotFound(url, category)) => {
+                    tracing::warn!("page not found {url} ({category:?})");
+                    None
+                }
                 Err(e) => Some(Err(e)),
                 x => {
                     tracing::debug!("{x:?}");

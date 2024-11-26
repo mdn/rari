@@ -17,7 +17,7 @@ use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
-use rari_types::globals::{content_root, content_translated_root};
+use rari_types::globals::{self, content_root, content_translated_root};
 use rari_types::locale::Locale;
 use rari_types::Popularities;
 use rari_utils::io::read_to_string;
@@ -113,8 +113,8 @@ async fn get_search_index_handler(
 }
 
 fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
-    let in_file = content_root()
-        .join(Locale::EnUs.as_folder_str())
+    let in_file = globals::data_dir()
+        .join("popularities")
         .join("popularities.json");
     let json_str = read_to_string(in_file)?;
     let popularities: Popularities = serde_json::from_str(&json_str)?;

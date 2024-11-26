@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 rari-utils.workspace = true
+rari-types.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
@@ -17,3 +18,4 @@ reqwest.workspace = true
 css-syntax-types = { path = "../css-syntax-types" }
 tar = "0.4"
 flate2 = "1"
+csv = "1"
