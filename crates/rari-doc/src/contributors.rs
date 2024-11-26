@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use rari_types::locale::Locale;
 use serde::Deserialize;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub struct WikiHistoryEntry {
+    #[serde(default)]
     pub contributors: Vec<String>,
 }
 
@@ -69,11 +70,13 @@ pub fn contributors_txt(wiki_history: Option<&WikiHistoryEntry>, github_file_url
         "\n\n",
     ]);
     if let Some(wh) = wiki_history {
-        out.extend([
-            "# Original Wiki contributors\n",
-            &wh.contributors.join("\n"),
-            "\n",
-        ]);
+        if !wh.contributors.is_empty() {
+            out.extend([
+                "# Original Wiki contributors\n",
+                &wh.contributors.join("\n"),
+                "\n",
+            ]);
+        }
     }
     out
 }
