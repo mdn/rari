@@ -252,6 +252,7 @@ mod test {
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
+    use crate::tests::fixtures::sidebars::SidebarFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
     use crate::utils::get_redirects_map;
     use crate::utils::test_utils::check_file_existence;
@@ -343,6 +344,7 @@ mod test {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(&redirects, Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let root_path = root_for_locale(Locale::EnUs).unwrap();
         let should_exist = vec![
@@ -453,6 +455,7 @@ mod test {
         let _docs = DocFixtures::new(&slugs, Locale::PtBr);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::PtBr);
         let _redirects = RedirectFixtures::new(&redirects, Locale::PtBr);
+        let _sidebars = SidebarFixtures::default();
 
         let root_path = root_for_locale(Locale::PtBr).unwrap();
         let should_exist = vec![
