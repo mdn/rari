@@ -740,7 +740,7 @@ pub fn wiki_histories() -> Cow<'static, WikiHistories> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct BasicSPA {
     pub only_follow: bool,
@@ -757,7 +757,13 @@ pub enum SPAData {
     BasicSPA(BasicSPA),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for SPAData {
+    fn default() -> Self {
+        Self::BasicSPA(BasicSPA::default())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildSPA {
     pub slug: Cow<'static, str>,

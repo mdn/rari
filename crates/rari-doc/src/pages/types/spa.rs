@@ -245,18 +245,6 @@ impl PageLike for SPA {
     }
 }
 
-const DEFAULT_BASIC_SPA: BuildSPA = BuildSPA {
-    slug: Cow::Borrowed(""),
-    page_title: Cow::Borrowed(""),
-    page_description: None,
-    trailing_slash: false,
-    en_us_only: false,
-    data: SPAData::BasicSPA(BasicSPA {
-        only_follow: false,
-        no_indexing: false,
-    }),
-};
-
 const MDN_PLUS_TITLE: &str = "MDN Plus";
 const OBSERVATORY_TITLE_FULL: &str = "HTTP Observatory | MDN";
 
@@ -275,10 +263,9 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed(""),
                         page_title: Cow::Borrowed("MDN Web Docs"),
-                        page_description: None,
                         trailing_slash: true,
                         data: SPAData::HomePage,
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -286,10 +273,9 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed("404"),
                         page_title: Cow::Borrowed("404"),
-                        page_description: None,
-                        trailing_slash: false,
                         en_us_only: true,
                         data: SPAData::NotFound,
+                        ..Default::default()
                     },
                 ),
                 (
@@ -297,10 +283,10 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed("blog"),
                         page_title: Cow::Borrowed("MDN Blog"),
-                        page_description: None,
                         trailing_slash: true,
                         en_us_only: true,
                         data: SPAData::BlogIndex,
+                        ..Default::default()
                     },
                 ),
                 (
@@ -308,7 +294,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed("play"),
                         page_title: Cow::Borrowed("Playground | MDN"),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -320,7 +306,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             OBSERVATORY_TITLE_FULL
                         )),
                         page_description: Some(Cow::Borrowed(OBSERVATORY_DESCRIPTION)),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -336,7 +322,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             no_indexing: true,
                             only_follow: false,
                         }),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -348,7 +334,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             only_follow: true,
                             no_indexing: false,
                         }),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -356,7 +342,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed("plus/ai-help"),
                         page_title: Cow::Borrowed(concat!("AI Help | ", MDN_PLUS_TITLE)),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -368,7 +354,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             no_indexing: true,
                             only_follow: false,
                         }),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -383,7 +369,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             no_indexing: true,
                             only_follow: false,
                         }),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -391,7 +377,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed("plus/updates"),
                         page_title: Cow::Borrowed(concat!("Updates | ", MDN_PLUS_TITLE)),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -403,7 +389,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             no_indexing: true,
                             only_follow: false,
                         }),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
                 (
@@ -411,7 +397,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed("newsletter"),
                         page_title: Cow::Borrowed("Stay Informed with MDN"),
-                        ..DEFAULT_BASIC_SPA
+                        ..Default::default()
                     },
                 ),
             ]
