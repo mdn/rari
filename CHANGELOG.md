@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.25](https://github.com/mdn/rari/compare/v0.0.24...v0.0.25) (2024-11-27)
+
+
+### Features
+
+* **content:** add sync-sidebars command ([a4d4686](https://github.com/mdn/rari/commit/a4d4686fb432e312d0889368b6d6c40216f54cc9))
+* **popularities:** move popularities to deps ([8e4b4aa](https://github.com/mdn/rari/commit/8e4b4aab2d33e31eaacd90c23ca8f7fa4b5a1f27))
+* **spas:** default values for SPAs ([1ef6e16](https://github.com/mdn/rari/commit/1ef6e16a47502d6fee50a9a79d275649381a6d94))
+
+
+### Bug Fixes
+
+* **contributors:** support missing contributors ([d408b52](https://github.com/mdn/rari/commit/d408b5242d6e03fcae9f2be24b2afac68faa8d6f))
+* **rari-npm:** fix download tmp folder ([5207886](https://github.com/mdn/rari/commit/5207886329cbc0645c805e22b629edd016a2a476))
+* **spas:** fix default ([5acc69b](https://github.com/mdn/rari/commit/5acc69b581d1708bf39c9ba192d95a00ac3837f0))
+
 ## [0.0.24](https://github.com/mdn/rari/compare/v0.0.23...v0.0.24) (2024-11-25)
 
 
