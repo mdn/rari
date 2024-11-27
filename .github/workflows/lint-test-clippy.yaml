@@ -12,10 +12,16 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
 
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.6
+
       - name: Run fmt
         run: cargo fmt -- --check
       - name: Build
