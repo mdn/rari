@@ -230,7 +230,7 @@ fn do_remove(
             .iter()
             .map(|slug| {
                 let url = build_url(slug, locale, PageCategory::Doc)?;
-                Ok((url, None))
+                Ok((Cow::Owned(url), None))
             })
             .collect::<Result<Vec<_>, ToolError>>()?;
         update_sidebars(&pairs)?;

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -5,13 +7,40 @@ use const_format::concatcp;
 use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_doc::html::sidebar::{BasicEntry, Sidebar, SidebarEntry, SubPageEntry, WebExtApiEntry};
 use rari_types::globals::content_root;
-use rari_types::locale::default_locale;
+use rari_types::locale::{default_locale, Locale};
 use rari_utils::concat_strs;
 
 use crate::error::ToolError;
+use crate::redirects::{read_redirects_raw, redirects_path};
 
 const PREFIX: &str = "# Do not add comments to this file. They will be lost.\n\n";
-static SIDEBAR_PATH_PREFIX: &str = concatcp!("/", default_locale().as_url_str(), "/docs");
+static EN_US_DOCS_PREFIX: &str = concatcp!("/", default_locale().as_url_str(), "/docs");
+
+type Pair<'a> = (Cow<'a, str>, Option<Cow<'a, str>>);
+type Pairs<'a> = &'a [Pair<'a>];
+
+pub fn sync_sidebars() -> Result<(), ToolError> {
+    let mut redirects = HashMap::new();
+    let path = redirects_path(Locale::default())?;
+    read_redirects_raw(&path, &mut redirects)?;
+    let pairs = redirects
+        .iter()
+        .map(|(from, to)| {
+            (
+                from.strip_prefix(EN_US_DOCS_PREFIX)
+                    .map(Cow::Borrowed)
+                    .unwrap_or(Cow::Borrowed(from)),
+                Some(
+                    to.strip_prefix(EN_US_DOCS_PREFIX)
+                        .map(Cow::Borrowed)
+                        .unwrap_or(Cow::Borrowed(to)),
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    update_sidebars(&pairs)?;
+    Ok(())
+}
 
 pub fn fmt_sidebars() -> Result<(), ToolError> {
     for (path, sidebar) in read_sidebars()? {
@@ -20,7 +49,7 @@ pub fn fmt_sidebars() -> Result<(), ToolError> {
     Ok(())
 }
 
-pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), ToolError> {
+pub(crate) fn update_sidebars(pairs: Pairs<'_>) -> Result<(), ToolError> {
     let sidebars = read_sidebars()?;
 
     // add leading slash to pairs, because that is what the sidebars use
@@ -28,22 +57,20 @@ pub(crate) fn update_sidebars(pairs: &[(String, Option<String>)]) -> Result<(), 
         .iter()
         .map(|(from, to)| {
             let from = if from.starts_with('/') {
-                from.to_string()
+                Cow::Borrowed(from.as_ref())
             } else {
-                concat_strs!("/", from)
+                Cow::Owned(concat_strs!("/", from))
             };
-            let to = if let Some(to) = to {
+            let to = to.as_ref().map(|to| {
                 if to.starts_with('/') {
-                    Some(to.to_string())
+                    Cow::Borrowed(to.as_ref())
                 } else {
-                    Some(concat_strs!("/", to))
+                    Cow::Owned(concat_strs!("/", to))
                 }
-            } else {
-                None
-            };
+            });
             (from, to)
         })
-        .collect::<Vec<(String, Option<String>)>>();
+        .collect::<Vec<Pair<'_>>>();
 
     // Walk the sidebars and potentially replace the links.
     // `process_entry`` is called recursively to process all children
@@ -116,11 +143,11 @@ fn read_sidebars() -> Result<Vec<(std::path::PathBuf, Sidebar)>, ToolError> {
         .collect()
 }
 
-fn replace_pairs(link: Option<String>, pairs: &[(String, Option<String>)]) -> Option<String> {
+fn replace_pairs(link: Option<String>, pairs: Pairs<'_>) -> Option<String> {
     match link {
         Some(link) => {
             let mut has_prefix = false;
-            let link = if let Some(l) = link.strip_prefix(SIDEBAR_PATH_PREFIX) {
+            let link = if let Some(l) = link.strip_prefix(EN_US_DOCS_PREFIX) {
                 has_prefix = true;
                 l.to_string()
             } else {
@@ -130,9 +157,9 @@ fn replace_pairs(link: Option<String>, pairs: &[(String, Option<String>)]) -> Op
                 if link == *from {
                     if let Some(to) = to {
                         if has_prefix {
-                            return Some(concat_strs!(SIDEBAR_PATH_PREFIX, to));
+                            return Some(concat_strs!(EN_US_DOCS_PREFIX, to));
                         } else {
-                            return Some(to.clone());
+                            return Some(to.to_string());
                         }
                     } else {
                         return None;
@@ -145,7 +172,7 @@ fn replace_pairs(link: Option<String>, pairs: &[(String, Option<String>)]) -> Op
     }
 }
 
-fn process_entry(entry: SidebarEntry, pairs: &[(String, Option<String>)]) -> SidebarEntry {
+fn process_entry(entry: SidebarEntry, pairs: Pairs<'_>) -> SidebarEntry {
     match entry {
         SidebarEntry::Section(BasicEntry {
             link,
@@ -322,22 +349,22 @@ mod test {
         let _sidebars = SidebarFixtures::new(vec![sb]);
         let pairs = vec![
             (
-                "Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Block_Abspos_Tables".to_string(),
-                Some("Web/CSS/CSS_Box_Alignment/Something_New".to_string()),
+                Cow::Borrowed("Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Block_Abspos_Tables"),
+                Some(Cow::Borrowed("Web/CSS/CSS_Box_Alignment/Something_New")),
             ),
             (
-                "Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Grid_Layout".to_string(),
-                Some("Web/CSS/CSS_Box_Alignment/Also_New".to_string()),
+                Cow::Borrowed("Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Grid_Layout"),
+                Some(Cow::Borrowed("Web/CSS/CSS_Box_Alignment/Also_New")),
             ),
             (
-                "Web/HTTP/Headers".to_string(),
-                Some("Web/HTTP/Headers_New".to_string()),
+                Cow::Borrowed("Web/HTTP/Headers"),
+                Some(Cow::Borrowed("Web/HTTP/Headers_New")),
             ),
             (
-                "/Web/CSS/CSS_Box_Alignment/Box_Alignment_in_Multi-column_Layout".to_string(),
+                Cow::Borrowed("/Web/CSS/CSS_Box_Alignment/Box_Alignment_in_Multi-column_Layout"),
                 None,
             ),
-            ("/Web/CSS/CSS_Box_Alignment".to_string(), None),
+            (Cow::Borrowed("/Web/CSS/CSS_Box_Alignment"), None),
         ];
         let res = update_sidebars(&pairs);
         assert!(res.is_ok());

@@ -26,7 +26,7 @@ use rari_tools::history::gather_history;
 use rari_tools::r#move::r#move;
 use rari_tools::redirects::fix_redirects;
 use rari_tools::remove::remove;
-use rari_tools::sidebars::fmt_sidebars;
+use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
 use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
 use rari_types::locale::Locale;
@@ -88,6 +88,8 @@ enum ContentSubcommand {
     SyncTranslatedContent(SyncTranslatedContentArgs),
     /// Formats all sidebars.
     FmtSidebars,
+    /// Sync sidebars with redirects
+    SyncSidebars,
     /// Fixes redirects across all locales.
     ///
     /// This shortens multiple redirect chains to single ones.
@@ -398,6 +400,9 @@ fn main() -> Result<(), Error> {
             }
             ContentSubcommand::FmtSidebars => {
                 fmt_sidebars()?;
+            }
+            ContentSubcommand::SyncSidebars => {
+                sync_sidebars()?;
             }
             ContentSubcommand::FixRedirects => {
                 fix_redirects()?;

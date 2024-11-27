@@ -194,7 +194,12 @@ fn do_move(
         update_sidebars(
             &pairs
                 .iter()
-                .map(|(from, to)| (from.clone(), Some(to.clone())))
+                .map(|(from, to)| {
+                    (
+                        Cow::Borrowed(from.as_str()),
+                        Some(Cow::Borrowed(to.as_str())),
+                    )
+                })
                 .collect::<Vec<_>>(),
         )?;
     }

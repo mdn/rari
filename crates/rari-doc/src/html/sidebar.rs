@@ -1,12 +1,14 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 pub use std::ops::Deref;
 use std::sync::{Arc, LazyLock};
 
+use constcat::concat;
 use dashmap::DashMap;
 use indexmap::IndexMap;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
-use rari_types::locale::Locale;
+use rari_types::locale::{default_locale, Locale};
 use rari_utils::concat_strs;
 use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize, Serializer};
@@ -547,19 +549,41 @@ impl SidebarMetaEntry {
                     child.render(out, locale, slug, l10n)?;
                 }
             }
-            MetaChildren::ListSubPages(url, page_types, include_parent) => list_sub_pages_internal(
-                out,
-                url,
-                locale,
-                Some(1),
-                None,
-                page_types,
-                *include_parent,
-            )?,
+            MetaChildren::ListSubPages(url, page_types, include_parent) => {
+                let url = if url.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
+                    Cow::Borrowed(url)
+                } else {
+                    Cow::Owned(concat_strs!(
+                        "/",
+                        Locale::default().as_url_str(),
+                        "/docs",
+                        url
+                    ))
+                };
+                list_sub_pages_internal(
+                    out,
+                    &url,
+                    locale,
+                    Some(1),
+                    None,
+                    page_types,
+                    *include_parent,
+                )?
+            }
             MetaChildren::ListSubPagesGrouped(url, page_types, include_parent) => {
+                let url = if url.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
+                    Cow::Borrowed(url)
+                } else {
+                    Cow::Owned(concat_strs!(
+                        "/",
+                        Locale::default().as_url_str(),
+                        "/docs",
+                        url
+                    ))
+                };
                 list_sub_pages_grouped_internal(
                     out,
-                    url,
+                    &url,
                     locale,
                     None,
                     page_types,
