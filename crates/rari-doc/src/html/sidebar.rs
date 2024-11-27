@@ -159,6 +159,10 @@ impl SidebarL10n {
             .map(|s| s.as_str())
             .unwrap_or(key)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.l10n.is_empty()
+    }
 }
 
 // Serialize the sidebar entries, filtering out the None variant. This is
@@ -185,7 +189,7 @@ fn sidebar_entries_are_empty(entries: &[SidebarEntry]) -> bool {
 pub struct Sidebar {
     #[serde(serialize_with = "serialize_sidebar_entries")]
     pub sidebar: Vec<SidebarEntry>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "SidebarL10n::is_empty")]
     pub l10n: SidebarL10n,
 }
 
