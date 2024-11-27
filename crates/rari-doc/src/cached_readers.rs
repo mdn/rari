@@ -741,7 +741,7 @@ pub fn wiki_histories() -> Cow<'static, WikiHistories> {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub struct BasicSPA {
     pub only_follow: bool,
     pub no_indexing: bool,
@@ -764,7 +764,7 @@ impl Default for SPAData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub struct BuildSPA {
     pub slug: Cow<'static, str>,
     pub page_title: Cow<'static, str>,
