@@ -401,6 +401,7 @@ mod test {
     use crate::redirects::{read_redirects_raw, redirects_path};
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
+    use crate::tests::fixtures::sidebars::SidebarFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
     use crate::wikihistory::read_wiki_history;
 
@@ -429,6 +430,7 @@ mod test {
         let _en_docs = DocFixtures::new(&en_slugs, Locale::EnUs);
         let _en_redirects = RedirectFixtures::new(&en_redirects, Locale::EnUs);
         let _en_wikihistory = WikihistoryFixtures::new(&en_slugs, Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let es_slugs = vec![
             "Web/API/Other".to_string(),
@@ -443,6 +445,15 @@ mod test {
         let _es_docs = DocFixtures::new(&es_slugs, Locale::Es);
         let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
         let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
+
+        let _de_redirects = RedirectFixtures::new(&vec![], Locale::De);
+        let _fr_redirects = RedirectFixtures::new(&vec![], Locale::Fr);
+        let _ja_redirects = RedirectFixtures::new(&vec![], Locale::Ja);
+        let _ko_redirects = RedirectFixtures::new(&vec![], Locale::Ko);
+        let _ptbr_redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
+        let _ru_redirects = RedirectFixtures::new(&vec![], Locale::Ru);
+        let _zhcn_redirects = RedirectFixtures::new(&vec![], Locale::ZhCn);
+        let _zhtw_redirects = RedirectFixtures::new(&vec![], Locale::ZhTw);
 
         let result = sync_translated_content(&[Locale::Es], false);
         assert!(result.is_ok());
@@ -489,6 +500,15 @@ mod test {
         let _es_docs = DocFixtures::new(&es_slugs, Locale::Es);
         let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
         let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
+
+        let _de_redirects = RedirectFixtures::new(&vec![], Locale::De);
+        let _fr_redirects = RedirectFixtures::new(&vec![], Locale::Fr);
+        let _ja_redirects = RedirectFixtures::new(&vec![], Locale::Ja);
+        let _ko_redirects = RedirectFixtures::new(&vec![], Locale::Ko);
+        let _ptbr_redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
+        let _ru_redirects = RedirectFixtures::new(&vec![], Locale::Ru);
+        let _zhcn_redirects = RedirectFixtures::new(&vec![], Locale::ZhCn);
+        let _zhtw_redirects = RedirectFixtures::new(&vec![], Locale::ZhTw);
 
         let result = sync_translated_content(&[Locale::Es], false);
         assert!(result.is_ok());
@@ -561,6 +581,15 @@ mod test {
         let _es_docs = DocFixtures::new(&es_slugs, Locale::Es);
         let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
         let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
+
+        let _de_redirects = RedirectFixtures::new(&vec![], Locale::De);
+        let _fr_redirects = RedirectFixtures::new(&vec![], Locale::Fr);
+        let _ja_redirects = RedirectFixtures::new(&vec![], Locale::Ja);
+        let _ko_redirects = RedirectFixtures::new(&vec![], Locale::Ko);
+        let _ptbr_redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
+        let _ru_redirects = RedirectFixtures::new(&vec![], Locale::Ru);
+        let _zhcn_redirects = RedirectFixtures::new(&vec![], Locale::ZhCn);
+        let _zhtw_redirects = RedirectFixtures::new(&vec![], Locale::ZhTw);
 
         let result = sync_translated_content(&[Locale::Es], false);
         assert!(result.is_ok());

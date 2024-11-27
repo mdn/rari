@@ -6,6 +6,12 @@ pub(crate) struct SidebarFixtures {
     do_not_remove: bool,
 }
 
+impl Default for SidebarFixtures {
+    fn default() -> Self {
+        Self::new_internal(vec!["sidebar:\nl10n:"], false)
+    }
+}
+
 impl SidebarFixtures {
     pub fn new(data: Vec<&str>) -> Self {
         Self::new_internal(data, false)
