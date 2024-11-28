@@ -6,6 +6,9 @@ tests/data/content/files/*
 tests/data/translated_content/files/*
 !tests/data/translated_content/files/.keep
 
+# might get created from debugging
+/package
+
 # Must be top level so these are included in npm publish.
 rari-npm/schema.json
 rari-npm/lib/rari-types.d.ts
