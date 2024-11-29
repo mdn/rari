@@ -61,7 +61,7 @@ pub fn build_search_index(docs: &[Page]) -> Result<(), DocError> {
             doc,
             popularities
                 .popularities
-                .get(doc.url())
+                .get(&doc.url().replace("/de/docs/", "/en-US/docs/"))
                 .cloned()
                 .unwrap_or_default(),
         ));
