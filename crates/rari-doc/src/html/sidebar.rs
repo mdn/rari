@@ -12,6 +12,7 @@ use rari_types::locale::{default_locale, Locale};
 use rari_utils::concat_strs;
 use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize, Serializer};
+use tracing::{span, Level};
 
 use super::links::{render_link_from_page, render_link_via_page, LinkModifier};
 use super::modifier::insert_attribute;
@@ -110,7 +111,7 @@ pub fn render_sidebar(s: &str, slug: &str, locale: Locale) -> Result<String, Doc
             return Ok::<_, DocError>(sb);
         }
         let sidebar = read_sidebar(s, locale, slug)?;
-        let rendered_sidebar = sidebar.render(locale)?;
+        let rendered_sidebar = sidebar.render(s, locale)?;
         SIDEBAR_CACHE
             .entry(locale)
             .or_default()
@@ -119,7 +120,7 @@ pub fn render_sidebar(s: &str, slug: &str, locale: Locale) -> Result<String, Doc
         rendered_sidebar
     } else {
         let sidebar = read_sidebar(s, locale, slug)?;
-        sidebar.render_with_slug(slug, locale)?
+        sidebar.render_with_slug(s, slug, locale)?
     };
     Ok::<_, DocError>(rendered_sidebar)
 }
@@ -214,23 +215,34 @@ impl TryFrom<Sidebar> for MetaSidebar {
 }
 
 impl MetaSidebar {
-    pub fn render(&self, locale: Locale) -> Result<String, DocError> {
+    fn render_internal(
+        &self,
+        name: &str,
+        slug: Option<&str>,
+        locale: Locale,
+    ) -> Result<String, DocError> {
+        let span = span!(Level::ERROR, "sidebar", sidebar = name,);
+        let _enter = span.enter();
         let mut out = String::new();
         out.push_str("<ol>");
         for entry in &self.entries {
-            entry.render(&mut out, locale, None, &self.l10n)?;
+            entry.render(&mut out, locale, slug, &self.l10n)?;
         }
         out.push_str("</ol>");
         Ok(out)
     }
-    pub fn render_with_slug(&self, slug: &str, locale: Locale) -> Result<String, DocError> {
-        let mut out = String::new();
-        out.push_str("<ol>");
-        for entry in &self.entries {
-            entry.render(&mut out, locale, Some(slug), &self.l10n)?;
-        }
-        out.push_str("</ol>");
-        Ok(out)
+
+    pub fn render(&self, name: &str, locale: Locale) -> Result<String, DocError> {
+        self.render_internal(name, None, locale)
+    }
+
+    pub fn render_with_slug(
+        &self,
+        name: &str,
+        slug: &str,
+        locale: Locale,
+    ) -> Result<String, DocError> {
+        self.render_internal(name, Some(slug), locale)
     }
 }
 
