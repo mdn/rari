@@ -2,7 +2,7 @@ use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
-use chrono::{Datelike, Utc};
+use chrono::{DateTime, Datelike, Utc};
 use rari_types::Popularities;
 use rari_utils::io::read_to_string;
 use serde::Deserialize;
@@ -21,6 +21,18 @@ pub struct PopularityRow {
 const CURRENT_URL: &str = "https://popularities.mdn.mozilla.net/current.csv";
 const LIMIT: usize = 20_000;
 
+fn should_update(now: &DateTime<Utc>, current: &Option<DateTime<Utc>>) -> bool {
+    let now_date = now.date_naive();
+    if let Some(current) = current {
+        let current_date = current.date_naive();
+        // True if it'a at least 2nd day of a new month vs. current.
+        (current_date.year() < now_date.year() || current_date.month() < now_date.month())
+            && now_date.day() > 1
+    } else {
+        true
+    }
+}
+
 pub fn update_popularities(base_path: &Path) -> Result<Option<PathBuf>, DepsError> {
     let version = "latest";
     let package_path = base_path.join("popularities");
@@ -30,12 +42,8 @@ pub fn update_popularities(base_path: &Path) -> Result<Option<PathBuf>, DepsErro
         .ok()
         .and_then(|current| serde_json::from_str::<Current>(&current).ok())
         .unwrap_or_default();
-    let current_date = current.latest_last_check.unwrap_or_default().date_naive();
-    let now_date = now.date_naive();
 
-    if (current_date.year() < now_date.year() || current_date.month() < now_date.month())
-        && now_date.day() > 1
-    {
+    if should_update(&now, &current.latest_last_check) {
         let mut popularities = Popularities {
             popularities: Default::default(),
             date: Utc::now().naive_utc(),
