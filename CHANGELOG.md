@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.26](https://github.com/mdn/rari/compare/v0.0.25...v0.0.26) (2024-12-01)
+
+
+### Features
+
+* **issues:** support sidebar name ([fd4ca80](https://github.com/mdn/rari/commit/fd4ca8082eadc80f0ec879c49affc07ee122c889))
+
+
+### Bug Fixes
+
+* **css-syntax:** support debugging ([ca2377d](https://github.com/mdn/rari/commit/ca2377dd180477ecbce0228a4666ba941d297642))
+* **popularities:** update if not existing on 1st ([3f3c3d3](https://github.com/mdn/rari/commit/3f3c3d3a5a3db9e79b0b35acffea5bf5beb979c6))
+
 ## [0.0.25](https://github.com/mdn/rari/compare/v0.0.24...v0.0.25) (2024-11-27)
 
 
