@@ -217,15 +217,15 @@ pub fn get_property_syntax(name: &str) -> String {
 pub fn get_at_rule_syntax(name: &str) -> String {
     let specs = get_specs_for_item(name, ItemType::AtRule);
 
-    return specs
+    specs
         .into_iter()
         .find_map(|spec| {
-            return CSS_REF
+            CSS_REF
                 .get(spec)
                 .and_then(|s| s.atrules.get(name))
-                .and_then(|a| a.value.clone());
+                .and_then(|a| a.value.clone())
         })
-        .unwrap_or_default();
+        .unwrap_or_default()
 }
 
 /// Get the formal syntax for an at-rule descriptor from the webref data.
@@ -237,16 +237,16 @@ pub fn get_at_rule_syntax(name: &str) -> String {
 pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> String {
     let specs = get_specs_for_item(at_rule_name, ItemType::AtRule);
 
-    return specs
+    specs
         .into_iter()
         .find_map(|spec| {
-            return CSS_REF
+            CSS_REF
                 .get(spec)
                 .and_then(|s| s.atrules.get(at_rule_name))
                 .and_then(|a| a.descriptors.get(at_rule_descriptor_name))
-                .and_then(|d| d.value.clone());
+                .and_then(|d| d.value.clone())
         })
-        .unwrap_or_default();
+        .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -373,7 +373,7 @@ pub struct SyntaxRenderer<'a> {
     pub constituents: HashSet<Node>,
 }
 
-impl<'a> SyntaxRenderer<'a> {
+impl SyntaxRenderer<'_> {
     pub fn render(&self, output: &mut String, syntax: &Syntax) -> Result<(), SyntaxError> {
         let typ = html_escape::encode_safe(&syntax.name);
         write!(

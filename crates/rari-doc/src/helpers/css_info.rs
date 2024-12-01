@@ -172,7 +172,7 @@ pub fn write_computed_output(
                                 &[get_css_l10n_for_locale("length", locale)],
                             ));
                         }
-                        return Cow::Borrowed(localized);
+                        Cow::Borrowed(localized)
                     })
                     .join(get_css_l10n_for_locale("listSeparator", locale));
                 out.push_str(&render_and_decode_ref(
@@ -275,10 +275,10 @@ fn add_additional_applies_to<'a>(
             additional_applies_to.push_str(get_css_l10n_for_locale("andInEnumeration", locale));
         }
     }
-    return Cow::Owned(remove_me_replace_placeholder(
+    Cow::Owned(remove_me_replace_placeholder(
         get_css_l10n_for_locale("applyingToMultiple", locale),
         &[output, &additional_applies_to],
-    ));
+    ))
 }
 
 pub fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {

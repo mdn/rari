@@ -1,7 +1,7 @@
 use comrak::nodes::{AstNode, NodeValue};
 
 pub(crate) fn is_dl<'a>(list: &'a AstNode<'a>) -> bool {
-    return list.children().all(|child| {
+    list.children().all(|child| {
         if child.children().count() < 2 {
             return false;
         }
@@ -23,7 +23,7 @@ pub(crate) fn is_dl<'a>(list: &'a AstNode<'a>) -> bool {
             }
             false
         })
-    });
+    })
 }
 
 pub(crate) fn convert_dl<'a>(list: &'a AstNode<'a>) {

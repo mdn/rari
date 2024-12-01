@@ -40,7 +40,7 @@ use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
 use crate::translations::get_other_translations_for;
 
-impl<'a> From<BuildSection<'a>> for Section {
+impl From<BuildSection<'_>> for Section {
     fn from(value: BuildSection) -> Self {
         match value.typ {
             BuildSectionType::Prose | BuildSectionType::Unknown => Self::Prose(Prose {
@@ -117,7 +117,7 @@ impl<'a> From<BuildSection<'a>> for Section {
     }
 }
 
-impl<'a> BuildSection<'a> {
+impl BuildSection<'_> {
     pub fn make_toc_entry(&self, with_h3: bool) -> Option<TocEntry> {
         let id = self.id.clone();
         let text = self.heading.map(|h| h.inner_html());

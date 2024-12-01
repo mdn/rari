@@ -129,7 +129,7 @@ pub struct Sitemaps<'a> {
     pub sitemap_meta: Vec<SitemapMeta<'a>>,
 }
 
-impl<'a> Sitemaps<'a> {
+impl Sitemaps<'_> {
     pub fn write_sitemap_txt(&self, out_path: impl Into<PathBuf>) -> Result<PathBuf, SitemapError> {
         let mut all_urls = self
             .sitemap_meta
