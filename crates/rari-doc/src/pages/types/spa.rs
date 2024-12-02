@@ -1,9 +1,9 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use constcat::concat;
-use phf::{phf_map, Map};
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::content_translated_root;
 use rari_types::locale::Locale;
@@ -13,29 +13,15 @@ use rari_utils::concat_strs;
 use super::spa_homepage::{
     featured_articles, featured_contributor, lastet_news, recent_contributions,
 };
-use crate::cached_readers::blog_files;
+use crate::cached_readers::{blog_files, generic_content_config, BasicSPA, BuildSPA, SPAData};
 use crate::error::DocError;
 use crate::helpers::title::page_title;
 use crate::pages::json::{
-    BlogIndex, BuiltDocy, HyData, ItemContainer, JsonBasicSPA, JsonBlogPost, JsonBlogPostDoc,
-    JsonHomePageSPA, JsonHomePageSPAHyData,
+    BlogIndex, BuiltPage, ItemContainer, JsonBlogPostDoc, JsonBlogPostPage, JsonHomePage,
+    JsonHomePageSPAHyData, JsonSPAPage,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::types::blog::BlogMeta;
-
-#[derive(Debug, Clone, Copy)]
-pub struct BasicSPA {
-    pub only_follow: bool,
-    pub no_indexing: bool,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum SPAData {
-    BlogIndex,
-    HomePage,
-    NotFound,
-    BasicSPA(BasicSPA),
-}
 
 #[derive(Debug, Clone)]
 pub struct SPA {
@@ -62,20 +48,24 @@ impl SPA {
                 None
             } else {
                 Some(Page::SPA(Arc::new(SPA {
-                    page_title: build_spa.page_title,
-                    slug: build_spa.slug,
+                    page_title: &build_spa.page_title,
+                    slug: &build_spa.slug,
                     url: concat_strs!(
                         "/",
                         locale.as_url_str(),
                         "/",
-                        build_spa.slug,
-                        if build_spa.trailing_slash { "/" } else { "" }
+                        &build_spa.slug,
+                        if build_spa.trailing_slash && !build_spa.slug.is_empty() {
+                            "/"
+                        } else {
+                            ""
+                        }
                     ),
                     locale,
                     page_type: PageType::SPA,
                     data: build_spa.data,
                     base_slug: Cow::Owned(concat_strs!("/", locale.as_url_str(), "/")),
-                    page_description: build_spa.page_description,
+                    page_description: build_spa.page_description.as_deref(),
                 })))
             }
         })
@@ -88,25 +78,25 @@ impl SPA {
             .unwrap_or_default()
     }
 
-    pub fn all() -> Vec<(&'static &'static str, Locale)> {
+    pub fn all() -> Vec<(String, Locale)> {
         BASIC_SPAS
-            .entries()
+            .iter()
             .flat_map(|(slug, build_spa)| {
                 if build_spa.en_us_only || content_translated_root().is_none() {
-                    vec![(slug, Locale::EnUs)]
+                    vec![(slug.clone(), Locale::EnUs)]
                 } else {
                     Locale::for_generic_and_spas()
                         .iter()
-                        .map(|locale| (slug, *locale))
+                        .map(|locale| (slug.clone(), *locale))
                         .collect()
                 }
             })
             .collect()
     }
 
-    pub fn as_built_doc(&self) -> Result<BuiltDocy, DocError> {
+    pub fn as_built_doc(&self) -> Result<BuiltPage, DocError> {
         match &self.data {
-            SPAData::BlogIndex => Ok(BuiltDocy::BlogPost(Box::new(JsonBlogPost {
+            SPAData::BlogIndex => Ok(BuiltPage::BlogPost(Box::new(JsonBlogPostPage {
                 doc: JsonBlogPostDoc {
                     title: self.title().to_string(),
                     mdn_url: self.url().to_owned(),
@@ -118,7 +108,7 @@ impl SPA {
                 url: self.url().to_owned(),
                 locale: self.locale(),
                 blog_meta: None,
-                hy_data: Some(HyData::BlogIndex(BlogIndex {
+                hy_data: Some(BlogIndex {
                     posts: blog_files()
                         .sorted_meta
                         .iter()
@@ -129,11 +119,11 @@ impl SPA {
                             m
                         })
                         .collect(),
-                })),
+                }),
                 page_title: self.title().to_owned(),
                 ..Default::default()
             }))),
-            SPAData::BasicSPA(basic_spa) => Ok(BuiltDocy::BasicSPA(Box::new(JsonBasicSPA {
+            SPAData::BasicSPA(basic_spa) => Ok(BuiltPage::SPA(Box::new(JsonSPAPage {
                 slug: self.slug,
                 page_title: self.page_title,
                 page_description: self.page_description,
@@ -142,7 +132,7 @@ impl SPA {
                 page_not_found: false,
                 url: concat_strs!(self.base_slug.as_ref(), self.slug),
             }))),
-            SPAData::NotFound => Ok(BuiltDocy::BasicSPA(Box::new(JsonBasicSPA {
+            SPAData::NotFound => Ok(BuiltPage::SPA(Box::new(JsonSPAPage {
                 slug: self.slug,
                 page_title: self.page_title,
                 page_description: self.page_description,
@@ -151,7 +141,7 @@ impl SPA {
                 page_not_found: true,
                 url: concat_strs!(self.base_slug.as_ref(), self.slug),
             }))),
-            SPAData::HomePage => Ok(BuiltDocy::HomePageSPA(Box::new(JsonHomePageSPA {
+            SPAData::HomePage => Ok(BuiltPage::Home(Box::new(JsonHomePage {
                 url: concat_strs!("/", self.locale().as_url_str(), "/", self.slug),
                 page_title: self.page_title,
                 hy_data: JsonHomePageSPAHyData {
@@ -255,129 +245,174 @@ impl PageLike for SPA {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct BuildSPA {
-    pub slug: &'static str,
-    pub page_title: &'static str,
-    pub page_description: Option<&'static str>,
-    pub trailing_slash: bool,
-    pub en_us_only: bool,
-    pub data: SPAData,
-}
-
-const DEFAULT_BASIC_SPA: BuildSPA = BuildSPA {
-    slug: "",
-    page_title: "",
-    page_description: None,
-    trailing_slash: false,
-    en_us_only: false,
-    data: SPAData::BasicSPA(BasicSPA {
-        only_follow: false,
-        no_indexing: false,
-    }),
-};
-
 const MDN_PLUS_TITLE: &str = "MDN Plus";
 const OBSERVATORY_TITLE_FULL: &str = "HTTP Observatory | MDN";
 
-const OBSERVATORY_DESCRIPTION: Option<&str> =
-Some("Test your site’s HTTP headers, including CSP and HSTS, to find security problems and get actionable recommendations to make your website more secure. Test other websites to see how you compare.");
+const OBSERVATORY_DESCRIPTION: &str =
+"Test your site’s HTTP headers, including CSP and HSTS, to find security problems and get actionable recommendations to make your website more secure. Test other websites to see how you compare.";
 
-static BASIC_SPAS: Map<&'static str, BuildSPA> = phf_map!(
-    "" => BuildSPA {
-        slug: "",
-        page_title: "MDN Web Docs",
-        page_description: None,
-        trailing_slash: true,
-        data: SPAData::HomePage,
-        ..DEFAULT_BASIC_SPA
-    },
-    "404" => BuildSPA {
-        slug: "404",
-        page_title: "404",
-        page_description: None,
-        trailing_slash: false,
-        en_us_only: true,
-        data: SPAData::NotFound
-    },
-    "blog" => BuildSPA {
-        slug: "blog",
-        page_title: "MDN Blog",
-        page_description: None,
-        trailing_slash: true,
-        en_us_only: true,
-        data: SPAData::BlogIndex
-    },
-    "play" => BuildSPA {
-        slug: "play",
-        page_title: "Playground | MDN",
-        ..DEFAULT_BASIC_SPA
-    },
-    "observatory" => BuildSPA {
-        slug: "observatory",
-        page_title: concat!("HTTP Header Security Test - ", OBSERVATORY_TITLE_FULL),
-        page_description: OBSERVATORY_DESCRIPTION,
-        ..DEFAULT_BASIC_SPA
-    },
-    "observatory/analyze" => BuildSPA {
-        slug: "observatory/analyze",
-        page_title: concat!("Scan results - ", OBSERVATORY_TITLE_FULL),
-        page_description: OBSERVATORY_DESCRIPTION,
-        data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
-        ..DEFAULT_BASIC_SPA
-    },
-    "search" => BuildSPA {
-        slug: "search",
-        page_title: "Search",
-        data: SPAData::BasicSPA(BasicSPA { only_follow: true, no_indexing: false }),
-        ..DEFAULT_BASIC_SPA
-    },
-    "plus" => BuildSPA {
-        slug: "plus",
-        page_title: MDN_PLUS_TITLE,
-        ..DEFAULT_BASIC_SPA
-    },
-    "plus/ai-help" => BuildSPA {
-        slug: "plus/ai-help",
-        page_title: concat!("AI Help | ", MDN_PLUS_TITLE),
-        ..DEFAULT_BASIC_SPA
-    },
-    "plus/collections" => BuildSPA {
-        slug: "plus/collections",
-        page_title: concat!("Collections | ", MDN_PLUS_TITLE),
-        data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
-        ..DEFAULT_BASIC_SPA
-    },
-    "plus/collections/frequently_viewed" => BuildSPA {
-        slug: "plus/collections/frequently_viewed",
-        page_title: concat!("Frequently viewed articles | ", MDN_PLUS_TITLE),
-        data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
-        ..DEFAULT_BASIC_SPA
-    },
-    "plus/updates" => BuildSPA {
-        slug: "plus/updates",
-        page_title: concat!("Updates | ", MDN_PLUS_TITLE),
-        ..DEFAULT_BASIC_SPA
-    },
-    "plus/settings" => BuildSPA {
-        slug: "plus/settings",
-        page_title: concat!("Settings | ", MDN_PLUS_TITLE),
-        data: SPAData::BasicSPA(BasicSPA { no_indexing: true, only_follow: false }),
-        ..DEFAULT_BASIC_SPA
-    },
-    "about" => BuildSPA {
-        slug: "about",
-        page_title: "About MDN",
-        ..DEFAULT_BASIC_SPA
-    },
-    "advertising" => BuildSPA {
-        slug: "advertising",
-        page_title: "Advertise with us",
-        ..DEFAULT_BASIC_SPA
-    },
-    "newsletter" => BuildSPA {
-        slug: "newsletter",
-        page_title: "Stay Informed with MDN",
-        ..DEFAULT_BASIC_SPA
-    },
-);
+static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
+    generic_content_config()
+        .spas
+        .clone()
+        .into_iter()
+        .chain(
+            [
+                (
+                    "",
+                    BuildSPA {
+                        slug: Cow::Borrowed(""),
+                        page_title: Cow::Borrowed("MDN Web Docs"),
+                        trailing_slash: true,
+                        data: SPAData::HomePage,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "404",
+                    BuildSPA {
+                        slug: Cow::Borrowed("404"),
+                        page_title: Cow::Borrowed("404"),
+                        en_us_only: true,
+                        data: SPAData::NotFound,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "blog",
+                    BuildSPA {
+                        slug: Cow::Borrowed("blog"),
+                        page_title: Cow::Borrowed("MDN Blog"),
+                        trailing_slash: true,
+                        en_us_only: true,
+                        data: SPAData::BlogIndex,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "play",
+                    BuildSPA {
+                        slug: Cow::Borrowed("play"),
+                        page_title: Cow::Borrowed("Playground | MDN"),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "observatory",
+                    BuildSPA {
+                        slug: Cow::Borrowed("observatory"),
+                        page_title: Cow::Borrowed(concat!(
+                            "HTTP Header Security Test - ",
+                            OBSERVATORY_TITLE_FULL
+                        )),
+                        page_description: Some(Cow::Borrowed(OBSERVATORY_DESCRIPTION)),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "observatory/analyze",
+                    BuildSPA {
+                        slug: Cow::Borrowed("observatory/analyze"),
+                        page_title: Cow::Borrowed(concat!(
+                            "Scan results - ",
+                            OBSERVATORY_TITLE_FULL
+                        )),
+                        page_description: Some(Cow::Borrowed(OBSERVATORY_DESCRIPTION)),
+                        data: SPAData::BasicSPA(BasicSPA {
+                            no_indexing: true,
+                            only_follow: false,
+                        }),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "search",
+                    BuildSPA {
+                        slug: Cow::Borrowed("search"),
+                        page_title: Cow::Borrowed("Search"),
+                        data: SPAData::BasicSPA(BasicSPA {
+                            only_follow: true,
+                            no_indexing: false,
+                        }),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "plus/ai-help",
+                    BuildSPA {
+                        slug: Cow::Borrowed("plus/ai-help"),
+                        page_title: Cow::Borrowed(concat!("AI Help | ", MDN_PLUS_TITLE)),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "plus/collections",
+                    BuildSPA {
+                        slug: Cow::Borrowed("plus/collections"),
+                        page_title: Cow::Borrowed(concat!("Collections | ", MDN_PLUS_TITLE)),
+                        data: SPAData::BasicSPA(BasicSPA {
+                            no_indexing: true,
+                            only_follow: false,
+                        }),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "plus/collections/frequently_viewed",
+                    BuildSPA {
+                        slug: Cow::Borrowed("plus/collections/frequently_viewed"),
+                        page_title: Cow::Borrowed(concat!(
+                            "Frequently viewed articles | ",
+                            MDN_PLUS_TITLE
+                        )),
+                        data: SPAData::BasicSPA(BasicSPA {
+                            no_indexing: true,
+                            only_follow: false,
+                        }),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "plus/updates",
+                    BuildSPA {
+                        slug: Cow::Borrowed("plus/updates"),
+                        page_title: Cow::Borrowed(concat!("Updates | ", MDN_PLUS_TITLE)),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "plus/settings",
+                    BuildSPA {
+                        slug: Cow::Borrowed("plus/settings"),
+                        page_title: Cow::Borrowed(concat!("Settings | ", MDN_PLUS_TITLE)),
+                        data: SPAData::BasicSPA(BasicSPA {
+                            no_indexing: true,
+                            only_follow: false,
+                        }),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "newsletter",
+                    BuildSPA {
+                        slug: Cow::Borrowed("newsletter"),
+                        page_title: Cow::Borrowed("Stay Informed with MDN"),
+                        ..Default::default()
+                    },
+                ),
+            ]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v)),
+        )
+        .collect()
+});
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn print() {
+        println!("{}", serde_json::to_string(&*BASIC_SPAS).unwrap())
+    }
+}

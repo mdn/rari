@@ -6,6 +6,7 @@ use crate::error::MarkdownError;
 use crate::p::{fix_p, is_empty_p, is_escaped_templ_p};
 
 pub mod anchor;
+pub(crate) mod character_set;
 pub(crate) mod ctype;
 pub(crate) mod dl;
 pub mod error;
@@ -105,7 +106,7 @@ mod test {
         let out = m2h("- {{foo}}\n  - : bar", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<dl data-sourcepos=\"1:1-2:9\">\n<dt id=\"foo\" data-add-link data-sourcepos=\"1:1-2:9\">{{foo}}</dt>\n<dd data-sourcepos=\"2:3-2:9\">\n<p data-sourcepos=\"2:5-2:9\">bar</p>\n</dd>\n</dl>\n"
+            "<dl data-sourcepos=\"1:1-2:9\">\n<dt data-sourcepos=\"1:1-2:9\">{{foo}}</dt>\n<dd data-sourcepos=\"2:3-2:9\">\n<p data-sourcepos=\"2:5-2:9\">bar</p>\n</dd>\n</dl>\n"
         );
         Ok(())
     }
@@ -115,7 +116,7 @@ mod test {
         let out = m2h("- {{foo}}\n  - : bar", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<dl data-sourcepos=\"1:1-2:9\">\n<dt id=\"foo\" data-add-link data-sourcepos=\"1:1-2:9\">{{foo}}</dt>\n<dd data-sourcepos=\"2:3-2:9\">\n<p data-sourcepos=\"2:5-2:9\">bar</p>\n</dd>\n</dl>\n"
+            "<dl data-sourcepos=\"1:1-2:9\">\n<dt data-sourcepos=\"1:1-2:9\">{{foo}}</dt>\n<dd data-sourcepos=\"2:3-2:9\">\n<p data-sourcepos=\"2:5-2:9\">bar</p>\n</dd>\n</dl>\n"
         );
         Ok(())
     }

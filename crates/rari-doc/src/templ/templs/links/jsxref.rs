@@ -26,8 +26,8 @@ pub fn jsxref(
     let page_url = format!("{url}{slug}");
     let object_page_url = format!("{url}{global_objects}/{slug}");
 
-    let page = RariApi::get_page(&page_url);
-    let object_page = RariApi::get_page(&object_page_url);
+    let page = RariApi::get_page_nowarn(&page_url);
+    let object_page = RariApi::get_page_nowarn(&object_page_url);
     if let Ok(_page) = page {
         url.push_str(&slug)
     } else if let Ok(_object_page) = object_page {
@@ -45,5 +45,5 @@ pub fn jsxref(
     }
 
     let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
-    RariApi::link(&url, None, Some(display), code, None, false)
+    RariApi::link(&url, env.locale, Some(display), code, None, false)
 }

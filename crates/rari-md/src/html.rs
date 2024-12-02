@@ -9,18 +9,18 @@ use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 use std::str;
-use std::sync::LazyLock;
 
 use comrak::adapters::HeadingMeta;
 use comrak::nodes::{
     AstNode, ListType, NodeCode, NodeFootnoteDefinition, NodeMath, NodeTable, NodeValue,
     TableAlignment,
 };
-use comrak::{ComrakOptions, ComrakPlugins, Options};
+use comrak::{ComrakOptions, ComrakPlugins, Options, Plugins};
 use itertools::Itertools;
 use rari_types::locale::Locale;
 
 use crate::anchor;
+use crate::character_set::character_set;
 use crate::ctype::isspace;
 use crate::ext::{Flag, DELIM_START};
 use crate::node_card::{is_callout, NoteCard};
@@ -60,7 +60,7 @@ struct WriteWithLast<'w> {
     last_was_lf: Cell<bool>,
 }
 
-impl<'w> Write for WriteWithLast<'w> {
+impl Write for WriteWithLast<'_> {
     fn flush(&mut self) -> io::Result<()> {
         self.output.flush()
     }
@@ -137,50 +137,14 @@ impl Anchorizer {
     }
 }
 
-struct HtmlFormatter<'o, 'c> {
+struct HtmlFormatter<'o> {
     output: &'o mut WriteWithLast<'o>,
-    options: &'o Options<'c>,
+    options: &'o Options,
     anchorizer: Anchorizer,
     footnote_ix: u32,
     written_footnote_ix: u32,
     plugins: &'o ComrakPlugins<'o>,
 }
-
-#[rustfmt::skip]
-const NEEDS_ESCAPED : [bool; 256] = [
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, true,  false, false, false, true,  false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, true, false, true, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false,
-];
 
 fn tagfilter(literal: &[u8]) -> bool {
     static TAGFILTER_BLACKLIST: [&str; 9] = [
@@ -265,9 +229,11 @@ fn dangerous_url(_: &[u8]) -> bool {
 /// Note that this is appropriate and sufficient for free text, but not for
 /// URLs in attributes.  See escape_href.
 pub fn escape(output: &mut dyn Write, buffer: &[u8]) -> io::Result<()> {
+    const HTML_UNSAFE: [bool; 256] = character_set!(b"&<>\"");
+
     let mut offset = 0;
     for (i, &byte) in buffer.iter().enumerate() {
-        if NEEDS_ESCAPED[byte as usize] {
+        if HTML_UNSAFE[byte as usize] {
             let esc: &[u8] = match byte {
                 b'"' => b"&quot;",
                 b'&' => b"&amp;",
@@ -308,16 +274,11 @@ pub fn escape(output: &mut dyn Write, buffer: &[u8]) -> io::Result<()> {
 /// the string "a b", rather than "?q=a%2520b", a search for the literal
 /// string "a%20b".
 pub fn escape_href(output: &mut dyn Write, buffer: &[u8]) -> io::Result<()> {
-    static HREF_SAFE: LazyLock<[bool; 256]> = LazyLock::new(|| {
-        let mut a = [false; 256];
-        for &c in b"-_.+!*(),%#@?=;:/,+$~abcdefghijklmnopqrstuvwxyz".iter() {
-            a[c as usize] = true;
-        }
-        for &c in b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".iter() {
-            a[c as usize] = true;
-        }
-        a
-    });
+    const HREF_SAFE: [bool; 256] = character_set!(
+        b"-_.+!*(),%#@?=;:/,+$~",
+        b"abcdefghijklmnopqrstuvwxyz",
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    );
 
     let size = buffer.len();
     let mut i = 0;
@@ -372,11 +333,11 @@ where
     Ok(())
 }
 
-impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
+impl<'o> HtmlFormatter<'o> {
     fn new(
-        options: &'o ComrakOptions<'c>,
+        options: &'o ComrakOptions,
         output: &'o mut WriteWithLast<'o>,
-        plugins: &'o ComrakPlugins,
+        plugins: &'o Plugins,
     ) -> Self {
         HtmlFormatter {
             options,
@@ -473,37 +434,6 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
         }
     }
 
-    fn collect_first_child_text<'a>(node: &'a AstNode<'a>, output: &mut Vec<u8>) {
-        if let Some(child) = node.children().next() {
-            if matches!(child.data.borrow().value, NodeValue::Paragraph) {
-                if let Some(child) = child.children().next() {
-                    if !matches!(child.data.borrow().value, NodeValue::HtmlInline(_)) {
-                        return Self::collect_text(child, output);
-                    }
-                }
-            }
-            Self::collect_text(child, output)
-        } else {
-            Self::collect_text(node, output)
-        }
-    }
-
-    fn next_is_link<'a>(node: &'a AstNode<'a>) -> bool {
-        if let Some(child) = node.children().next() {
-            if matches!(child.data.borrow().value, NodeValue::Link(_)) {
-                return true;
-            }
-            if matches!(child.data.borrow().value, NodeValue::Paragraph) {
-                if let Some(child) = child.children().next() {
-                    if matches!(child.data.borrow().value, NodeValue::Link(_)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
-
     fn format_node<'a>(
         &mut self,
         node: &'a AstNode<'a>,
@@ -554,18 +484,27 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
             NodeValue::List(ref nl) => {
                 if entering {
                     self.cr()?;
-                    if nl.list_type == ListType::Bullet {
-                        self.output.write_all(b"<ul")?;
-                        self.render_sourcepos(node)?;
-                        self.output.write_all(b">\n")?;
-                    } else if nl.start == 1 {
-                        self.output.write_all(b"<ol")?;
-                        self.render_sourcepos(node)?;
-                        self.output.write_all(b">\n")?;
-                    } else {
-                        self.output.write_all(b"<ol")?;
-                        self.render_sourcepos(node)?;
-                        writeln!(self.output, " start=\"{}\">", nl.start)?;
+                    match nl.list_type {
+                        ListType::Bullet => {
+                            self.output.write_all(b"<ul")?;
+                            if nl.is_task_list && self.options.render.tasklist_classes {
+                                self.output.write_all(b" class=\"contains-task-list\"")?;
+                            }
+                            self.render_sourcepos(node)?;
+                            self.output.write_all(b">\n")?;
+                        }
+                        ListType::Ordered => {
+                            self.output.write_all(b"<ol")?;
+                            if nl.is_task_list && self.options.render.tasklist_classes {
+                                self.output.write_all(b" class=\"contains-task-list\"")?;
+                            }
+                            self.render_sourcepos(node)?;
+                            if nl.start == 1 {
+                                self.output.write_all(b">\n")?;
+                            } else {
+                                writeln!(self.output, " start=\"{}\">", nl.start)?;
+                            }
+                        }
                     }
                 } else if nl.list_type == ListType::Bullet {
                     self.output.write_all(b"</ul>\n")?;
@@ -597,19 +536,7 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
             NodeValue::DescriptionTerm => {
                 if entering {
                     self.cr()?;
-                    let mut text_content = Vec::with_capacity(20);
-                    Self::collect_first_child_text(node, &mut text_content);
-                    let raw_id = String::from_utf8_lossy(&text_content);
-                    let is_templ = raw_id.contains(DELIM_START);
-                    if is_templ {
-                        write!(self.output, "<dt data-update-id")?;
-                    } else {
-                        let id = self.anchorizer.anchorize(&raw_id);
-                        write!(self.output, "<dt id=\"{}\"", id)?;
-                    };
-                    if !is_templ && !Self::next_is_link(node) {
-                        write!(self.output, " data-add-link")?;
-                    }
+                    self.output.write_all(b"<dt")?;
                     self.render_sourcepos(node)?;
                     self.output.write_all(b">")?;
                 } else {
@@ -727,7 +654,8 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                         match self.plugins.render.codefence_syntax_highlighter {
                             None => {
                                 pre_attributes.extend(code_attributes);
-                                let with_code = if let Some(cls) = pre_attributes.get_mut("class") {
+                                let _with_code = if let Some(cls) = pre_attributes.get_mut("class")
+                                {
                                     if !ncb.info.is_empty() {
                                         let langs = ncb
                                             .info
@@ -746,17 +674,8 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                                     false
                                 };
                                 write_opening_tag(self.output, "pre", pre_attributes)?;
-                                if with_code {
-                                    self.output.write_all(b"<code>")?;
-                                }
-
                                 self.escape(literal)?;
-
-                                if with_code {
-                                    self.output.write_all(b"</code></pre>")?;
-                                } else {
-                                    self.output.write_all(b"</pre>\n")?
-                                }
+                                self.output.write_all(b"</pre>\n")?
                             }
                             Some(highlighter) => {
                                 highlighter.write_pre_tag(self.output, pre_attributes)?;
@@ -962,26 +881,41 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                 }
             }
             NodeValue::Link(ref nl) => {
-                // Unreliable sourcepos.
-                if entering {
-                    self.output.write_all(b"<a")?;
-                    if self.options.render.experimental_inline_sourcepos {
-                        self.render_sourcepos(node)?;
+                // Unreliable sourcepos.                let parent_node = node.parent();
+                let parent_node = node.parent();
+
+                if !self.options.parse.relaxed_autolinks
+                    || (parent_node.is_none()
+                        || !matches!(
+                            parent_node.unwrap().data.borrow().value,
+                            NodeValue::Link(..)
+                        ))
+                {
+                    if entering {
+                        self.output.write_all(b"<a")?;
+                        if self.options.render.experimental_inline_sourcepos {
+                            self.render_sourcepos(node)?;
+                        }
+                        self.output.write_all(b" href=\"")?;
+                        let url = nl.url.as_bytes();
+                        if self.options.render.unsafe_ || !dangerous_url(url) {
+                            if let Some(rewriter) = &self.options.extension.link_url_rewriter {
+                                self.escape_href(rewriter.to_html(&nl.url).as_bytes())?;
+                            } else {
+                                self.escape_href(url)?;
+                            }
+                        }
+                        if !nl.title.is_empty() {
+                            self.output.write_all(b"\" title=\"")?;
+                            self.escape(nl.title.as_bytes())?;
+                        }
+                        self.output.write_all(b"\">")?;
+                    } else {
+                        self.output.write_all(b"</a>")?;
                     }
-                    self.output.write_all(b" href=\"")?;
-                    let url = nl.url.as_bytes();
-                    if self.options.render.unsafe_ || !dangerous_url(url) {
-                        self.escape_href(url)?;
-                    }
-                    if !nl.title.is_empty() {
-                        self.output.write_all(b"\" title=\"")?;
-                        self.escape(nl.title.as_bytes())?;
-                    }
-                    self.output.write_all(b"\">")?;
-                } else {
-                    self.output.write_all(b"</a>")?;
                 }
             }
+
             NodeValue::Image(ref nl) => {
                 // Unreliable sourcepos.
                 if entering {
@@ -992,7 +926,11 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                     self.output.write_all(b" src=\"")?;
                     let url = nl.url.as_bytes();
                     if self.options.render.unsafe_ || !dangerous_url(url) {
-                        self.escape_href(url)?;
+                        if let Some(rewriter) = &self.options.extension.image_url_rewriter {
+                            self.escape_href(rewriter.to_html(&nl.url).as_bytes())?;
+                        } else {
+                            self.escape_href(url)?;
+                        }
                     }
                     self.output.write_all(b"\" alt=\"")?;
                     return Ok((true, Flag::None));
@@ -1140,17 +1078,20 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                 if entering {
                     self.cr()?;
                     self.output.write_all(b"<li")?;
+                    if self.options.render.tasklist_classes {
+                        self.output.write_all(b" class=\"task-list-item\"")?;
+                    }
                     self.render_sourcepos(node)?;
                     self.output.write_all(b">")?;
-                    write!(
-                        self.output,
-                        "<input type=\"checkbox\" {}disabled=\"\" /> ",
-                        if symbol.is_some() {
-                            "checked=\"\" "
-                        } else {
-                            ""
-                        }
-                    )?;
+                    self.output.write_all(b"<input type=\"checkbox\"")?;
+                    if self.options.render.tasklist_classes {
+                        self.output
+                            .write_all(b" class=\"task-list-item-checkbox\"")?;
+                    }
+                    if symbol.is_some() {
+                        self.output.write_all(b" checked=\"\"")?;
+                    }
+                    self.output.write_all(b" disabled=\"\" /> ")?;
                 } else {
                     self.output.write_all(b"</li>\n")?;
                 }
@@ -1218,6 +1159,18 @@ impl<'o, 'c: 'o> HtmlFormatter<'o, 'c> {
                     self.output.write_all(b">")?;
                 } else {
                     self.output.write_all(b"</u>")?;
+                }
+            }
+            NodeValue::Subscript => {
+                // Unreliable sourcepos.
+                if entering {
+                    self.output.write_all(b"<sub")?;
+                    if self.options.render.experimental_inline_sourcepos {
+                        self.render_sourcepos(node)?;
+                    }
+                    self.output.write_all(b">")?;
+                } else {
+                    self.output.write_all(b"</sub>")?;
                 }
             }
             NodeValue::SpoileredText => {

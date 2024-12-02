@@ -106,6 +106,9 @@ pub fn invoke(
         "embedyoutube" => embeds::embedyoutube::embed_youtube_any,
         "jsfiddleembed" => embeds::jsfiddleembed::embded_jsfiddle_any,
 
+        // live sample link
+        "livesamplelink" => embeds::livesamplelink::live_sample_link_any,
+
         // badges
         "experimentalbadge" | "experimental_inline" => badges::experimental_any,
         "nonstandardbadge" | "non-standard_inline" => badges::non_standard_any,

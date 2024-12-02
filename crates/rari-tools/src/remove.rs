@@ -19,6 +19,7 @@ use rayon::iter::{once, IntoParallelIterator, ParallelIterator};
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
 use crate::redirects::add_redirects;
+use crate::sidebars::update_sidebars;
 use crate::wikihistory::delete_from_wiki_history;
 
 pub fn remove(
@@ -221,6 +222,20 @@ fn do_remove(
     // update the wiki history
     delete_from_wiki_history(locale, &slugs_to_remove)?;
 
+    // Update the sidebars, removing links and paths where necessary.
+    // But only for the default locale. Translated content cannot change
+    // sidebars.
+    if locale == Locale::default() {
+        let pairs = slugs_to_remove
+            .iter()
+            .map(|slug| {
+                let url = build_url(slug, locale, PageCategory::Doc)?;
+                Ok((Cow::Owned(url), None))
+            })
+            .collect::<Result<Vec<_>, ToolError>>()?;
+        update_sidebars(&pairs)?;
+    }
+
     // update the redirects map if needed
     if let Some(new_target) = redirect_target {
         let pairs = slugs_to_remove
@@ -264,6 +279,7 @@ mod test {
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
+    use crate::tests::fixtures::sidebars::SidebarFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
     use crate::utils::get_redirects_map;
     use crate::utils::test_utils::check_file_existence;
@@ -376,6 +392,7 @@ mod test {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
         assert!(result.is_ok());
@@ -398,6 +415,7 @@ mod test {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove(
             "Web/API/ExampleOne",
@@ -436,6 +454,7 @@ mod test {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
         assert!(result.is_ok());
@@ -463,6 +482,7 @@ mod test {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, true, None, false);
         assert!(result.is_ok());
@@ -493,6 +513,7 @@ mod test {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove(
             "Web/API/ExampleOne",
@@ -539,6 +560,7 @@ mod test {
         let _docs = DocFixtures::new(&slugs, Locale::PtBr);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::PtBr);
         let _redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove(
             "Web/API/ExampleOne",

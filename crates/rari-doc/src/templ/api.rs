@@ -7,6 +7,7 @@ use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::html::links::render_link_via_page;
+use crate::issues::get_issue_couter;
 use crate::pages::page::Page;
 use crate::percent::PATH_SEGMENT;
 use crate::redirects::resolve_redirect;
@@ -20,19 +21,39 @@ impl RariApi {
     pub fn live_sample_base_url() -> &'static str {
         &settings().live_samples_base_url
     }
+    pub fn get_page_nowarn(url: &str) -> Result<Page, DocError> {
+        RariApi::get_page_internal(url, false)
+    }
+
     pub fn get_page(url: &str) -> Result<Page, DocError> {
+        RariApi::get_page_internal(url, true)
+    }
+
+    fn get_page_internal(url: &str, warn: bool) -> Result<Page, DocError> {
         let redirect = resolve_redirect(url);
         let url = match redirect.as_ref() {
-            Some(redirect) if deny_warnings() => {
-                return Err(DocError::RedirectedLink {
-                    from: url.to_string(),
-                    to: redirect.to_string(),
-                })
+            Some(redirect) => {
+                if warn {
+                    let ic = get_issue_couter();
+                    tracing::warn!(
+                        source = "macro-redirected-link",
+                        ic = ic,
+                        url = url,
+                        href = redirect.as_ref()
+                    );
+                }
+                if deny_warnings() {
+                    return Err(DocError::RedirectedLink {
+                        from: url.to_string(),
+                        to: redirect.to_string(),
+                    });
+                } else {
+                    redirect
+                }
             }
-            Some(redirect) => redirect,
             None => url,
         };
-        Page::from_url(url).map_err(Into::into)
+        Page::from_url_with_fallback(url).map_err(Into::into)
     }
 
     pub fn decode_uri_component(component: &str) -> String {
@@ -45,7 +66,7 @@ impl RariApi {
 
     pub fn link(
         link: &str,
-        locale: Option<Locale>,
+        locale: Locale,
         content: Option<&str>,
         code: bool,
         title: Option<&str>,

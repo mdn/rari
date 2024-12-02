@@ -3,30 +3,35 @@ use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::thread::spawn;
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
-use issues::{issues_by, InMemoryLayer};
+use dashmap::DashMap;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas,
 };
 use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
+use rari_doc::issues::{issues_by, InMemoryLayer};
+use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
+use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
-use rari_tools::popularities::update_popularities;
 use rari_tools::r#move::r#move;
+use rari_tools::redirects::fix_redirects;
 use rari_tools::remove::remove;
+use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
 use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
 use rari_types::locale::Locale;
 use rari_types::settings::Settings;
+use schemars::schema_for;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
 use tracing::Level;
@@ -35,7 +40,6 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter, Layer};
 
-mod issues;
 mod serve;
 
 #[derive(Parser)]
@@ -58,19 +62,39 @@ enum Commands {
     Foo(BuildArgs),
     Serve(ServeArgs),
     GitHistory,
-    Popularities,
     Update(UpdateArgs),
+    ExportSchema(ExportSchemaArgs),
+    /// Subcommands for altering content programmatically
     #[command(subcommand)]
     Content(ContentSubcommand),
 }
 
+#[derive(Args)]
+struct ExportSchemaArgs {
+    output_file: Option<PathBuf>,
+}
+
 #[derive(Subcommand)]
 enum ContentSubcommand {
-    /// Moves content from one slug to another
+    /// Moves content pages from one slug to another.
     Move(MoveArgs),
+    /// Deletes content pages.
     Delete(DeleteArgs),
+    /// Adds a redirect from->to pair to the redirect map.
+    ///
+    /// The locale is inferred from the from_url.
     AddRedirect(AddRedirectArgs),
+    /// Syncs translated content for all or a list of locales.
     SyncTranslatedContent(SyncTranslatedContentArgs),
+    /// Formats all sidebars.
+    FmtSidebars,
+    /// Sync sidebars with redirects
+    SyncSidebars,
+    /// Fixes redirects across all locales.
+    ///
+    /// This shortens multiple redirect chains to single ones.
+    /// This is also run as part of sync_translated_content.
+    FixRedirects,
 }
 
 #[derive(Args)]
@@ -140,11 +164,15 @@ struct BuildArgs {
     #[arg(long)]
     skip_spas: bool,
     #[arg(long)]
+    skip_generics: bool,
+    #[arg(long)]
     skip_sitemap: bool,
     #[arg(long)]
     templ_stats: bool,
     #[arg(long)]
     issues: Option<PathBuf>,
+    #[arg(long)]
+    data_issues: bool,
 }
 
 enum Cache {
@@ -161,15 +189,18 @@ fn main() -> Result<(), Error> {
         rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;
         rari_deps::mdn_data::update_mdn_data(rari_types::globals::data_dir())?;
         rari_deps::web_ext_examples::update_web_ext_examples(rari_types::globals::data_dir())?;
+        rari_deps::popularities::update_popularities(rari_types::globals::data_dir())?;
     }
 
     let fmt_filter = filter::Targets::new()
         .with_target("rari_doc", cli.verbose.log_level_filter().as_trace())
         .with_target("rari", cli.verbose.log_level_filter().as_trace());
 
-    let memory_filter = filter::Targets::new().with_target("rari_doc", Level::WARN);
+    let memory_filter = filter::Targets::new()
+        .with_target("rari_doc", Level::WARN)
+        .with_target("rari", Level::WARN);
 
-    let memory_layer = InMemoryLayer::new();
+    let memory_layer = InMemoryLayer::default();
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::fmt::layer()
@@ -185,6 +216,7 @@ fn main() -> Result<(), Error> {
             let mut settings = Settings::new()?;
             settings.deny_warnings = args.deny_warnings;
             settings.cache_content = args.cache_content;
+            settings.data_issues = args.data_issues;
             let _ = SETTINGS.set(settings);
 
             let templ_stats = if args.templ_stats {
@@ -227,9 +259,7 @@ fn main() -> Result<(), Error> {
             };
 
             if matches!(cache, Cache::Dynamic) {
-                CACHED_DOC_PAGE_FILES
-                    .set(Arc::new(RwLock::new(HashMap::new())))
-                    .unwrap();
+                CACHED_DOC_PAGE_FILES.set(Arc::new(DashMap::new())).unwrap();
             }
             let mut urls = Vec::new();
             let mut docs = Vec::new();
@@ -253,8 +283,12 @@ fn main() -> Result<(), Error> {
             if !args.skip_spas && args.files.is_empty() {
                 let start = std::time::Instant::now();
                 urls.extend(build_spas()?);
-                urls.extend(build_generic_pages()?);
                 println!("Took: {: >10.3?} to build spas", start.elapsed());
+            }
+            if !args.skip_generics && args.files.is_empty() {
+                let start = std::time::Instant::now();
+                urls.extend(build_generic_pages()?);
+                println!("Took: {: >10.3?} to build generics", start.elapsed());
             }
             if !args.skip_content {
                 let start = std::time::Instant::now();
@@ -285,21 +319,15 @@ fn main() -> Result<(), Error> {
                 );
             }
             if !args.skip_sitemap && args.files.is_empty() && !urls.is_empty() {
+                let sitemaps = Sitemaps { sitemap_meta: urls };
                 let start = std::time::Instant::now();
                 let out_path = build_out_root()?;
                 fs::create_dir_all(out_path).unwrap();
-                let out_file = out_path.join("sitemap.txt");
-                let file = File::create(out_file).unwrap();
-                let mut buffed = BufWriter::new(file);
-                urls.sort();
-                for url in &urls {
-                    buffed.write_all(url.as_bytes())?;
-                    buffed.write_all(b"\n")?;
-                }
+                sitemaps.write_all_sitemaps(out_path)?;
                 println!(
-                    "Took: {: >10.3?} to write sitemap.txt ({})",
+                    "Took: {: >10.3?} to write sitemaps ({})",
                     start.elapsed(),
-                    urls.len()
+                    sitemaps.sitemap_meta.len()
                 );
             }
             if let Some((recorder_handler, tx)) = templ_stats {
@@ -340,19 +368,14 @@ fn main() -> Result<(), Error> {
             let mut settings = Settings::new()?;
             settings.deny_warnings = args.deny_warnings;
             settings.cache_content = args.cache_content;
+            settings.data_issues = true;
             let _ = SETTINGS.set(settings);
-            serve::serve()?
+            serve::serve(memory_layer.clone())?
         }
         Commands::GitHistory => {
             println!("Gathering history 📜");
             let start = std::time::Instant::now();
             gather_history()?;
-            println!("Took: {:?}", start.elapsed());
-        }
-        Commands::Popularities => {
-            println!("Calculating popularities 🥇");
-            let start = std::time::Instant::now();
-            update_popularities(20000);
             println!("Took: {:?}", start.elapsed());
         }
         Commands::Content(content_subcommand) => match content_subcommand {
@@ -375,9 +398,28 @@ fn main() -> Result<(), Error> {
                 let locales = args.locales.as_deref().unwrap_or(Locale::translated());
                 sync_translated_content(locales, cli.verbose.is_present())?;
             }
+            ContentSubcommand::FmtSidebars => {
+                fmt_sidebars()?;
+            }
+            ContentSubcommand::SyncSidebars => {
+                sync_sidebars()?;
+            }
+            ContentSubcommand::FixRedirects => {
+                fix_redirects()?;
+            }
         },
         Commands::Update(args) => update(args.version)?,
+        Commands::ExportSchema(args) => export_schema(args)?,
     }
+    Ok(())
+}
+
+fn export_schema(args: ExportSchemaArgs) -> Result<(), Error> {
+    let out_path = args
+        .output_file
+        .unwrap_or_else(|| PathBuf::from("schema.json"));
+    let schema = schema_for!(BuiltPage);
+    fs::write(out_path, serde_json::to_string_pretty(&schema)?)?;
     Ok(())
 }
 

@@ -1,4 +1,5 @@
 use rari_templ_func::rari_f;
+use rari_types::locale::Locale;
 use rari_types::AnyArg;
 
 use crate::error::DocError;
@@ -16,7 +17,7 @@ pub fn http_status(
         env.locale.as_url_str(),
         status
     );
-    http(url, status, display, anchor, no_code)
+    http(url, status, display, anchor, no_code, env.locale)
 }
 
 #[rari_f]
@@ -31,7 +32,7 @@ pub fn http_header(
         env.locale.as_url_str(),
         status
     );
-    http(url, status, display, anchor, no_code)
+    http(url, status, display, anchor, no_code, env.locale)
 }
 
 #[rari_f]
@@ -46,7 +47,7 @@ pub fn http_method(
         env.locale.as_url_str(),
         status
     );
-    http(url, status, display, anchor, no_code)
+    http(url, status, display, anchor, no_code, env.locale)
 }
 
 fn http(
@@ -55,6 +56,7 @@ fn http(
     display: Option<String>,
     anchor: Option<String>,
     no_code: Option<AnyArg>,
+    locale: Locale,
 ) -> Result<String, DocError> {
     let mut display = display.unwrap_or(status.to_string());
     if let Some(anchor) = anchor {
@@ -63,5 +65,5 @@ fn http(
         display.push_str(&anchor);
     }
     let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
-    RariApi::link(&url, None, Some(display.as_ref()), code, None, false)
+    RariApi::link(&url, locale, Some(display.as_ref()), code, None, false)
 }

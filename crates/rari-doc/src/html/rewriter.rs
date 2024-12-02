@@ -1,18 +1,19 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 
-use lol_html::html_content::{ContentType, Element};
+use lol_html::html_content::ContentType;
 use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings};
 use rari_md::ext::DELIM_START;
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
-use rari_types::locale::Locale;
+use rari_types::globals::settings;
 use rari_utils::concat_strs;
 use tracing::warn;
 use url::Url;
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
+use crate::issues::get_issue_couter;
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::curriculum::CurriculumPage;
 use crate::redirects::resolve_redirect;
@@ -41,7 +42,6 @@ pub fn post_process_html<T: PageLike>(
 ) -> Result<String, DocError> {
     let mut output = vec![];
     let mut ids = HashSet::new();
-    let open_dt_a = std::rc::Rc::new(std::cell::RefCell::new(false));
     let options = Url::options();
     let url = page.url();
     let base = Url::parse(&concat_strs!(
@@ -50,40 +50,50 @@ pub fn post_process_html<T: PageLike>(
         if url.ends_with('/') { "" } else { "/" }
     ))?;
     let base_url = options.base_url(Some(&base));
+    let data_issues = settings().data_issues;
 
     let mut element_content_handlers = vec![
         element!("*[id]", |el| {
             if let Some(id) = el.get_attribute("id") {
                 if id.contains(DELIM_START) {
                     el.set_attribute("data-update-id", "")?;
-                } else if ids.contains(id.as_str()) {
-                    let (prefix, mut count) = if let Some((prefix, counter)) = id.rsplit_once('_') {
-                        if counter.chars().all(|c| c.is_ascii_digit()) {
-                            let count = counter.parse::<i64>().unwrap_or_default() + 1;
-                            (prefix, count)
-                        } else {
-                            (id.as_str(), 2)
+                } else {
+                    let id = id.to_lowercase();
+                    if ids.contains(id.as_str()) {
+                        let (prefix, mut count) =
+                            if let Some((prefix, counter)) = id.rsplit_once('_') {
+                                if counter.chars().all(|c| c.is_ascii_digit()) {
+                                    let count = counter.parse::<i64>().unwrap_or_default() + 1;
+                                    (prefix, count)
+                                } else {
+                                    (id.as_str(), 2)
+                                }
+                            } else {
+                                (id.as_str(), 2)
+                            };
+                        let mut id = format!("{prefix}_{count}");
+                        while ids.contains(&id) && count < 666 {
+                            count += 1;
+                            id = format!("{prefix}_{count}");
+                        }
+
+                        if !ids.contains(&id) && count < 666 {
+                            el.set_attribute("id", &id)?;
+                            ids.insert(id);
                         }
                     } else {
-                        (id.as_str(), 2)
-                    };
-                    let mut id = format!("{prefix}_{count}");
-                    while ids.contains(&id) && count < 666 {
-                        count += 1;
-                        id = format!("{prefix}_{count}");
-                    }
-
-                    if !ids.contains(&id) && count < 666 {
                         el.set_attribute("id", &id)?;
                         ids.insert(id);
                     }
-                } else {
-                    ids.insert(id);
                 }
             }
             Ok(())
         }),
         element!("img[src]", |el| {
+            // Leave dimensions alone if we have a `width` attribute
+            if el.get_attribute("width").is_some() {
+                return Ok(());
+            }
             if let Some(src) = el.get_attribute("src") {
                 let url = base_url.parse(&src)?;
                 if url.host() == base.host() && !url.path().starts_with("/assets/") {
@@ -91,35 +101,75 @@ pub fn post_process_html<T: PageLike>(
                     let file = page.full_path().parent().unwrap().join(&src);
                     let (width, height) = if src.ends_with(".svg") {
                         match svg_metadata::Metadata::parse_file(&file) {
-                            Ok(meta) => (
-                                meta.width
-                                    .map(|width| width.width)
-                                    .or(meta.view_box.map(|vb| vb.width))
-                                    .map(|width| format!("{:.0}", width)),
-                                meta.height
-                                    .map(|height| height.height)
-                                    .or(meta.view_box.map(|vb| vb.height))
-                                    .map(|height| format!("{:.0}", height)),
-                            ),
+                            // If only width and viewbox are given, use width and scale
+                            // the height according to the viewbox size ratio.
+                            // If width and height are given, use these.
+                            // If only a viewbox is given, use the viewbox values.
+                            // If only height and viewbox are given, use height and scale
+                            // the height according to the viewbox size ratio.
+                            Ok(meta) => {
+                                let width = meta.width.map(|w| w.width);
+                                let height = meta.height.map(|h| h.height);
+                                let view_box = meta.view_box;
+
+                                let (final_width, final_height) = match (width, height, view_box) {
+                                    // Both width and height are given
+                                    (Some(w), Some(h), _) => (Some(w), Some(h)),
+                                    // Only width and viewbox are given
+                                    (Some(w), None, Some(vb)) => {
+                                        (Some(w), Some(w * vb.height / vb.width))
+                                    }
+                                    // Only height and viewbox are given
+                                    (None, Some(h), Some(vb)) => {
+                                        (Some(h * vb.width / vb.height), Some(h))
+                                    }
+                                    // Only viewbox is given
+                                    (None, None, Some(vb)) => (Some(vb.width), Some(vb.height)),
+                                    // Only width is given
+                                    (Some(w), None, None) => (Some(w), None),
+                                    // Only height is given
+                                    (None, Some(h), None) => (None, Some(h)),
+                                    // Neither width, height, nor viewbox are given
+                                    (None, None, None) => (None, None),
+                                };
+
+                                (
+                                    final_width.map(|w| format!("{:.0}", w)),
+                                    final_height.map(|h| format!("{:.0}", h)),
+                                )
+                            }
                             Err(e) => {
+                                let ic = get_issue_couter();
                                 warn!(
                                     source = "image-check",
+                                    ic = ic,
                                     "Error parsing {}: {e}",
                                     file.display()
                                 );
+                                if data_issues {
+                                    el.set_attribute("data-flaw", &ic.to_string())?;
+                                }
                                 (None, None)
                             }
                         }
-                    } else if let Ok(dim) = imagesize::size(&file).inspect_err(|e| {
-                        warn!(
-                            source = "image-check",
-                            "Error opening {}: {e}",
-                            file.display()
-                        )
-                    }) {
-                        (Some(dim.width.to_string()), Some(dim.height.to_string()))
                     } else {
-                        (None, None)
+                        match imagesize::size(&file) {
+                            Ok(dim) => (Some(dim.width.to_string()), Some(dim.height.to_string())),
+                            Err(e) => {
+                                let ic = get_issue_couter();
+                                warn!(
+                                    source = "image-check",
+                                    ic = ic,
+                                    "Error opening {}: {e}",
+                                    file.display()
+                                );
+                                if data_issues {
+                                    el.set_attribute("data-flaw", &ic.to_string())?;
+                                }
+
+                                (None, None)
+                            }
+                        }
                     };
                     if let Some(width) = width {
                         el.set_attribute("width", &width)?;
@@ -148,9 +198,13 @@ pub fn post_process_html<T: PageLike>(
                     .strip_prefix("https://developer.mozilla.org")
                     .map(|href| if href.is_empty() { "/" } else { href })
                     .unwrap_or(&original_href);
+                let href_no_hash = &href[..href.find('#').unwrap_or(href.len())];
                 let no_locale = strip_locale_from_url(href).0.is_none();
+                if no_locale && Page::ignore_link_check(href_no_hash) {
+                    return Ok(());
+                }
                 let maybe_prefixed_href = if no_locale {
-                    Cow::Owned(concat_strs!("/", Locale::default().as_url_str(), href))
+                    Cow::Owned(concat_strs!("/", page.locale().as_url_str(), href))
                 } else {
                     Cow::Borrowed(href)
                 };
@@ -161,7 +215,9 @@ pub fn post_process_html<T: PageLike>(
                 if resolved_href_no_hash == page.url() {
                     el.set_attribute("aria-current", "page")?;
                 }
-                if !Page::exists(resolved_href_no_hash) && !Page::ignore(href) {
+                let remove_href = if !Page::exists(resolved_href_no_hash)
+                    && !Page::ignore_link_check(href)
+                {
                     tracing::debug!("{resolved_href_no_hash} {href}");
                     let class = el.get_attribute("class").unwrap_or_default();
                     el.set_attribute(
@@ -172,37 +228,64 @@ pub fn post_process_html<T: PageLike>(
                             "page-not-created"
                         ),
                     )?;
+                    if let Some(href) = el.get_attribute("href") {
+                        el.set_attribute("data-href", &href)?;
+                    }
+                    el.remove_attribute("href");
                     el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
-                }
+                    true
+                } else {
+                    false
+                };
+                let resolved_href = if no_locale {
+                    strip_locale_from_url(&resolved_href).1
+                } else {
+                    resolved_href.as_ref()
+                };
                 if original_href != resolved_href {
                     if let Some(pos) = el.get_attribute("data-sourcepos") {
                         if let Some((start, _)) = pos.split_once('-') {
                             if let Some((line, col)) = start.split_once(':') {
+                                let line = line
+                                    .parse::<i64>()
+                                    .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
+                                    .ok()
+                                    .unwrap_or(-1);
+                                let col = col.parse::<i64>().ok().unwrap_or(0);
+                                let ic = get_issue_couter();
                                 tracing::warn!(
                                     source = "redirected-link",
+                                    ic = ic,
                                     line = line,
                                     col = col,
                                     url = original_href,
-                                    redirect = resolved_href.as_ref()
-                                )
+                                    redirect = resolved_href
+                                );
+                                if data_issues {
+                                    el.set_attribute("data-flaw", &ic.to_string())?;
+                                }
                             }
                         }
                     } else {
+                        let ic = get_issue_couter();
                         tracing::warn!(
                             source = "redirected-link",
+                            ic = ic,
                             url = original_href,
-                            redirect = resolved_href.as_ref()
-                        )
+                            redirect = resolved_href
+                        );
+                        if data_issues {
+                            el.set_attribute("data-flaw", &ic.to_string())?;
+                        }
+                    }
+
+                    if !remove_href {
+                        el.set_attribute("href", resolved_href)?;
                     }
                 }
-                el.set_attribute(
-                    "href",
-                    if no_locale {
-                        strip_locale_from_url(&resolved_href).1
-                    } else {
-                        &resolved_href
-                    },
-                )?;
+                if remove_href {
+                    el.remove_attribute("href");
+                }
             } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
                 let class = el.get_attribute("class").unwrap_or_default();
                 if !class.split(' ').any(|s| s == "external") {
@@ -218,63 +301,38 @@ pub fn post_process_html<T: PageLike>(
 
             Ok(())
         }),
-        element!("dt[data-add-link]", |el: &mut Element| {
-            el.remove_attribute("data-add-link");
-            if let Some(id) = el.get_attribute("id") {
-                el.prepend(&concat_strs!("<a href=\"#", &id, "\">"), ContentType::Html);
-                let mut s = open_dt_a.borrow_mut();
-                *s = true;
-                let open_dt_a = open_dt_a.clone();
-                // We need this handler if there's only a text node in the dl.
-                if let Some(handlers) = el.end_tag_handlers() {
-                    handlers.push(Box::new(move |end| {
-                        let mut s = open_dt_a.borrow_mut();
-                        if *s {
-                            end.before("</a>", ContentType::Html);
-                            *s = false;
-                        }
-                        Ok(())
-                    }));
-                }
-            }
-            Ok(())
-        }),
-        element!("dt[data-add-link] *:first-child", |el| {
-            let mut s = open_dt_a.borrow_mut();
-            if *s {
-                el.after("</a>", ContentType::Html);
-                *s = false;
-            }
-            Ok(())
-        }),
         element!("pre:not(.notranslate)", |el| {
             let mut class = el.get_attribute("class").unwrap_or_default();
             class.push_str(" notranslate");
             el.set_attribute("class", &class)?;
             Ok(())
         }),
-        element!("pre[class*=brush]:not(.hidden)", |el| {
+        element!("pre[class*=brush]", |el| {
             let class = el.get_attribute("class");
             let class = class.as_deref().unwrap_or_default();
+            let is_hidden = class.split_ascii_whitespace().any(|c| c == "hidden");
             let name = class
                 .split_ascii_whitespace()
                 .skip_while(|s| *s != "brush:")
                 .nth(1)
                 .unwrap_or_default();
+
             if !name.is_empty() && name != "plain" {
-                el.before(
-              &concat_strs!(
-                r#"<div class="code-example"><div class='example-header'><span class="language-name">"#, name, "</span></div>"
-              ),
-              ContentType::Html
-            );
+                el.prepend("<code>", ContentType::Html);
+                el.append("</code>", ContentType::Html);
+            }
+            if is_hidden {
+                el.before(r#"<div class="code-example">"#, ContentType::Html);
+                el.after("</div>", ContentType::Html);
+            } else if !name.is_empty() && name != "plain" {
+                el.before(&concat_strs!(
+                  r#"<div class="code-example"><div class='example-header'><span class="language-name">"#,
+                  name,
+                  "</span></div>"),
+                  ContentType::Html
+                );
                 el.after("</div>", ContentType::Html);
             }
-            Ok(())
-        }),
-        element!("pre[class*=brush].hidden", |el| {
-            el.before(r#"<div class="code-example">"#, ContentType::Html);
-            el.after("</div>", ContentType::Html);
             Ok(())
         }),
         element!(

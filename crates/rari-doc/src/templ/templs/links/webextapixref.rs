@@ -31,7 +31,7 @@ pub fn webextapixref(
 
     RariApi::link(
         &url,
-        None,
+        env.locale,
         Some(display.as_ref()),
         !no_code.map(|nc| nc.as_bool()).unwrap_or_default(),
         None,

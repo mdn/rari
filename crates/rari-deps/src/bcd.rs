@@ -52,16 +52,3 @@ pub fn extract_spec_urls(package_path: &Path) -> Result<(), DepsError> {
     fs::write(spec_urls_out_path, serde_json::to_string(&map)?)?;
     Ok(())
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_extract_spec_urls() -> Result<(), DepsError> {
-        extract_spec_urls(Path::new(
-            "/Users/fiji/Library/Application Support/rari/@mdn/browser-compat-data/",
-        ))?;
-        Ok(())
-    }
-}

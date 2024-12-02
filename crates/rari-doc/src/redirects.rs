@@ -1,3 +1,7 @@
+//! # Redirects Module
+//!
+//! The `redirects` module provides functionality for managing URL redirects.
+//! It includes utilities for reading redirect mappings from files and storing them in a hashmap for efficient lookup.
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs::File;
@@ -24,6 +28,7 @@ static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
                     error!("Error: reading translated content root: {e}");
                 })
                 .ok()
+                .filter(|dir| dir.path().is_dir())
                 .and_then(|dir| {
                     Locale::from_str(
                         dir.file_name()
@@ -85,7 +90,22 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-pub fn resolve_redirect(url: &str) -> Option<Cow<'_, str>> {
+/// Resolves a URL redirect based on the configured redirects.
+///
+/// This function attempts to resolve a redirect for the given URL by looking it up in the `REDIRECTS` hashmap.
+/// If a redirect is found, it returns the target URL, optionally appending any hash fragment from the original URL.
+/// If no redirect is found, it returns `None`.
+///
+/// # Arguments
+///
+/// * `url` - A string slice that holds the URL to be resolved.
+///
+/// # Returns
+///
+/// * `Option<Cow<'_, str>>` - Returns `Some(Cow::Borrowed(target_url))` if a redirect is found and the target URL
+///   does not contain a hash fragment, or `Some(Cow::Owned(format!("{target_url}{hash}")))` if the target URL
+///   contains a hash fragment or the original URL has a hash fragment. Returns `None` if no redirect is found.
+pub(crate) fn resolve_redirect(url: &str) -> Option<Cow<'_, str>> {
     let hash_index = url.find('#').unwrap_or(url.len());
     let (url_no_hash, hash) = (&url[..hash_index], &url[hash_index..]);
     match (

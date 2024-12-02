@@ -5,6 +5,154 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.26](https://github.com/mdn/rari/compare/v0.0.25...v0.0.26) (2024-12-01)
+
+
+### Features
+
+* **issues:** support sidebar name ([fd4ca80](https://github.com/mdn/rari/commit/fd4ca8082eadc80f0ec879c49affc07ee122c889))
+
+
+### Bug Fixes
+
+* **css-syntax:** support debugging ([ca2377d](https://github.com/mdn/rari/commit/ca2377dd180477ecbce0228a4666ba941d297642))
+* **popularities:** update if not existing on 1st ([3f3c3d3](https://github.com/mdn/rari/commit/3f3c3d3a5a3db9e79b0b35acffea5bf5beb979c6))
+
+## [0.0.25](https://github.com/mdn/rari/compare/v0.0.24...v0.0.25) (2024-11-27)
+
+
+### Features
+
+* **content:** add sync-sidebars command ([a4d4686](https://github.com/mdn/rari/commit/a4d4686fb432e312d0889368b6d6c40216f54cc9))
+* **popularities:** move popularities to deps ([8e4b4aa](https://github.com/mdn/rari/commit/8e4b4aab2d33e31eaacd90c23ca8f7fa4b5a1f27))
+* **spas:** default values for SPAs ([1ef6e16](https://github.com/mdn/rari/commit/1ef6e16a47502d6fee50a9a79d275649381a6d94))
+
+
+### Bug Fixes
+
+* **contributors:** support missing contributors ([d408b52](https://github.com/mdn/rari/commit/d408b5242d6e03fcae9f2be24b2afac68faa8d6f))
+* **rari-npm:** fix download tmp folder ([5207886](https://github.com/mdn/rari/commit/5207886329cbc0645c805e22b629edd016a2a476))
+* **spas:** fix default ([5acc69b](https://github.com/mdn/rari/commit/5acc69b581d1708bf39c9ba192d95a00ac3837f0))
+
+## [0.0.24](https://github.com/mdn/rari/compare/v0.0.23...v0.0.24) (2024-11-25)
+
+
+### Features
+
+* **rari-npm:** use bin folder ([be311ef](https://github.com/mdn/rari/commit/be311ef84e1edc7da2d4cb50cfddaff3aed58b9a))
+
+
+### Bug Fixes
+
+* **build:** don't display error for files in files ([f3d4d15](https://github.com/mdn/rari/commit/f3d4d15eca4c3bddda738cd0ca53a03589e5164f))
+
+## [0.0.23](https://github.com/mdn/rari/compare/v0.0.22...v0.0.23) (2024-11-22)
+
+
+### Features
+
+* **generics:** use config for generic content and some spas ([a717537](https://github.com/mdn/rari/commit/a7175374dc087372dffca0ee517fe48fb5d276f5))
+
+
+### Bug Fixes
+
+* **rari-npm:** don't ignore types an schema ([811ca0e](https://github.com/mdn/rari/commit/811ca0ee0a5a45fda44be9532706759b059cce9b))
+* **sitemaps:** fix xml ([857d3f2](https://github.com/mdn/rari/commit/857d3f236a06a987933c72cad1e2814150d2a8a8))
+
+## [0.0.22](https://github.com/mdn/rari/compare/v0.0.21...v0.0.22) (2024-11-21)
+
+
+### Features
+
+* **npm:** export ts types, json schema ([#42](https://github.com/mdn/rari/issues/42)) ([242b078](https://github.com/mdn/rari/commit/242b078d430eee15ef51e0a41da73d7bc898c4c5))
+* **sitemaps:** write xml sitemaps ([a450474](https://github.com/mdn/rari/commit/a45047430772e9830e7055253c02bc403680cc5c))
+* **templ:** new embedlivesample iframe ([e5382ca](https://github.com/mdn/rari/commit/e5382ca43e150b94a4391b36e3b9494073355270))
+
+
+### Bug Fixes
+
+* **templ:** cssxref and jsxref double issue reporting ([c20851b](https://github.com/mdn/rari/commit/c20851bcfb2b9bd94eff1afdc24905efcec0fff3))
+
+## [0.0.21](https://github.com/mdn/rari/compare/v0.0.20...v0.0.21) (2024-11-18)
+
+
+### Features
+
+* **build:** generate contributors.txt ([b37d92b](https://github.com/mdn/rari/commit/b37d92b5ba76176a7702efbce2d222079f31dd16))
+* **serve:** support contributors.txt ([5dfe87a](https://github.com/mdn/rari/commit/5dfe87a57cf1a42002e43da32f2b9a1fb1631d26))
+
+## [0.0.20](https://github.com/mdn/rari/compare/v0.0.19...v0.0.20) (2024-11-16)
+
+
+### Features
+
+* **issues:** add data-href to broken links ([02833be](https://github.com/mdn/rari/commit/02833be0e5a11c705c2a9f7285748ada68adf2c8))
+* **serve:** fast local search-index ([7076a81](https://github.com/mdn/rari/commit/7076a81092303b413b898d7e81d017c132d8faa1))
+* **sidebars:** support hash links ([26a7a13](https://github.com/mdn/rari/commit/26a7a13f0e47123302bee47386d084a676495a4e))
+
+## [0.0.19](https://github.com/mdn/rari/compare/v0.0.18...v0.0.19) (2024-11-13)
+
+
+### Features
+
+* **issues:** add initial support for macro issues ([5e23b0f](https://github.com/mdn/rari/commit/5e23b0fb3424fb5bc7d89a5a6de38ba851750338))
+* **templ:** livesamplelink ([a95f39b](https://github.com/mdn/rari/commit/a95f39b4b70a9dbe00bcff09f4740735e23ae4ab))
+
+## [0.0.18](https://github.com/mdn/rari/compare/v0.0.17...v0.0.18) (2024-11-08)
+
+
+### Bug Fixes
+
+* **templ:** fix wrong en-us-only ([54d6359](https://github.com/mdn/rari/commit/54d6359c11264438fdc4e7d061c11a1daef8c8e6))
+
+## [0.0.17](https://github.com/mdn/rari/compare/v0.0.16...v0.0.17) (2024-11-07)
+
+
+### Features
+
+* **diff:** update html template ([7432365](https://github.com/mdn/rari/commit/74323653ae2cb44b86cf03d725519c88ed6e0442))
+* **html:** post process dts ([#34](https://github.com/mdn/rari/issues/34)) ([ef6fbd7](https://github.com/mdn/rari/commit/ef6fbd7321a4d3c3aa9ce96b73ddfe0a37e82461))
+
+
+### Bug Fixes
+
+* **cssinfo:** add warning on empty result ([bdcca17](https://github.com/mdn/rari/commit/bdcca17a667c9fe00910f584b040b1cdc3af6f7c))
+* **frontmatter:** update fm_types ([53f3711](https://github.com/mdn/rari/commit/53f371149ffabbe5cdcf491e7443226cbf7638f2))
+* **html:** split out prose after specification ([a0af5e8](https://github.com/mdn/rari/commit/a0af5e8569cd8d7beea8e2289ec79ad8b2fcaabf))
+* **templ:** don't trim string args ([dbb6d42](https://github.com/mdn/rari/commit/dbb6d425d7d9946e6dce40f0a0528a5a722fa1b8))
+* **templ:** escape closing curly braces ([ef70385](https://github.com/mdn/rari/commit/ef70385545513fc66ca237027e5f75a747d04457))
+* **templ:** fix listsubpages order ([6175e8f](https://github.com/mdn/rari/commit/6175e8f9842b829889a7b9c01d2d311dfaba3a68))
+* **templ:** natural sort for utf8 ([3e86604](https://github.com/mdn/rari/commit/3e8660491d7f88a594360aeca828b4bb087e860a))
+
+## [0.0.16](https://github.com/mdn/rari/compare/v0.0.15...v0.0.16) (2024-10-31)
+
+
+### Features
+
+* **html:** no href for page-not-found ([1a0695b](https://github.com/mdn/rari/commit/1a0695b9db2c7a048d757023a3b2889e7b3e6605))
+* **issues:** issue counter ([bf9984e](https://github.com/mdn/rari/commit/bf9984e374b9c34183e009b15e119c0418f9badb))
+
+
+### Bug Fixes
+
+* **html:** unify code tags in pre ([d66b941](https://github.com/mdn/rari/commit/d66b94114fa89b19c4b708643b061595e1f1ffec))
+* **release-please:** update self package ([14c6b97](https://github.com/mdn/rari/commit/14c6b97d9409e6018997fba8e8710d9b0bc3891b))
+* **templ:** fix summary and inheritancediagram ([c0890a4](https://github.com/mdn/rari/commit/c0890a4c1c6962a70099f57bc5dd2830e343d229))
+
+## [0.0.15](https://github.com/mdn/rari/compare/v0.0.14...v0.0.15) (2024-10-25)
+
+
+### Features
+
+* **issues:** initial flaw compat ([dc0c131](https://github.com/mdn/rari/commit/dc0c131c911ba026e97e8c160e9117f2fc033aa5))
+* **rari-doc:** write metadata.json ([6244c4b](https://github.com/mdn/rari/commit/6244c4b2bb74afe84282eb1d10bcc91fd0f231c8))
+
+
+### Bug Fixes
+
+* **rari-npm:** fix windows arm ([9bba930](https://github.com/mdn/rari/commit/9bba9307b9bf24e40471354ca048ce6365f1cb7e))
+* **rari-npm:** publish action ([62ad708](https://github.com/mdn/rari/commit/62ad708bf1ee6ba3e2ec4bc026d2b15c797eb986))
+
 ## [0.0.14](https://github.com/mdn/rari/compare/v0.0.13...v0.0.14) (2024-10-24)
 
 

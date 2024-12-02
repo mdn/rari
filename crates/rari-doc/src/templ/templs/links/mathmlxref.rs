@@ -16,5 +16,5 @@ pub fn mathmlxref(element_name: String) -> Result<String, DocError> {
         element_name.as_str()
     );
 
-    RariApi::link(&url, None, Some(&display), true, Some(&title), false)
+    RariApi::link(&url, env.locale, Some(&display), true, Some(&title), false)
 }

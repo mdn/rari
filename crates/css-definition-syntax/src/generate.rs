@@ -143,7 +143,7 @@ pub struct GenerateOptions<'a> {
     pub decorate: DecorateFn<'a>,
 }
 
-impl<'a> Default for GenerateOptions<'a> {
+impl Default for GenerateOptions<'_> {
     fn default() -> Self {
         Self {
             compact: Default::default(),

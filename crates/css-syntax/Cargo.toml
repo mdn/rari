@@ -1,6 +1,6 @@
 [package]
 name = "css-syntax"
-version = "0.0.14"
+version = "0.0.26"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -19,6 +19,7 @@ css-syntax-types = { path = "../css-syntax-types" }
 css-definition-syntax = { path = "../css-definition-syntax" }
 
 [build-dependencies]
+rari-deps.workspace = true
 anyhow = "1"
 
 [dev-dependencies]

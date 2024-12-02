@@ -1,6 +1,6 @@
 [package]
 name = "rari-types"
-version = "0.0.14"
+version = "0.0.26"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -16,7 +16,7 @@ serde.workspace = true
 serde_json.workspace = true
 indexmap.workspace = true
 chrono.workspace = true
-
+schemars.workspace = true
 
 serde_variant = "0.1"
 normalize-path = "0.2"

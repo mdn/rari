@@ -4,7 +4,9 @@ use rari_templ_func::rari_f;
 use serde_json::Value;
 
 use crate::error::DocError;
-use crate::helpers::css_info::{css_info_properties, mdn_data_files, write_computed_output};
+use crate::helpers::css_info::{
+    css_info_properties, mdn_data_files, write_computed_output, write_missing,
+};
 
 #[rari_f]
 pub fn cssinfo() -> Result<String, DocError> {
@@ -27,10 +29,16 @@ pub fn cssinfo() -> Result<String, DocError> {
     } else {
         data.css_properties.get(&name).unwrap_or(&Value::Null)
     };
+    let props = css_info_properties(at_rule, env.locale, css_info_data)?;
 
     let mut out = String::new();
+
+    if props.is_empty() {
+        write_missing(&mut out, env.locale)?;
+        return Ok(out);
+    }
     out.push_str(r#"<table class="properties"><tbody>"#);
-    for (name, label) in css_info_properties(at_rule, env.locale, css_info_data)? {
+    for (name, label) in props {
         write!(&mut out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write_computed_output(env, &mut out, env.locale, css_info_data, name, at_rule)?;
         write!(&mut out, r#"</td></tr>"#)?;

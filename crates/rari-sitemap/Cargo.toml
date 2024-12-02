@@ -1,0 +1,18 @@
+[package]
+name = "rari-sitemap"
+version = "0.0.26"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+rari-doc.workspace = true
+rari-types.workspace = true
+rari-utils.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+chrono.workspace = true
+
+quick-xml = { version = "0.37", features = ["serialize"] }
+flate2 = "1"

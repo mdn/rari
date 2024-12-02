@@ -1,3 +1,19 @@
+//! # URL Resolution Module
+//!
+//! The `resolve` module provides functionality for resolving and manipulating URLs within the documentation system.
+//! It includes utilities for converting URLs to folder paths, stripping locales from URLs, and extracting metadata
+//! from URLs such as locale, slug, and page category.
+//!
+//! ## Key Components
+//!
+//! - **Functions**:
+//!   - `url_to_folder_path`: Converts a URL slug to a folder path by replacing certain characters.
+//!   - `strip_locale_from_url`: Strips the locale from a URL and returns the locale and the remaining URL.
+//!   - `url_meta_from`: Extracts metadata from a URL, including the locale, slug, and page category.
+//!
+//! - **Structs**:
+//!   - `UrlMeta`: A struct that holds metadata extracted from a URL, including the folder path, slug, locale, and page category.
+
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -9,6 +25,25 @@ use crate::pages::page::{PageCategory, PageLike};
 use crate::pages::types::generic::GenericPage;
 use crate::pages::types::spa::SPA;
 
+/// Converts a URL slug to a folder path by replacing certain special characters that are not allowed in path names
+/// on certain file systems, i.e. Windows.
+///
+/// This function takes a URL slug and converts it to a folder path by replacing specific characters
+/// with their corresponding string representations. The replacements are as follows:
+/// - `*` is replaced with `_star_`
+/// - `::` is replaced with `_doublecolon_`
+/// - `:` is replaced with `_colon_`
+/// - `?` is replaced with `_question_`
+///
+/// The resulting string is then converted to lowercase and returned as a `PathBuf`.
+///
+/// # Arguments
+///
+/// * `slug` - A string slice that holds the URL slug to be converted.
+///
+/// # Returns
+///
+/// * `PathBuf` - Returns a `PathBuf` representing the converted folder path.
 pub fn url_to_folder_path(slug: &str) -> PathBuf {
     PathBuf::from(
         slug.replace('*', "_star_")
@@ -19,15 +54,40 @@ pub fn url_to_folder_path(slug: &str) -> PathBuf {
     )
 }
 
-pub fn strip_locale_from_url(url: &str) -> (Option<Locale>, &str) {
+/// Strips the locale from a URL and returns the locale and the remaining URL.
+///
+/// This function takes a URL and attempts to extract the locale from it. If the URL starts with a locale,
+/// the function returns the locale and the remaining part of the URL. If the URL does not contain a locale,
+/// it returns `None` for the locale and the original URL.
+///
+/// # Arguments
+///
+/// * `url` - A string slice that holds the URL to be processed.
+///
+/// # Returns
+///
+/// * `(Option<Locale>, &str)` - Returns a tuple where the first element is an `Option<Locale>` containing the locale
+///   if found, and the second element is the remaining part of the URL.
+pub(crate) fn strip_locale_from_url(url: &str) -> (Option<Locale>, &str) {
     if url.len() < 2 || !url.starts_with('/') {
         return (None, url);
     }
     let i = url[1..].find('/').map(|i| i + 1).unwrap_or(url.len());
     let locale = Locale::from_str(&url[1..i]).ok();
-    (locale, &url[i..])
+    (locale, &url[if locale.is_none() { 0 } else { i }..])
 }
 
+/// Represents metadata extracted from a URL.
+///
+/// The `UrlMeta` struct holds various pieces of data that are extracted from a URL,
+/// including the folder path, slug, locale, and page category.
+///
+/// # Fields
+///
+/// * `folder_path` - A `PathBuf` that holds the folder path corresponding to the URL.
+/// * `slug` - A string slice that holds the slug extracted from the URL.
+/// * `locale` - A `Locale` that specifies the locale extracted from the URL.
+/// * `page_category` - A `PageCategory` that specifies the category of the page extracted from the URL.
 pub struct UrlMeta<'a> {
     pub folder_path: PathBuf,
     pub slug: &'a str,
@@ -35,6 +95,27 @@ pub struct UrlMeta<'a> {
     pub page_category: PageCategory,
 }
 
+/// Extracts metadata from a URL, including the folder path, slug, locale, and page category.
+///
+/// This function parses the given URL to extract various pieces of metadata, such as the locale,
+/// slug, and page category. It supports different URL structures for documentation pages, blog posts,
+/// curriculum pages, community spotlight pages, single-page applications (SPA), and generic pages.
+/// If the URL does not match any known patterns, it returns an `UrlError::InvalidUrl` error.
+///
+/// # Arguments
+///
+/// * `url` - A string slice that holds the URL to be processed.
+///
+/// # Returns
+///
+/// * `Result<UrlMeta<'_>, UrlError>` - Returns a `UrlMeta` struct containing the extracted metadata if successful,
+///   or an `UrlError` if the URL is invalid or does not match any known patterns.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The URL does not contain a recognizable locale.
+/// - The URL does not match any known patterns for documentation pages, blog posts, curriculum pages, etc.
 pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, UrlError> {
     let mut split = url[..url.find('#').unwrap_or(url.len())]
         .splitn(4, '/')
@@ -70,6 +151,60 @@ pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, UrlError> {
     })
 }
 
+/// Extracts the `Locale` from a given URL path.
+///
+/// This function takes a URL path as input and attempts to parse the first
+/// path segment as a locale. If the first segment corresponds to a valid locale,
+/// it returns `Some(Locale)`, otherwise, it returns `None`.
+///
+/// # Arguments
+///
+/// * `url` - A string slice that holds the URL path, potentially with a leading `/`.
+///
+/// # Returns
+///
+/// * `Option<Locale>` - `Some(Locale)` if the first path segment is a valid locale,
+///   or `None` if it isn't.
+///
+/// # Examples
+///
+/// ```
+/// # use rari_doc::resolve::locale_from_url;
+/// # use rari_types::locale::Locale;
+///
+/// assert_eq!(locale_from_url("/en-US/some/path"), Some(Locale::EnUs));
+/// assert_eq!(locale_from_url("fr/page"), Some(Locale::Fr));
+/// assert_eq!(locale_from_url("invalid/path"), None);
+/// ```
+pub fn locale_from_url(url: &str) -> Option<Locale> {
+    let url = url.strip_prefix("/").unwrap_or(url);
+    url.split_once('/')
+        .and_then(|(l, _)| Locale::from_str(l).ok())
+}
+
+/// Builds a URL for a given slug, locale, and page category.
+///
+/// This function constructs a URL based on the provided slug, locale, and page category.
+/// It uses different URL patterns for different page categories, such as documentation pages,
+/// blog posts, single-page applications (SPA), curriculum pages, contributor spotlight pages,
+/// and generic pages. If the page category is SPA and the slug does not correspond to a valid SPA,
+/// it returns a `DocError::PageNotFound` error.
+///
+/// # Arguments
+///
+/// * `slug` - A string slice that holds the slug of the page.
+/// * `locale` - A `Locale` that specifies the locale of the page.
+/// * `typ` - A `PageCategory` that specifies the category of the page.
+///
+/// # Returns
+///
+/// * `Result<String, DocError>` - Returns the constructed URL as a `String` if successful,
+///   or a `DocError` if an error occurs (e.g., if the SPA slug is not found).
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The page category is SPA and the slug does not correspond to a valid SPA.
 pub fn build_url(slug: &str, locale: Locale, typ: PageCategory) -> Result<String, DocError> {
     Ok(match typ {
         PageCategory::Doc => concat_strs!("/", locale.as_url_str(), "/docs/", slug),

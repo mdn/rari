@@ -51,7 +51,7 @@ pub fn cssxref_internal(
 
     let display_name = if display_name.is_some() {
         maybe_display_name.to_string()
-    } else if let Ok(doc) = RariApi::get_page(&url) {
+    } else if let Ok(doc) = RariApi::get_page_nowarn(&url) {
         match doc.page_type() {
             PageType::CssFunction if !maybe_display_name.ends_with("()") => {
                 format!("{maybe_display_name}()")
@@ -67,5 +67,5 @@ pub fn cssxref_internal(
     } else {
         maybe_display_name.to_string()
     };
-    RariApi::link(&url, None, Some(&display_name), true, None, false)
+    RariApi::link(&url, locale, Some(&display_name), true, None, false)
 }

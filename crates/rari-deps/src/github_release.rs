@@ -2,20 +2,14 @@ use std::fs::{self, File};
 use std::io::{BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use rari_utils::io::read_to_string;
 use reqwest::redirect::Policy;
-use serde::{Deserialize, Serialize};
 
+use crate::current::Current;
 use crate::error::DepsError;
 
-#[derive(Deserialize, Serialize, Default, Debug)]
-pub struct Current {
-    pub latest_last_check: Option<DateTime<Utc>>,
-    pub version: String,
-}
-
-/// Download and unpack an npm package for a given version (defaults to latest).
+/// Download a github release artifact for a given version (defaults to latest).
 pub fn get_artifact(
     base_url: &str,
     artifact: &str,

@@ -1,11 +1,11 @@
 [package]
 name = "rari"
-version = "0.0.14"
+version = "0.0.26"
 edition = "2021"
 license = "MPL-2.0"
 authors = [
-    "Florian Dieminger <me@fiji-flo.de>",
-    "The MDN Engineering Team <mdn-dev@mozilla.com>",
+  "Florian Dieminger <me@fiji-flo.de>",
+  "The MDN Engineering Team <mdn-dev@mozilla.com>",
 ]
 homepage = "https://github.com/mdn/rari"
 repository = "https://github.com/mdn/rari"
@@ -30,27 +30,28 @@ codegen-units = 1
 [workspace]
 resolver = "2"
 members = [
-    "crates/rari-data",
-    "crates/rari-utils",
-    "crates/rari-deps",
-    "crates/rari-types",
-    "crates/rari-templ-func",
-    "crates/rari-md",
-    "crates/rari-doc",
-    "crates/rari-linter",
-    "crates/rari-tools",
-    "crates/css-syntax",
-    "crates/css-syntax-types",
-    "crates/css-definition-syntax",
-    "crates/diff-test",
+  "crates/rari-data",
+  "crates/rari-utils",
+  "crates/rari-deps",
+  "crates/rari-types",
+  "crates/rari-templ-func",
+  "crates/rari-md",
+  "crates/rari-doc",
+  "crates/rari-linter",
+  "crates/rari-sitemap",
+  "crates/rari-tools",
+  "crates/css-syntax",
+  "crates/css-syntax-types",
+  "crates/css-definition-syntax",
+  "crates/diff-test",
 ]
 
 [workspace.package]
 edition = "2021"
 license = "MPL-2.0"
 authors = [
-    "Florian Dieminger <me@fiji-flo.de>",
-    "The MDN Engineering Team <mdn-dev@mozilla.com>",
+  "Florian Dieminger <me@fiji-flo.de>",
+  "The MDN Engineering Team <mdn-dev@mozilla.com>",
 ]
 rust-version = "1.81"
 
@@ -63,8 +64,10 @@ rari-utils = { path = "crates/rari-utils" }
 rari-md = { path = "crates/rari-md" }
 rari-data = { path = "crates/rari-data" }
 rari-templ-func = { path = "crates/rari-templ-func" }
+rari-sitemap = { path = "crates/rari-sitemap" }
 
 tracing = "0.1"
+tracing-subscriber = "0.3"
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -80,36 +83,45 @@ html-escape = "0.2"
 ignore = "0.4"
 rayon = "1"
 reqwest = { version = "0.12", default-features = false, features = [
-    "blocking",
-    "json",
-    "rustls-tls",
-    "gzip",
+  "blocking",
+  "json",
+  "rustls-tls",
+  "gzip",
 ] }
 indoc = "2"
 base64 = "0.22"
 console = "0.15"
 sha2 = "0.10"
-
+dashmap = "6"
+serde_yaml_ng = "0.10"
+schemars = { version = "0.8", features = ["chrono"] }
+pretty_yaml = "0.5"
+yaml_parser = "0.2"
+const_format = "0.2"
 
 [dependencies]
 rari-doc.workspace = true
 rari-tools.workspace = true
 rari-deps.workspace = true
 rari-types.workspace = true
+rari-utils.workspace = true
+rari-sitemap.workspace = true
 
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 anyhow.workspace = true
+dashmap.workspace = true
+schemars.workspace = true
 
 self_update = { version = "0.41", default-features = false, features = [
-    "rustls",
-    "compression-flate2",
-    "compression-zip-deflate",
+  "rustls",
+  "compression-flate2",
+  "compression-zip-deflate",
 ] }
 clap = { version = "4.5.1", features = ["derive"] }
 clap-verbosity-flag = "2"
-tracing-subscriber = "0.3"
 tracing-log = "0.2"
 tabwriter = "1"
 axum = "0.7"

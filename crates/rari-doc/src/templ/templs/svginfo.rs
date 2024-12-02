@@ -30,26 +30,27 @@ pub fn svginfo() -> Result<String, DocError> {
         ));
         out.push_str(r#"</td></tr>"#);
 
-        let (element_groups, elements): (Vec<String>, Vec<String>) =
-            info.content.elements.iter().try_fold(
-                (vec![], vec![]),
-                |(mut element_groups, mut elements), element| {
-                    if element.contains("&lt;") {
-                        let element_name = element.strip_prefix("&lt;").unwrap_or(element);
-                        let element_name =
-                            element_name.strip_suffix("&gt;").unwrap_or(element_name);
-                        elements.push(svgxref_internal(element_name, env.locale)?)
-                    } else {
-                        let anchor = to_snake_case(element);
-                        let url =
-                            format!("/{}/docs/Web/SVG/Element#{anchor}", env.locale.as_url_str());
-                        let display = l10n_json_data("SVG", element, env.locale).unwrap_or(element);
-                        let link = RariApi::link(&url, None, Some(display), false, None, false)?;
-                        element_groups.push(link);
-                    }
-                    Ok::<_, DocError>((element_groups, elements))
-                },
-            )?;
+        let (element_groups, elements): (Vec<String>, Vec<String>) = info
+            .content
+            .elements
+            .iter()
+            .try_fold(
+            (vec![], vec![]),
+            |(mut element_groups, mut elements), element| {
+                if element.contains("&lt;") {
+                    let element_name = element.strip_prefix("&lt;").unwrap_or(element);
+                    let element_name = element_name.strip_suffix("&gt;").unwrap_or(element_name);
+                    elements.push(svgxref_internal(element_name, env.locale)?)
+                } else {
+                    let anchor = to_snake_case(element);
+                    let url = format!("/{}/docs/Web/SVG/Element#{anchor}", env.locale.as_url_str());
+                    let display = l10n_json_data("SVG", element, env.locale).unwrap_or(element);
+                    let link = RariApi::link(&url, env.locale, Some(display), false, None, false)?;
+                    element_groups.push(link);
+                }
+                Ok::<_, DocError>((element_groups, elements))
+            },
+        )?;
 
         out.extend([
             r#"<tr><th scope="row">"#,

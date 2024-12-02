@@ -2,14 +2,14 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::globals::generic_pages_root;
+use rari_types::globals::generic_content_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::Deserialize;
 
-use crate::cached_readers::generic_pages_files;
+use crate::cached_readers::{generic_content_config, generic_content_files, GenericPagesConfig};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::utils::split_fm;
@@ -27,7 +27,7 @@ pub struct GenericPageMeta {
     pub url: String,
     pub full_path: PathBuf,
     pub path: PathBuf,
-    pub title_suffix: String,
+    pub title_suffix: Option<String>,
     pub page: String,
 }
 
@@ -38,7 +38,7 @@ impl GenericPageMeta {
         path: PathBuf,
         locale: Locale,
         slug: String,
-        title_suffix: &str,
+        title_suffix: Option<String>,
         page: String,
     ) -> Result<Self, DocError> {
         let url = concat_strs!(
@@ -56,7 +56,7 @@ impl GenericPageMeta {
             url,
             path,
             full_path,
-            title_suffix: title_suffix.to_string(),
+            title_suffix,
             page,
         })
     }
@@ -68,32 +68,30 @@ impl PageReader for GenericPage {
         locale: Option<Locale>,
     ) -> Result<crate::pages::page::Page, DocError> {
         let path = path.into();
-        let root = generic_pages_root().ok_or(DocError::NoGenericPagesRoot)?;
+        let root = generic_content_root().ok_or(DocError::NoGenericContentRoot)?;
         let without_root: &Path = path.strip_prefix(root)?;
-        let (slug_prefix, title_suffix, root) = if without_root.starts_with("plus/") {
-            (Some("plus/docs"), "MDN Plus", root.join("plus"))
-        } else if without_root.starts_with("community/") || without_root == Path::new("community") {
-            (None, "Contribute to MDN", root.join("community"))
-        } else if without_root.starts_with("observatory/") {
-            (
-                Some("observatory/docs"),
-                "HTTP Observatory",
-                root.join("observatory"),
-            )
-        } else {
-            return Err(DocError::PageNotFound(
-                path.to_string_lossy().to_string(),
-                crate::pages::page::PageCategory::GenericPage,
-            ));
-        };
-        read_generic_page(
-            path,
-            locale.unwrap_or_default(),
-            slug_prefix,
-            title_suffix,
-            &root,
-        )
-        .map(|g| Page::GenericPage(Arc::new(g)))
+        if let Some(section) = without_root.iter().next() {
+            let config = generic_content_config();
+            let page_config = config.pages.get(section.to_string_lossy().as_ref());
+            if let Some(GenericPagesConfig {
+                slug_prefix,
+                title_suffix,
+            }) = page_config
+            {
+                return read_generic_page(
+                    &path,
+                    locale.unwrap_or_default(),
+                    slug_prefix.as_deref(),
+                    title_suffix.as_deref(),
+                    &root.join(section),
+                )
+                .map(|g| Page::GenericPage(Arc::new(g)));
+            }
+        }
+        Err(DocError::PageNotFound(
+            path.to_string_lossy().to_string(),
+            crate::pages::page::PageCategory::GenericPage,
+        ))
     }
 }
 #[derive(Debug, Clone)]
@@ -106,7 +104,7 @@ pub struct GenericPage {
 impl GenericPage {
     pub fn from_slug(slug: &str, locale: Locale) -> Option<Page> {
         let url = concat_strs!("/", locale.as_url_str(), "/", slug).to_ascii_lowercase();
-        generic_pages_files().get(&url).cloned()
+        generic_content_files().get(&url).cloned()
     }
 
     pub fn as_locale(&self, locale: Locale) -> Self {
@@ -126,7 +124,7 @@ impl GenericPage {
 
     pub fn is_generic(slug: &str, locale: Locale) -> bool {
         let url = concat_strs!("/", locale.as_url_str(), "/", slug).to_ascii_lowercase();
-        generic_pages_files().contains_key(&url)
+        generic_content_files().contains_key(&url)
     }
 }
 
@@ -206,7 +204,7 @@ fn read_generic_page(
     path: impl Into<PathBuf>,
     locale: Locale,
     slug_prefix: Option<&str>,
-    title_suffix: &str,
+    title_suffix: Option<&str>,
     root: &Path,
 ) -> Result<GenericPage, DocError> {
     let full_path: PathBuf = path.into();
@@ -230,7 +228,7 @@ fn read_generic_page(
             path,
             locale,
             slug.to_string(),
-            title_suffix,
+            title_suffix.map(ToString::to_string),
             page.to_string(),
         )?,
         raw,
