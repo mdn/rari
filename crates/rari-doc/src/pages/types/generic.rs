@@ -146,7 +146,7 @@ impl PageLike for GenericPage {
     }
 
     fn locale(&self) -> Locale {
-        Default::default()
+        self.meta.locale
     }
 
     fn content(&self) -> &str {

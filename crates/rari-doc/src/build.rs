@@ -28,7 +28,7 @@ use crate::pages::page::{Page, PageBuilder, PageLike};
 use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct SitemapMeta<'a> {
     pub url: Cow<'a, str>,
     pub modified: Option<NaiveDateTime>,
