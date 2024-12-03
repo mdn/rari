@@ -63,6 +63,7 @@ pub fn write_li_with_badges(
     out: &mut String,
     page: &Page,
     locale: Locale,
+    code: bool,
     closed: bool,
 ) -> Result<(), DocError> {
     let locale_page = if locale != Default::default() {
@@ -70,12 +71,16 @@ pub fn write_li_with_badges(
     } else {
         page
     };
-    write!(
-        out,
-        "<li><a href=\"{}\">{}</a>",
+    out.extend([
+        "<li>",
+        r#"<a href=""#,
         locale_page.url(),
-        html_escape::encode_safe(locale_page.short_title().unwrap_or(locale_page.title()))
-    )?;
+        r#"">"#,
+        if code { "<code>" } else { "" },
+        &html_escape::encode_safe(locale_page.short_title().unwrap_or(locale_page.title())),
+        if code { "</code>" } else { "" },
+        "</a>",
+    ]);
     add_inline_badges(out, page, locale)?;
     if closed {
         write!(out, "</li>")?;
@@ -110,6 +115,7 @@ pub fn list_sub_pages_reverse_internal(
     locale: Locale,
     sorter: Option<SubPagesSorter>,
     page_types: &[PageType],
+    code: bool,
 ) -> Result<(), DocError> {
     let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
 
@@ -117,9 +123,16 @@ pub fn list_sub_pages_reverse_internal(
         if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
             continue;
         }
-        write_li_with_badges(out, sub_page, locale, true)?;
+        write_li_with_badges(out, sub_page, locale, code, true)?;
     }
     Ok(())
+}
+
+pub struct ListSubPagesContext<'a> {
+    pub sorter: Option<SubPagesSorter>,
+    pub page_types: &'a [PageType],
+    pub code: bool,
+    pub include_parent: bool,
 }
 
 pub fn list_sub_pages_internal(
@@ -127,9 +140,12 @@ pub fn list_sub_pages_internal(
     url: &str,
     locale: Locale,
     depth: Option<usize>,
-    sorter: Option<SubPagesSorter>,
-    page_types: &[PageType],
-    include_parent: bool,
+    ListSubPagesContext {
+        sorter,
+        page_types,
+        code,
+        include_parent,
+    }: ListSubPagesContext<'_>,
 ) -> Result<(), DocError> {
     let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
     let depth = depth.map(|i| i.saturating_sub(1));
@@ -143,9 +159,9 @@ pub fn list_sub_pages_internal(
         }
         let sub_sub_pages = get_sub_pages(sub_page.url(), depth, sorter.unwrap_or_default())?;
         if sub_sub_pages.is_empty() {
-            write_li_with_badges(out, &sub_page, locale, true)?;
+            write_li_with_badges(out, &sub_page, locale, code, true)?;
         } else {
-            write_li_with_badges(out, &sub_page, locale, false)?;
+            write_li_with_badges(out, &sub_page, locale, code, false)?;
             out.push_str("<ol>");
 
             list_sub_pages_internal(
@@ -153,9 +169,12 @@ pub fn list_sub_pages_internal(
                 sub_page.url(),
                 locale,
                 depth,
-                sorter,
-                page_types,
-                include_parent,
+                ListSubPagesContext {
+                    sorter,
+                    page_types,
+                    code,
+                    include_parent,
+                },
             )?;
             out.push_str("</ol>");
             out.push_str("</li>");
@@ -168,9 +187,12 @@ pub fn list_sub_pages_grouped_internal(
     out: &mut String,
     url: &str,
     locale: Locale,
-    sorter: Option<SubPagesSorter>,
-    page_types: &[PageType],
-    include_parent: bool,
+    ListSubPagesContext {
+        sorter,
+        page_types,
+        code,
+        include_parent,
+    }: ListSubPagesContext<'_>,
 ) -> Result<(), DocError> {
     let sub_pages = get_sub_pages(url, None, sorter.unwrap_or_default())?;
 
@@ -206,7 +228,7 @@ pub fn list_sub_pages_grouped_internal(
             out.push_str("-*</summary><ol>");
         }
         for sub_page in group {
-            write_li_with_badges(out, sub_page, locale, true)?;
+            write_li_with_badges(out, sub_page, locale, code, true)?;
         }
         if keep_group {
             out.push_str("</ol></details></li>");

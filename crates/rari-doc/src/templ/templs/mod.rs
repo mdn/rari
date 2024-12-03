@@ -70,7 +70,6 @@ pub fn invoke(
         "glossary" => glossary::glossary_any,
         "csssyntax" => csssyntax::csssyntax_any,
         "listsubpages" => listsubpages::list_sub_pages_any,
-        "listsubpagesgrouped" => listsubpages::list_sub_pages_grouped_any,
         "cssinfo" => cssinfo::cssinfo_any,
         "inheritancediagram" => inheritance_diagram::inheritance_diagram_any,
         "webextexamples" => web_ext_examples::web_ext_examples_any,

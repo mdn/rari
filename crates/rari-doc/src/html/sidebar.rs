@@ -20,7 +20,9 @@ use super::rewriter::post_process_html;
 use crate::cached_readers::read_sidebar;
 use crate::error::DocError;
 use crate::helpers;
-use crate::helpers::subpages::{list_sub_pages_grouped_internal, list_sub_pages_internal};
+use crate::helpers::subpages::{
+    list_sub_pages_grouped_internal, list_sub_pages_internal, ListSubPagesContext,
+};
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
 use crate::utils::{is_default, serialize_t_or_vec, t_or_vec};
@@ -292,6 +294,8 @@ pub struct SubPageEntry {
     #[serde(default, skip_serializing_if = "details_is_none")]
     pub details: Details,
     #[serde(default, skip_serializing_if = "is_default")]
+    pub code: bool,
+    #[serde(default, skip_serializing_if = "is_default")]
     pub include_parent: bool,
 }
 
@@ -319,8 +323,13 @@ pub enum SidebarEntry {
 #[derive(Debug, Default)]
 pub enum MetaChildren {
     Children(Vec<SidebarMetaEntry>),
-    ListSubPages(String, Vec<PageType>, bool),
-    ListSubPagesGrouped(String, Vec<PageType>, bool),
+    ListSubPages(String, Vec<PageType>, bool, bool),
+    ListSubPagesGrouped {
+        path: String,
+        tags: Vec<PageType>,
+        code: bool,
+        include_parent: bool,
+    },
     WebExtApi,
     #[default]
     None,
@@ -424,13 +433,14 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                 hash,
                 title,
                 path,
+                code,
                 include_parent,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
                 code: false,
                 content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
-                children: MetaChildren::ListSubPages(path, tags, include_parent),
+                children: MetaChildren::ListSubPages(path, tags, code, include_parent),
             },
             SidebarEntry::ListSubPagesGrouped(SubPageEntry {
                 details,
@@ -439,13 +449,19 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                 hash,
                 title,
                 path,
+                code,
                 include_parent,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
                 code: false,
                 content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
-                children: MetaChildren::ListSubPagesGrouped(path, tags, include_parent),
+                children: MetaChildren::ListSubPagesGrouped {
+                    path,
+                    tags,
+                    code,
+                    include_parent,
+                },
             },
             SidebarEntry::Default(BasicEntry {
                 link,
@@ -565,7 +581,7 @@ impl SidebarMetaEntry {
                     child.render(out, locale, slug, l10n)?;
                 }
             }
-            MetaChildren::ListSubPages(url, page_types, include_parent) => {
+            MetaChildren::ListSubPages(url, page_types, code, include_parent) => {
                 let url = if url.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
                     Cow::Borrowed(url)
                 } else {
@@ -581,29 +597,40 @@ impl SidebarMetaEntry {
                     &url,
                     locale,
                     Some(1),
-                    None,
-                    page_types,
-                    *include_parent,
+                    ListSubPagesContext {
+                        sorter: None,
+                        page_types,
+                        code: *code,
+                        include_parent: *include_parent,
+                    },
                 )?
             }
-            MetaChildren::ListSubPagesGrouped(url, page_types, include_parent) => {
-                let url = if url.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
-                    Cow::Borrowed(url)
+            MetaChildren::ListSubPagesGrouped {
+                path,
+                tags,
+                code,
+                include_parent,
+            } => {
+                let url = if path.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
+                    Cow::Borrowed(path)
                 } else {
                     Cow::Owned(concat_strs!(
                         "/",
                         Locale::default().as_url_str(),
                         "/docs",
-                        url
+                        path
                     ))
                 };
                 list_sub_pages_grouped_internal(
                     out,
                     &url,
                     locale,
-                    None,
-                    page_types,
-                    *include_parent,
+                    ListSubPagesContext {
+                        sorter: None,
+                        page_types: tags,
+                        code: *code,
+                        include_parent: *include_parent,
+                    },
                 )?
             }
             MetaChildren::WebExtApi => {

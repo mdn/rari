@@ -22,7 +22,7 @@ pub fn api_list_specs() -> Result<String, DocError> {
                 env.locale,
             )?;
             let out = out_by_letter.entry(first_letter).or_default();
-            write_li_with_badges(out, &page, env.locale, true)?;
+            write_li_with_badges(out, &page, env.locale, false, true)?;
         }
     }
 
