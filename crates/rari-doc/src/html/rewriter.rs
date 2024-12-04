@@ -191,13 +191,21 @@ pub fn post_process_html<T: PageLike>(
         }),
         element!("a[href]", |el| {
             let original_href = el.get_attribute("href").expect("href was required");
+            // Strip prefix for curriculum links.
+            let original_href = if page.page_type() == PageType::Curriculum {
+                original_href
+                    .strip_prefix("https://developer.mozilla.org")
+                    .unwrap_or(&original_href)
+            } else {
+                &original_href
+            };
             if original_href.starts_with('/')
                 || original_href.starts_with("https://developer.mozilla.org")
             {
                 let href = original_href
                     .strip_prefix("https://developer.mozilla.org")
                     .map(|href| if href.is_empty() { "/" } else { href })
-                    .unwrap_or(&original_href);
+                    .unwrap_or(original_href);
                 let href_no_hash = &href[..href.find('#').unwrap_or(href.len())];
                 let no_locale = strip_locale_from_url(href).0.is_none();
                 if no_locale && Page::ignore_link_check(href_no_hash) {

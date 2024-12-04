@@ -46,23 +46,26 @@ mod serve;
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
+    /// Skip updating dependencies (bcd, webref, ...)
+    #[arg(short, long)]
+    skip_updates: bool,
     #[command(flatten)]
     verbose: Verbosity,
-    #[arg(short, long)]
-    no_cache: bool,
-    #[arg(long)]
-    skip_updates: bool,
     #[command(subcommand)]
     command: Commands,
 }
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Build MDN.
     Build(BuildArgs),
-    Foo(BuildArgs),
+    /// Run the local dev server.
     Serve(ServeArgs),
+    /// Collect the git history.
     GitHistory,
+    /// Self-update rari (caution if istalled from npm)
     Update(UpdateArgs),
+    /// Export json schema.
     ExportSchema(ExportSchemaArgs),
     /// Subcommands for altering content programmatically
     #[command(subcommand)]
@@ -138,43 +141,49 @@ struct UpdateArgs {
 #[derive(Args)]
 struct ServeArgs {
     #[arg(short, long)]
-    deny_warnings: bool,
-    #[arg(short, long)]
-    cache_content: bool,
+    no_cache: bool,
 }
 
 #[derive(Args)]
 struct BuildArgs {
-    #[arg(short, long)]
+    #[arg(short, long, help = "Build only content <FILES>")]
     files: Vec<PathBuf>,
-    #[arg(short, long)]
+    #[arg(short, long, help = "Abort build on warnings")]
     deny_warnings: bool,
-    #[arg(short, long, default_value_t = true)]
-    cache_content: bool,
-    #[arg(long)]
-    skip_content: bool,
-    #[arg(long)]
-    skip_contributors: bool,
-    #[arg(long)]
-    skip_search_index: bool,
-    #[arg(long)]
-    skip_blog: bool,
-    #[arg(long)]
-    skip_curriculum: bool,
-    #[arg(long)]
-    skip_spas: bool,
-    #[arg(long)]
-    skip_generics: bool,
-    #[arg(long)]
-    skip_sitemap: bool,
-    #[arg(long)]
+    #[arg(long, help = "Disable caching (only for debugging)")]
+    no_cache: bool,
+    #[arg(long, help = "Build everything")]
+    all: bool,
+    #[arg(
+        long,
+        help = "Don't autmatically build basics: content, spas, search-index"
+    )]
+    no_basic: bool,
+    #[arg(long, help = "Build content")]
+    content: bool,
+    #[arg(long, help = "Build spas")]
+    spas: bool,
+    #[arg(long, help = "Build search-index")]
+    search_index: bool,
+    #[arg(long, help = "Build contributor spotlights")]
+    spotlights: bool,
+    #[arg(long, help = "Build blog")]
+    blog: bool,
+    #[arg(long, help = "Build curriculum")]
+    curriculum: bool,
+    #[arg(long, help = "Build generic-content")]
+    generics: bool,
+    #[arg(long, help = "Build sitemaps")]
+    sitemaps: bool,
+    #[arg(long, help = "Display template statistics (debugging")]
     templ_stats: bool,
-    #[arg(long)]
+    #[arg(long, help = "Write all issues to path <ISSUES>")]
     issues: Option<PathBuf>,
-    #[arg(long)]
+    #[arg(long, help = "Annotate html with 'data-flaw' attributes")]
     data_issues: bool,
 }
 
+#[derive(Debug)]
 enum Cache {
     Static,
     Dynamic,
@@ -211,11 +220,10 @@ fn main() -> Result<(), Error> {
         .init();
 
     match cli.command {
-        Commands::Foo(_args) => {}
         Commands::Build(args) => {
             let mut settings = Settings::new()?;
             settings.deny_warnings = args.deny_warnings;
-            settings.cache_content = args.cache_content;
+            settings.cache_content = !args.no_cache;
             settings.data_issues = args.data_issues;
             let _ = SETTINGS.set(settings);
 
@@ -252,7 +260,7 @@ fn main() -> Result<(), Error> {
                 None
             };
 
-            let cache = match (args.files.is_empty(), cli.no_cache) {
+            let cache = match (args.files.is_empty(), args.no_cache) {
                 (_, true) => Cache::None,
                 (true, false) => Cache::Static,
                 (false, false) => Cache::Dynamic,
@@ -264,11 +272,11 @@ fn main() -> Result<(), Error> {
             let mut urls = Vec::new();
             let mut docs = Vec::new();
             println!("Building everything 🛠️");
-            if !args.skip_content {
+            if args.all || !args.no_basic || args.content || !args.files.is_empty() {
                 let start = std::time::Instant::now();
                 docs = if !args.files.is_empty() {
                     read_docs_parallel::<Doc>(&args.files, None)?
-                } else if !args.cache_content {
+                } else if args.no_cache {
                     let files: &[_] = if let Some(translated_root) = content_translated_root() {
                         &[content_root(), translated_root]
                     } else {
@@ -278,47 +286,72 @@ fn main() -> Result<(), Error> {
                 } else {
                     read_and_cache_doc_pages()?
                 };
-                println!("Took: {: >10.3?} for {}", start.elapsed(), docs.len());
+                println!(
+                    "Took: {: >10.3?} for reading {} docs",
+                    start.elapsed(),
+                    docs.len()
+                );
             }
-            if !args.skip_spas && args.files.is_empty() {
+            if args.all || !args.no_basic || args.spas {
                 let start = std::time::Instant::now();
-                urls.extend(build_spas()?);
-                println!("Took: {: >10.3?} to build spas", start.elapsed());
+                let spas = build_spas()?;
+                let num = spas.len();
+                urls.extend(spas);
+                println!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
             }
-            if !args.skip_generics && args.files.is_empty() {
+            if args.all || !args.no_basic || args.content || !args.files.is_empty() {
                 let start = std::time::Instant::now();
-                urls.extend(build_generic_pages()?);
-                println!("Took: {: >10.3?} to build generics", start.elapsed());
+                let docs = build_docs(&docs)?;
+                let num = docs.len();
+                urls.extend(docs);
+                println!(
+                    "Took: {: >10.3?} to build content docs ({num})",
+                    start.elapsed()
+                );
             }
-            if !args.skip_content {
-                let start = std::time::Instant::now();
-                urls.extend(build_docs(&docs)?);
-                println!("Took: {: >10.3?} to build content", start.elapsed());
-            }
-            if !args.skip_search_index && args.files.is_empty() {
+            if args.all || !args.no_basic || args.search_index {
                 let start = std::time::Instant::now();
                 build_search_index(&docs)?;
                 println!("Took: {: >10.3?} to build search index", start.elapsed());
             }
-            if !args.skip_curriculum && args.files.is_empty() {
+            if args.all || args.generics {
                 let start = std::time::Instant::now();
-                urls.extend(build_curriculum_pages()?);
-                println!("Took: {: >10.3?} to build curriculum", start.elapsed());
-            }
-            if !args.skip_blog && args.files.is_empty() {
-                let start = std::time::Instant::now();
-                urls.extend(build_blog_pages()?);
-                println!("Took: {: >10.3?} to build blog", start.elapsed());
-            }
-            if !args.skip_contributors && args.files.is_empty() {
-                let start = std::time::Instant::now();
-                urls.extend(build_contributor_spotlight_pages()?);
+                let generic_pages = build_generic_pages()?;
+                let num = generic_pages.len();
+                urls.extend(generic_pages);
                 println!(
-                    "Took: {: >10.3?} to build contributor spotlight",
+                    "Took: {: >10.3?} to build generic pages ({num})",
                     start.elapsed()
                 );
             }
-            if !args.skip_sitemap && args.files.is_empty() && !urls.is_empty() {
+            if args.all || args.curriculum {
+                let start = std::time::Instant::now();
+                let curriclum_pages = build_curriculum_pages()?;
+                let num = curriclum_pages.len();
+                urls.extend(curriclum_pages);
+                println!(
+                    "Took: {: >10.3?} to build curriculum pages ({num})",
+                    start.elapsed()
+                );
+            }
+            if args.all || args.blog {
+                let start = std::time::Instant::now();
+                let blog_pages = build_blog_pages()?;
+                let num = blog_pages.len();
+                urls.extend(blog_pages);
+                println!("Took: {: >10.3?} to build blog ({num})", start.elapsed());
+            }
+            if args.all || args.spotlights {
+                let start = std::time::Instant::now();
+                let contributor_spotlight_pages = build_contributor_spotlight_pages()?;
+                let num = contributor_spotlight_pages.len();
+                urls.extend(contributor_spotlight_pages);
+                println!(
+                    "Took: {: >10.3?} to build contributor spotlights ({num})",
+                    start.elapsed()
+                );
+            }
+            if args.all || args.sitemaps && !urls.is_empty() {
                 let sitemaps = Sitemaps { sitemap_meta: urls };
                 let start = std::time::Instant::now();
                 let out_path = build_out_root()?;
@@ -366,8 +399,7 @@ fn main() -> Result<(), Error> {
         }
         Commands::Serve(args) => {
             let mut settings = Settings::new()?;
-            settings.deny_warnings = args.deny_warnings;
-            settings.cache_content = args.cache_content;
+            settings.cache_content = !args.no_cache;
             settings.data_issues = true;
             let _ = SETTINGS.set(settings);
             serve::serve(memory_layer.clone())?
