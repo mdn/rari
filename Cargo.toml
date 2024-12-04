@@ -121,8 +121,7 @@ self_update = { version = "0.41", default-features = false, features = [
   "compression-zip-deflate",
 ] }
 clap = { version = "4.5.1", features = ["derive"] }
-clap-verbosity-flag = "2"
-tracing-log = "0.2"
+clap-verbosity-flag = { version = "3", features = ["tracing"] }
 tabwriter = "1"
 axum = "0.7"
 tokio = "1"

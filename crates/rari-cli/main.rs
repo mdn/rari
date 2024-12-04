@@ -8,6 +8,7 @@ use std::thread::spawn;
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
+use clap_verbosity_flag::Verbosity;
 use dashmap::DashMap;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
@@ -35,7 +36,6 @@ use schemars::schema_for;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
 use tracing::Level;
-use tracing_log::AsTrace;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter, Layer};
@@ -47,7 +47,7 @@ mod serve;
 #[command(propagate_version = true)]
 struct Cli {
     #[command(flatten)]
-    verbose: clap_verbosity_flag::Verbosity,
+    verbose: Verbosity,
     #[arg(short, long)]
     no_cache: bool,
     #[arg(long)]
@@ -193,8 +193,8 @@ fn main() -> Result<(), Error> {
     }
 
     let fmt_filter = filter::Targets::new()
-        .with_target("rari_doc", cli.verbose.log_level_filter().as_trace())
-        .with_target("rari", cli.verbose.log_level_filter().as_trace());
+        .with_target("rari_doc", cli.verbose.tracing_level_filter())
+        .with_target("rari", cli.verbose.tracing_level_filter());
 
     let memory_filter = filter::Targets::new()
         .with_target("rari_doc", Level::WARN)
