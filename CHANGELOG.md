@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0](https://github.com/mdn/rari/compare/v0.0.26...v0.1.0) (2024-12-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** Rari only builds build basic components by default. Use --all for old behavior.
+
+### Features
+
+* **cli:** new cli args ([5f0f7e6](https://github.com/mdn/rari/commit/5f0f7e69147772d198bd893677cce6fd49c9ec33))
+* **serve:** 404 for document not found ([3435feb](https://github.com/mdn/rari/commit/3435feb071af72742983214db17f2878e69f46e2))
+
+
+### Bug Fixes
+
+* **generic_content:** fix locale in sitemap ([48d540c](https://github.com/mdn/rari/commit/48d540ce1d39576484b6c0f3f13c50e52b6508e7))
+* **sidebars:** support listsubpages with code ([e287d44](https://github.com/mdn/rari/commit/e287d44cb8430267f89513a5cbcd323bfb7c5c6d))
+
 ## [0.0.26](https://github.com/mdn/rari/compare/v0.0.25...v0.0.26) (2024-12-01)
 
 
