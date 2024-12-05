@@ -157,16 +157,23 @@ fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
 }
 
 #[derive(Debug)]
-struct AppError(anyhow::Error);
+struct AppError(DocError);
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response<Body> {
-        (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response()
+        match self.0 {
+            DocError::RariIoError(_) | DocError::IOError(_) | DocError::PageNotFound(_, _) => {
+                (StatusCode::NOT_FOUND, "").into_response()
+            }
+
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response(),
+        }
     }
 }
+
 impl<E> From<E> for AppError
 where
-    E: Into<anyhow::Error>,
+    E: Into<DocError>,
 {
     fn from(err: E) -> Self {
         Self(err.into())
