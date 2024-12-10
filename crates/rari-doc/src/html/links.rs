@@ -150,7 +150,12 @@ pub fn render_link_via_page(
                 Cow::Borrowed(content)
             }
         }
-        None if url.starts_with('/') => Cow::Borrowed(&url[url.rfind('/').unwrap_or(0)..]),
+        None if url.starts_with('/') => {
+            // Fall back to last url path segment.
+            let clean_url = url.strip_suffix("/").unwrap_or(&url);
+            let content = &clean_url[clean_url.rfind('/').map(|i| i + 1).unwrap_or(0)..];
+            Cow::Borrowed(content)
+        }
         _ => html_escape::encode_safe(&url),
     };
     out.push_str(&url);
