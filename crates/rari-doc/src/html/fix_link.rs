@@ -1,16 +1,16 @@
 use std::borrow::Cow;
 
-use lol_html::{html_content::Element, HandlerResult};
-use rari_types::{fm_types::PageType, locale::default_locale};
+use lol_html::html_content::Element;
+use lol_html::HandlerResult;
+use rari_types::fm_types::PageType;
+use rari_types::locale::default_locale;
 use rari_utils::concat_strs;
 
-use crate::{
-    helpers::l10n::l10n_json_data,
-    issues::get_issue_couter,
-    pages::page::{Page, PageLike},
-    redirects::resolve_redirect,
-    resolve::{strip_locale_from_url, url_with_locale},
-};
+use crate::helpers::l10n::l10n_json_data;
+use crate::issues::get_issue_couter;
+use crate::pages::page::{Page, PageLike};
+use crate::redirects::resolve_redirect;
+use crate::resolve::{strip_locale_from_url, url_with_locale};
 
 pub fn check_and_fix_link(
     el: &mut Element,
