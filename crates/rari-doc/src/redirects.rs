@@ -105,7 +105,8 @@ where
 /// * `Option<Cow<'_, str>>` - Returns `Some(Cow::Borrowed(target_url))` if a redirect is found and the target URL
 ///   does not contain a hash fragment, or `Some(Cow::Owned(format!("{target_url}{hash}")))` if the target URL
 ///   contains a hash fragment or the original URL has a hash fragment. Returns `None` if no redirect is found.
-pub(crate) fn resolve_redirect(url: &str) -> Option<Cow<'_, str>> {
+pub(crate) fn resolve_redirect<'a>(url: impl AsRef<str>) -> Option<Cow<'a, str>> {
+    let url = url.as_ref();
     let hash_index = url.find('#').unwrap_or(url.len());
     let (url_no_hash, hash) = (&url[..hash_index], &url[hash_index..]);
     match (

@@ -182,6 +182,48 @@ pub fn locale_from_url(url: &str) -> Option<Locale> {
         .and_then(|(l, _)| Locale::from_str(l).ok())
 }
 
+/// Replaces the `Locale` in a given URL path.
+///
+/// This function takes a URL path and Locale as input and attempts to parse the first
+/// path segment as a locale. If the first segment corresponds to a valid locale,
+/// which is different from the porvided locales it substitures the parse locale with
+/// the provided locale and returns the new new URL, otherwise, it returns `None`.
+///
+/// # Arguments
+///
+/// * `url` - A string slice that holds the URL path.
+/// * `locale` - The provieded locale to use.
+///
+/// # Returns
+///
+/// * `Option<String>` - `Some(url)` if the first path segment is a valid locale, and
+///   not the one already in the url, otherwise `None`.
+///
+/// # Examples
+///
+/// ```
+/// # use rari_doc::resolve::url_with_locale;
+/// # use rari_types::locale::Locale;
+///
+/// assert_eq!(url_with_locale("/en-US/some/path", Locale::Fr).as_deref(), Some("/fr/some/path"));
+/// assert_eq!(url_with_locale("/en-US/", Locale::ZhTw).as_deref(), Some("/zh-TW/"));
+/// assert_eq!(url_with_locale("/invalid/path", Locale::Ja), None);
+/// ```
+pub fn url_with_locale(url: &str, locale: Locale) -> Option<String> {
+    if let Some(url) = url.strip_prefix("/") {
+        let first_slash = url.find('/').unwrap_or(url.len());
+        let locale_str = &url[..first_slash];
+        let current_locale = Locale::from_str(locale_str).ok();
+        if current_locale.is_none() || current_locale == Some(locale) {
+            return None;
+        }
+
+        return Some(concat_strs!("/", locale.as_url_str(), &url[first_slash..]));
+    }
+
+    None
+}
+
 /// Builds a URL for a given slug, locale, and page category.
 ///
 /// This function constructs a URL based on the provided slug, locale, and page category.

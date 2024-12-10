@@ -38,6 +38,9 @@ pub type WikiHistories = HashMap<Locale, WikiHistory>;
 /// # Example
 ///
 /// ```rust
+/// # use rari_doc::contributors::contributors_txt;
+/// # use rari_doc::contributors::WikiHistoryEntry;
+///
 /// let github_file_url = "https://github.com/user/repo/blob/main/file.txt";
 /// let wiki_history = Some(WikiHistoryEntry {
 ///     contributors: vec!["Alice".to_string(), "Bob".to_string()],
@@ -56,6 +59,8 @@ pub type WikiHistories = HashMap<Locale, WikiHistory>;
 /// If no `wiki_history` is provided:
 ///
 /// ```rust
+/// # use rari_doc::contributors::contributors_txt;
+/// let github_file_url = "https://github.com/user/repo/blob/main/file.txt";
 /// let result = contributors_txt(None, github_file_url);
 /// println!("{}", result);
 /// // Output:
