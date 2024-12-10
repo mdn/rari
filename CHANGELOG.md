@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1](https://github.com/mdn/rari/compare/v0.1.0...v0.1.1) (2024-12-10)
+
+
+### Features
+
+* **md:** custom html escape ([a265450](https://github.com/mdn/rari/commit/a265450a599b72fae8276db7430989f057572f2f))
+
+
+### Bug Fixes
+
+* **links:** fall back to en-us ([21a7f18](https://github.com/mdn/rari/commit/21a7f1887a8381e65a348b19b43806217d8068c5))
+* **links:** improve fallback for link content ([cdf0993](https://github.com/mdn/rari/commit/cdf09930a5bfa09cca6e270bb185bbcffe11c94c))
+* **serve:** don't cache by default ([5ccf670](https://github.com/mdn/rari/commit/5ccf670248eb0d234c2bc9ca1e3baa852a3230c9))
+
 ## [0.1.0](https://github.com/mdn/rari/compare/v0.0.26...v0.1.0) (2024-12-05)
 
 
