@@ -140,8 +140,8 @@ struct UpdateArgs {
 
 #[derive(Args)]
 struct ServeArgs {
-    #[arg(short, long)]
-    no_cache: bool,
+    #[arg(long, help = "Caution! Don't use when editing content.")]
+    cache: bool,
 }
 
 #[derive(Args)]
@@ -399,7 +399,7 @@ fn main() -> Result<(), Error> {
         }
         Commands::Serve(args) => {
             let mut settings = Settings::new()?;
-            settings.cache_content = !args.no_cache;
+            settings.cache_content = args.cache;
             settings.data_issues = true;
             let _ = SETTINGS.set(settings);
             serve::serve(memory_layer.clone())?
