@@ -274,40 +274,38 @@ pub fn escape(output: &mut dyn Write, buffer: &[u8]) -> io::Result<()> {
 /// the string "a b", rather than "?q=a%2520b", a search for the literal
 /// string "a%20b".
 pub fn escape_href(output: &mut dyn Write, buffer: &[u8]) -> io::Result<()> {
-    const HREF_SAFE: [bool; 256] = character_set!(
-        b"-_.+!*(),%#@?=;:/,+$~",
-        b"abcdefghijklmnopqrstuvwxyz",
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    );
-
     let size = buffer.len();
     let mut i = 0;
+    let mut escaped = "";
 
     while i < size {
         let org = i;
-        while i < size && HREF_SAFE[buffer[i] as usize] {
-            i += 1;
+        while i < size {
+            escaped = match buffer[i] {
+                b'&' => "&amp;",
+                b'<' => "&lt;",
+                b'>' => "&gt;",
+                b'"' => "&quot;",
+                b'\'' => "&#x27;",
+                _ => {
+                    i += 1;
+                    ""
+                }
+            };
+            if !escaped.is_empty() {
+                break;
+            }
         }
 
         if i > org {
             output.write_all(&buffer[org..i])?;
         }
 
-        if i >= size {
-            break;
+        if !escaped.is_empty() {
+            output.write_all(escaped.as_bytes())?;
+            escaped = "";
+            i += 1;
         }
-
-        match buffer[i] as char {
-            '&' => {
-                output.write_all(b"&amp;")?;
-            }
-            '\'' => {
-                output.write_all(b"&#x27;")?;
-            }
-            _ => write!(output, "%{:02X}", buffer[i])?,
-        }
-
-        i += 1;
     }
 
     Ok(())

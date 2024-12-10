@@ -83,6 +83,8 @@ pub fn m2h_internal(
 
 #[cfg(test)]
 mod test {
+    use html::escape_href;
+
     use super::*;
 
     #[test]
@@ -167,6 +169,21 @@ mod test {
             out,
             "<div class=\"notecard note\" data-add-note data-sourcepos=\"1:1-1:18\">\n<p data-sourcepos=\"1:3-1:18\"> foobar</p>\n</div>\n"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn escape_hrefs() -> Result<(), anyhow::Error> {
+        fn eh(s: &str) -> Result<String, anyhow::Error> {
+            let mut out = Vec::with_capacity(s.len());
+            escape_href(&mut out, s.as_bytes())?;
+            Ok(String::from_utf8(out)?)
+        }
+
+        assert_eq!(eh("/en-US/foo/bar")?, "/en-US/foo/bar");
+        assert_eq!(eh("/en-US/foo/\"")?, "/en-US/foo/&quot;");
+        assert_eq!(eh("/en-US/foo<script")?, "/en-US/foo&lt;script");
+        assert_eq!(eh("/en-US/foo&bar")?, "/en-US/foo&amp;bar");
         Ok(())
     }
 }
