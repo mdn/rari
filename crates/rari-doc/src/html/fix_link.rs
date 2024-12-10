@@ -84,10 +84,8 @@ pub fn handle_internal_link(
         && !Page::ignore_link_check(href)
         && href_locale != Some(default_locale())
     {
-        println!("{resolved_href}");
         if let Some(en_us_href) = url_with_locale(&resolved_href, default_locale()) {
             resolved_href = resolve_redirect(&en_us_href).unwrap_or(Cow::Owned(en_us_href));
-            println!("{resolved_href}");
             resolved_href_no_hash =
                 &resolved_href[..resolved_href.find('#').unwrap_or(resolved_href.len())];
         }
