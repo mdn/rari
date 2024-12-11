@@ -16,6 +16,8 @@ use crate::pages::page::PageCategory;
 /// error messages and associated data.
 #[derive(Debug, Error)]
 pub enum DocError {
+    #[error("Not a Doc")]
+    NotADoc,
     #[error("Cannot parse templ index")]
     TemplIndexParseError(#[from] std::num::ParseIntError),
     #[error("Invalid templ index {0}")]

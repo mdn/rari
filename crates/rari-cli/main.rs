@@ -12,7 +12,7 @@ use clap_verbosity_flag::Verbosity;
 use dashmap::DashMap;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
-    build_generic_pages, build_spas,
+    build_generic_pages, build_spas, build_top_level_meta,
 };
 use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
 use rari_doc::issues::{issues_by, InMemoryLayer};
@@ -301,7 +301,8 @@ fn main() -> Result<(), Error> {
             }
             if args.all || !args.no_basic || args.content || !args.files.is_empty() {
                 let start = std::time::Instant::now();
-                let docs = build_docs(&docs)?;
+                let (docs, meta) = build_docs(&docs)?;
+                build_top_level_meta(meta)?;
                 let num = docs.len();
                 urls.extend(docs);
                 println!(
