@@ -246,7 +246,7 @@ fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
 // These tests use file system fixtures to simulate content and translated content.
 // The file system is a shared resource, so we force tests to be run serially,
 // to avoid concurrent fixture management issues.
-// Using `file_serial` as a synchonization lock, we should be able to run all tests
+// Using `file_serial` as a synchronization lock, we should be able to run all tests
 // using the same `key` (here: file_fixtures) to be serialized across modules.
 #[cfg(test)]
 use serial_test::file_serial;

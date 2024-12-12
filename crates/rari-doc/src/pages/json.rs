@@ -152,7 +152,7 @@ pub struct Compat {
 /// * `id` - An `Option<String>` that holds an optional `id` element attribute for the specification section.
 /// * `title` - An `Option<String>` that holds an optional title for the specification section.
 /// * `is_h3` - A `bool` that indicates whether the specificaytion section's `title` will be rendered as a &lt;H3&gt;
-/// * `specifications` - A `Vec<Specification>` that holds the list of `Specfication` items within the section.
+/// * `specifications` - A `Vec<Specification>` that holds the list of `Specification` items within the section.
 /// * `query` - A `String` that holds the BCD query string associated with the specification section.
 /// * `content` - An `Option<String>` that holds the optional content of the specification section. This field is
 ///   skipped during serialization if it is `None`.

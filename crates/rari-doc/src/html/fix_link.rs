@@ -7,7 +7,7 @@ use rari_types::locale::default_locale;
 use rari_utils::concat_strs;
 
 use crate::helpers::l10n::l10n_json_data;
-use crate::issues::get_issue_couter;
+use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
 use crate::redirects::resolve_redirect;
 use crate::resolve::{strip_locale_from_url, url_with_locale};
@@ -23,13 +23,13 @@ pub fn check_and_fix_link(
     {
         handle_internal_link(&original_href, el, page, data_issues)
     } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
-        handle_extenal_link(el)
+        handle_external_link(el)
     } else {
         Ok(())
     }
 }
 
-pub fn handle_extenal_link(el: &mut Element) -> HandlerResult {
+pub fn handle_external_link(el: &mut Element) -> HandlerResult {
     let class = el.get_attribute("class").unwrap_or_default();
     if !class.split(' ').any(|s| s == "external") {
         el.set_attribute(
@@ -144,7 +144,7 @@ pub fn handle_internal_link(
                         .ok()
                         .unwrap_or(-1);
                     let col = col.parse::<i64>().ok().unwrap_or(0);
-                    let ic = get_issue_couter();
+                    let ic = get_issue_counter();
                     tracing::warn!(
                         source = "redirected-link",
                         ic = ic,
@@ -159,7 +159,7 @@ pub fn handle_internal_link(
                 }
             }
         } else {
-            let ic = get_issue_couter();
+            let ic = get_issue_counter();
             tracing::warn!(
                 source = "redirected-link",
                 ic = ic,

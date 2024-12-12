@@ -24,7 +24,7 @@ use crate::helpers::title::{page_title, transform_title};
 use crate::html::bubble_up::bubble_up_curriculum_page;
 use crate::html::modifier::{add_missing_ids, insert_self_links_for_dts, remove_empty_p};
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
-use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Splitted};
+use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Split};
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
@@ -167,7 +167,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     add_missing_ids(&mut fragment)?;
     insert_self_links_for_dts(&mut fragment)?;
     expand_details_and_mark_current_for_inline_sidebar(&mut fragment, page.url())?;
-    let Splitted {
+    let Split {
         sections,
         summary,
         sidebar,
@@ -418,7 +418,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
 ///
 /// This function reads all files from the source directory, filters out the specified file to ignore,
 /// and copies the remaining files to the destination directory. This is useful for copying additional
-/// assets from a source directory to a destination directory, ususally excluding the original `index.md`
+/// assets from a source directory to a destination directory, usually excluding the original `index.md`
 /// file.
 ///
 /// # Arguments

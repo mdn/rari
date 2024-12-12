@@ -186,13 +186,13 @@ pub fn locale_from_url(url: &str) -> Option<Locale> {
 ///
 /// This function takes a URL path and Locale as input and attempts to parse the first
 /// path segment as a locale. If the first segment corresponds to a valid locale,
-/// which is different from the porvided locales it substitures the parse locale with
+/// which is different from the provided locales it substitutes the parse locale with
 /// the provided locale and returns the new new URL, otherwise, it returns `None`.
 ///
 /// # Arguments
 ///
 /// * `url` - A string slice that holds the URL path.
-/// * `locale` - The provieded locale to use.
+/// * `locale` - The provided locale to use.
 ///
 /// # Returns
 ///

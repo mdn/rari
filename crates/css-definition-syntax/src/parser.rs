@@ -350,7 +350,7 @@ fn maybe_multiplied(tokenizer: &mut Tokenizer, node: Node) -> Result<Node, Synta
         // Represent "+#" as nested multipliers:
         // { ...<multiplier #>,
         //   term: {
-        //     ...<multipler +>,
+        //     ...<multiplier +>,
         //     term: node
         //   }
         // }

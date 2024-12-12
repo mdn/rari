@@ -463,7 +463,7 @@ pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
 }
 
 /// Reads all documentation pages from the content root and translated content root directories, fills the
-/// interanl cache structures and returns a vector of `Page` objects.
+/// internal cache structures and returns a vector of `Page` objects.
 ///
 /// This function reads documentation pages in parallel from the content root directory and caches them
 /// in the `STATIC_DOC_PAGE_FILES` static variable. If a translated content root directory is available,

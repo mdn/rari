@@ -13,7 +13,7 @@ use url::Url;
 
 use crate::error::DocError;
 use crate::html::fix_link::check_and_fix_link;
-use crate::issues::get_issue_couter;
+use crate::issues::get_issue_counter;
 use crate::pages::page::PageLike;
 use crate::pages::types::curriculum::CurriculumPage;
 
@@ -137,7 +137,7 @@ pub fn post_process_html<T: PageLike>(
                                 )
                             }
                             Err(e) => {
-                                let ic = get_issue_couter();
+                                let ic = get_issue_counter();
                                 warn!(
                                     source = "image-check",
                                     ic = ic,
@@ -154,7 +154,7 @@ pub fn post_process_html<T: PageLike>(
                         match imagesize::size(&file) {
                             Ok(dim) => (Some(dim.width.to_string()), Some(dim.height.to_string())),
                             Err(e) => {
-                                let ic = get_issue_couter();
+                                let ic = get_issue_counter();
                                 warn!(
                                     source = "image-check",
                                     ic = ic,

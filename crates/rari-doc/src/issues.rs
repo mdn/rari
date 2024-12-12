@@ -16,7 +16,7 @@ use crate::pages::page::{Page, PageLike};
 
 static ISSUE_COUNTER: AtomicI64 = AtomicI64::new(0);
 
-pub(crate) fn get_issue_couter() -> i64 {
+pub(crate) fn get_issue_counter() -> i64 {
     ISSUE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
@@ -224,7 +224,7 @@ where
                 if entries.ic != 0 {
                     issue.ic = entries.ic;
                 } else {
-                    issue.ic = get_issue_couter();
+                    issue.ic = get_issue_counter();
                 }
                 issue.spans.extend(entries.entries.iter().rev().cloned());
             }

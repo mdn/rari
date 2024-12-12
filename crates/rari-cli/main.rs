@@ -156,7 +156,7 @@ struct BuildArgs {
     all: bool,
     #[arg(
         long,
-        help = "Don't autmatically build basics: content, spas, search-index"
+        help = "Don't automatically build basics: content, spas, search-index"
     )]
     no_basic: bool,
     #[arg(long, help = "Build content")]

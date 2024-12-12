@@ -61,13 +61,13 @@ async fn get_json_handler(
     if let BuiltPage::Doc(json_doc) = &mut json {
         let m = memory_layer.get_events();
         let mut issues = m.lock().unwrap();
-        let req_isses: Vec<_> = issues
+        let req_issues: Vec<_> = issues
             .iter()
             .filter(|issue| issue.req == req_id)
             .cloned()
             .collect();
         issues.retain_mut(|i| i.req != req_id);
-        json_doc.doc.flaws = Some(to_display_issues(req_isses, &page));
+        json_doc.doc.flaws = Some(to_display_issues(req_issues, &page));
     }
     Ok(Json(json))
 }

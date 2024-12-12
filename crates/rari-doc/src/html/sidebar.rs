@@ -248,7 +248,7 @@ impl MetaSidebar {
     }
 }
 
-// used for skipping serialization if the field has the defaul value
+// used for skipping serialization if the field has the default value
 fn details_is_none(details: &Details) -> bool {
     matches!(details, Details::None)
 }

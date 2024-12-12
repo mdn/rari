@@ -488,10 +488,10 @@ impl SyntaxRenderer<'_> {
                             opts: None,
                         })))
                 {
-                    // FIXME: this should have the class tye but to be compatible we use property
+                    // FIXME: this should have the class type but to be compatible we use property
                     format!(r#"<span class="token property">{encoded}</span>"#,)
                 } else {
-                    // FIXME: this should have the class tye but to be compatible we use property
+                    // FIXME: this should have the class type but to be compatible we use property
                     format!(
                         r#"<a href="/{}/docs/Web/CSS/{slug}"><span class="token property">{encoded}</span></a>"#,
                         self.locale_str
@@ -751,7 +751,7 @@ mod test {
     (LinkedToken::Plus, "Plus: the entity may occur one or several times".to_string()),
     (LinkedToken::QuestionMark, "Question mark: the entity is optional".to_string()),
     (LinkedToken::CurlyBraces, "Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required".to_string()),
-    (LinkedToken::HashMark, "Hash mark: the entity is repeated one or several times, each occurence separated by a comma".to_string()),
+    (LinkedToken::HashMark, "Hash mark: the entity is repeated one or several times, each occurrence separated by a comma".to_string()),
     (LinkedToken::ExclamationPoint,"Exclamation point: the group must produce at least one value".to_string()),
     (LinkedToken::Brackets, "Brackets: enclose several entities, combinators, and multipliers to transform them as a single component".to_string()),
     (LinkedToken::SingleBar, "Single bar: exactly one of the entities must be present".to_string()),

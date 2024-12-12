@@ -171,7 +171,7 @@ impl Page {
     /// Checks if a `Page` for a given URL exists.
     ///
     /// Checks for non SPAs owned by the front-end and then calls [Page::from_url_with_fallback].
-    /// Also checks if there's no locale and in that case returns wether the page exists for the default locale.
+    /// Also checks if there's no locale and in that case returns whether the page exists for the default locale.
     ///
     /// # Arguments
     ///
@@ -339,7 +339,7 @@ pub trait PageWriter {
 /// A trait for building pages in the documentation system.
 ///
 /// The `PageBuilder` trait defines a method for constructing a page and returning
-/// a `BuiltDocy` (A JSON represenatation of the build artifact). Implementors of
+/// a `BuiltDocy` (A JSON representation of the build artifact). Implementors of
 /// this trait are responsible for handling the specifics of the build process,
 /// which could involve compiling content, applying templates, and performing
 /// any necessary transformations.

@@ -7,7 +7,7 @@ use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::html::links::render_link_via_page;
-use crate::issues::get_issue_couter;
+use crate::issues::get_issue_counter;
 use crate::pages::page::Page;
 use crate::percent::PATH_SEGMENT;
 use crate::redirects::resolve_redirect;
@@ -34,7 +34,7 @@ impl RariApi {
         let url = match redirect.as_ref() {
             Some(redirect) => {
                 if warn {
-                    let ic = get_issue_couter();
+                    let ic = get_issue_counter();
                     tracing::warn!(
                         source = "macro-redirected-link",
                         ic = ic,

@@ -240,9 +240,9 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
     Ok(())
 }
 
-/// Optimizes redirect rules based on all suported locales.
+/// Optimizes redirect rules based on all supported locales.
 ///
-/// It loads all redirects into a singel structure and runs the short_cuts algorithm on it.
+/// It loads all redirects into a single structure and runs the short_cuts algorithm on it.
 /// The goal is to optimize redirects across locale boundaries.
 ///
 /// This function overwrites all redirect files.
