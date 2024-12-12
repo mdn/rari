@@ -72,6 +72,10 @@ fn internal_generate<'a>(
             let decorated = decorate(multiplier, node);
             format!("{}{}", terms, decorated)
         }
+        Node::BooleanExpr(boolean_expr) => {
+            let terms = internal_generate(&boolean_expr.term, decorate, force_braces, compact)?;
+            format!("<boolean-expr[{}]>", terms)
+        }
         Node::Token(token) => token.value.to_string(),
         Node::Property(property) => format!("<'{}'>", property.name),
         Node::Type(typ) => {
@@ -198,6 +202,11 @@ mod tests {
         let node = parse(input)?;
         let result = generate(&node, Default::default()).unwrap();
         assert_eq!(result, "<calc-product> [ [ '+' | '-' ] <calc-product> ]*");
+
+        let input = "<boolean-expr[a | b]>";
+        let node = parse(input)?;
+        let result = generate(&node, Default::default()).unwrap();
+        assert_eq!(result, "<boolean-expr[a | b]>");
         Ok(())
     }
 }
