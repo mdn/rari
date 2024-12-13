@@ -3,23 +3,45 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::path::Path;
 
+use indexmap::IndexMap;
 use rari_utils::io::read_to_string;
 use schemars::JsonSchema;
 use serde::de::{self, value, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use url::Url;
 
 use crate::error::Error;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct WebFeatures {
-    pub features: BTreeMap<String, FeatureData>,
+    pub features: IndexMap<String, FeatureData>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct DirtyWebFeatures {
+    pub features: IndexMap<String, Value>,
 }
 
 impl WebFeatures {
     pub fn from_file(path: &Path) -> Result<Self, Error> {
         let json_str = read_to_string(path)?;
-        Ok(serde_json::from_str(&json_str)?)
+        let dirty_map: DirtyWebFeatures = serde_json::from_str(&json_str)?;
+        let map = WebFeatures {
+            features: dirty_map
+                .features
+                .into_iter()
+                .filter_map(|(k, v)| {
+                    serde_json::from_value::<FeatureData>(v)
+                        .inspect_err(|e| {
+                            tracing::error!("Error serializing baseline for {}: {}", k, &e)
+                        })
+                        .ok()
+                        .map(|v| (k, v))
+                })
+                .collect(),
+        };
+        Ok(map)
     }
 
     pub fn feature_status(&self, bcd_key: &str) -> Option<&SupportStatusWithByKey> {
