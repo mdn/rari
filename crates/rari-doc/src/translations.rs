@@ -6,10 +6,12 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::OnceLock;
 
+use rari_types::globals::cache_content;
 use rari_types::locale::Locale;
 
 use crate::cached_readers::{STATIC_DOC_PAGE_FILES, STATIC_DOC_PAGE_TRANSLATED_FILES};
 use crate::pages::page::PageLike;
+use crate::pages::types::doc::Doc;
 
 pub type TranslationsOf<'a> = BTreeMap<Locale, &'a str>;
 
@@ -58,21 +60,32 @@ pub(crate) fn init_translations_from_static_docs() {
 /// * `Vec<(Locale, String)>` - Returns a vector of tuples, where each tuple contains a `Locale` and a `String`
 ///   representing the title of the translation. If no translations are found, an empty vector is returned.
 pub(crate) fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Locale, String)> {
-    TRANSLATIONS_BY_SLUG
-        .get()
-        .and_then(|by_slug| {
-            by_slug.get(slug).map(|translations| {
-                translations
-                    .iter()
-                    .filter_map(|(t_locale, title)| {
-                        if *t_locale != locale {
-                            Some((*t_locale, title.to_string()))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
+    if cache_content() {
+        TRANSLATIONS_BY_SLUG
+            .get()
+            .and_then(|by_slug| {
+                by_slug.get(slug).map(|translations| {
+                    translations
+                        .iter()
+                        .filter_map(|(t_locale, title)| {
+                            if *t_locale != locale {
+                                Some((*t_locale, title.to_string()))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                })
             })
-        })
-        .unwrap_or_default()
+            .unwrap_or_default()
+    } else {
+        Locale::for_generic_and_spas()
+            .iter()
+            .filter_map(|l| {
+                Doc::page_from_slug(slug, *l)
+                    .ok()
+                    .map(|d| (*l, d.title().to_string()))
+            })
+            .collect()
+    }
 }
