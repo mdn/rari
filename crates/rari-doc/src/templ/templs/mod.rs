@@ -99,14 +99,16 @@ pub fn invoke(
         "next" => previous_menu_next::next_any,
 
         // embeds
-        "embedinteractiveexample" => embeds::embedinteractiveexample::embed_interactive_example_any,
-        "embedghlivesample" => embeds::embedghlivesample::embed_gh_live_sample_any,
-        "embedlivesample" => embeds::livesample::live_sample_any,
-        "embedyoutube" => embeds::embedyoutube::embed_youtube_any,
-        "jsfiddleembed" => embeds::jsfiddleembed::embded_jsfiddle_any,
+        "embedinteractiveexample" => {
+            embeds::embed_interactive_example::embed_interactive_example_any
+        }
+        "embedghlivesample" => embeds::embed_gh_live_sample::embed_gh_live_sample_any,
+        "embedlivesample" => embeds::embed_live_sample::embed_live_sample_any,
+        "embedyoutube" => embeds::embed_youtube::embed_youtube_any,
+        "jsfiddleembed" => embeds::jsfiddle_embed::embded_jsfiddle_any,
 
         // live sample link
-        "livesamplelink" => embeds::livesamplelink::live_sample_link_any,
+        "livesamplelink" => embeds::live_sample_link::live_sample_link_any,
 
         // badges
         "experimentalbadge" | "experimental_inline" => badges::experimental_any,

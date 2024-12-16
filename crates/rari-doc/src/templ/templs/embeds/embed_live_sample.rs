@@ -9,7 +9,7 @@ use crate::utils::dedup_whitespace;
 
 #[allow(clippy::too_many_arguments)]
 #[rari_f]
-pub fn live_sample(
+pub fn embed_live_sample(
     id: String,
     width: Option<AnyArg>,
     height: Option<AnyArg>,
