@@ -4,16 +4,16 @@ use std::fmt::Write;
 use std::path::PathBuf;
 
 use memoize::memoize;
-use rari_types::fm_types::{FeatureStatus, PageType};
+use rari_types::fm_types::PageType;
 use rari_types::globals::{cache_content, deny_warnings};
 use rari_types::locale::Locale;
 
 use super::l10n::l10n_json_data;
 use super::titles::api_page_title;
 use crate::error::DocError;
+use crate::html::links::{render_internal_link, LinkModifier};
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::redirects::resolve_redirect;
-use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 use crate::utils::COLLATOR;
 use crate::walker::walk_builder;
 
@@ -71,41 +71,43 @@ pub fn write_li_with_badges(
     } else {
         page
     };
-    out.extend([
-        "<li>",
-        r#"<a href=""#,
+    out.push_str("<li>");
+    render_internal_link(
+        out,
         locale_page.url(),
-        r#"">"#,
-        if code { "<code>" } else { "" },
+        None,
         &html_escape::encode_safe(locale_page.short_title().unwrap_or(locale_page.title())),
-        if code { "</code>" } else { "" },
-        "</a>",
-    ]);
-    add_inline_badges(out, page, locale)?;
+        None,
+        &LinkModifier {
+            badges: page.status(),
+            badge_locale: locale,
+            code,
+            only_en_us: locale_page.locale() != locale,
+        },
+    )?;
     if closed {
         write!(out, "</li>")?;
     }
     Ok(())
 }
 
-pub fn add_inline_badges(out: &mut String, page: &Page, locale: Locale) -> Result<(), DocError> {
-    if page.status().contains(&FeatureStatus::Experimental) {
-        write_experimental(out, locale)?;
-    }
-    if page.status().contains(&FeatureStatus::NonStandard) {
-        write_non_standard(out, locale)?;
-    }
-    if page.status().contains(&FeatureStatus::Deprecated) {
-        write_deprecated(out, locale)?;
-    }
-    Ok(())
-}
-
 pub fn write_parent_li(out: &mut String, page: &Page, locale: Locale) -> Result<(), DocError> {
-    let title = l10n_json_data("Template", "overview", locale)?;
-    write!(out, "<li><a href=\"{}\">{}</a>", page.url(), title)?;
-    add_inline_badges(out, page, locale)?;
-    write!(out, "</li>")?;
+    let content = l10n_json_data("Template", "overview", locale)?;
+    out.push_str("<li>");
+    render_internal_link(
+        out,
+        page.url(),
+        None,
+        content,
+        None,
+        &LinkModifier {
+            badges: page.status(),
+            badge_locale: locale,
+            code: false,
+            only_en_us: page.locale() != locale,
+        },
+    )?;
+    out.push_str("</li>");
     Ok(())
 }
 

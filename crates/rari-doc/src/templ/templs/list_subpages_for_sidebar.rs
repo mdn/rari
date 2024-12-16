@@ -2,7 +2,8 @@ use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
 use crate::error::DocError;
-use crate::helpers::subpages::{add_inline_badges, get_sub_pages, SubPagesSorter};
+use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
+use crate::html::links::{render_internal_link, LinkModifier};
 use crate::pages::page::{Page, PageLike};
 use crate::utils::{trim_after, trim_fefore};
 
@@ -37,16 +38,19 @@ pub fn list_subpages_for_sidebar(
         let title = locale_page.short_title().unwrap_or(locale_page.title());
         let title = trim_fefore(title, title_only_after.as_deref());
         let title = trim_after(title, title_only_before.as_deref());
-        out.extend([
-            r#"<li><a href=""#,
+        render_internal_link(
+            &mut out,
             locale_page.url(),
-            r#"">"#,
-            if code { "<code>" } else { "" },
+            None,
             &html_escape::encode_safe(title),
-            if code { "</code>" } else { "" },
-            r#"</a>"#,
-        ]);
-        add_inline_badges(&mut out, &page, env.locale)?;
+            None,
+            &LinkModifier {
+                badges: page.status(),
+                badge_locale: env.locale,
+                code,
+                only_en_us: locale_page.locale() != env.locale,
+            },
+        )?;
         out.push_str("</li>");
     }
     out.push_str("</ol>");
