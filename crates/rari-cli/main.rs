@@ -1,4 +1,6 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
+use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
@@ -191,6 +193,14 @@ enum Cache {
 }
 
 fn main() -> Result<(), Error> {
+    if let Ok(env_file) = dotenvy::from_filename(
+        env::var("DOT_FILE")
+            .map(Cow::Owned)
+            .unwrap_or(Cow::Borrowed(".env"))
+            .as_ref(),
+    ) {
+        println!("Using env_file: {}", env_file.display())
+    }
     let cli = Cli::parse();
     if !cli.skip_updates {
         rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;
