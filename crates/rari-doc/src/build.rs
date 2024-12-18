@@ -12,7 +12,10 @@ use std::path::PathBuf;
 
 use chrono::NaiveDateTime;
 use itertools::Itertools;
-use rari_types::globals::{base_url, build_out_root, git_history};
+use rari_types::globals::{
+    base_url, blog_root, build_out_root, contributor_spotlight_root, curriculum_root,
+    generic_content_root, git_history,
+};
 use rari_types::locale::{default_locale, Locale};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sha2::{Digest, Sha256};
@@ -187,6 +190,9 @@ pub fn build_top_level_meta(locale_meta: Vec<JsonDocMetadata>) -> Result<(), Doc
 /// This function will return an error if:
 /// - An error occurs while building any of the curriculum pages.
 pub fn build_curriculum_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
+    if curriculum_root().is_none() {
+        return Err(DocError::NoCurriculumRoot);
+    }
     curriculum_files()
         .by_path
         .values()
@@ -241,6 +247,9 @@ fn copy_blog_author_avatars() -> Result<(), DocError> {
 /// - An error occurs while copying blog author avatars.
 /// - An error occurs while building any of the blog pages.
 pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
+    if blog_root().is_none() {
+        return Err(DocError::NoBlogRoot);
+    }
     copy_blog_author_avatars()?;
 
     let rss_file = build_out_root()?
@@ -292,6 +301,9 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
 /// This function will return an error if:
 /// - An error occurs while building any of the generic pages.
 pub fn build_generic_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
+    if generic_content_root().is_none() {
+        return Err(DocError::NoGenericContentRoot);
+    }
     generic_content_files()
         .values()
         .map(|page| {
@@ -320,6 +332,9 @@ pub fn build_generic_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
 /// This function will return an error if:
 /// - An error occurs while building any of the contributor spotlight pages.
 pub fn build_contributor_spotlight_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
+    if contributor_spotlight_root().is_none() {
+        return Err(DocError::NoContributorSpotlightRoot);
+    }
     contributor_spotlight_files()
         .values()
         .map(|page| {

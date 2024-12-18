@@ -36,7 +36,7 @@ use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::contributors::{WikiHistories, WikiHistory};
 use crate::error::DocError;
@@ -319,7 +319,7 @@ fn gather_curriculum() -> Result<CurriculumFiles, DocError> {
     }
 }
 
-fn gather_contributre_spotlight() -> Result<HashMap<String, Page>, DocError> {
+fn gather_contributor_spotlight() -> Result<HashMap<String, Page>, DocError> {
     if let Some(root) = contributor_spotlight_root() {
         Ok(read_docs_parallel::<ContributorSpotlight>(&[root], None)?
             .into_iter()
@@ -339,7 +339,7 @@ fn gather_contributre_spotlight() -> Result<HashMap<String, Page>, DocError> {
             .map(|page| (page.url().to_ascii_lowercase(), page))
             .collect())
     } else {
-        Err(DocError::NoGenericContentRoot)
+        Err(DocError::NoContributorSpotlightRoot)
     }
 }
 
@@ -357,14 +357,14 @@ pub fn curriculum_files() -> Cow<'static, CurriculumFiles> {
     if cache_content() {
         Cow::Borrowed(CACHED_CURRICULUM.get_or_init(|| {
             gather_curriculum()
-                .map_err(|e| error!("{e}"))
+                .inspect_err(|e| warn!("{e}"))
                 .ok()
                 .unwrap_or_default()
         }))
     } else {
         Cow::Owned(
             gather_curriculum()
-                .map_err(|e| error!("{e}"))
+                .inspect_err(|e| warn!("{e}"))
                 .unwrap_or_default(),
         )
     }
@@ -409,11 +409,11 @@ fn gather_blog_authors() -> Result<HashMap<String, Arc<Author>>, DocError> {
 pub fn blog_files() -> Cow<'static, BlogFiles> {
     fn gather() -> BlogFiles {
         let posts = gather_blog_posts().unwrap_or_else(|e| {
-            error!("{e}");
+            warn!("{e}");
             Default::default()
         });
         let authors = gather_blog_authors().unwrap_or_else(|e| {
-            error!("{e}");
+            warn!("{e}");
             Default::default()
         });
         let mut sorted_meta = posts
@@ -578,7 +578,7 @@ fn read_generic_content_config() -> Result<GenericContentConfig, DocError> {
 pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
     fn gather() -> GenericContentConfig {
         read_generic_content_config().unwrap_or_else(|e| {
-            error!("{e}");
+            warn!("{e}");
             Default::default()
         })
     }
@@ -603,7 +603,7 @@ pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
 pub fn generic_content_files() -> Cow<'static, UrlToPageMap> {
     fn gather() -> UrlToPageMap {
         gather_generic_content().unwrap_or_else(|e| {
-            error!("{e}");
+            warn!("{e}");
             Default::default()
         })
     }
@@ -627,8 +627,8 @@ pub fn generic_content_files() -> Cow<'static, UrlToPageMap> {
 ///   if caching is enabled. Otherwise, returns a `Cow::Owned` containing the read-in contributor spotlight pages.
 pub fn contributor_spotlight_files() -> Cow<'static, UrlToPageMap> {
     fn gather() -> UrlToPageMap {
-        gather_contributre_spotlight().unwrap_or_else(|e| {
-            error!("{e}");
+        gather_contributor_spotlight().unwrap_or_else(|e| {
+            warn!("{e}");
             Default::default()
         })
     }

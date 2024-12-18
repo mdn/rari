@@ -30,6 +30,8 @@ pub enum DocError {
     NoCurriculumRoot,
     #[error("No generic content root set")]
     NoGenericContentRoot,
+    #[error("No contributor spotlights root set")]
+    NoContributorSpotlightRoot,
     #[error("No generic content config found")]
     NoGenericContentConfig,
     #[error("No H1 found")]
