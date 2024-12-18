@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7](https://github.com/mdn/rari/compare/v0.1.6...v0.1.7) (2024-12-18)
+
+
+### Features
+
+* **sidebar:** add consolidation to fmt-sidebars ([9624a86](https://github.com/mdn/rari/commit/9624a86f110eef730c1d3e945530ee77b3239bc9))
+
 ## [0.1.6](https://github.com/mdn/rari/compare/v0.1.5...v0.1.6) (2024-12-18)
 
 
