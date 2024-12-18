@@ -147,7 +147,7 @@ pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
 pub struct SidebarL10n {
     // Keep the translations in order of insertion,
     // so Sidebar manipulations are deterministic.
-    l10n: IndexMap<Locale, IndexMap<String, String>>,
+    pub l10n: IndexMap<Locale, IndexMap<String, String>>,
 }
 
 impl SidebarL10n {

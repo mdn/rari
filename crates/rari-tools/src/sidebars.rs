@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -42,8 +42,64 @@ pub fn sync_sidebars() -> Result<(), ToolError> {
     Ok(())
 }
 
+fn traverse_and_extract_l10nable<'a, 'b: 'a>(entry: &'a SidebarEntry) -> HashSet<&'a str> {
+    let (title, hash, children) = match entry {
+        SidebarEntry::Section(basic_entry) => (
+            basic_entry.title.as_deref(),
+            basic_entry.hash.as_deref(),
+            Some(&basic_entry.children),
+        ),
+        SidebarEntry::ListSubPages(sub_page_entry) => (
+            sub_page_entry.title.as_deref(),
+            sub_page_entry.hash.as_deref(),
+            None,
+        ),
+        SidebarEntry::ListSubPagesGrouped(sub_page_entry) => (
+            sub_page_entry.title.as_deref(),
+            sub_page_entry.hash.as_deref(),
+            None,
+        ),
+        SidebarEntry::WebExtApi(web_ext_api_entry) => {
+            (Some(web_ext_api_entry.title.as_str()), None, None)
+        }
+        SidebarEntry::Default(basic_entry) => (
+            basic_entry.title.as_deref(),
+            basic_entry.hash.as_deref(),
+            Some(&basic_entry.children),
+        ),
+        _ => (None, None, None),
+    };
+    let mut set: HashSet<_> = if let Some(children) = children {
+        children
+            .iter()
+            .flat_map(traverse_and_extract_l10nable)
+            .collect()
+    } else {
+        Default::default()
+    };
+    if let Some(hash) = hash {
+        set.insert(hash);
+    }
+    if let Some(title) = title {
+        set.insert(title);
+    }
+    set
+}
+
+fn consolidate_l10n(sidebar: &mut Sidebar) {
+    let titles = sidebar
+        .sidebar
+        .iter()
+        .flat_map(traverse_and_extract_l10nable)
+        .collect::<HashSet<_>>();
+    for (_, map) in sidebar.l10n.l10n.iter_mut() {
+        map.retain(|k, _| titles.contains(k.as_str()));
+    }
+}
+
 pub fn fmt_sidebars() -> Result<(), ToolError> {
-    for (path, sidebar) in read_sidebars()? {
+    for (path, mut sidebar) in read_sidebars()? {
+        consolidate_l10n(&mut sidebar);
         write_sidebar(&sidebar, &path)?;
     }
     Ok(())
