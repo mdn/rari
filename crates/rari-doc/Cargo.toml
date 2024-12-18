@@ -41,6 +41,7 @@ lol_html = "2"
 html-escape = "0.2"
 html5ever = "0.29"
 ego-tree = "0.9"
+rss = { version = "2", features = [], default-features = false }
 
 ignore = "0.4"
 crossbeam-channel = "0.5"

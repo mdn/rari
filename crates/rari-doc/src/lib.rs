@@ -18,6 +18,7 @@
 //! - `reader`: Defines traits and implementations for reading pages.
 //! - `redirects`: Manages URL redirects within the documentation.
 //! - `resolve`: Handles path and URL resolution.
+//! - `rss`: Create the blog rss feed.
 //! - `search_index`: Manages the search index for the documentation.
 //! - `sidebars`: Handles sidebar generation and management.
 //! - `specs`: Manages Web-Spec and Browser Compatibility (BCD) data.
@@ -46,6 +47,7 @@ pub mod percent;
 pub mod reader;
 pub mod redirects;
 pub mod resolve;
+pub mod rss;
 pub mod search_index;
 pub mod sidebars;
 pub mod specs;

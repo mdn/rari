@@ -11,8 +11,9 @@ use std::iter::once;
 use std::path::PathBuf;
 
 use chrono::NaiveDateTime;
-use rari_types::globals::{build_out_root, git_history};
-use rari_types::locale::Locale;
+use itertools::Itertools;
+use rari_types::globals::{base_url, build_out_root, git_history};
+use rari_types::locale::{default_locale, Locale};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sha2::{Digest, Sha256};
 use tracing::{span, Level};
@@ -28,6 +29,7 @@ use crate::pages::json::{BuiltPage, JsonDocMetadata};
 use crate::pages::page::{Page, PageBuilder, PageLike};
 use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
+use crate::rss::create_rss;
 
 #[derive(Clone, Debug, Default)]
 pub struct SitemapMeta<'a> {
@@ -240,6 +242,26 @@ fn copy_blog_author_avatars() -> Result<(), DocError> {
 /// - An error occurs while building any of the blog pages.
 pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     copy_blog_author_avatars()?;
+
+    let rss_file = build_out_root()?
+        .join(default_locale().as_folder_str())
+        .join("blog")
+        .join("rss.xml");
+    let sorted_posts: Vec<_> = blog_files()
+        .posts
+        .values()
+        .cloned()
+        .filter_map(|page| {
+            if let Page::BlogPost(post) = page {
+                Some(post)
+            } else {
+                None
+            }
+        })
+        .sorted_by(|a, b| a.meta.date.cmp(&b.meta.date).reverse())
+        .collect();
+    create_rss(&rss_file, sorted_posts.as_slice(), base_url())?;
+
     blog_files()
         .posts
         .values()
