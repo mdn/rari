@@ -53,7 +53,7 @@ impl WebFeatures {
                     .any(|key| key == bcd_key)
                 {
                     if feature_data.discouraged.is_some() {
-                        return None
+                        return None;
                     }
                     if let Some(by_key) = &status.by_compat_key {
                         if let Some(key_status) = by_key.get(bcd_key) {
