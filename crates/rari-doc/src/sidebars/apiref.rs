@@ -88,6 +88,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
             content: SidebarMetaEntryContent::Page(Doc::page_from_slug(
                 &format!("Web/API/{}", overview.replace(' ', "_")),
                 locale,
+                true,
             )?),
             ..Default::default()
         });
@@ -98,6 +99,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
         content: SidebarMetaEntryContent::Page(Doc::page_from_slug(
             &format!("Web/API/{main_if}"),
             locale,
+            true,
         )?),
         ..Default::default()
     });

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_md::m2h;
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::locale::Locale;
+use rari_types::locale::{default_locale, Locale};
 use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
@@ -116,11 +116,24 @@ pub struct Doc {
 pub type ADoc = Arc<Doc>;
 
 impl Doc {
-    pub fn page_from_slug(slug: &str, locale: Locale) -> Result<Page, DocError> {
-        Doc::page_from_slug_path(&url_to_folder_path(slug), locale)
+    pub fn page_from_slug(slug: &str, locale: Locale, fallback: bool) -> Result<Page, DocError> {
+        Doc::page_from_slug_path(&url_to_folder_path(slug), locale, fallback)
     }
 
-    pub fn page_from_slug_path(path: &Path, locale: Locale) -> Result<Page, DocError> {
+    pub fn page_from_slug_path(
+        path: &Path,
+        locale: Locale,
+        fallback: bool,
+    ) -> Result<Page, DocError> {
+        let doc = Self::page_from_slug_path_internal(path, locale);
+        if doc.is_err() && locale != default_locale() && fallback {
+            Self::page_from_slug_path_internal(path, Default::default())
+        } else {
+            doc
+        }
+    }
+
+    fn page_from_slug_path_internal(path: &Path, locale: Locale) -> Result<Page, DocError> {
         let mut file = root_for_locale(locale)?.to_path_buf();
         file.push(locale.as_folder_str());
         file.push(path);
@@ -164,7 +177,7 @@ impl PageReader for Doc {
         let mut doc = read_doc(&path)?;
 
         if doc.meta.locale != Default::default() && !doc.is_conflicting() && !doc.is_orphaned() {
-            match Doc::page_from_slug(&doc.meta.slug, Default::default()) {
+            match Doc::page_from_slug(&doc.meta.slug, Default::default(), false) {
                 Ok(Page::Doc(super_doc)) => {
                     doc.copy_meta_from_super(&super_doc);
                 }

@@ -110,14 +110,8 @@ impl Page {
         match page_category {
             PageCategory::SPA => SPA::from_slug(slug, locale)
                 .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA)),
-            PageCategory::Doc => {
-                let doc = Doc::page_from_slug_path(&folder_path, locale);
-                if doc.is_err() && locale != Default::default() && fallback {
-                    Doc::page_from_slug_path(&folder_path, Default::default())
-                } else {
-                    doc
-                }
-            }
+            PageCategory::Doc => Doc::page_from_slug_path(&folder_path, locale, fallback)
+                .map_err(|_| DocError::PageNotFound(url.to_string(), PageCategory::Doc)),
             PageCategory::BlogPost => BlogPost::page_from_url(url).ok_or(DocError::PageNotFound(
                 url.to_string(),
                 PageCategory::BlogPost,

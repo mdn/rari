@@ -52,6 +52,7 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         content: SidebarMetaEntryContent::Page(Doc::page_from_slug(
             "Web/JavaScript/Reference/Global_Objects",
             locale,
+            true,
         )?),
         ..Default::default()
     });

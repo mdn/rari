@@ -28,6 +28,7 @@ pub fn sidebar(group: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
             content: SidebarMetaEntryContent::Page(Doc::page_from_slug(
                 &format!("Web/API/{}", overview.replace(' ', "_")),
                 locale,
+                true,
             )?),
             ..Default::default()
         });

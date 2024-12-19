@@ -82,7 +82,7 @@ pub(crate) fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Loc
         Locale::for_generic_and_spas()
             .iter()
             .filter_map(|l| {
-                Doc::page_from_slug(slug, *l)
+                Doc::page_from_slug(slug, *l, false)
                     .ok()
                     .map(|d| (*l, d.title().to_string()))
             })

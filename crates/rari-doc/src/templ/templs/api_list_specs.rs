@@ -20,6 +20,7 @@ pub fn api_list_specs() -> Result<String, DocError> {
             let page = Doc::page_from_slug(
                 &format!("Web/API/{}", overview.replace(' ', "_")),
                 env.locale,
+                true,
             )?;
             let out = out_by_letter.entry(first_letter).or_default();
             write_li_with_badges(out, &page, env.locale, false, true)?;
