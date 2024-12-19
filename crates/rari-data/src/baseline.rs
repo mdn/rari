@@ -52,6 +52,9 @@ impl WebFeatures {
                     .iter()
                     .any(|key| key == bcd_key)
                 {
+                    if feature_data.discouraged.is_some() {
+                        return None
+                    }
                     if let Some(by_key) = &status.by_compat_key {
                         if let Some(key_status) = by_key.get(bcd_key) {
                             if key_status.baseline == status.baseline {
@@ -107,6 +110,9 @@ pub struct FeatureData {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub snapshot: Vec<String>,
+    /** Whether developers are formally discouraged from using this feature */
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub discouraged: Option<Value>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
