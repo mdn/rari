@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9](https://github.com/mdn/rari/compare/v0.1.8...v0.1.9) (2024-12-19)
+
+
+### Features
+
+* **baseline:** hide banner if discouraged ([#64](https://github.com/mdn/rari/issues/64)) ([bdfdb23](https://github.com/mdn/rari/commit/bdfdb230d9c5509d26eea353dfd0a97d83c51ab5))
+* **css-definition-syntax:** support boolean-expr ([#58](https://github.com/mdn/rari/issues/58)) ([18baff1](https://github.com/mdn/rari/commit/18baff174fb08c0cdb47675978113f7eb1d9a3f8))
+
 ## [0.1.8](https://github.com/mdn/rari/compare/v0.1.7...v0.1.8) (2024-12-19)
 
 
