@@ -85,20 +85,22 @@ export async function do_download(url, dest, opts) {
       .get(url, opts, (response) => {
         console.log("statusCode: " + response.statusCode);
         if (response.statusCode === 302 && response.headers.location) {
+          response.resume(); // See https://github.com/nodejs/node/issues/47228 🤷
+          outFile.close();
           console.log("Following redirect to: " + response.headers.location);
-          return do_download(response.headers.location, dest, opts).then(
-            resolve,
-            reject,
-          );
+          return do_download(response.headers.location, dest, opts)
+            .then(resolve)
+            .catch(reject);
         } else if (response.statusCode !== 200) {
-          reject(new Error("Download failed with " + response.statusCode));
-          return;
+          return reject(
+            new Error("Download failed with " + response.statusCode),
+          );
+        } else {
+          response.pipe(outFile);
+          outFile.on("finish", () => {
+            resolve(null);
+          });
         }
-
-        response.pipe(outFile);
-        outFile.on("finish", () => {
-          resolve(null);
-        });
       })
       .on("error", async (err) => {
         await unlink(dest);
