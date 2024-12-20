@@ -94,26 +94,27 @@ pub fn handle_internal_link(
         false
     };
 
-    let remove_href = if !Page::exists(resolved_href_no_hash) && !Page::ignore_link_check(href) {
-        tracing::debug!("{resolved_href_no_hash} {href}");
-        let class = el.get_attribute("class").unwrap_or_default();
-        el.set_attribute(
-            "class",
-            &concat_strs!(
-                &class,
-                if class.is_empty() { "" } else { " " },
-                "page-not-created"
-            ),
-        )?;
-        if let Some(href) = el.get_attribute("href") {
-            el.set_attribute("data-href", &href)?;
-        }
-        el.remove_attribute("href");
-        el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
-        true
-    } else {
-        false
-    };
+    let remove_href =
+        if !Page::exists_with_fallback(resolved_href_no_hash) && !Page::ignore_link_check(href) {
+            tracing::debug!("{resolved_href_no_hash} {href}");
+            let class = el.get_attribute("class").unwrap_or_default();
+            el.set_attribute(
+                "class",
+                &concat_strs!(
+                    &class,
+                    if class.is_empty() { "" } else { " " },
+                    "page-not-created"
+                ),
+            )?;
+            if let Some(href) = el.get_attribute("href") {
+                el.set_attribute("data-href", &href)?;
+            }
+            el.remove_attribute("href");
+            el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
+            true
+        } else {
+            false
+        };
 
     if !remove_href && en_us_fallback {
         let class = el.get_attribute("class").unwrap_or_default();
@@ -135,39 +136,41 @@ pub fn handle_internal_link(
         resolved_href.as_ref()
     };
     if original_href != resolved_href {
-        if let Some(pos) = el.get_attribute("data-sourcepos") {
-            if let Some((start, _)) = pos.split_once('-') {
-                if let Some((line, col)) = start.split_once(':') {
-                    let line = line
-                        .parse::<i64>()
-                        .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
-                        .ok()
-                        .unwrap_or(-1);
-                    let col = col.parse::<i64>().ok().unwrap_or(0);
-                    let ic = get_issue_counter();
-                    tracing::warn!(
-                        source = "redirected-link",
-                        ic = ic,
-                        line = line,
-                        col = col,
-                        url = original_href,
-                        redirect = resolved_href
-                    );
-                    if data_issues {
-                        el.set_attribute("data-flaw", &ic.to_string())?;
+        if !en_us_fallback {
+            if let Some(pos) = el.get_attribute("data-sourcepos") {
+                if let Some((start, _)) = pos.split_once('-') {
+                    if let Some((line, col)) = start.split_once(':') {
+                        let line = line
+                            .parse::<i64>()
+                            .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
+                            .ok()
+                            .unwrap_or(-1);
+                        let col = col.parse::<i64>().ok().unwrap_or(0);
+                        let ic = get_issue_counter();
+                        tracing::warn!(
+                            source = "redirected-link",
+                            ic = ic,
+                            line = line,
+                            col = col,
+                            url = original_href,
+                            redirect = resolved_href
+                        );
+                        if data_issues {
+                            el.set_attribute("data-flaw", &ic.to_string())?;
+                        }
                     }
                 }
-            }
-        } else {
-            let ic = get_issue_counter();
-            tracing::warn!(
-                source = "redirected-link",
-                ic = ic,
-                url = original_href,
-                redirect = resolved_href
-            );
-            if data_issues {
-                el.set_attribute("data-flaw", &ic.to_string())?;
+            } else {
+                let ic = get_issue_counter();
+                tracing::warn!(
+                    source = "redirected-link",
+                    ic = ic,
+                    url = original_href,
+                    redirect = resolved_href
+                );
+                if data_issues {
+                    el.set_attribute("data-flaw", &ic.to_string())?;
+                }
             }
         }
 
