@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
 use rari_types::globals::data_dir;
@@ -40,10 +40,14 @@ pub fn web_ext_examples_json() -> &'static [WebExtExample] {
 pub static WEB_EXT_EXAMPLES_DATA: LazyLock<WebExtExamplesData> = LazyLock::new(|| {
     let mut by_module = HashMap::new();
     for example in web_ext_examples_json() {
-        for js_api in &example.javascript_apis {
-            let js_api = &js_api[..js_api.find('.').unwrap_or(js_api.len())];
+        for js_api in &example
+            .javascript_apis
+            .iter()
+            .map(|js_api| &js_api[..js_api.find('.').unwrap_or(js_api.len())])
+            .collect::<HashSet<_>>()
+        {
             by_module
-                .entry(js_api)
+                .entry(*js_api)
                 .and_modify(|e: &mut Vec<_>| e.push(example))
                 .or_insert(vec![example]);
         }
