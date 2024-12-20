@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10](https://github.com/mdn/rari/compare/v0.1.9...v0.1.10) (2024-12-20)
+
+
+### Features
+
+* **issues:** support json_issues flag ([761cafb](https://github.com/mdn/rari/commit/761cafbcff59a1b308162382c8852c0d30aba5a4))
+
+
+### Bug Fixes
+
+* **l10n:** fix fallback handling for Page::exists ([d532969](https://github.com/mdn/rari/commit/d5329699daade5b0bd62f17cecb5e394179efff3))
+* **rari-npm:** make install faster ([1465576](https://github.com/mdn/rari/commit/1465576f9c7b34c3a6f1050363962af549c2162d))
+* **templ:** don't show duplicates in webextexamples ([d6fb9d8](https://github.com/mdn/rari/commit/d6fb9d8ce706736a29f50ce0a93668a629a5aeba))
+
 ## [0.1.9](https://github.com/mdn/rari/compare/v0.1.8...v0.1.9) (2024-12-19)
 
 
