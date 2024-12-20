@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::atomic::AtomicI64;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock};
 
+use dashmap::DashMap;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -20,12 +21,13 @@ pub(crate) fn get_issue_counter() -> i64 {
     ISSUE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct Issue {
     pub req: u64,
     pub ic: i64,
     pub col: i64,
     pub line: i64,
+    pub file: String,
     pub fields: Vec<(&'static str, String)>,
     pub spans: Vec<(&'static str, String)>,
 }
@@ -36,6 +38,7 @@ pub struct IssueEntries {
     ic: i64,
     col: i64,
     line: i64,
+    file: String,
     entries: Vec<(&'static str, String)>,
 }
 
@@ -77,9 +80,6 @@ impl<'a> From<&'a Issue> for TemplIssue<'a> {
         let mut tissue = DEFAULT_TEMPL_ISSUE.clone();
         for (key, value) in value.spans.iter().chain(value.fields.iter()) {
             match *key {
-                "file" => {
-                    tissue.file = value.as_str();
-                }
                 "slug" => {
                     tissue.slug = value.as_str();
                 }
@@ -95,42 +95,18 @@ impl<'a> From<&'a Issue> for TemplIssue<'a> {
         }
         tissue.col = value.col;
         tissue.line = value.line;
+        tissue.file = value.file.as_str();
         tissue
     }
 }
 
-pub fn issues_by(issues: &[Issue]) -> Issues {
-    let mut templ: BTreeMap<&str, Vec<TemplIssue>> = BTreeMap::new();
-    let mut other: BTreeMap<&str, Vec<TemplIssue>> = BTreeMap::new();
-    let mut no_pos: BTreeMap<&str, Vec<TemplIssue>> = BTreeMap::new();
-    for issue in issues.iter().map(TemplIssue::from) {
-        if let Some(templ_name) =
-            issue
-                .tail
-                .iter()
-                .find_map(|(key, value)| if *key == "templ" { Some(value) } else { None })
-        {
-            templ.entry(templ_name).or_default().push(issue);
-        } else if issue.line != -1 {
-            other.entry(issue.source).or_default().push(issue)
-        } else {
-            no_pos.entry(issue.source).or_default().push(issue);
-        }
-    }
-    Issues {
-        templ,
-        other,
-        no_pos,
-    }
-}
-
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct InMemoryLayer {
-    events: Arc<Mutex<Vec<Issue>>>,
+    events: Arc<DashMap<String, Vec<Issue>>>,
 }
 
 impl InMemoryLayer {
-    pub fn get_events(&self) -> Arc<Mutex<Vec<Issue>>> {
+    pub fn get_events(&self) -> Arc<DashMap<String, Vec<Issue>>> {
         Arc::clone(&self.events)
     }
 }
@@ -140,7 +116,11 @@ impl Visit for IssueEntries {
         self.entries.push((field.name(), format!("{value:?}")));
     }
     fn record_str(&mut self, field: &Field, value: &str) {
-        self.entries.push((field.name(), value.to_string()));
+        if field.name() == "file" {
+            self.file = value.to_string();
+        } else {
+            self.entries.push((field.name(), value.to_string()));
+        }
     }
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field.name() == "req" {
@@ -162,7 +142,11 @@ impl Visit for Issue {
         self.fields.push((field.name(), format!("{value:?}")));
     }
     fn record_str(&mut self, field: &Field, value: &str) {
-        self.fields.push((field.name(), value.to_string()));
+        if field.name() == "file" {
+            self.file = value.to_string();
+        } else {
+            self.fields.push((field.name(), value.to_string()));
+        }
     }
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field.name() == "req" {
@@ -204,6 +188,7 @@ where
             ic: 0,
             col: 0,
             line: 0,
+            file: String::default(),
             fields: vec![],
             spans: vec![],
         };
@@ -221,6 +206,9 @@ where
                 if entries.line != 0 {
                     issue.line = entries.line;
                 }
+                if !entries.file.is_empty() {
+                    issue.file = entries.file.clone();
+                }
                 if entries.ic != 0 {
                     issue.ic = entries.ic;
                 } else {
@@ -231,8 +219,10 @@ where
         }
 
         event.record(&mut issue);
-        let mut events = self.events.lock().unwrap();
-        events.push(issue);
+        self.events
+            .entry(issue.file.clone())
+            .or_default()
+            .push(issue);
     }
 }
 
@@ -361,3 +351,5 @@ pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
     }
     map
 }
+
+pub static IN_MEMORY: LazyLock<InMemoryLayer> = LazyLock::new(InMemoryLayer::default);

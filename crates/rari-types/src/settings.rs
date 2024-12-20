@@ -24,6 +24,7 @@ pub struct Settings {
     pub additional_locales_for_generics_and_spas: Vec<Locale>,
     pub reader_ignores_gitignore: bool,
     pub data_issues: bool,
+    pub json_issues: bool,
 }
 
 impl Settings {

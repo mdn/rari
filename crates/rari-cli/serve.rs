@@ -1,10 +1,9 @@
 use std::cmp::Ordering;
 use std::str::FromStr;
 use std::sync::atomic::AtomicU64;
-use std::sync::Arc;
 
 use axum::body::Body;
-use axum::extract::{Path, Request, State};
+use axum::extract::{Path, Request};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
@@ -12,7 +11,7 @@ use axum::{Json, Router};
 use rari_doc::cached_readers::wiki_histories;
 use rari_doc::contributors::contributors_txt;
 use rari_doc::error::DocError;
-use rari_doc::issues::{to_display_issues, InMemoryLayer};
+use rari_doc::issues::{to_display_issues, IN_MEMORY};
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use rari_doc::pages::types::doc::Doc;
@@ -32,18 +31,15 @@ struct SearchItem {
     url: String,
 }
 
-async fn handler(state: State<Arc<InMemoryLayer>>, req: Request) -> Response<Body> {
+async fn handler(req: Request) -> Response<Body> {
     if req.uri().path().ends_with("/contributors.txt") {
         get_contributors_handler(req).await.into_response()
     } else {
-        get_json_handler(state, req).await.into_response()
+        get_json_handler(req).await.into_response()
     }
 }
 
-async fn get_json_handler(
-    State(memory_layer): State<Arc<InMemoryLayer>>,
-    req: Request,
-) -> Result<Json<BuiltPage>, AppError> {
+async fn get_json_handler(req: Request) -> Result<Json<BuiltPage>, AppError> {
     let url = req.uri().path();
     let req_id = REQ_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let span = span!(Level::WARN, "serve", req = req_id);
@@ -52,22 +48,22 @@ async fn get_json_handler(
     let _enter1 = span.enter();
     let url = url.strip_suffix("/index.json").unwrap_or(url);
     let page = Page::from_url_with_fallback(url)?;
-    let slug = &page.slug();
-    let locale = page.locale();
-    let span = span!(Level::ERROR, "page", "{}:{}", locale, slug);
+    let file = page.full_path().to_string_lossy();
+    let span = span!(
+        Level::ERROR,
+        "page",
+        locale = page.locale().as_url_str(),
+        slug = page.slug(),
+        file = file.as_ref()
+    );
     let _enter2 = span.enter();
     let mut json = page.build()?;
     tracing::info!("{url}");
     if let BuiltPage::Doc(json_doc) = &mut json {
-        let m = memory_layer.get_events();
-        let mut issues = m.lock().unwrap();
-        let req_issues: Vec<_> = issues
-            .iter()
-            .filter(|issue| issue.req == req_id)
-            .cloned()
-            .collect();
-        issues.retain_mut(|i| i.req != req_id);
-        json_doc.doc.flaws = Some(to_display_issues(req_issues, &page));
+        let m = IN_MEMORY.get_events();
+        if let Some((_, req_issues)) = m.remove(page.full_path().to_string_lossy().as_ref()) {
+            json_doc.doc.flaws = Some(to_display_issues(req_issues, &page));
+        }
     }
     Ok(Json(json))
 }
@@ -180,7 +176,7 @@ where
     }
 }
 
-pub fn serve(memory_layer: InMemoryLayer) -> Result<(), anyhow::Error> {
+pub fn serve() -> Result<(), anyhow::Error> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -188,8 +184,7 @@ pub fn serve(memory_layer: InMemoryLayer) -> Result<(), anyhow::Error> {
         .block_on(async {
             let app = Router::new()
                 .route("/:locale/search-index.json", get(get_search_index_handler))
-                .fallback(handler)
-                .with_state(Arc::new(memory_layer));
+                .fallback(handler);
 
             let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();
             axum::serve(listener, app).await.unwrap();

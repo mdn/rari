@@ -17,7 +17,7 @@ use rari_doc::build::{
     build_generic_pages, build_spas, build_top_level_meta,
 };
 use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
-use rari_doc::issues::{issues_by, InMemoryLayer};
+use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
@@ -183,6 +183,8 @@ struct BuildArgs {
     issues: Option<PathBuf>,
     #[arg(long, help = "Annotate html with 'data-flaw' attributes")]
     data_issues: bool,
+    #[arg(long, help = "Add flaws field to index.json for docs")]
+    json_issues: bool,
 }
 
 #[derive(Debug)]
@@ -219,7 +221,7 @@ fn main() -> Result<(), Error> {
         .with_target("rari_doc", Level::WARN)
         .with_target("rari", Level::WARN);
 
-    let memory_layer = InMemoryLayer::default();
+    let memory_layer = IN_MEMORY.clone();
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::fmt::layer()
@@ -235,6 +237,7 @@ fn main() -> Result<(), Error> {
             settings.deny_warnings = args.deny_warnings;
             settings.cache_content = !args.no_cache;
             settings.data_issues = args.data_issues;
+            settings.json_issues = args.json_issues;
             let _ = SETTINGS.set(settings);
 
             let templ_stats = if args.templ_stats {
@@ -383,29 +386,9 @@ fn main() -> Result<(), Error> {
 
             if let Some(issues_path) = args.issues {
                 let events = memory_layer.get_events();
-                let events = events.lock().unwrap();
-
-                let issues = issues_by(&events);
-
-                let mut tw = TabWriter::new(vec![]);
-                writeln!(&mut tw, "--- templ issues ---\t").expect("unable to write");
-                for (templ, templ_issues) in &issues.templ {
-                    writeln!(&mut tw, "{}\t{:5}", templ, templ_issues.len())
-                        .expect("unable to write");
-                }
-                writeln!(&mut tw, "--- other issues ---\t").expect("unable to write");
-                for (source, other_issues) in &issues.other {
-                    writeln!(&mut tw, "{}\t{:5}", source, other_issues.len())
-                        .expect("unable to write");
-                }
-                writeln!(&mut tw, "--- other issues w/o pos ---\t").expect("unable to write");
-                for (source, no_pos) in &issues.no_pos {
-                    writeln!(&mut tw, "{}\t{:5}", source, no_pos.len()).expect("unable to write");
-                }
-                print!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
                 let file = File::create(issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
-                serde_json::to_writer_pretty(&mut buffed, &issues).unwrap();
+                serde_json::to_writer_pretty(&mut buffed, &*events).unwrap();
             }
         }
         Commands::Serve(args) => {
@@ -413,7 +396,7 @@ fn main() -> Result<(), Error> {
             settings.cache_content = args.cache;
             settings.data_issues = true;
             let _ = SETTINGS.set(settings);
-            serve::serve(memory_layer.clone())?
+            serve::serve()?
         }
         Commands::GitHistory => {
             println!("Gathering history 📜");

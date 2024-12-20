@@ -92,7 +92,7 @@ indoc = "2"
 base64 = "0.22"
 console = "0.15"
 sha2 = "0.10"
-dashmap = "6"
+dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"
 schemars = { version = "0.8", features = ["chrono"] }
 pretty_yaml = "0.5"
