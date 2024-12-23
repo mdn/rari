@@ -1,4 +1,5 @@
 pub mod bubble_up;
+mod fix_img;
 mod fix_link;
 pub mod links;
 pub mod modifier;

@@ -8,12 +8,11 @@ use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::globals::settings;
 use rari_utils::concat_strs;
-use tracing::warn;
 use url::Url;
 
 use crate::error::DocError;
+use crate::html::fix_img::handle_img;
 use crate::html::fix_link::check_and_fix_link;
-use crate::issues::get_issue_counter;
 use crate::pages::page::PageLike;
 use crate::pages::types::curriculum::CurriculumPage;
 
@@ -88,96 +87,7 @@ pub fn post_process_html<T: PageLike>(
             Ok(())
         }),
         element!("img[src]", |el| {
-            // Leave dimensions alone if we have a `width` attribute
-            if el.get_attribute("width").is_some() {
-                return Ok(());
-            }
-            if let Some(src) = el.get_attribute("src") {
-                let url = base_url.parse(&src)?;
-                if url.host() == base.host() && !url.path().starts_with("/assets/") {
-                    el.set_attribute("src", url.path())?;
-                    let file = page.full_path().parent().unwrap().join(&src);
-                    let (width, height) = if src.ends_with(".svg") {
-                        match svg_metadata::Metadata::parse_file(&file) {
-                            // If only width and viewbox are given, use width and scale
-                            // the height according to the viewbox size ratio.
-                            // If width and height are given, use these.
-                            // If only a viewbox is given, use the viewbox values.
-                            // If only height and viewbox are given, use height and scale
-                            // the height according to the viewbox size ratio.
-                            Ok(meta) => {
-                                let width = meta.width.map(|w| w.width);
-                                let height = meta.height.map(|h| h.height);
-                                let view_box = meta.view_box;
-
-                                let (final_width, final_height) = match (width, height, view_box) {
-                                    // Both width and height are given
-                                    (Some(w), Some(h), _) => (Some(w), Some(h)),
-                                    // Only width and viewbox are given
-                                    (Some(w), None, Some(vb)) => {
-                                        (Some(w), Some(w * vb.height / vb.width))
-                                    }
-                                    // Only height and viewbox are given
-                                    (None, Some(h), Some(vb)) => {
-                                        (Some(h * vb.width / vb.height), Some(h))
-                                    }
-                                    // Only viewbox is given
-                                    (None, None, Some(vb)) => (Some(vb.width), Some(vb.height)),
-                                    // Only width is given
-                                    (Some(w), None, None) => (Some(w), None),
-                                    // Only height is given
-                                    (None, Some(h), None) => (None, Some(h)),
-                                    // Neither width, height, nor viewbox are given
-                                    (None, None, None) => (None, None),
-                                };
-
-                                (
-                                    final_width.map(|w| format!("{:.0}", w)),
-                                    final_height.map(|h| format!("{:.0}", h)),
-                                )
-                            }
-                            Err(e) => {
-                                let ic = get_issue_counter();
-                                warn!(
-                                    source = "image-check",
-                                    ic = ic,
-                                    "Error parsing {}: {e}",
-                                    file.display()
-                                );
-                                if data_issues {
-                                    el.set_attribute("data-flaw", &ic.to_string())?;
-                                }
-                                (None, None)
-                            }
-                        }
-                    } else {
-                        match imagesize::size(&file) {
-                            Ok(dim) => (Some(dim.width.to_string()), Some(dim.height.to_string())),
-                            Err(e) => {
-                                let ic = get_issue_counter();
-                                warn!(
-                                    source = "image-check",
-                                    ic = ic,
-                                    "Error opening {}: {e}",
-                                    file.display()
-                                );
-                                if data_issues {
-                                    el.set_attribute("data-flaw", &ic.to_string())?;
-                                }
-
-                                (None, None)
-                            }
-                        }
-                    };
-                    if let Some(width) = width {
-                        el.set_attribute("width", &width)?;
-                    }
-                    if let Some(height) = height {
-                        el.set_attribute("height", &height)?;
-                    }
-                }
-            }
-            Ok(())
+            handle_img(el, page, data_issues, &base, &base_url)
         }),
         element!("img:not([loading])", |el| {
             el.set_attribute("loading", "lazy")?;

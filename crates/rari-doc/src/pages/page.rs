@@ -95,7 +95,7 @@ impl Page {
         Self::internal_from_url(url, Some(locale), true)
     }
 
-    fn internal_from_url(
+    pub fn internal_from_url(
         url: &str,
         locale: Option<Locale>,
         fallback: bool,
