@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11](https://github.com/mdn/rari/compare/v0.1.10...v0.1.11) (2024-12-23)
+
+
+### Features
+
+* **build:** add -n compatibility ([8f27022](https://github.com/mdn/rari/commit/8f27022ad40cfdb54562e4ff46c19fa724d9f88e))
+
+
+### Bug Fixes
+
+* **l10n:** add sizes to fallback imgs ([2eab7ea](https://github.com/mdn/rari/commit/2eab7eaa99d0f876b67a87055cb54ddb28e31ff7))
+
 ## [0.1.10](https://github.com/mdn/rari/compare/v0.1.9...v0.1.10) (2024-12-20)
 
 
