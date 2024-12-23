@@ -185,6 +185,12 @@ struct BuildArgs {
     data_issues: bool,
     #[arg(long, help = "Add flaws field to index.json for docs")]
     json_issues: bool,
+    #[arg(
+        short,
+        long,
+        help = "Noop flag to legacy compatibility (has no effect on build)"
+    )]
+    noop: bool,
 }
 
 #[derive(Debug)]
