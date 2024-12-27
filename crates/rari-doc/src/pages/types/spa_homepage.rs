@@ -85,7 +85,7 @@ pub fn recent_contributions() -> Result<Vec<HomePageRecentContribution>, DocErro
     if let Some(translated_root) = content_translated_root() {
         content.extend(recent_contributions_from_git(
             translated_root,
-            "mdn/translated_content",
+            "mdn/translated-content",
         )?);
     };
     content.sort_by(|a, b| a.updated_at.cmp(&b.updated_at));
