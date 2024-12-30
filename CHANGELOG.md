@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12](https://github.com/mdn/rari/compare/v0.1.11...v0.1.12) (2024-12-30)
+
+
+### Bug Fixes
+
+* **l10n:** correct the repo name to translated content ([#70](https://github.com/mdn/rari/issues/70)) ([e3b7209](https://github.com/mdn/rari/commit/e3b72093e8e7b37883b22acb09da6042963f54ed))
+
 ## [0.1.11](https://github.com/mdn/rari/compare/v0.1.10...v0.1.11) (2024-12-23)
 
 
