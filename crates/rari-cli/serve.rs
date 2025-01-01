@@ -61,9 +61,10 @@ async fn get_json_handler(req: Request) -> Result<Json<BuiltPage>, AppError> {
     tracing::info!("{url}");
     if let BuiltPage::Doc(json_doc) = &mut json {
         let m = IN_MEMORY.get_events();
-        if let Some((_, req_issues)) = m.remove(page.full_path().to_string_lossy().as_ref()) {
-            json_doc.doc.flaws = Some(to_display_issues(req_issues, &page));
-        }
+        let (_, req_issues) = m
+            .remove(page.full_path().to_string_lossy().as_ref())
+            .unwrap_or_default();
+        json_doc.doc.flaws = Some(to_display_issues(req_issues, &page));
     }
     Ok(Json(json))
 }

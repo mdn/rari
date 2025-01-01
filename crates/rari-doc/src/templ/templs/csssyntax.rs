@@ -21,10 +21,11 @@ static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
 });
 
 #[rari_f]
-pub fn csssyntax() -> Result<String, DocError> {
+pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
     let page_type = env.page_type;
     let mut slug_rev_iter = env.slug.rsplitn(3, '/');
-    let name = slug_rev_iter.next().unwrap();
+    let slug_name = slug_rev_iter.next().unwrap();
+    let name = name.as_deref().unwrap_or(slug_name);
     let typ = match page_type {
         rari_types::fm_types::PageType::CssAtRule => CssType::AtRule(name),
         rari_types::fm_types::PageType::CssAtRuleDescriptor => {
