@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.13](https://github.com/mdn/rari/compare/v0.1.12...v0.1.13) (2025-01-01)
+
+
+### Bug Fixes
+
+* **templ:** support argument for cssyntax ([330acdc](https://github.com/mdn/rari/commit/330acdcfc7d803b5bcc4656a9dcc093dad0339ee))
+
 ## [0.1.12](https://github.com/mdn/rari/compare/v0.1.11...v0.1.12) (2024-12-30)
 
 
