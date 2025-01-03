@@ -264,7 +264,7 @@ impl JSRefItem {
     }
 }
 
-const ASYNC_GENERATOR: &[Cow<'static, str>] = &[Cow::Borrowed("AsyncGenerator")];
+const ASYNC_ITERATOR: &[Cow<'static, str>] = &[Cow::Borrowed("AsyncGenerator")];
 const FUNCTION: &[Cow<'static, str>] = &[
     Cow::Borrowed("AsyncFunction"),
     Cow::Borrowed("AsyncGeneratorFunction"),
@@ -303,8 +303,8 @@ fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, s
     static GROUP_DATA: LazyLock<Vec<&[Cow<'static, str>]>> = LazyLock::new(|| {
         vec![
             ERROR,
-            &INTL_SUBPAGES,
-            &TEMPORAL_SUBPAGES,
+            &namespace_subpages("Intl"),
+            &namespace_subpages("Temporal"),
             &[
                 Cow::Borrowed("Intl/Segmenter/segment/Segments"),
                 Cow::Borrowed("Intl.Segmenter"),
@@ -327,7 +327,7 @@ fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, s
 
 fn inheritance_data(obj: &str) -> Option<&str> {
     match obj {
-        o if ASYNC_GENERATOR.iter().any(|x| x == o) => Some("AsyncIterator"),
+        o if ASYNC_ITERATOR.iter().any(|x| x == o) => Some("AsyncIterator"),
         o if FUNCTION.iter().any(|x| x == o) => Some("Function"),
         o if ITERATOR.iter().any(|x| x == o) => Some("Iterator"),
         o if TYPED_ARRAY[1..].iter().any(|x| x == o) => Some("TypedArray"),
@@ -336,37 +336,31 @@ fn inheritance_data(obj: &str) -> Option<&str> {
     }
 }
 
-static INTL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> = LazyLock::new(|| {
-    once(Cow::Borrowed("Intl"))
+/// Intl and Temporal are big namespaces with many classes underneath it. The classes
+/// are shown as related pages.
+fn namespace_subpages(namespace: &str) -> Vec<Cow<'static, str>> {
+    return once(Cow::Borrowed(namespace))
         .chain(
             get_sub_pages(
-                "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl",
+                &format!(
+                    "/en-US/docs/Web/JavaScript/Reference/Global_Objects/{}",
+                    namespace
+                ),
                 Some(1),
                 Default::default(),
             )
             .unwrap_or_default()
             .iter()
-            .filter(|page| page.page_type() == PageType::JavascriptClass)
+            .filter(|page| {
+                matches!(
+                    page.page_type(),
+                    PageType::JavascriptClass | PageType::JavaScriptNamespace
+                )
+            })
             .map(|page| Cow::Owned(slug_to_object_name(page.slug()).to_string())),
         )
-        .collect()
-});
-
-static TEMPORAL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> = LazyLock::new(|| {
-    once(Cow::Borrowed("Temporal"))
-        .chain(
-            get_sub_pages(
-                "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal",
-                Some(1),
-                Default::default(),
-            )
-            .unwrap_or_default()
-            .iter()
-            .filter(|page| matches!(page.page_type(), PageType::JavascriptClass | PageType::JavaScriptNamespace))
-            .map(|page| Cow::Owned(slug_to_object_name(page.slug()).to_string())),
-        )
-        .collect()
-});
+        .collect();
+}
 
 fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
     let sub_path = slug
@@ -378,33 +372,24 @@ fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
     if sub_path.starts_with("Proxy/Proxy") {
         return "Proxy/handler".into();
     }
-    if let Some(intl) = sub_path.strip_prefix("Intl/") {
-        if intl
-            .chars()
-            .next()
-            .map(|c| c.is_ascii_lowercase())
-            .unwrap_or_default()
-        {
-            return "Intl".into();
+    for namespace in &["Intl", "Temporal"] {
+        if let Some(sub_sub_path) = sub_path.strip_prefix(format!("{}/", namespace).as_str()) {
+            if sub_sub_path
+                .chars()
+                .next()
+                .map(|c| c.is_ascii_lowercase())
+                .unwrap_or_default()
+            {
+                return namespace.into();
+            }
+            return Cow::Owned(
+                sub_path[..sub_sub_path
+                    .find('/')
+                    .map(|i| i + namespace.len() + 1)
+                    .unwrap_or(sub_path.len())]
+                    .replace('/', "."),
+            );
         }
-        return Cow::Owned(
-            sub_path[..intl.find('/').map(|i| i + 5).unwrap_or(sub_path.len())].replace('/', "."),
-        );
-    }
-    if let Some(temporal) = sub_path.strip_prefix("Temporal/") {
-        // Hypothetical case, Temporal has a direct method/property child;
-        // doesn't exist atm
-        if temporal
-            .chars()
-            .next()
-            .map(|c| c.is_ascii_lowercase())
-            .unwrap_or_default()
-        {
-            return "Temporal".into();
-        }
-        return Cow::Owned(
-            sub_path[..temporal.find('/').map(|i| i + 9).unwrap_or(sub_path.len())].replace('/', "."),
-        );
     }
 
     sub_path[..sub_path.find('/').unwrap_or(sub_path.len())].into()
@@ -435,7 +420,9 @@ mod test {
             "Temporal.Now"
         );
         assert_eq!(
-            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Temporal/Now/plainDateISO"),
+            slug_to_object_name(
+                "Web/JavaScript/Reference/Global_Objects/Temporal/Now/plainDateISO"
+            ),
             "Temporal.Now"
         );
         assert_eq!(
