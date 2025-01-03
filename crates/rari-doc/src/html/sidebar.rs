@@ -297,8 +297,16 @@ pub struct SubPageEntry {
     pub code: bool,
     #[serde(default, skip_serializing_if = "is_default")]
     pub include_parent: bool,
-    #[serde(default, skip_serializing_if = "is_default")]
-    pub recursive: bool,
+    #[serde(default = "default_depth", skip_serializing_if = "is_default_depth")]
+    pub depth: usize,
+}
+
+fn default_depth() -> usize {
+    1
+}
+
+fn is_default_depth(value: &usize) -> bool {
+    *value == default_depth()
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
@@ -330,14 +338,14 @@ pub enum MetaChildren {
         tags: Vec<PageType>,
         code: bool,
         include_parent: bool,
-        recursive: bool,
+        depth: usize,
     },
     ListSubPagesGrouped {
         path: String,
         tags: Vec<PageType>,
         code: bool,
         include_parent: bool,
-        recursive: bool,
+        depth: usize,
     },
     WebExtApi,
     #[default]
@@ -444,7 +452,7 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                 path,
                 code,
                 include_parent,
-                recursive,
+                depth,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
@@ -455,7 +463,7 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                     tags,
                     code,
                     include_parent,
-                    recursive,
+                    depth,
                 },
             },
             SidebarEntry::ListSubPagesGrouped(SubPageEntry {
@@ -467,7 +475,7 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                 path,
                 code,
                 include_parent,
-                recursive,
+                depth,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
@@ -478,7 +486,7 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                     tags,
                     code,
                     include_parent,
-                    recursive,
+                    depth,
                 },
             },
             SidebarEntry::Default(BasicEntry {
@@ -604,7 +612,7 @@ impl SidebarMetaEntry {
                 tags,
                 code,
                 include_parent,
-                recursive,
+                depth,
             } => {
                 let url = if path.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
                     Cow::Borrowed(path)
@@ -620,7 +628,7 @@ impl SidebarMetaEntry {
                     out,
                     &url,
                     locale,
-                    Some(if *recursive { usize::MAX - 1 } else { 1 }),
+                    Some(*depth),
                     ListSubPagesContext {
                         sorter: None,
                         page_types: tags,
@@ -634,7 +642,7 @@ impl SidebarMetaEntry {
                 tags,
                 code,
                 include_parent,
-                recursive,
+                depth,
             } => {
                 let url = if path.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
                     Cow::Borrowed(path)
@@ -650,7 +658,7 @@ impl SidebarMetaEntry {
                     out,
                     &url,
                     locale,
-                    Some(if *recursive { usize::MAX - 1 } else { 1 }),
+                    Some(*depth),
                     ListSubPagesContext {
                         sorter: None,
                         page_types: tags,

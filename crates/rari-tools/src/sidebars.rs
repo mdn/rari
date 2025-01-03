@@ -263,7 +263,7 @@ fn process_entry(entry: SidebarEntry, pairs: Pairs<'_>) -> SidebarEntry {
             path,
             include_parent,
             code,
-            recursive,
+            depth,
         }) => {
             let new_path: Option<String> = replace_pairs(Some(path), pairs);
             if new_path.is_none() {
@@ -278,7 +278,7 @@ fn process_entry(entry: SidebarEntry, pairs: Pairs<'_>) -> SidebarEntry {
                 path: new_path.unwrap(),
                 include_parent,
                 code,
-                recursive,
+                depth,
             })
         }
         SidebarEntry::ListSubPagesGrouped(SubPageEntry {
@@ -290,7 +290,7 @@ fn process_entry(entry: SidebarEntry, pairs: Pairs<'_>) -> SidebarEntry {
             path,
             include_parent,
             code,
-            recursive,
+            depth,
         }) => {
             let new_path: Option<String> = replace_pairs(Some(path), pairs);
             if new_path.is_none() {
@@ -305,7 +305,7 @@ fn process_entry(entry: SidebarEntry, pairs: Pairs<'_>) -> SidebarEntry {
                 path: new_path.unwrap(),
                 include_parent,
                 code,
-                recursive,
+                depth,
             })
         }
         SidebarEntry::Default(BasicEntry {
