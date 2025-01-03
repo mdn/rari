@@ -189,6 +189,7 @@ pub fn list_sub_pages_grouped_internal(
     out: &mut String,
     url: &str,
     locale: Locale,
+    depth: Option<usize>,
     ListSubPagesContext {
         sorter,
         page_types,
@@ -196,7 +197,7 @@ pub fn list_sub_pages_grouped_internal(
         include_parent,
     }: ListSubPagesContext<'_>,
 ) -> Result<(), DocError> {
-    let sub_pages = get_sub_pages(url, None, sorter.unwrap_or_default())?;
+    let sub_pages = get_sub_pages(url, depth, sorter.unwrap_or_default())?;
 
     let mut grouped = BTreeMap::new();
     for sub_page in sub_pages.iter() {

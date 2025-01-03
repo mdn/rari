@@ -297,6 +297,8 @@ pub struct SubPageEntry {
     pub code: bool,
     #[serde(default, skip_serializing_if = "is_default")]
     pub include_parent: bool,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub recursive: bool,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
@@ -328,12 +330,14 @@ pub enum MetaChildren {
         tags: Vec<PageType>,
         code: bool,
         include_parent: bool,
+        recursive: bool,
     },
     ListSubPagesGrouped {
         path: String,
         tags: Vec<PageType>,
         code: bool,
         include_parent: bool,
+        recursive: bool,
     },
     WebExtApi,
     #[default]
@@ -440,6 +444,7 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                 path,
                 code,
                 include_parent,
+                recursive,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
@@ -450,6 +455,7 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                     tags,
                     code,
                     include_parent,
+                    recursive,
                 },
             },
             SidebarEntry::ListSubPagesGrouped(SubPageEntry {
@@ -461,6 +467,7 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                 path,
                 code,
                 include_parent,
+                recursive,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
@@ -471,6 +478,7 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                     tags,
                     code,
                     include_parent,
+                    recursive,
                 },
             },
             SidebarEntry::Default(BasicEntry {
@@ -596,6 +604,7 @@ impl SidebarMetaEntry {
                 tags,
                 code,
                 include_parent,
+                recursive,
             } => {
                 let url = if path.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
                     Cow::Borrowed(path)
@@ -611,7 +620,7 @@ impl SidebarMetaEntry {
                     out,
                     &url,
                     locale,
-                    Some(1),
+                    Some(if *recursive { usize::MAX - 1 } else { 1 }),
                     ListSubPagesContext {
                         sorter: None,
                         page_types: tags,
@@ -625,6 +634,7 @@ impl SidebarMetaEntry {
                 tags,
                 code,
                 include_parent,
+                recursive,
             } => {
                 let url = if path.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
                     Cow::Borrowed(path)
@@ -640,6 +650,7 @@ impl SidebarMetaEntry {
                     out,
                     &url,
                     locale,
+                    Some(if *recursive { usize::MAX - 1 } else { 1 }),
                     ListSubPagesContext {
                         sorter: None,
                         page_types: tags,
