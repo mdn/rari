@@ -32,7 +32,7 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
     }
     if !matches!(
         main_object.as_ref(),
-        "Proxy" | "Atomics" | "Math" | "Intl" | "JSON" | "Reflect",
+        "Proxy" | "Atomics" | "Math" | "Intl" | "JSON" | "Reflect" | "Temporal",
     ) {
         // %Base% is the default inheritance when the class has no extends clause:
         // instances inherit from Object.prototype, and class inherits from Function.prototype
@@ -275,6 +275,7 @@ const TYPED_ARRAY: &[Cow<'static, str>] = &[
     Cow::Borrowed("TypedArray"),
     Cow::Borrowed("BigInt64Array"),
     Cow::Borrowed("BigUint64Array"),
+    Cow::Borrowed("Float16Array"),
     Cow::Borrowed("Float32Array"),
     Cow::Borrowed("Float64Array"),
     Cow::Borrowed("Int8Array"),
@@ -303,6 +304,7 @@ fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, s
         vec![
             ERROR,
             &INTL_SUBPAGES,
+            &TEMPORAL_SUBPAGES,
             &[
                 Cow::Borrowed("Intl/Segmenter/segment/Segments"),
                 Cow::Borrowed("Intl.Segmenter"),
@@ -350,6 +352,22 @@ static INTL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> = LazyLock::new(|| {
         .collect()
 });
 
+static TEMPORAL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> = LazyLock::new(|| {
+    once(Cow::Borrowed("Temporal"))
+        .chain(
+            get_sub_pages(
+                "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal",
+                Some(1),
+                Default::default(),
+            )
+            .unwrap_or_default()
+            .iter()
+            .filter(|page| matches!(page.page_type(), PageType::JavascriptClass | PageType::JavaScriptNamespace))
+            .map(|page| Cow::Owned(slug_to_object_name(page.slug()).to_string())),
+        )
+        .collect()
+});
+
 fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
     let sub_path = slug
         .strip_prefix("Web/JavaScript/Reference/Global_Objects/")
@@ -371,6 +389,21 @@ fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
         }
         return Cow::Owned(
             sub_path[..intl.find('/').map(|i| i + 5).unwrap_or(sub_path.len())].replace('/', "."),
+        );
+    }
+    if let Some(temporal) = sub_path.strip_prefix("Temporal/") {
+        // Hypothetical case, Temporal has a direct method/property child;
+        // doesn't exist atm
+        if temporal
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_lowercase())
+            .unwrap_or_default()
+        {
+            return "Temporal".into();
+        }
+        return Cow::Owned(
+            sub_path[..temporal.find('/').map(|i| i + 9).unwrap_or(sub_path.len())].replace('/', "."),
         );
     }
 
@@ -396,6 +429,14 @@ mod test {
                 "Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat/format"
             ),
             "Intl.DateTimeFormat"
+        );
+        assert_eq!(
+            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Temporal/Now"),
+            "Temporal.Now"
+        );
+        assert_eq!(
+            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Temporal/Now/plainDateISO"),
+            "Temporal.Now"
         );
         assert_eq!(
             slug_to_object_name(
