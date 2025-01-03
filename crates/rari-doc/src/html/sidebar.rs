@@ -323,7 +323,12 @@ pub enum SidebarEntry {
 #[derive(Debug, Default)]
 pub enum MetaChildren {
     Children(Vec<SidebarMetaEntry>),
-    ListSubPages(String, Vec<PageType>, bool, bool),
+    ListSubPages {
+        path: String,
+        tags: Vec<PageType>,
+        code: bool,
+        include_parent: bool,
+    },
     ListSubPagesGrouped {
         path: String,
         tags: Vec<PageType>,
@@ -440,7 +445,12 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                 details,
                 code: false,
                 content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
-                children: MetaChildren::ListSubPages(path, tags, code, include_parent),
+                children: MetaChildren::ListSubPages {
+                    path,
+                    tags,
+                    code,
+                    include_parent,
+                },
             },
             SidebarEntry::ListSubPagesGrouped(SubPageEntry {
                 details,
@@ -581,15 +591,20 @@ impl SidebarMetaEntry {
                     child.render(out, locale, slug, l10n)?;
                 }
             }
-            MetaChildren::ListSubPages(url, page_types, code, include_parent) => {
-                let url = if url.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
-                    Cow::Borrowed(url)
+            MetaChildren::ListSubPages {
+                path,
+                tags,
+                code,
+                include_parent,
+            } => {
+                let url = if path.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
+                    Cow::Borrowed(path)
                 } else {
                     Cow::Owned(concat_strs!(
                         "/",
                         Locale::default().as_url_str(),
                         "/docs",
-                        url
+                        path
                     ))
                 };
                 list_sub_pages_internal(
@@ -599,7 +614,7 @@ impl SidebarMetaEntry {
                     Some(1),
                     ListSubPagesContext {
                         sorter: None,
-                        page_types,
+                        page_types: tags,
                         code: *code,
                         include_parent: *include_parent,
                     },
