@@ -338,7 +338,7 @@ fn inheritance_data(obj: &str) -> Option<&str> {
 
 /// Intl and Temporal are big namespaces with many classes underneath it. The classes
 /// are shown as related pages.
-fn namespace_subpages<'a>(namespace: &'a str) -> Vec<String> {
+fn namespace_subpages(namespace: &str) -> Vec<String> {
     once(namespace.to_string())
         .chain(
             get_sub_pages(
