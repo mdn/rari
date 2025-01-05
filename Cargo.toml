@@ -74,7 +74,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 url = { version = "2", features = ["serde"] }
-itertools = "0.13"
+itertools = "0.14"
 constcat = "0.5"
 anyhow = "1"
 indexmap = { version = "2", features = ["serde"] }
@@ -115,7 +115,7 @@ anyhow.workspace = true
 dashmap.workspace = true
 schemars.workspace = true
 
-self_update = { version = "0.41", default-features = false, features = [
+self_update = { version = "0.42", default-features = false, features = [
   "rustls",
   "compression-flate2",
   "compression-zip-deflate",
@@ -123,6 +123,6 @@ self_update = { version = "0.41", default-features = false, features = [
 clap = { version = "4.5.1", features = ["derive"] }
 clap-verbosity-flag = { version = "3", features = ["tracing"] }
 tabwriter = "1"
-axum = "0.7"
+axum = "0.8"
 tokio = "1"
 dotenvy = "0.15"

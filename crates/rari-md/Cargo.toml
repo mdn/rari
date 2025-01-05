@@ -14,4 +14,4 @@ rari-types.workspace = true
 itertools.workspace = true
 base64.workspace = true
 
-comrak = { version = "0.31", default-features = false }
+comrak = { version = "0.33", default-features = false }

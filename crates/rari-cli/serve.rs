@@ -184,7 +184,7 @@ pub fn serve() -> Result<(), anyhow::Error> {
         .unwrap()
         .block_on(async {
             let app = Router::new()
-                .route("/:locale/search-index.json", get(get_search_index_handler))
+                .route("/{locale}/search-index.json", get(get_search_index_handler))
                 .fallback(handler);
 
             let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();

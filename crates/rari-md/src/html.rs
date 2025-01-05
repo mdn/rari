@@ -137,9 +137,9 @@ impl Anchorizer {
     }
 }
 
-struct HtmlFormatter<'o> {
+struct HtmlFormatter<'o, 'c> {
     output: &'o mut WriteWithLast<'o>,
-    options: &'o Options,
+    options: &'o Options<'c>,
     anchorizer: Anchorizer,
     footnote_ix: u32,
     written_footnote_ix: u32,
@@ -331,9 +331,12 @@ where
     Ok(())
 }
 
-impl<'o> HtmlFormatter<'o> {
+impl<'o, 'c> HtmlFormatter<'o, 'c>
+where
+    'c: 'o,
+{
     fn new(
-        options: &'o ComrakOptions,
+        options: &'o ComrakOptions<'c>,
         output: &'o mut WriteWithLast<'o>,
         plugins: &'o Plugins,
     ) -> Self {
@@ -823,6 +826,12 @@ impl<'o> HtmlFormatter<'o> {
                     } else {
                         self.output.write_all(literal)?;
                     }
+                }
+            }
+            NodeValue::Raw(ref literal) => {
+                // No sourcepos.
+                if entering {
+                    self.output.write_all(literal.as_bytes())?;
                 }
             }
             NodeValue::Strong => {
