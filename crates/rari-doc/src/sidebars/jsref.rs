@@ -264,60 +264,65 @@ impl JSRefItem {
     }
 }
 
-const ASYNC_ITERATOR: &[&'static str] = &["AsyncGenerator"];
-const FUNCTION: &[&'static str] = &[
-    "AsyncFunction",
-    "AsyncGeneratorFunction",
-    "GeneratorFunction",
+const ASYNC_ITERATOR: &[Cow<'static, str>] = &[Cow::Borrowed("AsyncGenerator")];
+const FUNCTION: &[Cow<'static, str>] = &[
+    Cow::Borrowed("AsyncFunction"),
+    Cow::Borrowed("AsyncGeneratorFunction"),
+    Cow::Borrowed("GeneratorFunction"),
 ];
-const ITERATOR: &[&'static str] = &["Generator"];
-const TYPED_ARRAY: &[&'static str] = &[
-    "TypedArray",
-    "BigInt64Array",
-    "BigUint64Array",
-    "Float16Array",
-    "Float32Array",
-    "Float64Array",
-    "Int8Array",
-    "Int16Array",
-    "Int32Array",
-    "Uint8Array",
-    "Uint8ClampedArray",
-    "Uint16Array",
-    "Uint32Array",
+const ITERATOR: &[Cow<'static, str>] = &[Cow::Borrowed("Generator")];
+const TYPED_ARRAY: &[Cow<'static, str>] = &[
+    Cow::Borrowed("TypedArray"),
+    Cow::Borrowed("BigInt64Array"),
+    Cow::Borrowed("BigUint64Array"),
+    Cow::Borrowed("Float16Array"),
+    Cow::Borrowed("Float32Array"),
+    Cow::Borrowed("Float64Array"),
+    Cow::Borrowed("Int8Array"),
+    Cow::Borrowed("Int16Array"),
+    Cow::Borrowed("Int32Array"),
+    Cow::Borrowed("Uint8Array"),
+    Cow::Borrowed("Uint8ClampedArray"),
+    Cow::Borrowed("Uint16Array"),
+    Cow::Borrowed("Uint32Array"),
 ];
-const ERROR: &[&'static str] = &[
-    "Error",
-    "AggregateError",
-    "EvalError",
-    "InternalError",
-    "RangeError",
-    "ReferenceError",
-    "SyntaxError",
-    "TypeError",
-    "URIError",
+const ERROR: &[Cow<'static, str>] = &[
+    Cow::Borrowed("Error"),
+    Cow::Borrowed("AggregateError"),
+    Cow::Borrowed("EvalError"),
+    Cow::Borrowed("InternalError"),
+    Cow::Borrowed("RangeError"),
+    Cow::Borrowed("ReferenceError"),
+    Cow::Borrowed("SyntaxError"),
+    Cow::Borrowed("TypeError"),
+    Cow::Borrowed("URIError"),
 ];
 
+static INTL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> =
+    LazyLock::new(|| namespace_subpages("Intl"));
+static TEMPORAL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> =
+    LazyLock::new(|| namespace_subpages("Temporal"));
+
 // Related pages
-fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, str>> {
-    static GROUP_DATA: LazyLock<Vec<Vec<String>>> = LazyLock::new(|| {
+pub fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, str>> {
+    static GROUP_DATA: LazyLock<Vec<&[Cow<'_, str>]>> = LazyLock::new(|| {
         vec![
-            ERROR.iter().map(|x| x.to_string()).collect(),
-            namespace_subpages("Intl"),
-            namespace_subpages("Temporal"),
-            vec![
-                "Intl/Segmenter/segment/Segments".to_string(),
-                "Intl.Segmenter".to_string(),
+            ERROR,
+            &INTL_SUBPAGES,
+            &TEMPORAL_SUBPAGES,
+            &[
+                Cow::Borrowed("Intl/Segmenter/segment/Segments"),
+                Cow::Borrowed("Intl.Segmenter"),
             ],
-            TYPED_ARRAY.iter().map(|x| x.to_string()).collect(),
-            vec!["Proxy".to_string(), "Proxy/handler".to_string()],
+            TYPED_ARRAY,
+            &[Cow::Borrowed("Proxy"), Cow::Borrowed("Proxy/handler")],
         ]
     });
     for g in GROUP_DATA.iter() {
-        if g.contains(&main_obj.to_string()) {
+        if g.contains(&Cow::Borrowed(main_obj)) {
             return g
                 .iter()
-                .filter(|x| !inheritance.contains(&Cow::Borrowed(x.as_ref())))
+                .filter(|x| !inheritance.contains(x))
                 .map(|x| Cow::Borrowed(x.as_ref()))
                 .collect();
         }
@@ -327,19 +332,19 @@ fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, s
 
 fn inheritance_data(obj: &str) -> Option<&str> {
     match obj {
-        o if ASYNC_ITERATOR.contains(&o) => Some("AsyncIterator"),
-        o if FUNCTION.contains(&o) => Some("Function"),
-        o if ITERATOR.contains(&o) => Some("Iterator"),
-        o if TYPED_ARRAY[1..].contains(&o) => Some("TypedArray"),
-        o if ERROR[1..].contains(&o) => Some("Error"),
+        o if ASYNC_ITERATOR.iter().any(|x| x == o) => Some("AsyncIterator"),
+        o if FUNCTION.iter().any(|x| x == o) => Some("Function"),
+        o if ITERATOR.iter().any(|x| x == o) => Some("Iterator"),
+        o if TYPED_ARRAY[1..].iter().any(|x| x == o) => Some("TypedArray"),
+        o if ERROR[1..].iter().any(|x| x == o) => Some("Error"),
         _ => None,
     }
 }
 
 /// Intl and Temporal are big namespaces with many classes underneath it. The classes
 /// are shown as related pages.
-fn namespace_subpages(namespace: &str) -> Vec<String> {
-    once(namespace.to_string())
+fn namespace_subpages(namespace: &str) -> Vec<Cow<'_, str>> {
+    once(Cow::Borrowed(namespace))
         .chain(
             get_sub_pages(
                 &format!(
@@ -357,7 +362,7 @@ fn namespace_subpages(namespace: &str) -> Vec<String> {
                     PageType::JavascriptClass | PageType::JavascriptNamespace
                 )
             })
-            .map(|page| slug_to_object_name(page.slug()).to_string()),
+            .map(|page| Cow::Owned(slug_to_object_name(page.slug()).to_string())),
         )
         .collect()
 }
@@ -372,20 +377,20 @@ fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
     if sub_path.starts_with("Proxy/Proxy") {
         return "Proxy/handler".into();
     }
-    for namespace in &["Intl", "Temporal"] {
-        if let Some(sub_sub_path) = sub_path.strip_prefix(format!("{}/", namespace).as_str()) {
+    for namespace in &["Intl/", "Temporal/"] {
+        if let Some(sub_sub_path) = sub_path.strip_prefix(namespace) {
             if sub_sub_path
                 .chars()
                 .next()
                 .map(|c| c.is_ascii_lowercase())
                 .unwrap_or_default()
             {
-                return namespace.to_string().into();
+                return Cow::Borrowed(&namespace[..namespace.len() - 1]);
             }
             return Cow::Owned(
                 sub_path[..sub_sub_path
                     .find('/')
-                    .map(|i| i + namespace.len() + 1)
+                    .map(|i| i + namespace.len())
                     .unwrap_or(sub_path.len())]
                     .replace('/', "."),
             );
