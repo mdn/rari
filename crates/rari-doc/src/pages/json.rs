@@ -264,13 +264,21 @@ pub struct JsonDoc {
     pub title: String,
     pub toc: Vec<TocEntry>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub baseline: Option<&'static SupportStatusWithByKey>,
+    pub baseline: Option<Baseline>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
     pub browser_compat: Vec<String>,
     #[serde(rename = "pageType")]
     pub page_type: PageType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub flaws: Option<DisplayIssues>,
+}
+
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct Baseline {
+    #[serde(flatten)]
+    pub support: &'static SupportStatusWithByKey,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub asterisk: bool,
 }
 
 impl JsonDocMetadata {
@@ -349,7 +357,7 @@ pub struct JsonDocMetadata {
     pub summary: Option<String>,
     pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub baseline: Option<&'static SupportStatusWithByKey>,
+    pub baseline: Option<Baseline>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
     pub browser_compat: Vec<String>,
     #[serde(rename = "pageType")]

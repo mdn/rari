@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 use std::path::Path;
 
 use indexmap::IndexMap;
+use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use schemars::JsonSchema;
 use serde::de::{self, value, SeqAccess, Visitor};
@@ -16,6 +17,13 @@ use crate::error::Error;
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct WebFeatures {
     pub features: IndexMap<String, FeatureData>,
+    pub bcd_keys: Vec<KeyStatus>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct KeyStatus {
+    bcd_key: String,
+    feature: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -23,49 +31,168 @@ pub struct DirtyWebFeatures {
     pub features: IndexMap<String, Value>,
 }
 
+#[inline]
+fn spaced(bcd_key: &str) -> String {
+    bcd_key.replace('.', " ")
+}
+
+#[inline]
+fn unspaced(bcd_key: &str) -> String {
+    bcd_key.replace(' ', ".")
+}
+
 impl WebFeatures {
     pub fn from_file(path: &Path) -> Result<Self, Error> {
         let json_str = read_to_string(path)?;
         let dirty_map: DirtyWebFeatures = serde_json::from_str(&json_str)?;
-        let map = WebFeatures {
-            features: dirty_map
-                .features
-                .into_iter()
-                .filter_map(|(k, v)| {
-                    serde_json::from_value::<FeatureData>(v)
-                        .inspect_err(|e| {
-                            tracing::error!("Error serializing baseline for {}: {}", k, &e)
-                        })
-                        .ok()
-                        .map(|v| (k, v))
+        let features: IndexMap<String, FeatureData> = dirty_map
+            .features
+            .into_iter()
+            .filter_map(|(k, v)| {
+                serde_json::from_value::<FeatureData>(v)
+                    .inspect_err(|e| {
+                        tracing::error!("Error serializing baseline for {}: {}", k, &e)
+                    })
+                    .ok()
+                    .map(|v| (k, v))
+            })
+            .collect();
+        // bcd_keys is a sorted by KeyStatus.bcd_key
+        // We replace "." with " " so the sorting is stable as in:
+        // http headers Content-Security-Policy
+        // http headers Content-Security-Policy base-uri
+        // http headers Content-Security-Policy child-src
+        // http headers Content-Security-Policy-Report-Only
+        //
+        // instead of:
+        // http.headers.Content-Security-Policy
+        // http.headers.Content-Security-Policy-Report-Only
+        // http.headers.Content-Security-Policy.base-uri
+        // http.headers.Content-Security-Policy.child-src
+        //
+        // This allows to simple return ranges when looking for keys prefixed with
+        // `http headers Content-Security-Policy`
+        let mut bcd_keys: Vec<KeyStatus> = features
+            .iter()
+            .flat_map(|(feature, fd)| {
+                fd.compat_features.iter().map(|bcd_key| KeyStatus {
+                    bcd_key: spaced(bcd_key),
+                    feature: feature.clone(),
                 })
-                .collect(),
-        };
+            })
+            .collect();
+        bcd_keys.sort_by(|a, b| a.bcd_key.cmp(&b.bcd_key));
+        bcd_keys.dedup_by(|a, b| a.bcd_key == b.bcd_key);
+
+        let map = WebFeatures { features, bcd_keys };
         Ok(map)
     }
 
-    pub fn feature_status(&self, bcd_key: &str) -> Option<&SupportStatusWithByKey> {
-        self.features.values().find_map(|feature_data| {
-            if let Some(ref status) = feature_data.status {
-                if feature_data
-                    .compat_features
+    pub fn sub_keys(&self, bcd_key: &str) -> &[KeyStatus] {
+        let suffix = concat_strs!(bcd_key, " ");
+        if let Ok(start) = self
+            .bcd_keys
+            .binary_search_by_key(&bcd_key, |ks| &ks.bcd_key)
+        {
+            if start < self.bcd_keys.len() {
+                if let Some(end) = self.bcd_keys[start + 1..]
                     .iter()
-                    .any(|key| key == bcd_key)
+                    .position(|ks| !ks.bcd_key.starts_with(&suffix))
                 {
-                    if feature_data.discouraged.is_some() {
-                        return None;
+                    return &self.bcd_keys[start + 1..start + 1 + end];
+                }
+            }
+        }
+        &[]
+    }
+
+    // Compute status according to:
+    // https://github.com/mdn/yari/issues/11546#issuecomment-2531611136
+    pub fn feature_status(&self, bcd_key: &str) -> Option<(&SupportStatusWithByKey, bool)> {
+        let bcd_key_spaced = &spaced(bcd_key);
+        if let Some(status) = self.feature_status_internal(bcd_key_spaced) {
+            let sub_keys = self.sub_keys(bcd_key_spaced);
+            let sub_status = sub_keys
+                .iter()
+                .map(|sub_key| {
+                    self.feature_status_internal_with_feature_name(
+                        &sub_key.bcd_key,
+                        &sub_key.feature,
+                    )
+                    .and_then(|status| status.baseline)
+                })
+                .collect::<Vec<_>>();
+            if sub_status
+                .iter()
+                .all(|baseline| baseline == &status.baseline)
+            {
+                return Some((status, false));
+            }
+            match status.baseline {
+                Some(BaselineHighLow::False(false)) => {
+                    let Support {
+                        chrome,
+                        chrome_android,
+                        firefox,
+                        firefox_android,
+                        safari,
+                        safari_ios,
+                        ..
+                    } = &status.support;
+                    if chrome == chrome_android
+                        && firefox == firefox_android
+                        && safari == safari_ios
+                    {
+                        return Some((status, false));
                     }
-                    if let Some(by_key) = &status.by_compat_key {
-                        if let Some(key_status) = by_key.get(bcd_key) {
-                            if key_status.baseline == status.baseline {
-                                return Some(status);
-                            }
+                }
+                Some(BaselineHighLow::Low) => {
+                    if sub_status
+                        .iter()
+                        .all(|ss| matches!(ss, Some(BaselineHighLow::Low | BaselineHighLow::High)))
+                    {
+                        return Some((status, false));
+                    }
+                }
+                _ => {}
+            }
+            Some((status, true))
+        } else {
+            None
+        }
+    }
+
+    fn feature_status_internal(&self, bcd_key_spaced: &str) -> Option<&SupportStatusWithByKey> {
+        if let Ok(i) = self
+            .bcd_keys
+            .binary_search_by(|ks| ks.bcd_key.as_str().cmp(bcd_key_spaced))
+        {
+            let feature_name = &self.bcd_keys[i].feature;
+            return self.feature_status_internal_with_feature_name(bcd_key_spaced, feature_name);
+        }
+        None
+    }
+
+    fn feature_status_internal_with_feature_name(
+        &self,
+        bcd_key_spaced: &str,
+        feature_name: &str,
+    ) -> Option<&SupportStatusWithByKey> {
+        if let Some(feature_data) = self.features.get(feature_name) {
+            if feature_data.discouraged.is_some() {
+                return None;
+            }
+            if let Some(ref status) = feature_data.status {
+                if let Some(by_key) = &status.by_compat_key {
+                    if let Some(key_status) = by_key.get(&unspaced(bcd_key_spaced)) {
+                        if key_status.baseline == status.baseline {
+                            return Some(status);
                         }
                     }
                 }
             }
-            None
-        })
+        }
+        None
     }
 }
 
@@ -112,7 +239,15 @@ pub struct FeatureData {
     pub snapshot: Vec<String>,
     /** Whether developers are formally discouraged from using this feature */
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub discouraged: Option<Value>,
+    pub discouraged: Option<Discouraged>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct Discouraged {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    according_to: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    alternatives: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -126,7 +261,25 @@ pub enum BrowserIdentifier {
     Safari,
     SafariIos,
 }
-
+#[derive(
+    Deserialize, Serialize, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema,
+)]
+pub struct Support {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    chrome: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    chrome_android: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    edge: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    firefox: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    firefox_android: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    safari: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    safari_ios: Option<String>,
+}
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum BaselineHighLow {
@@ -148,7 +301,7 @@ pub struct SupportStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline_high_date: Option<String>,
     /// Browser versions that most-recently introduced the feature
-    pub support: BTreeMap<BrowserIdentifier, String>,
+    pub support: Support,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
@@ -163,7 +316,7 @@ pub struct SupportStatusWithByKey {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline_high_date: Option<String>,
     /// Browser versions that most-recently introduced the feature
-    pub support: BTreeMap<BrowserIdentifier, String>,
+    pub support: Support,
     #[serde(default, skip_serializing)]
     pub by_compat_key: Option<BTreeMap<String, SupportStatus>>,
 }

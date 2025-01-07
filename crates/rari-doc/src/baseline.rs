@@ -36,7 +36,9 @@ static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
 ///
 /// * `Option<&'static SupportStatusWithByKey>` - Returns `Some(&SupportStatusWithByKey)` if the key is found,
 ///   or `None` if the key is not found or `WEB_FEATURES` is not initialized.
-pub(crate) fn get_baseline(browser_compat: &[String]) -> Option<&'static SupportStatusWithByKey> {
+pub(crate) fn get_baseline(
+    browser_compat: &[String],
+) -> Option<(&'static SupportStatusWithByKey, bool)> {
     if let Some(ref web_features) = *WEB_FEATURES {
         return match &browser_compat {
             &[bcd_key] => web_features.feature_status(bcd_key.as_str()),
