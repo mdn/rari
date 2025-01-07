@@ -14,6 +14,14 @@ use url::Url;
 
 use crate::error::Error;
 
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct Baseline<'a> {
+    #[serde(flatten)]
+    pub support: &'a SupportStatusWithByKey,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub asterisk: bool,
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct WebFeatures {
     pub features: IndexMap<String, FeatureData>,
@@ -108,7 +116,7 @@ impl WebFeatures {
 
     // Compute status according to:
     // https://github.com/mdn/yari/issues/11546#issuecomment-2531611136
-    pub fn feature_status(&self, bcd_key: &str) -> Option<(&SupportStatusWithByKey, bool)> {
+    pub fn feature_status(&self, bcd_key: &str) -> Option<Baseline> {
         let bcd_key_spaced = &spaced(bcd_key);
         if let Some(status) = self.feature_status_internal(bcd_key_spaced) {
             let sub_keys = self.sub_keys(bcd_key_spaced);
@@ -126,7 +134,10 @@ impl WebFeatures {
                 .iter()
                 .all(|baseline| baseline == &status.baseline)
             {
-                return Some((status, false));
+                return Some(Baseline {
+                    support: status,
+                    asterisk: false,
+                });
             }
             match status.baseline {
                 Some(BaselineHighLow::False(false)) => {
@@ -143,7 +154,10 @@ impl WebFeatures {
                         && firefox == firefox_android
                         && safari == safari_ios
                     {
-                        return Some((status, false));
+                        return Some(Baseline {
+                            support: status,
+                            asterisk: false,
+                        });
                     }
                 }
                 Some(BaselineHighLow::Low) => {
@@ -151,12 +165,18 @@ impl WebFeatures {
                         .iter()
                         .all(|ss| matches!(ss, Some(BaselineHighLow::Low | BaselineHighLow::High)))
                     {
-                        return Some((status, false));
+                        return Some(Baseline {
+                            support: status,
+                            asterisk: false,
+                        });
                     }
                 }
                 _ => {}
             }
-            Some((status, true))
+            Some(Baseline {
+                support: status,
+                asterisk: true,
+            })
         } else {
             None
         }

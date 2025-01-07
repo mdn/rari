@@ -7,7 +7,7 @@
 use std::path::PathBuf;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
-use rari_data::baseline::SupportStatusWithByKey;
+use rari_data::baseline::Baseline;
 use rari_types::fm_types::PageType;
 use rari_types::locale::{Locale, Native};
 use schemars::JsonSchema;
@@ -264,21 +264,13 @@ pub struct JsonDoc {
     pub title: String,
     pub toc: Vec<TocEntry>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub baseline: Option<Baseline>,
+    pub baseline: Option<Baseline<'static>>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
     pub browser_compat: Vec<String>,
     #[serde(rename = "pageType")]
     pub page_type: PageType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub flaws: Option<DisplayIssues>,
-}
-
-#[derive(Debug, Clone, Serialize, JsonSchema)]
-pub struct Baseline {
-    #[serde(flatten)]
-    pub support: &'static SupportStatusWithByKey,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub asterisk: bool,
 }
 
 impl JsonDocMetadata {
@@ -357,7 +349,7 @@ pub struct JsonDocMetadata {
     pub summary: Option<String>,
     pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub baseline: Option<Baseline>,
+    pub baseline: Option<Baseline<'static>>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
     pub browser_compat: Vec<String>,
     #[serde(rename = "pageType")]

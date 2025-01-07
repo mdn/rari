@@ -10,7 +10,7 @@ use rari_utils::concat_strs;
 use scraper::Html;
 
 use super::json::{
-    Baseline, BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
+    BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
     JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, Prose, Section,
     Source, SpecificationSection, TocEntry, Translation,
 };
@@ -281,7 +281,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             body,
             sidebar_html,
             toc,
-            baseline: baseline.map(|(support, asterisk)| Baseline { support, asterisk }),
+            baseline,
             modified,
             summary,
             popularity,
