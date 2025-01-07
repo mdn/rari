@@ -723,7 +723,6 @@ pub struct JsonSPAPage {
 /// * `tag` - An `Option<Parent>` that holds an optional parent for the featured article, which is
 ///   used for categorization.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct HomePageFeaturedArticle {
     pub mdn_url: String,
     pub summary: String,
