@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.14](https://github.com/mdn/rari/compare/v0.1.13...v0.1.14) (2025-01-07)
+
+
+### Features
+
+* **baseline:** compute asterisk ([#77](https://github.com/mdn/rari/issues/77)) ([c35af8e](https://github.com/mdn/rari/commit/c35af8e46f3c57fdd3ba98cf92e63f2dd2064660))
+* **sidebars/jsref:** support temporal ([#72](https://github.com/mdn/rari/issues/72)) ([3d70866](https://github.com/mdn/rari/commit/3d708668719208d1cbfd0b34959a771ee29bc350))
+
+
+### Bug Fixes
+
+* **json:** don't use camelCase for featured articles ([512080d](https://github.com/mdn/rari/commit/512080d804381d3dbc2facb93907e00c5d3c4bb1))
+
 ## [0.1.13](https://github.com/mdn/rari/compare/v0.1.12...v0.1.13) (2025-01-01)
 
 
