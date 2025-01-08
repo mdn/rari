@@ -2,6 +2,7 @@ pub mod add_redirect;
 pub mod error;
 pub mod git;
 pub mod history;
+pub mod inventory;
 pub mod r#move;
 pub mod redirects;
 pub mod remove;

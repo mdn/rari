@@ -19,6 +19,7 @@ use rari_doc::build::{
 use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
+use rari_doc::pages::page::Page;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
@@ -26,6 +27,7 @@ use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
+use rari_tools::inventory::gather_inventory;
 use rari_tools::r#move::r#move;
 use rari_tools::redirects::fix_redirects;
 use rari_tools::remove::remove;
@@ -100,6 +102,8 @@ enum ContentSubcommand {
     /// This shortens multiple redirect chains to single ones.
     /// This is also run as part of sync_translated_content.
     FixRedirects,
+    /// Create content inventory as JSON
+    Inventory,
 }
 
 #[derive(Args)]
@@ -294,14 +298,14 @@ fn main() -> Result<(), Error> {
             if args.all || !args.no_basic || args.content || !args.files.is_empty() {
                 let start = std::time::Instant::now();
                 docs = if !args.files.is_empty() {
-                    read_docs_parallel::<Doc>(&args.files, None)?
+                    read_docs_parallel::<Page, Doc>(&args.files, None)?
                 } else if args.no_cache {
                     let files: &[_] = if let Some(translated_root) = content_translated_root() {
                         &[content_root(), translated_root]
                     } else {
                         &[content_root()]
                     };
-                    read_docs_parallel::<Doc>(files, None)?
+                    read_docs_parallel::<Page, Doc>(files, None)?
                 } else {
                     read_and_cache_doc_pages()?
                 };
@@ -438,6 +442,9 @@ fn main() -> Result<(), Error> {
             }
             ContentSubcommand::FixRedirects => {
                 fix_redirects()?;
+            }
+            ContentSubcommand::Inventory => {
+                gather_inventory()?;
             }
         },
         Commands::Update(args) => update(args.version)?,

@@ -211,7 +211,7 @@ impl BlogPost {
     }
 }
 
-impl PageReader for BlogPost {
+impl PageReader<Page> for BlogPost {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         read_blog_post(path).map(Arc::new).map(Page::BlogPost)
     }

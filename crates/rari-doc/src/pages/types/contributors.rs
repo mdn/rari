@@ -156,7 +156,7 @@ impl ContributorSpotlight {
     }
 }
 
-impl PageReader for ContributorSpotlight {
+impl PageReader<Page> for ContributorSpotlight {
     fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError> {
         read_contributor_spotlight(path, locale.unwrap_or_default())
             .map(Arc::new)

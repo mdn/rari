@@ -144,7 +144,7 @@ impl CurriculumPage {
     }
 }
 
-impl PageReader for CurriculumPage {
+impl PageReader<Page> for CurriculumPage {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let full_path = path.into();
         let raw = read_to_string(&full_path)?;

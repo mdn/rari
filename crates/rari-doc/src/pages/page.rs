@@ -217,7 +217,7 @@ impl Page {
     }
 }
 
-impl PageReader for Page {
+impl PageReader<Page> for Page {
     fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
         let (_, typ) = locale_and_typ_from_path(&path)?;
@@ -322,7 +322,7 @@ impl<T: PageLike> PageLike for Arc<T> {
 ///
 /// The `PageReader` trait defines a method for reading pages from a specified path,
 /// optionally considering a locale.
-pub trait PageReader {
+pub trait PageReader<T> {
     /// Reads a page from the given path.
     ///
     /// # Arguments
@@ -333,7 +333,7 @@ pub trait PageReader {
     /// # Returns
     ///
     /// * `Result<Page, DocError>` - Returns a `Page` on success, or a `DocError` on failure.
-    fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError>;
+    fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<T, DocError>;
 }
 
 /// A trait for writing pages in the documentation system.
