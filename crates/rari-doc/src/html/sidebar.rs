@@ -301,8 +301,6 @@ pub struct BasicEntry {
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SubPageEntry {
-    #[serde(flatten)]
-    pub core: CoreEntry,
     pub path: String,
     #[serde(
         default,
@@ -317,13 +315,13 @@ pub struct SubPageEntry {
     pub depth: usize,
     #[serde(default, skip_serializing_if = "is_default")]
     pub nested: bool,
+    #[serde(flatten)]
+    pub core: CoreEntry,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SubPageGroupedEntry {
-    #[serde(flatten)]
-    pub core: CoreEntry,
     pub path: String,
     #[serde(
         default,
@@ -336,6 +334,8 @@ pub struct SubPageGroupedEntry {
     pub include_parent: bool,
     #[serde(default = "default_depth", skip_serializing_if = "depth_is_default")]
     pub depth: usize,
+    #[serde(flatten)]
+    pub core: CoreEntry,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
