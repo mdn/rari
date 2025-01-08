@@ -8,7 +8,7 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 use rari_doc::error::DocError;
 use rari_doc::helpers::subpages::get_sub_pages;
-use rari_doc::pages::page::{self, PageCategory, PageLike};
+use rari_doc::pages::page::{self, Page, PageCategory, PageLike};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::resolve::build_url;
@@ -94,7 +94,7 @@ pub fn remove(
         let mut docs_path = PathBuf::from(root_for_locale(locale)?);
         docs_path.push(locale.as_folder_str());
 
-        let docs = read_docs_parallel::<Doc>(&[docs_path], None)?;
+        let docs = read_docs_parallel::<Page, Doc>(&[docs_path], None)?;
 
         let referencing_docs: BTreeSet<String> = docs
             .into_par_iter()

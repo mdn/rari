@@ -115,7 +115,7 @@ fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
         .join("popularities.json");
     let json_str = read_to_string(in_file)?;
     let popularities: Popularities = serde_json::from_str(&json_str)?;
-    let docs = read_docs_parallel::<Doc>(
+    let docs = read_docs_parallel::<Page, Doc>(
         &[&if locale == Locale::EnUs {
             content_root()
         } else {

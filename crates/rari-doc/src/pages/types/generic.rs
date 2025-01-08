@@ -62,7 +62,7 @@ impl GenericPageMeta {
     }
 }
 
-impl PageReader for GenericPage {
+impl PageReader<Page> for GenericPage {
     fn read(
         path: impl Into<PathBuf>,
         locale: Option<Locale>,

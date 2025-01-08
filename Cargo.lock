@@ -145,6 +145,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert-json-diff"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47e4f2b81832e72834d7518d8487a0396a28cc408186a2e8854c0f98011faf12"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "async-compression"
 version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2697,6 +2707,7 @@ dependencies = [
 name = "rari-tools"
 version = "0.1.14"
 dependencies = [
+ "assert-json-diff",
  "chrono",
  "console",
  "const_format",

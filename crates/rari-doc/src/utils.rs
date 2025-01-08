@@ -47,7 +47,7 @@ const FM_END_DELIM_LEN: usize = FM_END_DELIM.len();
 /// * `(Option<&str>, usize)` - A tuple where the first element is an `Option<&str>` containing the frontmatter
 ///   if found, and the second element is the offset to the rest of the content.
 /// * `(None, 0)` - If the frontmatter delimiters are not found.
-pub(crate) fn split_fm(content: &str) -> (Option<&str>, usize) {
+pub fn split_fm(content: &str) -> (Option<&str>, usize) {
     let start = content.find(FM_START_DELIM);
     let end = content.find(FM_END_DELIM);
     match (start, end) {

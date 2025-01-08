@@ -161,7 +161,7 @@ impl Doc {
     }
 }
 
-impl PageReader for Doc {
+impl PageReader<Page> for Doc {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
         if let Ok(doc) = doc_page_from_static_files(&path) {
