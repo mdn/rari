@@ -37,3 +37,4 @@ serial_test = { version = "3", features = ["file_locks"] }
 rari-types = { workspace = true, features = ["testing"] }
 fake = { version = "3", features = ["chrono", "serde_json"] }
 rand = "0.8"
+assert-json-diff = "2"

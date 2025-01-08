@@ -56,58 +56,62 @@ use serial_test::file_serial;
 #[cfg(test)]
 #[file_serial(file_fixtures)]
 mod test {
-    use super::*;
+    use assert_json_diff::assert_json_eq;
     use rari_types::locale::Locale;
+    use serde_json::json;
 
+    use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
 
     #[test]
     fn test_inventory() {
-        let expected = r#"[
-  {
-    "path": "/files/en-us/web/api/index.md",
-    "frontmatter": {
-      "title": "API",
-      "slug": "Web/API"
-    }
-  },
-  {
-    "path": "/files/en-us/web/api/exampleone/subexampletwo/index.md",
-    "frontmatter": {
-      "title": "SubExampleTwo",
-      "slug": "Web/API/ExampleOne/SubExampleTwo"
-    }
-  },
-  {
-    "path": "/files/en-us/web/api/exampleone/index.md",
-    "frontmatter": {
-      "title": "ExampleOne",
-      "slug": "Web/API/ExampleOne"
-    }
-  },
-  {
-    "path": "/files/en-us/web/api/exampleone/subexampleone/index.md",
-    "frontmatter": {
-      "title": "SubExampleOne",
-      "slug": "Web/API/ExampleOne/SubExampleOne"
-    }
-  },
-  {
-    "path": "/files/en-us/web/index.md",
-    "frontmatter": {
-      "title": "Web",
-      "slug": "Web"
-    }
-  }
-]"#;
+        let expected = json!(
+        [
+          {
+            "path": "/files/en-us/web/api/exampleone/index.md",
+            "frontmatter": {
+              "title": "ExampleOne",
+              "slug": "Web/API/ExampleOne"
+            }
+          },
+          {
+            "path": "/files/en-us/web/api/exampleone/subexampleone/index.md",
+            "frontmatter": {
+              "title": "SubExampleOne",
+              "slug": "Web/API/ExampleOne/SubExampleOne"
+            }
+          },
+          {
+            "path": "/files/en-us/web/api/exampleone/subexampletwo/index.md",
+            "frontmatter": {
+              "title": "SubExampleTwo",
+              "slug": "Web/API/ExampleOne/SubExampleTwo"
+            }
+          },
+          {
+            "path": "/files/en-us/web/api/index.md",
+            "frontmatter": {
+              "title": "API",
+              "slug": "Web/API"
+            }
+          },
+          {
+            "path": "/files/en-us/web/index.md",
+            "frontmatter": {
+              "title": "Web",
+              "slug": "Web"
+            }
+          }
+        ]);
         let slugs = vec![
             "Web/API/ExampleOne".to_string(),
             "Web/API/ExampleOne/SubExampleOne".to_string(),
             "Web/API/ExampleOne/SubExampleTwo".to_string(),
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let inventory =
+        let mut inventory =
             read_docs_parallel::<InventoryEntry, InventoryEntry>(&[content_root()], None).unwrap();
-        assert_eq!(expected, serde_json::to_string_pretty(&inventory).unwrap());
+        inventory.sort_by_key(|entry| entry.path.clone());
+        assert_json_eq!(expected, serde_json::to_value(&inventory).unwrap());
     }
 }
