@@ -3,7 +3,6 @@ pub mod error;
 pub mod git;
 pub mod history;
 pub mod r#move;
-pub mod pagefind;
 pub mod redirects;
 pub mod remove;
 pub mod sidebars;

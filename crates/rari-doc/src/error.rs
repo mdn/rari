@@ -111,7 +111,7 @@ pub enum DocError {
     #[error("Invalid sidebar entry")]
     InvalidSidebarEntry,
     #[error("Pagefind error")]
-    PageFindError,
+    PagefindError,
 }
 
 /// Represents various errors that can occur while processing URLs.

@@ -30,6 +30,8 @@ serde_yaml_ng.workspace = true
 yaml_parser.workspace = true
 schemars.workspace = true
 crossbeam-channel.workspace = true
+pagefind.workspace = true
+tokio.workspace = true
 
 yaml-rust = "0.4"
 percent-encoding = "2"

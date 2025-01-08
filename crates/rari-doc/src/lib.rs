@@ -42,6 +42,7 @@ pub mod error;
 pub mod helpers;
 pub mod html;
 pub mod issues;
+pub mod pagefind;
 pub mod pages;
 pub mod percent;
 pub mod reader;

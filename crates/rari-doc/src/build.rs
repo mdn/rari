@@ -44,12 +44,12 @@ pub struct SitemapMeta<'a> {
     pub locale: Locale,
 }
 
-pub enum PagefindMessage {
-    Doc(BuiltPage),
+pub enum PagefindIndexMessage {
+    Doc(Locale, BuiltPage),
     Done,
 }
 // Sender part of an mpsc channel used for Pagefinder indexing
-pub static TX: OnceLock<Sender<PagefindMessage>> = OnceLock::new();
+pub static TX: OnceLock<Sender<PagefindIndexMessage>> = OnceLock::new();
 
 /// Builds a single documentation page and writes the output to a JSON file.
 ///
@@ -57,6 +57,9 @@ pub static TX: OnceLock<Sender<PagefindMessage>> = OnceLock::new();
 /// to a JSON file in the output directory. It also copies additional files from the source
 /// directory to the output directory, excluding the markdown source file. The function uses
 /// tracing to create a `span` holding context and also log errors.
+///
+/// If pagefind indexing is enabled in the settings, a clone of the built page is also sent
+/// to the pagefind indexer thread via an mpsc.
 ///
 /// # Arguments
 ///
@@ -101,6 +104,14 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     if let Some(in_path) = page.full_path().parent() {
         copy_additional_files(in_path, &out_path, page.full_path())?;
     }
+
+    // If pagefind indexing is enabled, send the built page off to the indexer thread.
+    if SETTINGS.get().unwrap().pagefind_index {
+        let tx = TX.get().unwrap();
+        tx.send(PagefindIndexMessage::Doc(page.locale(), built_page.clone()))
+            .map_err(|_| DocError::PagefindError)?;
+    }
+
     Ok((built_page, hash))
 }
 
@@ -385,33 +396,12 @@ pub fn build_spas<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     SPA::all()
         .iter()
         .filter_map(|(slug, locale)| SPA::from_slug(slug, *locale))
-        .map(|page| match build_single_page(&page) {
-            Ok((built_page, _)) => {
-                let sitemap_meta = SitemapMeta {
-                    url: Cow::Owned(page.url().to_string()),
-                    locale: page.locale(),
-                    ..Default::default()
-                };
-
-                if SETTINGS.get().unwrap().pagefind_index {
-                    let tx = TX.get().unwrap().clone();
-                    tx.send(PagefindMessage::Doc(built_page))
-                        .map_err(|_| DocError::PageFindError)?;
-                }
-
-                Ok(sitemap_meta)
-            }
-            Err(e) => Err(e),
+        .map(|page| {
+            build_single_page(&page).map(|_| SitemapMeta {
+                url: Cow::Owned(page.url().to_string()),
+                locale: page.locale(),
+                ..Default::default()
+            })
         })
         .collect()
 }
-
-//    .map(|page| {
-//         build_single_page(&page).map(|_| SitemapMeta {
-
-//             url: Cow::Owned(page.url().to_string()),
-//             locale: page.locale(),
-//             ..Default::default()
-//         })
-//     })
-//     .collect()
