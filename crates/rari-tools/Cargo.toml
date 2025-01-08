@@ -28,9 +28,12 @@ serde_yaml_ng.workspace = true
 pretty_yaml.workspace = true
 yaml_parser.workspace = true
 const_format.workspace = true
+crossbeam-channel.workspace = true
+pagefind.workspace = true
 
 dialoguer = "0.11"
 csv = "1"
+
 
 [dev-dependencies]
 serial_test = { version = "3", features = ["file_locks"] }

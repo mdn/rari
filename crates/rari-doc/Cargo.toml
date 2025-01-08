@@ -29,6 +29,7 @@ pretty_yaml.workspace = true
 serde_yaml_ng.workspace = true
 yaml_parser.workspace = true
 schemars.workspace = true
+crossbeam-channel.workspace = true
 
 yaml-rust = "0.4"
 percent-encoding = "2"
@@ -44,7 +45,6 @@ ego-tree = "0.10"
 rss = { version = "2", features = [], default-features = false }
 
 ignore = "0.4"
-crossbeam-channel = "0.5"
 rayon = "1"
 enum_dispatch = "0.3"
 icu_collator = "1"

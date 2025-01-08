@@ -163,6 +163,15 @@ impl Locale {
             _ => self.as_url_str(),
         }
     }
+    pub const fn as_iso_639_str(&self) -> &str {
+        match *self {
+            Self::EnUs => "en",
+            Self::PtBr => "pt",
+            Self::ZhCn => "zh",
+            Self::ZhTw => "zh",
+            _ => self.as_url_str(),
+        }
+    }
 
     pub fn for_generic_and_spas() -> &'static [Self] {
         if content_translated_root().is_none() {

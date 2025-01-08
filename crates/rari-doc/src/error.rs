@@ -110,6 +110,8 @@ pub enum DocError {
     SlugRequiredForSidebarEntry,
     #[error("Invalid sidebar entry")]
     InvalidSidebarEntry,
+    #[error("Pagefind error")]
+    PageFindError,
 }
 
 /// Represents various errors that can occur while processing URLs.

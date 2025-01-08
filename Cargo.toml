@@ -98,6 +98,8 @@ schemars = { version = "0.8", features = ["chrono"] }
 pretty_yaml = "0.5"
 yaml_parser = "0.2"
 const_format = "0.2"
+crossbeam-channel = "0.5"
+pagefind = { version = "1", features = ["extended"] }
 
 [dependencies]
 rari-doc.workspace = true
@@ -114,6 +116,8 @@ tracing-subscriber.workspace = true
 anyhow.workspace = true
 dashmap.workspace = true
 schemars.workspace = true
+crossbeam-channel.workspace = true
+pagefind.workspace = true
 
 self_update = { version = "0.42", default-features = false, features = [
   "rustls",

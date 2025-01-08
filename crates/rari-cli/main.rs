@@ -6,15 +6,16 @@ use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
-use std::thread::spawn;
+use std::thread::{spawn, JoinHandle};
 
 use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::Verbosity;
 use dashmap::DashMap;
+use pagefind::api::PagefindIndex;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
-    build_generic_pages, build_spas, build_top_level_meta,
+    build_generic_pages, build_spas, build_top_level_meta, PagefindMessage, TX,
 };
 use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
 use rari_doc::issues::IN_MEMORY;
@@ -25,7 +26,9 @@ use rari_doc::search_index::build_search_index;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
+use rari_tools::error::ToolError;
 use rari_tools::history::gather_history;
+use rari_tools::pagefind::spawn_pagefind_indexer;
 use rari_tools::r#move::r#move;
 use rari_tools::redirects::fix_redirects;
 use rari_tools::remove::remove;
@@ -291,6 +294,18 @@ fn main() -> Result<(), Error> {
             let mut urls = Vec::new();
             let mut docs = Vec::new();
             println!("Building everything 🛠️");
+
+            // Start a thread for indexing pages for pagefinder
+            // send the built page over to be indexed
+            let mut pagefind_indexer_thread: Option<
+                JoinHandle<Result<HashMap<Locale, PagefindIndex>, ToolError>>,
+            > = None;
+            if SETTINGS.get().unwrap().pagefind_index {
+                let (tx, rx) = crossbeam_channel::bounded::<PagefindMessage>(100);
+                TX.set(tx).expect("Failed to set TX");
+                pagefind_indexer_thread = Some(spawn_pagefind_indexer(rx));
+            }
+
             if args.all || !args.no_basic || args.content || !args.files.is_empty() {
                 let start = std::time::Instant::now();
                 docs = if !args.files.is_empty() {
@@ -395,6 +410,14 @@ fn main() -> Result<(), Error> {
                 let file = File::create(issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
                 serde_json::to_writer_pretty(&mut buffed, &*events).unwrap();
+            }
+
+            // If we have a pagefinder thread, close the sender and join the thread
+            if SETTINGS.get().unwrap().pagefind_index {
+                let tx = TX.get().unwrap().clone();
+                tx.send(PagefindMessage::Done).unwrap();
+                let indexes = pagefind_indexer_thread.unwrap().join().unwrap()?;
+                println!("Pagefinder indexes built: {:?}", indexes.keys());
             }
         }
         Commands::Serve(args) => {

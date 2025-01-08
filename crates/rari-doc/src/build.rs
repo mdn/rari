@@ -9,12 +9,14 @@ use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::iter::once;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use chrono::NaiveDateTime;
+use crossbeam_channel::Sender;
 use itertools::Itertools;
 use rari_types::globals::{
     base_url, blog_root, build_out_root, contributor_spotlight_root, curriculum_root,
-    generic_content_root, git_history, settings,
+    generic_content_root, git_history, settings, SETTINGS,
 };
 use rari_types::locale::{default_locale, Locale};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -41,6 +43,13 @@ pub struct SitemapMeta<'a> {
     pub modified: Option<NaiveDateTime>,
     pub locale: Locale,
 }
+
+pub enum PagefindMessage {
+    Doc(BuiltPage),
+    Done,
+}
+// Sender part of an mpsc channel used for Pagefinder indexing
+pub static TX: OnceLock<Sender<PagefindMessage>> = OnceLock::new();
 
 /// Builds a single documentation page and writes the output to a JSON file.
 ///
@@ -99,7 +108,6 @@ pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
     let (built_doc, hash) = build_single_page(page)?;
     if let BuiltPage::Doc(json) = built_doc {
         let meta = JsonDocMetadata::from_json_doc(json.doc, hash);
-
         let out_path = build_out_root()
             .expect("No BUILD_OUT_ROOT")
             .join(url_to_folder_path(page.url().trim_start_matches('/')));
@@ -377,12 +385,33 @@ pub fn build_spas<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     SPA::all()
         .iter()
         .filter_map(|(slug, locale)| SPA::from_slug(slug, *locale))
-        .map(|page| {
-            build_single_page(&page).map(|_| SitemapMeta {
-                url: Cow::Owned(page.url().to_string()),
-                locale: page.locale(),
-                ..Default::default()
-            })
+        .map(|page| match build_single_page(&page) {
+            Ok((built_page, _)) => {
+                let sitemap_meta = SitemapMeta {
+                    url: Cow::Owned(page.url().to_string()),
+                    locale: page.locale(),
+                    ..Default::default()
+                };
+
+                if SETTINGS.get().unwrap().pagefind_index {
+                    let tx = TX.get().unwrap().clone();
+                    tx.send(PagefindMessage::Doc(built_page))
+                        .map_err(|_| DocError::PageFindError)?;
+                }
+
+                Ok(sitemap_meta)
+            }
+            Err(e) => Err(e),
         })
         .collect()
 }
+
+//    .map(|page| {
+//         build_single_page(&page).map(|_| SitemapMeta {
+
+//             url: Cow::Owned(page.url().to_string()),
+//             locale: page.locale(),
+//             ..Default::default()
+//         })
+//     })
+//     .collect()
