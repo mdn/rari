@@ -102,6 +102,7 @@ pub fn invoke(
         "embedinteractiveexample" => {
             embeds::embed_interactive_example::embed_interactive_example_any
         }
+        "interactiveexample" => embeds::interactive_example::interactive_example_any,
         "embedghlivesample" => embeds::embed_gh_live_sample::embed_gh_live_sample_any,
         "embedlivesample" => embeds::embed_live_sample::embed_live_sample_any,
         "embedyoutube" => embeds::embed_youtube::embed_youtube_any,
