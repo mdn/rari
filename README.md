@@ -1,5 +1,5 @@
 > [!Warning]
-> This project is work in project and lacking most of its documentation.
+> This project is work in progress and lacking most of its documentation.
 > Anything might change and code will move a lot. We do not encourage using it yet.
 > We'll have an official announcement before we migrate, so stay tuned.
 
