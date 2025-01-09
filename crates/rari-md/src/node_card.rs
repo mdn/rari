@@ -37,9 +37,9 @@ impl NoteCard {
             (Self::Callout, Locale::ZhCn) => "标注：",
             (Self::Warning, Locale::ZhCn) => "警告：",
             (Self::Note, Locale::ZhCn) => "备注：",
-            (Self::Callout, Locale::ZhTw) => "标注：",
+            (Self::Callout, Locale::ZhTw) => "標註：",
             (Self::Warning, Locale::ZhTw) => "警告：",
-            (Self::Note, Locale::ZhTw) => "备注：",
+            (Self::Note, Locale::ZhTw) => "備註：",
         }
     }
     pub fn new_prefix(&self) -> &str {
