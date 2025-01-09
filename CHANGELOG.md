@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.15](https://github.com/mdn/rari/compare/v0.1.14...v0.1.15) (2025-01-09)
+
+
+### Features
+
+* **content:** add inventory command ([#80](https://github.com/mdn/rari/issues/80)) ([bafc0f9](https://github.com/mdn/rari/commit/bafc0f97479cf7210a39cd74d2f41450b92aff2f)), closes [#75](https://github.com/mdn/rari/issues/75)
+* **sidebars:** add support for depth and nested ([#78](https://github.com/mdn/rari/issues/78)) ([84b6358](https://github.com/mdn/rari/commit/84b6358c4fb6783e36ea59649103c69e4eac397b))
+
+
+### Bug Fixes
+
+* **l10n:** correct the prefix string for notecards in zh-TW locale ([#81](https://github.com/mdn/rari/issues/81)) ([432bb40](https://github.com/mdn/rari/commit/432bb40b4729c66b186323428c872c033df51589))
+* typo ([#82](https://github.com/mdn/rari/issues/82)) ([892f96f](https://github.com/mdn/rari/commit/892f96fa3403da2f35dc44c8a43a61d49e9837ed))
+
 ## [0.1.14](https://github.com/mdn/rari/compare/v0.1.13...v0.1.14) (2025-01-07)
 
 
