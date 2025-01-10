@@ -71,12 +71,15 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     let mut built_page = page.build()?;
     if settings().json_issues {
         if let BuiltPage::Doc(json_doc) = &mut built_page {
-            if let Some(issues) = IN_MEMORY
+            let flaws = if let Some(issues) = IN_MEMORY
                 .get_events()
                 .get(page.full_path().to_string_lossy().as_ref())
             {
-                json_doc.doc.flaws = Some(to_display_issues(issues.value().clone(), page));
-            }
+                Some(to_display_issues(issues.value().clone(), page))
+            } else {
+                Some(Default::default())
+            };
+            json_doc.doc.flaws = flaws;
         }
     }
     let out_path = build_out_root()

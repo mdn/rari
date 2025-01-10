@@ -5,15 +5,15 @@ use crate::ext::{DELIM_END, DELIM_START};
 fn only_escaped_templ(b: &[u8], start: usize) -> bool {
     let b = b.trim_ascii_end();
     if b[start..].starts_with(DELIM_START.as_bytes()) {
-        let start = start + DELIM_START.as_bytes().len();
+        let start = start + DELIM_START.len();
         if let Some(end) = b[start..]
-            .windows(DELIM_END.as_bytes().len())
+            .windows(DELIM_END.len())
             .position(|window| window == DELIM_END.as_bytes())
         {
-            if start + end + DELIM_END.as_bytes().len() == b.len() {
+            if start + end + DELIM_END.len() == b.len() {
                 return true;
             } else {
-                return only_escaped_templ(b, start + end + DELIM_END.as_bytes().len());
+                return only_escaped_templ(b, start + end + DELIM_END.len());
             }
         }
     }
