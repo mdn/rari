@@ -10,7 +10,7 @@ use std::io::{BufWriter, Write};
 use std::iter::once;
 use std::path::PathBuf;
 
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime, Utc};
 use itertools::Itertools;
 use rari_types::globals::{
     base_url, blog_root, build_out_root, contributor_spotlight_root, curriculum_root,
@@ -265,6 +265,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
         return Err(DocError::NoBlogRoot);
     }
     copy_blog_author_avatars()?;
+    let now = Utc::now().date_naive();
 
     let rss_file = build_out_root()?
         .join(default_locale().as_folder_str())
@@ -273,7 +274,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     let sorted_posts: Vec<_> = blog_files()
         .posts
         .values()
-        .cloned()
+        .filter(|post| filter_unpublished(post, &now))
         .filter_map(|page| {
             if let Page::BlogPost(post) = page {
                 Some(post)
@@ -281,6 +282,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
                 None
             }
         })
+        .cloned()
         .sorted_by(|a, b| a.meta.date.cmp(&b.meta.date).reverse())
         .collect();
     create_rss(&rss_file, sorted_posts.as_slice(), base_url())?;
@@ -288,6 +290,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     blog_files()
         .posts
         .values()
+        .filter(|post| filter_unpublished(post, &now))
         .chain(once(&SPA::from_url("/en-US/blog/").unwrap()))
         .map(|page| {
             build_single_page(page).map(|_| SitemapMeta {
@@ -297,6 +300,15 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
             })
         })
         .collect()
+}
+
+fn filter_unpublished(post: &&Page, now: &NaiveDate) -> bool {
+    settings().blog_unpublished
+        || if let Page::BlogPost(post) = post {
+            post.meta.published && &post.meta.date <= now
+        } else {
+            false
+        }
 }
 
 /// Builds generic pages and returns their URLs.

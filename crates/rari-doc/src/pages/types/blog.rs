@@ -192,9 +192,14 @@ pub struct BlogPostFrontmatter {
     pub image: BlogImage,
     pub keywords: String,
     pub sponsored: bool,
+    #[serde(default = "published_default")]
     pub published: bool,
     pub date: NaiveDate,
     pub author: String,
+}
+
+const fn published_default() -> bool {
+    true
 }
 
 #[derive(Debug, Clone)]

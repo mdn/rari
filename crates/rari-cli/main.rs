@@ -405,6 +405,7 @@ fn main() -> Result<(), Error> {
             let mut settings = Settings::new()?;
             settings.cache_content = args.cache;
             settings.data_issues = true;
+            settings.blog_unpublished = true;
             let _ = SETTINGS.set(settings);
             serve::serve()?
         }
