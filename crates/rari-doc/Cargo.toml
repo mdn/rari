@@ -56,6 +56,7 @@ imagesize = "0.13"
 svg_metadata = "0.5"
 memoize = "0.4"
 unescaper = "0.1"
+kuchikiki = "0"
 
 
 css-syntax = { path = "../css-syntax", features = ["rari"] }

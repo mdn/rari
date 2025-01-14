@@ -99,7 +99,9 @@ pretty_yaml = "0.5"
 yaml_parser = "0.2"
 const_format = "0.2"
 crossbeam-channel = "0.5"
-pagefind = { version = "1", features = ["extended"] }
+pagefind = { path = "../pagefind/pagefind", version = "0", features = [
+  "extended",
+] }
 tokio = "1"
 
 [dependencies]

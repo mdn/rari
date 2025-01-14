@@ -86,10 +86,34 @@ pub fn spawn_pagefind_indexer(
 
 fn doc_html_for_search_index(doc: &JsonDocPage) -> String {
     let mut html = String::new();
+    // let level = (doc.url.split('/').count() - 3) as f32;
+    // 7.0 is the default weight of h1, add a bit to it to make more top-level objects weigh higher
+    // let additional_weight = (7.0 + (7.0 / level)).to_string();
+    // let additional_weight = "9.0";
+    // let additional_weight =
+    //     if doc.url == "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array" {
+    //         "10.0"
+    //     } else {
+    //         "1.0"
+    //     };
+    let special_encoded_title = if doc.doc.title.contains("<") || doc.doc.title.contains(">") {
+        doc.doc
+            .title
+            .replace("<", "openinganglebracket")
+            .replace(">", "closinganglebracket")
+    } else {
+        doc.doc.title.clone() // Cow...?
+    };
     html.push_str(&concat_strs!(
         "<html><head><title>",
-        &doc.doc.title,
-        "</title></head><body>"
+        &html_escape::encode_text(doc.doc.title.as_str()),
+        "</title></head><body>",
+        "<h1 data-pagefind-weight=\"9.0\">",
+        // &html_escape::encode_text(doc.doc.title.as_str()),
+        special_encoded_title.as_str(),
+        " ",
+        &html_escape::encode_text(doc.doc.title.as_str()),
+        "</h1>\n"
     ));
     for section in &doc.doc.body {
         if let crate::pages::json::Section::Prose(prose) = section {
@@ -97,13 +121,38 @@ fn doc_html_for_search_index(doc: &JsonDocPage) -> String {
                 let tag = if prose.is_h3 { "h3" } else { "h2" };
                 let id = prose.id.as_deref().unwrap_or_default();
                 html.push_str(&concat_strs!(
-                    "\n<", tag, " id=\"", id, "\">", &title, "</", tag, ">"
+                    "\n<",
+                    tag,
+                    " data-pagefind-weight=\"1.0\" id=\"",
+                    id,
+                    "\">",
+                    &html_escape::encode_text(title),
+                    "</",
+                    tag,
+                    ">"
                 ));
             }
             html.push_str(&prose.content);
         }
     }
-    html.push_str("\n</body></html>");
+    html.push_str("\n</body>\n</html>");
+    // // parse with kuchikiki and set weight
+    // let document = parse_html().one(html);
+    // for tag in document.select("h2").unwrap() {
+    //     let node_ref = tag.as_node();
+    //     if let Some(element) = node_ref.as_element() {
+    //         element
+    //             .attributes
+    //             .borrow_mut()
+    //             .insert("data-pagefind-weight", "2.0".to_string());
+    //     }
+    // }
+
+    // if doc.url == "/en-US/docs/Web/HTML/Element/table" {
+    //     println!("{}: {} \n\n", doc.url, html);
+    // }
+
+    // document.to_string()
     html
 }
 fn curriculum_html_for_search_index(doc: &JsonCurriculumPage) -> String {
