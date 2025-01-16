@@ -17,6 +17,7 @@ pub fn embed_live_sample(
     _deprecated_4: Option<String>,
     _deprecated_5: Option<String>,
     allowed_features: Option<String>,
+    sandbox: Option<String>,
 ) -> Result<String, DocError> {
     let title = dedup_whitespace(&id.replace('_', " "));
     let id = RariApi::anchorize(&id);
@@ -54,6 +55,10 @@ pub fn embed_live_sample(
     if let Some(allowed_features) = allowed_features {
         write!(&mut out, r#"allow="{}" "#, allowed_features)?;
     }
-    out.push_str(r#"sandbox="allow-same-origin allow-scripts" loading="lazy"></iframe></div>"#);
+    out.extend([
+        r#"push_str(r#"sandbox="allow-same-origin allow-scripts "#,
+        sandbox.as_deref().unwrap_or_default(),
+        r#" loading="lazy"></iframe></div>"#,
+    ]);
     Ok(out)
 }
