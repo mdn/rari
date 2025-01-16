@@ -110,8 +110,8 @@ fn doc_html_for_search_index(doc: &JsonDocPage) -> String {
         "</title></head><body>",
         "<h1 data-pagefind-weight=\"9.0\">",
         // &html_escape::encode_text(doc.doc.title.as_str()),
-        special_encoded_title.as_str(),
-        " ",
+        // special_encoded_title.as_str(),
+        // " ",
         &html_escape::encode_text(doc.doc.title.as_str()),
         "</h1>\n"
     ));
@@ -123,7 +123,7 @@ fn doc_html_for_search_index(doc: &JsonDocPage) -> String {
                 html.push_str(&concat_strs!(
                     "\n<",
                     tag,
-                    " data-pagefind-weight=\"1.0\" id=\"",
+                    " data-pagefind-weight=\"2.0\" id=\"",
                     id,
                     "\">",
                     &html_escape::encode_text(title),
