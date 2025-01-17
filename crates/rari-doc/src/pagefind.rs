@@ -8,6 +8,7 @@ use pagefind::api::PagefindIndex;
 use pagefind::options::PagefindServiceConfig;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
+use regex::Regex;
 
 use crate::build::PagefindIndexMessage;
 use crate::error::DocError;
@@ -96,22 +97,26 @@ fn doc_html_for_search_index(doc: &JsonDocPage) -> String {
     //     } else {
     //         "1.0"
     //     };
-    let special_encoded_title = if doc.doc.title.contains("<") || doc.doc.title.contains(">") {
-        doc.doc
-            .title
-            .replace("<", "openinganglebracket")
-            .replace(">", "closinganglebracket")
-    } else {
-        doc.doc.title.clone() // Cow...?
-    };
+    let tag_title = Regex::new(r"<(\w*)>").unwrap();
+    // let special_encoded_title = if tag_title.is_match(doc.doc.title.as_str()) {
+    //     println!(
+    //         "Special title: {} -> {}",
+    //         doc.doc.title,
+    //         tag_title.replace_all(doc.doc.title.as_str(), " oabr${1}cabr ")
+    //     );
+    //     std::borrow::Cow::Owned(
+    //         tag_title
+    //             .replace_all(doc.doc.title.as_str(), " oabr${1}cabr ")
+    //             .to_string(),
+    //     )
+    // } else {
+    //     std::borrow::Cow::Borrowed("")
+    // };
     html.push_str(&concat_strs!(
         "<html><head><title>",
         &html_escape::encode_text(doc.doc.title.as_str()),
         "</title></head><body>",
         "<h1 data-pagefind-weight=\"9.0\">",
-        // &html_escape::encode_text(doc.doc.title.as_str()),
-        // special_encoded_title.as_str(),
-        // " ",
         &html_escape::encode_text(doc.doc.title.as_str()),
         "</h1>\n"
     ));
