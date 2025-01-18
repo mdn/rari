@@ -129,7 +129,22 @@ pub fn parse(input: &str) -> Result<Vec<Token>, DocError> {
         .into_inner()
         .filter_map(|t| match t.as_rule() {
             Rule::text => Some(Token::Text(t.into())),
-            Rule::macro_tag => Some(Token::Macro(t.into())),
+            Rule::macro_tag => {
+                let mut macro_roken: MacroToken = t.into();
+                // replace empty string args with None
+                // this is because we will use some judgements like `if let Some(arg) = arg`
+                // to determine whether the arg is empty or not
+                macro_roken.args = macro_roken
+                    .args
+                    .into_iter()
+                    .map(|arg| {
+                        match arg {
+                            Some(Arg::String(s, _)) if s.is_empty() => None,
+                            _ => arg,
+                        }
+                    }).collect();
+                Some(Token::Macro(macro_roken))
+            },
             _ => None,
         })
         .collect();
@@ -176,5 +191,14 @@ mod test {
     fn weird4() {
         let p = parse(r#"dasd \\{{foo}} 200 {{bar}}"#);
         println!("{:#?}", p);
+    }
+
+    #[test]
+    fn with_empty_string_arg() {
+        let p = parse(r#"{{foo("")}}"#);
+        assert!(matches!(
+            p.unwrap().get(0),
+            Some(Token::Macro(macro_token)) if macro_token.args.get(0) == Some(&None)
+        ));
     }
 }
