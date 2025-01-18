@@ -137,14 +137,12 @@ pub fn parse(input: &str) -> Result<Vec<Token>, DocError> {
                 macro_roken.args = macro_roken
                     .args
                     .into_iter()
-                    .map(|arg| {
-                        match arg {
-                            Some(Arg::String(s, _)) if s.is_empty() => None,
-                            _ => arg,
-                        }
+                    .map(|arg| match arg {
+                        Some(Arg::String(s, _)) if s.is_empty() => None,
+                        _ => arg,
                     }).collect();
                 Some(Token::Macro(macro_roken))
-            },
+            }
             _ => None,
         })
         .collect();
