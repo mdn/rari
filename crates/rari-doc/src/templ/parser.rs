@@ -140,7 +140,8 @@ pub fn parse(input: &str) -> Result<Vec<Token>, DocError> {
                     .map(|arg| match arg {
                         Some(Arg::String(s, _)) if s.is_empty() => None,
                         _ => arg,
-                    }).collect();
+                    })
+                    .collect();
                 Some(Token::Macro(macro_roken))
             }
             _ => None,
