@@ -48,6 +48,7 @@ pub fn post_process_html<T: PageLike>(
     ))?;
     let base_url = options.base_url(Some(&base));
     let data_issues = settings().data_issues;
+    let mut in_pre = false;
 
     let mut element_content_handlers = vec![
         element!("*[id]", |el| {
@@ -109,8 +110,12 @@ pub fn post_process_html<T: PageLike>(
         text!("pre[class*=brush]", |text| {
             // trim the first _empty_ line,
             // fixes issue: https://github.com/mdn/yari/issues/12364
-            if let Some('\n') = text.as_str().chars().next() {
-                text.as_mut_str().drain(..1);
+            if !in_pre && text.as_str().starts_with('\n') {
+                text.as_mut_str().remove(0);
+            }
+            in_pre = true;
+            if text.last_in_text_node() {
+                in_pre = false;
             }
             Ok(())
         }),
