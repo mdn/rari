@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use lol_html::html_content::ContentType;
-use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings};
+use lol_html::{element, rewrite_str, text, HtmlRewriter, RewriteStrSettings, Settings};
 use rari_md::ext::DELIM_START;
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
@@ -104,6 +104,14 @@ pub fn post_process_html<T: PageLike>(
             let mut class = el.get_attribute("class").unwrap_or_default();
             class.push_str(" notranslate");
             el.set_attribute("class", &class)?;
+            Ok(())
+        }),
+        text!("pre[class*=brush]", |text| {
+            // trim the first _empty_ line,
+            // fixes issue: https://github.com/mdn/yari/issues/12364
+            if let Some('\n') = text.as_str().chars().next() {
+                text.as_mut_str().drain(..1);
+            }
             Ok(())
         }),
         element!("pre[class*=brush]", |el| {
