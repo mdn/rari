@@ -47,13 +47,6 @@ pub struct AnyArg {
 }
 
 impl AnyArg {
-    pub fn is_empty(&self) -> bool {
-        if let Arg::String(s, _) = &self.value {
-            s.is_empty()
-        } else {
-            false
-        }
-    }
     pub fn as_int(&self) -> i64 {
         match &self.value {
             Arg::String(s, _) => s

@@ -29,18 +29,14 @@ pub fn embed_live_sample(
         r#"" "#
     ]);
     if let Some(width) = width {
-        if !width.is_empty() {
-            write!(&mut out, r#"width="{}" "#, width)?;
-        }
+        write!(&mut out, r#"width="{}" "#, width)?;
     }
     if let Some(height) = height {
-        if !height.is_empty() {
-            // TODO: fix this
-            if height.as_int() < 60 {
-                write!(&mut out, r#"height="60" "#)?;
-            } else {
-                write!(&mut out, r#"height="{}" "#, height)?;
-            }
+        // TODO: fix this
+        if height.as_int() < 60 {
+            write!(&mut out, r#"height="60" "#)?;
+        } else {
+            write!(&mut out, r#"height="{}" "#, height)?;
         }
     }
     out.extend([
