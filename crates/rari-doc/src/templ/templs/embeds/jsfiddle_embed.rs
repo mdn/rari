@@ -23,10 +23,10 @@ pub fn embded_jsfiddle(
         url.as_str(),
         "embedded/",
         options.as_deref().unwrap_or_default(),
-        if options.as_ref().map(|s| s.is_empty()).unwrap_or_default() {
-            ""
-        } else {
+        if options.as_ref().map(|s| !s.is_empty()).unwrap_or_default() {
             "/"
+        } else {
+            ""
         },
         r#""></iframe></p>"#,
     ]);
