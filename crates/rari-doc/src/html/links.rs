@@ -129,11 +129,7 @@ pub fn render_link_via_page(
             }
             Err(e) => {
                 if !Page::ignore_link_check(url) {
-                    warn!(
-                        source = "invalid-link",
-                        url = url,
-                        "Link via page not found: {e}"
-                    )
+                    warn!(source = "broken-link", url = url,)
                 }
             }
         }

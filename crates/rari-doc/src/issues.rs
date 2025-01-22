@@ -42,64 +42,6 @@ pub struct IssueEntries {
     entries: Vec<(&'static str, String)>,
 }
 
-#[derive(Clone, Debug, Serialize)]
-pub struct Issues<'a> {
-    pub templ: BTreeMap<&'a str, Vec<TemplIssue<'a>>>,
-    pub other: BTreeMap<&'a str, Vec<TemplIssue<'a>>>,
-    pub no_pos: BTreeMap<&'a str, Vec<TemplIssue<'a>>>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct TemplIssue<'a> {
-    pub req: u64,
-    pub ic: i64,
-    pub source: &'a str,
-    pub file: &'a str,
-    pub slug: &'a str,
-    pub locale: &'a str,
-    pub line: i64,
-    pub col: i64,
-    pub tail: Vec<(&'static str, &'a str)>,
-}
-
-static UNKNOWN: &str = "unknown";
-static DEFAULT_TEMPL_ISSUE: TemplIssue<'static> = TemplIssue {
-    req: 0,
-    ic: -1,
-    source: UNKNOWN,
-    file: UNKNOWN,
-    slug: UNKNOWN,
-    locale: UNKNOWN,
-    line: -1,
-    col: -1,
-    tail: vec![],
-};
-
-impl<'a> From<&'a Issue> for TemplIssue<'a> {
-    fn from(value: &'a Issue) -> Self {
-        let mut tissue = DEFAULT_TEMPL_ISSUE.clone();
-        for (key, value) in value.spans.iter().chain(value.fields.iter()) {
-            match *key {
-                "slug" => {
-                    tissue.slug = value.as_str();
-                }
-                "locale" => {
-                    tissue.locale = value.as_str();
-                }
-                "source" => {
-                    tissue.source = value.as_str();
-                }
-                "message" => {}
-                _ => tissue.tail.push((key, value.as_str())),
-            }
-        }
-        tissue.col = value.col;
-        tissue.line = value.line;
-        tissue.file = value.file.as_str();
-        tissue
-    }
-}
-
 #[derive(Clone, Default, Debug)]
 pub struct InMemoryLayer {
     events: Arc<DashMap<String, Vec<Issue>>>,
@@ -247,18 +189,37 @@ pub struct DisplayIssue {
     pub suggestion: Option<String>,
     pub fixable: Option<bool>,
     pub fixed: bool,
-    pub name: String,
     pub line: Option<i64>,
     pub col: Option<i64>,
     pub source_context: Option<String>,
     pub filepath: Option<String>,
-    #[serde(flatten)]
-    pub additional: Additional,
 }
 
-pub type DisplayIssues = BTreeMap<&'static str, Vec<DisplayIssue>>;
+#[derive(Serialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "name")]
+#[serde(rename_all = "snake_case")]
+pub enum DIssue {
+    BrokenLink {
+        #[serde(flatten)]
+        display_issue: DisplayIssue,
+        href: Option<String>,
+    },
+    Macros {
+        #[serde(flatten)]
+        display_issue: DisplayIssue,
+        #[serde(rename = "macroName")]
+        macro_name: Option<String>,
+        href: Option<String>,
+    },
+    Unknown {
+        #[serde(flatten)]
+        display_issue: DisplayIssue,
+    },
+}
 
-impl DisplayIssue {
+pub type DisplayIssues = BTreeMap<&'static str, Vec<DIssue>>;
+
+impl DIssue {
     fn from_issue_with_id(issue: Issue, page: &Page, id: usize) -> Self {
         let mut di = DisplayIssue {
             id: id as i64,
@@ -294,13 +255,13 @@ impl DisplayIssue {
 
         di.filepath = Some(page.full_path().to_string_lossy().into_owned());
 
+        let mut name = "Unknown".to_string();
         let mut additional = HashMap::new();
         for (key, value) in issue.spans.into_iter().chain(issue.fields.into_iter()) {
             match key {
                 "source" => {
-                    di.name = value;
+                    name = value;
                 }
-                "message" => di.explanation = Some(value),
                 "redirect" => di.suggestion = Some(value),
 
                 _ => {
@@ -308,42 +269,79 @@ impl DisplayIssue {
                 }
             }
         }
-        let additional = match di.name.as_str() {
+        match name.as_str() {
             "redirected-link" => {
                 di.fixed = false;
                 di.fixable = Some(true);
-                Additional::BrokenLink {
-                    href: additional.remove("url").unwrap_or_default(),
+                di.explanation = Some(format!(
+                    "{} is a redirect",
+                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                ));
+                DIssue::BrokenLink {
+                    display_issue: di,
+                    href: additional.remove("url"),
                 }
             }
-            "macro-redirected-link" => {
+            "broken-link" => {
+                di.fixed = false;
+                di.fixable = Some(false);
+                di.explanation = Some(format!(
+                    "Can't resolve {}",
+                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                ));
+                DIssue::BrokenLink {
+                    display_issue: di,
+                    href: None,
+                }
+            }
+            "templ-broken-link" => {
+                di.fixed = false;
+                di.fixable = Some(false);
+                di.explanation = Some(format!(
+                    "Can't resolve {}",
+                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                ));
+                DIssue::Macros {
+                    display_issue: di,
+                    macro_name: additional.remove("templ"),
+                    href: None,
+                }
+            }
+            "templ-redirected-link" => {
                 di.fixed = false;
                 di.fixable = Some(true);
-                Additional::MacroBrokenLink {
-                    href: additional.remove("url").unwrap_or_default(),
+                di.explanation = Some(format!(
+                    "Macro produces link {} which is a redirect",
+                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                ));
+                DIssue::Macros {
+                    display_issue: di,
+                    macro_name: additional.remove("templ"),
+                    href: additional.remove("url"),
                 }
             }
-            _ => Additional::None,
-        };
-        di.additional = additional;
-        di
+            _ => {
+                di.explanation = additional.remove("message");
+                DIssue::Unknown { display_issue: di }
+            }
+        }
     }
 }
 
 pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
     let mut map = BTreeMap::new();
     for (id, issue) in issues.into_iter().enumerate() {
-        let di = DisplayIssue::from_issue_with_id(issue, page, id);
-        match &di.additional {
-            Additional::BrokenLink { .. } => {
+        let di = DIssue::from_issue_with_id(issue, page, id);
+        match di {
+            DIssue::BrokenLink { .. } => {
                 let entry: &mut Vec<_> = map.entry("broken_links").or_default();
                 entry.push(di);
             }
-            Additional::MacroBrokenLink { .. } => {
+            DIssue::Macros { .. } => {
                 let entry: &mut Vec<_> = map.entry("macros").or_default();
                 entry.push(di);
             }
-            Additional::None => {
+            DIssue::Unknown { .. } => {
                 let entry: &mut Vec<_> = map.entry("unknown").or_default();
                 entry.push(di);
             }
