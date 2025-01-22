@@ -24,6 +24,8 @@ pub enum ArgError {
     MustBeBool,
     #[error("must be provided")]
     MustBeProvided,
+    #[error("must be {0}")]
+    MustBeX(&'static str),
 }
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
