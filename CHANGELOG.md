@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.19](https://github.com/mdn/rari/compare/v0.1.18...v0.1.19) (2025-01-22)
+
+
+### Features
+
+* **templ:** add csssyntaxraw  ([#92](https://github.com/mdn/rari/issues/92)) ([25808bd](https://github.com/mdn/rari/commit/25808bdb2fa525b0d524d61f1354d05229bacc1d))
+
+
+### Bug Fixes
+
+* **build/parser:** parse empty string args for macros as `None`s ([#88](https://github.com/mdn/rari/issues/88)) ([4f5751f](https://github.com/mdn/rari/commit/4f5751fa506cf87366bc3dc777725df095913e8a))
+* **html:** trim the first empty line in `&lt;pre&gt;` tag ([#90](https://github.com/mdn/rari/issues/90)) ([95f142f](https://github.com/mdn/rari/commit/95f142fecaad38cb696dc9606b2b9fa615c1f084))
+
 ## [0.1.18](https://github.com/mdn/rari/compare/v0.1.17...v0.1.18) (2025-01-16)
 
 
