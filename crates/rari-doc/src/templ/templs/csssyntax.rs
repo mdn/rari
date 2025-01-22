@@ -1,12 +1,8 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::LazyLock;
 
-use css_syntax::syntax::{
-    write_formal_syntax, write_formal_syntax_from_syntax, CssType, LinkedToken,
-};
+use css_syntax::syntax::{write_formal_syntax, CssType, LinkedToken};
 use rari_templ_func::rari_f;
-use rari_types::fm_types::PageType;
 use tracing::{error, warn};
 
 use crate::error::DocError;
@@ -25,15 +21,8 @@ static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
 });
 
 #[rari_f]
-pub fn csssyntax(name: Option<String>, page_type: Option<String>) -> Result<String, DocError> {
-    let page_type = if let Some(page_type) = page_type {
-        PageType::from_str(&page_type).map_err(|_| {
-            tracing::warn!(source = "invalid_templ_arg");
-            DocError::ArgError(rari_types::ArgError::MustBeX("valid css page type"))
-        })?
-    } else {
-        env.page_type
-    };
+pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
+    let page_type = env.page_type;
     let mut slug_rev_iter = env.slug.rsplitn(3, '/');
     let slug_name = slug_rev_iter.next().unwrap();
     let name = name.as_deref().unwrap_or(slug_name);
