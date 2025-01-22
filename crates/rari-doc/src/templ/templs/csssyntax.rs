@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use css_syntax::syntax::{write_formal_syntax, CssType, LinkedToken};
+use css_syntax::syntax::{
+    write_formal_syntax, write_formal_syntax_from_syntax, CssType, LinkedToken,
+};
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 
@@ -55,6 +57,19 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
 
     Ok(write_formal_syntax(
         typ,
+        env.locale.as_url_str(),
+        &format!(
+            "/{}/docs/Web/CSS/Value_definition_syntax",
+            env.locale.as_url_str()
+        ),
+        &TOOLTIPS,
+    )?)
+}
+
+#[rari_f]
+pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
+    Ok(write_formal_syntax_from_syntax(
+        syntax,
         env.locale.as_url_str(),
         &format!(
             "/{}/docs/Web/CSS/Value_definition_syntax",

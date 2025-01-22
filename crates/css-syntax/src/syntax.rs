@@ -684,11 +684,51 @@ impl From<Node> for Constituent {
         }
     }
 }
+
+pub fn write_formal_syntax_from_syntax(
+    syntax_str: impl Into<String>,
+    locale_str: &str,
+    value_definition_url: &str,
+    syntax_tooltip: &'_ HashMap<LinkedToken, String>,
+) -> Result<String, SyntaxError> {
+    let syntax = Syntax {
+        name: "dummy".to_string(),
+        syntax: syntax_str.into(),
+    };
+    write_formal_syntax_internal(
+        syntax,
+        locale_str,
+        value_definition_url,
+        syntax_tooltip,
+        true,
+    )
+}
+
 pub fn write_formal_syntax(
     css: CssType,
     locale_str: &str,
     value_definition_url: &str,
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
+) -> Result<String, SyntaxError> {
+    let syntax: Syntax = get_syntax_internal(css, true);
+    if syntax.syntax.is_empty() {
+        return Err(SyntaxError::NoSyntaxFound);
+    }
+    write_formal_syntax_internal(
+        syntax,
+        locale_str,
+        value_definition_url,
+        syntax_tooltip,
+        false,
+    )
+}
+
+fn write_formal_syntax_internal(
+    syntax: Syntax,
+    locale_str: &str,
+    value_definition_url: &str,
+    syntax_tooltip: &'_ HashMap<LinkedToken, String>,
+    skip_first: bool,
 ) -> Result<String, SyntaxError> {
     let mut renderer = SyntaxRenderer {
         locale_str,
@@ -696,16 +736,12 @@ pub fn write_formal_syntax(
         syntax_tooltip,
         constituents: Default::default(),
     };
-    let syntax: Syntax = get_syntax_internal(css, true);
-    if syntax.syntax.is_empty() {
-        return Err(SyntaxError::NoSyntaxFound);
-    }
     let mut out = String::new();
     write!(out, r#"<pre class="notranslate">"#)?;
     let constituents = renderer.get_constituent_syntaxes(syntax)?;
 
-    for constituent in constituents {
-        renderer.render(&mut out, &constituent)?;
+    for constituent in constituents.iter().skip(if skip_first { 1 } else { 0 }) {
+        renderer.render(&mut out, constituent)?;
         out.push_str("<br/>");
     }
 
