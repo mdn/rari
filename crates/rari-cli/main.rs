@@ -478,6 +478,10 @@ fn update(version: Option<String>) -> Result<(), Error> {
         .no_confirm(true)
         .show_download_progress(true)
         .current_version(cargo_crate_version!());
+    // Use GITHUB_TOKEN if it's set to avoid rate limiting
+    if let Ok(gh_token) = env::var("GITHUB_TOKEN") {
+        update_builder.auth_token(gh_token.as_str());
+    }
     let target_release = if let Some(version) = version {
         if let Some(release) = releases.iter().find(|release| release.version == version) {
             update_builder.target_version_tag(&release.name);
