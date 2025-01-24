@@ -68,8 +68,9 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
 
 #[rari_f]
 pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
+    let decoded_syntax = html_escape::decode_html_entities(&syntax);
     Ok(write_formal_syntax_from_syntax(
-        syntax,
+        decoded_syntax,
         env.locale.as_url_str(),
         &format!(
             "/{}/docs/Web/CSS/Value_definition_syntax",
