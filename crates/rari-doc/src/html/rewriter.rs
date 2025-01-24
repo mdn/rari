@@ -99,7 +99,8 @@ pub fn post_process_html<T: PageLike>(
             Ok(())
         }),
         element!("a[href]", |el| {
-            check_and_fix_link(el, page, data_issues)
+            check_and_fix_link(el, page, data_issues)?;
+            Ok(())
         }),
         element!("pre:not(.notranslate)", |el| {
             let mut class = el.get_attribute("class").unwrap_or_default();

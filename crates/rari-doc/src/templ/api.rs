@@ -36,7 +36,7 @@ impl RariApi {
                 if warn {
                     let ic = get_issue_counter();
                     tracing::warn!(
-                        source = "macro-redirected-link",
+                        source = "templ-redirected-link",
                         ic = ic,
                         url = url,
                         href = redirect.as_ref()
@@ -53,7 +53,15 @@ impl RariApi {
             }
             None => url,
         };
-        Page::from_url_with_fallback(url).map_err(Into::into)
+        Page::from_url_with_fallback(url).map_err(|e| {
+            if let DocError::PageNotFound(_, _) = e {
+                if warn {
+                    let ic = get_issue_counter();
+                    tracing::warn!(source = "templ-broken-link", ic = ic, url = url);
+                }
+            }
+            e
+        })
     }
 
     pub fn decode_uri_component(component: &str) -> String {
