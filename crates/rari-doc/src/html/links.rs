@@ -4,7 +4,6 @@ use rari_md::anchor::anchorize;
 use rari_types::fm_types::FeatureStatus;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
-use tracing::warn;
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike};
@@ -26,6 +25,7 @@ pub fn render_internal_link(
     content: &str,
     title: Option<&str>,
     modifier: &LinkModifier,
+    checked: bool,
 ) -> Result<(), DocError> {
     out.push_str("<a href=\"");
     out.push_str(url);
@@ -33,14 +33,21 @@ pub fn render_internal_link(
         out.push('#');
         out.push_str(&anchorize(anchor));
     }
+    out.push('"');
     if let Some(title) = title {
-        out.push_str("\" title=\"");
-        out.push_str(&html_escape::encode_quoted_attribute(title));
+        out.extend([
+            " title=\"",
+            &html_escape::encode_quoted_attribute(title),
+            "\"",
+        ]);
     }
     if modifier.only_en_us {
-        out.push_str("\" class=\"only-in-en-us")
+        out.push_str(" class=\"only-in-en-us\"");
     }
-    out.push_str("\">");
+    if checked {
+        out.push_str(" data-templ-link");
+    }
+    out.push('>');
     if modifier.code {
         out.push_str("<code>");
     }
@@ -76,7 +83,7 @@ pub fn render_link_from_page(
     } else {
         Cow::Borrowed(content)
     };
-    render_internal_link(out, page.url(), None, &content, None, modifier)
+    render_internal_link(out, page.url(), None, &content, None, modifier, true)
 }
 
 pub fn render_link_via_page(
@@ -94,48 +101,42 @@ pub fn render_link_via_page(
             url = Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", link));
         }
         let (url, anchor) = url.split_once('#').unwrap_or((&url, ""));
-        match RariApi::get_page(url) {
-            Ok(page) => {
-                let url = page.url();
-                let content = if let Some(content) = content {
-                    Cow::Borrowed(content)
+        if let Ok(page) = RariApi::get_page(url) {
+            let url = page.url();
+            let content = if let Some(content) = content {
+                Cow::Borrowed(content)
+            } else {
+                let content = page.short_title().unwrap_or(page.title());
+                let decoded_content = html_escape::decode_html_entities(content);
+                let encoded_content = html_escape::encode_safe(&decoded_content);
+                if content != encoded_content {
+                    Cow::Owned(encoded_content.into_owned())
                 } else {
-                    let content = page.short_title().unwrap_or(page.title());
-                    let decoded_content = html_escape::decode_html_entities(content);
-                    let encoded_content = html_escape::encode_safe(&decoded_content);
-                    if content != encoded_content {
-                        Cow::Owned(encoded_content.into_owned())
-                    } else {
-                        Cow::Borrowed(content)
-                    }
-                };
-                return render_internal_link(
-                    out,
-                    url,
-                    if anchor.is_empty() {
-                        None
-                    } else {
-                        Some(anchor)
-                    },
-                    &content,
-                    title,
-                    &LinkModifier {
-                        badges: if with_badges { page.status() } else { &[] },
-                        badge_locale: locale,
-                        code,
-                        only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
-                    },
-                );
-            }
-            Err(e) => {
-                if !Page::ignore_link_check(url) {
-                    warn!(source = "broken-link", url = url,)
+                    Cow::Borrowed(content)
                 }
-            }
+            };
+            return render_internal_link(
+                out,
+                url,
+                if anchor.is_empty() {
+                    None
+                } else {
+                    Some(anchor)
+                },
+                &content,
+                title,
+                &LinkModifier {
+                    badges: if with_badges { page.status() } else { &[] },
+                    badge_locale: locale,
+                    code,
+                    only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
+                },
+                true,
+            );
         }
     }
 
-    out.push_str("<a href=\"");
+    out.push_str("<a data-templ-link href=\"");
     let content = match content {
         Some(content) => {
             let decoded_content = html_escape::decode_html_entities(content);

@@ -99,7 +99,7 @@ fn generate_link(
     title: &str,
 ) -> Result<(), DocError> {
     out.extend([
-        r#"<li><a class="button secondary" href="/"#,
+        r#"<li><a data-templ-link class="button secondary" href="/"#,
         locale.as_url_str(),
         r#"/docs/"#,
         slug,

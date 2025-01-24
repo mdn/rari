@@ -17,11 +17,15 @@ pub fn check_and_fix_link(
     page: &impl PageLike,
     data_issues: bool,
 ) -> HandlerResult {
+    let templ_link = el.has_attribute("data-templ-link");
+    if templ_link {
+        el.remove_attribute("data-templ-link");
+    }
     let original_href = el.get_attribute("href").expect("href was required");
 
     if original_href.starts_with('/') || original_href.starts_with("https://developer.mozilla.org")
     {
-        handle_internal_link(&original_href, el, page, data_issues)
+        handle_internal_link(&original_href, el, page, data_issues, templ_link)
     } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
         handle_external_link(el)
     } else {
@@ -48,6 +52,7 @@ pub fn handle_internal_link(
     el: &mut Element,
     page: &impl PageLike,
     data_issues: bool,
+    templ_link: bool,
 ) -> HandlerResult {
     // Strip prefix for curriculum links.
     let original_href = if page.page_type() == PageType::Curriculum {
@@ -130,68 +135,70 @@ pub fn handle_internal_link(
         }
     }
 
-    let resolved_href = if no_locale {
-        strip_locale_from_url(&resolved_href).1
-    } else {
-        resolved_href.as_ref()
-    };
-    if original_href != resolved_href || remove_href {
-        if !en_us_fallback {
-            if let Some(pos) = el.get_attribute("data-sourcepos") {
-                if let Some((start, _)) = pos.split_once('-') {
-                    if let Some((line, col)) = start.split_once(':') {
-                        let line = line
-                            .parse::<i64>()
-                            .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
-                            .ok()
-                            .unwrap_or(-1);
-                        let col = col.parse::<i64>().ok().unwrap_or(0);
-                        let ic = get_issue_counter();
-                        if remove_href {
-                            tracing::warn!(
-                                source = "broken-link",
-                                ic = ic,
-                                line = line,
-                                col = col,
-                                url = original_href,
-                            );
-                        } else {
-                            tracing::warn!(
-                                source = "redirected-link",
-                                ic = ic,
-                                line = line,
-                                col = col,
-                                url = original_href,
-                                redirect = resolved_href
-                            );
-                        }
-                        if data_issues {
-                            el.set_attribute("data-flaw", &ic.to_string())?;
+    if !templ_link {
+        let resolved_href = if no_locale {
+            strip_locale_from_url(&resolved_href).1
+        } else {
+            resolved_href.as_ref()
+        };
+        if original_href != resolved_href || remove_href {
+            if !en_us_fallback {
+                if let Some(pos) = el.get_attribute("data-sourcepos") {
+                    if let Some((start, _)) = pos.split_once('-') {
+                        if let Some((line, col)) = start.split_once(':') {
+                            let line = line
+                                .parse::<i64>()
+                                .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
+                                .ok()
+                                .unwrap_or(-1);
+                            let col = col.parse::<i64>().ok().unwrap_or(0);
+                            let ic = get_issue_counter();
+                            if remove_href {
+                                tracing::warn!(
+                                    source = "broken-link",
+                                    ic = ic,
+                                    line = line,
+                                    col = col,
+                                    url = original_href,
+                                );
+                            } else {
+                                tracing::warn!(
+                                    source = "redirected-link",
+                                    ic = ic,
+                                    line = line,
+                                    col = col,
+                                    url = original_href,
+                                    redirect = resolved_href
+                                );
+                            }
+                            if data_issues {
+                                el.set_attribute("data-flaw", &ic.to_string())?;
+                            }
                         }
                     }
-                }
-            } else {
-                let ic = get_issue_counter();
-                if remove_href {
-                    tracing::warn!(source = "broken-link", ic = ic, url = original_href,);
                 } else {
-                    tracing::warn!(
-                        source = "redirected-link",
-                        ic = ic,
-                        url = original_href,
-                        redirect = resolved_href
-                    );
-                }
-                if data_issues {
-                    el.set_attribute("data-flaw", &ic.to_string())?;
+                    let ic = get_issue_counter();
+                    if remove_href {
+                        tracing::warn!(source = "broken-link", ic = ic, url = original_href);
+                    } else {
+                        tracing::warn!(
+                            source = "redirected-link",
+                            ic = ic,
+                            url = original_href,
+                            redirect = resolved_href
+                        );
+                    }
+                    if data_issues {
+                        el.set_attribute("data-flaw", &ic.to_string())?;
+                    }
                 }
             }
-        }
 
-        if remove_href {
-            el.remove_attribute("href");
-        } else {
-            el.set_attribute("href", resolved_href)?;
+            if remove_href {
+                el.remove_attribute("href");
+            } else {
+                el.set_attribute("href", resolved_href)?;
+            }
         }
     }
     Ok(())

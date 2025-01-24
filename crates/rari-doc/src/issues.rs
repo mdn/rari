@@ -1,10 +1,11 @@
 use std::collections::{BTreeMap, HashMap};
-use std::fmt;
+use std::convert::Infallible;
+use std::str::FromStr;
 use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, LazyLock};
+use std::{fmt, iter};
 
 use dashmap::DashMap;
-use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::Serialize;
 use tracing::field::{Field, Visit};
@@ -190,14 +191,39 @@ pub struct DisplayIssue {
     pub fixable: Option<bool>,
     pub fixed: bool,
     pub line: Option<i64>,
-    pub col: Option<i64>,
+    pub column: Option<i64>,
     pub source_context: Option<String>,
     pub filepath: Option<String>,
+    pub name: IssueType,
+}
+
+#[derive(Serialize, Debug, Default, Clone, JsonSchema)]
+#[serde(rename_all = "PascalCase")]
+pub enum IssueType {
+    TemplRedirectedLink,
+    TemplBrokenLink,
+    RedirectedLink,
+    BrokenLink,
+    #[default]
+    Unknown,
+}
+
+impl FromStr for IssueType {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "templ-redirected-link" => Self::TemplRedirectedLink,
+            "templ-broken-link" => Self::TemplBrokenLink,
+            "redirected-link" => Self::RedirectedLink,
+            "broken-link" => Self::BrokenLink,
+            _ => Self::Unknown,
+        })
+    }
 }
 
 #[derive(Serialize, Debug, Clone, JsonSchema)]
-#[serde(tag = "name")]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum DIssue {
     BrokenLink {
         #[serde(flatten)]
@@ -223,7 +249,7 @@ impl DIssue {
     fn from_issue_with_id(issue: Issue, page: &Page, id: usize) -> Self {
         let mut di = DisplayIssue {
             id: id as i64,
-            col: if issue.col == 0 {
+            column: if issue.col == 0 {
                 None
             } else {
                 Some(issue.col)
@@ -235,32 +261,45 @@ impl DIssue {
             },
             ..Default::default()
         };
-        if let (Some(_col), Some(line)) = (di.col, di.line) {
+        if let (Some(col), Some(line)) = (di.column, di.line) {
             let line = line - page.fm_offset() as i64;
             // take surrounding +- 3 lines (7 in total)
-            let (skip, take) = if line < 4 {
-                (0, 7 - (4 - line))
+            let (skip, take, highlight) = if line < 4 {
+                (0, 7 - (4 - line), (line - 1) as usize)
             } else {
-                (line - 4, 7)
+                (line - 4, 7, 3)
             };
             let context = page
                 .content()
                 .lines()
                 .skip(skip as usize)
                 .take(take as usize)
-                .join("\n");
+                .collect::<Vec<_>>();
 
-            di.source_context = Some(context);
+            let source_context =
+                context
+                    .iter()
+                    .enumerate()
+                    .fold(String::new(), |mut acc, (i, line)| {
+                        acc.push_str(line);
+                        acc.push('\n');
+                        if i == highlight {
+                            acc.extend(iter::repeat_n('-', (col - 1) as usize));
+                            acc.push_str("^\n");
+                        }
+                        acc
+                    });
+
+            di.source_context = Some(source_context);
         }
 
         di.filepath = Some(page.full_path().to_string_lossy().into_owned());
 
-        let mut name = "Unknown".to_string();
         let mut additional = HashMap::new();
         for (key, value) in issue.spans.into_iter().chain(issue.fields.into_iter()) {
             match key {
                 "source" => {
-                    name = value;
+                    di.name = IssueType::from_str(&value).unwrap();
                 }
                 "redirect" => di.suggestion = Some(value),
 
@@ -269,8 +308,8 @@ impl DIssue {
                 }
             }
         }
-        match name.as_str() {
-            "redirected-link" => {
+        match di.name {
+            IssueType::RedirectedLink => {
                 di.fixed = false;
                 di.fixable = Some(true);
                 di.explanation = Some(format!(
@@ -282,7 +321,7 @@ impl DIssue {
                     href: additional.remove("url"),
                 }
             }
-            "broken-link" => {
+            IssueType::BrokenLink => {
                 di.fixed = false;
                 di.fixable = Some(false);
                 di.explanation = Some(format!(
@@ -291,10 +330,10 @@ impl DIssue {
                 ));
                 DIssue::BrokenLink {
                     display_issue: di,
-                    href: None,
+                    href: additional.remove("url"),
                 }
             }
-            "templ-broken-link" => {
+            IssueType::TemplBrokenLink => {
                 di.fixed = false;
                 di.fixable = Some(false);
                 di.explanation = Some(format!(
@@ -304,10 +343,10 @@ impl DIssue {
                 DIssue::Macros {
                     display_issue: di,
                     macro_name: additional.remove("templ"),
-                    href: None,
+                    href: additional.remove("url"),
                 }
             }
-            "templ-redirected-link" => {
+            IssueType::TemplRedirectedLink => {
                 di.fixed = false;
                 di.fixable = Some(true);
                 di.explanation = Some(format!(
