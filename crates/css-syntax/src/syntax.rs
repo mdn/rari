@@ -691,16 +691,22 @@ pub fn write_formal_syntax_from_syntax(
     value_definition_url: &str,
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
 ) -> Result<String, SyntaxError> {
+    let syntax_str = syntax_str.into();
+    let (name, syntax, skip_first) = if let Some((name, syntax)) = syntax_str.split_once("=") {
+        (name, syntax.trim().to_string(), false)
+    } else {
+        ("dummy", syntax_str, true)
+    };
     let syntax = Syntax {
-        name: "dummy".to_string(),
-        syntax: syntax_str.into(),
+        name: name.trim().to_string(),
+        syntax,
     };
     write_formal_syntax_internal(
         syntax,
         locale_str,
         value_definition_url,
         syntax_tooltip,
-        true,
+        skip_first,
     )
 }
 
