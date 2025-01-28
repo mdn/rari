@@ -31,7 +31,7 @@ use rari_tools::add_redirect::add_redirect;
 use rari_tools::history::gather_history;
 use rari_tools::inventory::gather_inventory;
 use rari_tools::r#move::r#move;
-use rari_tools::redirects::fix_redirects;
+use rari_tools::redirects::{fix_redirects, validate_redirects};
 use rari_tools::remove::remove;
 use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
@@ -104,7 +104,9 @@ enum ContentSubcommand {
     ///
     /// This shortens multiple redirect chains to single ones.
     /// This is also run as part of sync_translated_content.
-    FixRedirects,
+    FixRedirects(FixRedirectArgs),
+    /// Validate redirects.
+    ValidateRedirects(ValidateRedirectArgs),
     /// Create content inventory as JSON
     Inventory,
 }
@@ -134,6 +136,16 @@ struct DeleteArgs {
 struct AddRedirectArgs {
     from_url: String,
     to_url: String,
+}
+
+#[derive(Args)]
+struct ValidateRedirectArgs {
+    locales: Option<Vec<Locale>>,
+}
+
+#[derive(Args)]
+struct FixRedirectArgs {
+    locales: Option<Vec<Locale>>,
 }
 
 #[derive(Args)]
@@ -467,8 +479,11 @@ fn main() -> Result<(), Error> {
             ContentSubcommand::SyncSidebars => {
                 sync_sidebars()?;
             }
-            ContentSubcommand::FixRedirects => {
-                fix_redirects()?;
+            ContentSubcommand::FixRedirects(args) => {
+                fix_redirects(args.locales.as_deref())?;
+            }
+            ContentSubcommand::ValidateRedirects(args) => {
+                validate_redirects(args.locales.as_deref())?;
             }
             ContentSubcommand::Inventory => {
                 gather_inventory()?;

@@ -45,7 +45,7 @@ pub(crate) fn read_all_doc_pages() -> Result<HashMap<(Locale, Cow<'static, str>)
 pub(crate) fn get_redirects_map(locale: Locale) -> HashMap<String, String> {
     let redirects_path = redirects_path(locale).unwrap();
     let mut redirects = HashMap::new();
-    redirects::read_redirects_raw(&redirects_path, &mut redirects).unwrap();
+    redirects.extend(redirects::read_redirects_raw(&redirects_path).unwrap());
     redirects
 }
 

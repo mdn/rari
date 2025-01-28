@@ -24,7 +24,7 @@ type Pairs<'a> = &'a [Pair<'a>];
 pub fn sync_sidebars() -> Result<(), ToolError> {
     let mut redirects = HashMap::new();
     let path = redirects_path(Locale::default())?;
-    read_redirects_raw(&path, &mut redirects)?;
+    redirects.extend(read_redirects_raw(&path)?);
     let pairs = redirects
         .iter()
         .map(|(from, to)| {

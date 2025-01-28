@@ -96,7 +96,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(
-            &vec![(
+            &[(
                 "docs/Web/API/Something".to_string(),
                 "docs/Web/API/SomethingElse".to_string(),
             )],
@@ -122,7 +122,7 @@ mod test {
     fn test_add_redirect_missing_target() {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
 
         let result = do_add_redirect(
             "/en-US/docs/Web/API/ExampleGone",
@@ -136,8 +136,8 @@ mod test {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _docs_pt = DocFixtures::new(&slugs, Locale::PtBr);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
-        let _redirects_pt = RedirectFixtures::new(&vec![], Locale::PtBr);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
+        let _redirects_pt = RedirectFixtures::new(&[], Locale::PtBr);
 
         // Locales do not match
         let result = do_add_redirect(
@@ -166,7 +166,7 @@ mod test {
     fn test_add_redirect_external() {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
 
         let result = do_add_redirect("/en-US/docs/Web/API/ExampleGone", "https://example.com/");
         assert!(result.is_ok());

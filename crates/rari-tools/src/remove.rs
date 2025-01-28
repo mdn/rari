@@ -414,7 +414,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
         let _sidebars = SidebarFixtures::default();
 
         let result = do_remove(
@@ -453,7 +453,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
         let _sidebars = SidebarFixtures::default();
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
@@ -481,7 +481,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
         let _sidebars = SidebarFixtures::default();
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, true, None, false);
@@ -512,7 +512,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
         let _sidebars = SidebarFixtures::default();
 
         let result = do_remove(
@@ -559,7 +559,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::PtBr);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::PtBr);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
+        let _redirects = RedirectFixtures::new(&[], Locale::PtBr);
         let _sidebars = SidebarFixtures::default();
 
         let result = do_remove(
