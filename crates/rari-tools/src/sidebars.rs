@@ -158,7 +158,7 @@ fn write_sidebar(sidebar: &Sidebar, path: &Path) -> Result<(), ToolError> {
         &y,
         &FormatOptions {
             language: LanguageOptions {
-                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                quotes: pretty_yaml::config::Quotes::ForceDouble,
                 indent_block_sequence_in_map: true,
                 ..Default::default()
             },

@@ -383,7 +383,7 @@ fn fm_to_string(fm: &FrontMatter) -> Result<String, DocError> {
         &fm_str,
         &FormatOptions {
             language: LanguageOptions {
-                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                quotes: pretty_yaml::config::Quotes::ForceDouble,
                 indent_block_sequence_in_map: true,
                 ..Default::default()
             },
