@@ -270,6 +270,12 @@ fn main() -> Result<(), Error> {
             settings.json_issues = args.json_issues;
             let _ = SETTINGS.set(settings);
 
+            let arg_files = args
+                .files
+                .iter()
+                .map(|path| path.canonicalize())
+                .collect::<Result<Vec<PathBuf>, _>>()?;
+
             let templ_stats = if args.templ_stats {
                 let (tx, rx) = channel::<String>();
                 TEMPL_RECORDER_SENDER
@@ -303,7 +309,7 @@ fn main() -> Result<(), Error> {
                 None
             };
 
-            let cache = match (args.files.is_empty(), args.no_cache) {
+            let cache = match (arg_files.is_empty(), args.no_cache) {
                 (_, true) => Cache::None,
                 (true, false) => Cache::Static,
                 (false, false) => Cache::Dynamic,
@@ -315,10 +321,10 @@ fn main() -> Result<(), Error> {
             let mut urls = Vec::new();
             let mut docs = Vec::new();
             info!("Building everything 🛠️");
-            if args.all || !args.no_basic || args.content || !args.files.is_empty() {
+            if args.all || !args.no_basic || args.content || !arg_files.is_empty() {
                 let start = std::time::Instant::now();
-                docs = if !args.files.is_empty() {
-                    read_docs_parallel::<Page, Doc>(&args.files, None)?
+                docs = if !arg_files.is_empty() {
+                    read_docs_parallel::<Page, Doc>(&arg_files, None)?
                 } else if args.no_cache {
                     let files: &[_] = if let Some(translated_root) = content_translated_root() {
                         &[content_root(), translated_root]
@@ -342,7 +348,7 @@ fn main() -> Result<(), Error> {
                 urls.extend(spas);
                 info!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
             }
-            if args.all || !args.no_basic || args.content || !args.files.is_empty() {
+            if args.all || !args.no_basic || args.content || !arg_files.is_empty() {
                 let start = std::time::Instant::now();
                 let (docs, meta) = build_docs(&docs)?;
                 build_top_level_meta(meta)?;
