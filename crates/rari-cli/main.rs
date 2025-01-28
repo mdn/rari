@@ -211,7 +211,7 @@ fn main() -> Result<(), Error> {
             .unwrap_or(Cow::Borrowed(".env"))
             .as_ref(),
     ) {
-        println!("Using env_file: {}", env_file.display())
+        eprintln!("Using env_file: {}", env_file.display())
     }
     let cli = Cli::parse();
     if !cli.skip_updates {
