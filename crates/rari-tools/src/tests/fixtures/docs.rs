@@ -92,7 +92,7 @@ impl DocFixtures {
             // overwrite file if it exists
             if fs::exists(&path).unwrap() {
                 if path.is_dir() {
-                    println!(
+                    tracing::info!(
                         "File path is a directory - replacing with file: {}",
                         path.to_string_lossy()
                     );
@@ -115,7 +115,7 @@ impl DocFixtures {
 impl Drop for DocFixtures {
     fn drop(&mut self) {
         if self.do_not_remove {
-            println!("Leaving doc fixtures in place for debugging");
+            tracing::info!("Leaving doc fixtures in place for debugging");
             return;
         }
         // Perform cleanup actions, recursively remove all files

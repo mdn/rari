@@ -2553,6 +2553,7 @@ dependencies = [
  "clap",
  "clap-verbosity-flag",
  "dashmap",
+ "dialoguer",
  "dotenvy",
  "rari-deps",
  "rari-doc",

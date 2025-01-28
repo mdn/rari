@@ -467,7 +467,7 @@ mod test {
         path.push("sidebars");
         path.push("sidebar_0.yaml");
         let content = fs::read_to_string(&path).unwrap();
-        // println!("{}", content);
+        // tracing::info!("{}", content);
         let sb = serde_yaml_ng::from_str::<Sidebar>(&content).unwrap();
 
         // replacement of link of the first child in the third item of the sidebar

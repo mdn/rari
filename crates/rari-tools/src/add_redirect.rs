@@ -13,7 +13,7 @@ pub fn add_redirect(from_url: &str, to_url: &str) -> Result<(), ToolError> {
     let green = Style::new().green();
     let bold = Style::new().bold();
 
-    println!(
+    tracing::info!(
         "{} {} {} {}",
         green.apply_to("Saved"),
         bold.apply_to(from_url),

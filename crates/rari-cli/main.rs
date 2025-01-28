@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, BufWriter, Write};
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
@@ -12,6 +12,8 @@ use anyhow::{anyhow, Error};
 use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::Verbosity;
 use dashmap::DashMap;
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::Confirm;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas, build_top_level_meta,
@@ -39,7 +41,8 @@ use rari_types::settings::Settings;
 use schemars::schema_for;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
-use tracing::Level;
+use tracing::level_filters::LevelFilter;
+use tracing::{info, Level};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter, Layer};
@@ -211,7 +214,7 @@ fn main() -> Result<(), Error> {
             .unwrap_or(Cow::Borrowed(".env"))
             .as_ref(),
     ) {
-        println!("Using env_file: {}", env_file.display())
+        info!("Using env_file: {}", env_file.display())
     }
     let cli = Cli::parse();
     if !cli.skip_updates {
@@ -223,9 +226,18 @@ fn main() -> Result<(), Error> {
         rari_deps::popularities::update_popularities(rari_types::globals::data_dir())?;
     }
 
-    let fmt_filter = filter::Targets::new()
-        .with_target("rari_doc", cli.verbose.tracing_level_filter())
-        .with_target("rari", cli.verbose.tracing_level_filter());
+    let fmt_filter =
+        filter::Targets::new().with_target("rari_doc", cli.verbose.tracing_level_filter());
+
+    let cli_level = if cli.verbose.is_silent() {
+        LevelFilter::OFF
+    } else {
+        LevelFilter::INFO
+    };
+    let cli_filter = filter::Targets::new()
+        .with_target("rari", cli_level)
+        .with_target("rari_tools", cli_level)
+        .with_target("rari_doc", LevelFilter::OFF);
 
     let memory_filter = filter::Targets::new()
         .with_target("rari_doc", Level::WARN)
@@ -237,6 +249,14 @@ fn main() -> Result<(), Error> {
             tracing_subscriber::fmt::layer()
                 .without_time()
                 .with_filter(fmt_filter),
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .without_time()
+                .with_level(false)
+                .compact()
+                .with_target(false)
+                .with_filter(cli_filter),
         )
         .with(memory_layer.clone().with_filter(memory_filter))
         .init();
@@ -270,13 +290,13 @@ fn main() -> Result<(), Error> {
                     }
                     let mut out = stats.into_iter().collect::<Vec<(String, usize)>>();
                     out.sort_by(|(_, a), (_, b)| b.cmp(a));
-                    println!("--- templ summary ---");
+                    info!("--- templ summary ---");
                     let mut tw = TabWriter::new(vec![]);
                     for (i, (templ, count)) in out.iter().enumerate() {
                         writeln!(&mut tw, "{:2}\t{templ}\t{count:4}", i + 1)
                             .expect("unable to write");
                     }
-                    print!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                    info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
                 });
                 Some((recorder_handler, tx))
             } else {
@@ -294,7 +314,7 @@ fn main() -> Result<(), Error> {
             }
             let mut urls = Vec::new();
             let mut docs = Vec::new();
-            println!("Building everything 🛠️");
+            info!("Building everything 🛠️");
             if args.all || !args.no_basic || args.content || !args.files.is_empty() {
                 let start = std::time::Instant::now();
                 docs = if !args.files.is_empty() {
@@ -309,7 +329,7 @@ fn main() -> Result<(), Error> {
                 } else {
                     read_and_cache_doc_pages()?
                 };
-                println!(
+                info!(
                     "Took: {: >10.3?} for reading {} docs",
                     start.elapsed(),
                     docs.len()
@@ -320,7 +340,7 @@ fn main() -> Result<(), Error> {
                 let spas = build_spas()?;
                 let num = spas.len();
                 urls.extend(spas);
-                println!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
+                info!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
             }
             if args.all || !args.no_basic || args.content || !args.files.is_empty() {
                 let start = std::time::Instant::now();
@@ -328,7 +348,7 @@ fn main() -> Result<(), Error> {
                 build_top_level_meta(meta)?;
                 let num = docs.len();
                 urls.extend(docs);
-                println!(
+                info!(
                     "Took: {: >10.3?} to build content docs ({num})",
                     start.elapsed()
                 );
@@ -336,14 +356,14 @@ fn main() -> Result<(), Error> {
             if args.all || !args.no_basic || args.search_index {
                 let start = std::time::Instant::now();
                 build_search_index(&docs)?;
-                println!("Took: {: >10.3?} to build search index", start.elapsed());
+                info!("Took: {: >10.3?} to build search index", start.elapsed());
             }
             if args.all || args.generics {
                 let start = std::time::Instant::now();
                 let generic_pages = build_generic_pages()?;
                 let num = generic_pages.len();
                 urls.extend(generic_pages);
-                println!(
+                info!(
                     "Took: {: >10.3?} to build generic pages ({num})",
                     start.elapsed()
                 );
@@ -353,7 +373,7 @@ fn main() -> Result<(), Error> {
                 let curriclum_pages = build_curriculum_pages()?;
                 let num = curriclum_pages.len();
                 urls.extend(curriclum_pages);
-                println!(
+                info!(
                     "Took: {: >10.3?} to build curriculum pages ({num})",
                     start.elapsed()
                 );
@@ -363,14 +383,14 @@ fn main() -> Result<(), Error> {
                 let blog_pages = build_blog_pages()?;
                 let num = blog_pages.len();
                 urls.extend(blog_pages);
-                println!("Took: {: >10.3?} to build blog ({num})", start.elapsed());
+                info!("Took: {: >10.3?} to build blog ({num})", start.elapsed());
             }
             if args.all || args.spotlights {
                 let start = std::time::Instant::now();
                 let contributor_spotlight_pages = build_contributor_spotlight_pages()?;
                 let num = contributor_spotlight_pages.len();
                 urls.extend(contributor_spotlight_pages);
-                println!(
+                info!(
                     "Took: {: >10.3?} to build contributor spotlights ({num})",
                     start.elapsed()
                 );
@@ -381,7 +401,7 @@ fn main() -> Result<(), Error> {
                 let out_path = build_out_root()?;
                 fs::create_dir_all(out_path).unwrap();
                 sitemaps.write_all_sitemaps(out_path)?;
-                println!(
+                info!(
                     "Took: {: >10.3?} to write sitemaps ({})",
                     start.elapsed(),
                     sitemaps.sitemap_meta.len()
@@ -410,10 +430,10 @@ fn main() -> Result<(), Error> {
             serve::serve()?
         }
         Commands::GitHistory => {
-            println!("Gathering history 📜");
+            info!("Gathering history 📜");
             let start = std::time::Instant::now();
             gather_history()?;
-            println!("Took: {:?}", start.elapsed());
+            info!("Took: {:?}", start.elapsed());
         }
         Commands::Content(content_subcommand) => match content_subcommand {
             ContentSubcommand::Move(args) => {
@@ -498,19 +518,19 @@ fn update(version: Option<String>) -> Result<(), Error> {
     let target_version = match (&latest, &target_release) {
         (None, None) => return Err(anyhow!("No latest release, specigy a version!")),
         (None, Some(target)) => {
-            println!("Updating rari to {}", target.version);
+            info!("Updating rari to {}", target.version);
             &target.version
         }
         (Some(latest), None) => {
-            println!("Updating rari to {} (latest)", latest.version);
+            info!("Updating rari to {} (latest)", latest.version);
             &latest.version
         }
         (Some(latest), Some(target)) if latest.version == target.version => {
-            println!("Updating rari to {} (latest)", latest.version);
+            info!("Updating rari to {} (latest)", latest.version);
             &latest.version
         }
         (Some(latest), Some(target)) => {
-            println!(
+            info!(
                 "Updating rari to {} (latest {})",
                 target.version, latest.version
             );
@@ -518,22 +538,21 @@ fn update(version: Option<String>) -> Result<(), Error> {
         }
     };
 
-    println!("rari `{target_version}` will be downloaded/extracted.");
-    println!(
+    info!("rari `{target_version}` will be downloaded/extracted.");
+    info!(
         "The current rari ({}) at version `{}` will be replaced.",
         update.bin_install_path().to_string_lossy(),
         update.current_version()
     );
-    print!("Do you want to continue? [Y/n] ");
-    io::stdout().flush()?;
-
-    let mut s = String::new();
-    io::stdin().read_line(&mut s)?;
-    let s = s.trim().to_lowercase();
-    if !s.is_empty() && s != "y" {
+    if !Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt("Do you want to continue?")
+        .default(true)
+        .interact()
+        .unwrap_or_default()
+    {
         return Err(anyhow!("Update aborted"));
     }
     let status = update.update()?;
-    println!("\n\nrari updated to `{}`", status.version());
+    info!("\n\nrari updated to `{}`", status.version());
     Ok(())
 }

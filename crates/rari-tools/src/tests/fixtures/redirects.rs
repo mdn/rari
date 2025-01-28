@@ -53,7 +53,7 @@ impl RedirectFixtures {
 impl Drop for RedirectFixtures {
     fn drop(&mut self) {
         if self.do_not_remove {
-            println!(
+            tracing::info!(
                 "Leaving redirects fixture {} in place for debugging",
                 self.path.display()
             );
