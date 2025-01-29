@@ -45,6 +45,10 @@ pub enum ToolError {
     InvalidRedirectFromURL(String),
     #[error("Invalid 'to' URL for redirect: {0}")]
     InvalidRedirectToURL(String),
+    #[error("Invalid redirects: not in alphabetical order: {0} -> {1} before {2} -> {3}")]
+    InvalidRedirectOrder(String, String, String, String),
+    #[error("Invalid redirect for {0} -> {1} or {2} -> {3}")]
+    InvalidRedirect(String, String, String, String),
     #[error(transparent)]
     RedirectError(#[from] RedirectError),
     #[error("Invalid yaml {0}")]

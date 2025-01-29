@@ -161,7 +161,7 @@ impl Doc {
     }
 }
 
-impl PageReader for Doc {
+impl PageReader<Page> for Doc {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
         if let Ok(doc) = doc_page_from_static_files(&path) {
@@ -383,7 +383,7 @@ fn fm_to_string(fm: &FrontMatter) -> Result<String, DocError> {
         &fm_str,
         &FormatOptions {
             language: LanguageOptions {
-                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                quotes: pretty_yaml::config::Quotes::ForceDouble,
                 indent_block_sequence_in_map: true,
                 ..Default::default()
             },

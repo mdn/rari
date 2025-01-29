@@ -173,7 +173,7 @@ impl SPA {
     }
 }
 
-impl PageReader for SPA {
+impl PageReader<Page> for SPA {
     fn read(_: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         todo!()
     }

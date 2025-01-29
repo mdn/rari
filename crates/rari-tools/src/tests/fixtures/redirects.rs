@@ -10,15 +10,22 @@ pub(crate) struct RedirectFixtures {
 }
 
 impl RedirectFixtures {
-    pub fn new(entries: &Vec<(String, String)>, locale: Locale) -> Self {
+    pub fn new(entries: &[(String, String)], locale: Locale) -> Self {
         Self::new_internal(entries, locale, false)
     }
     #[allow(dead_code)]
-    pub fn debug_new(entries: &Vec<(String, String)>, locale: Locale) -> Self {
+    pub fn debug_new(entries: &[(String, String)], locale: Locale) -> Self {
         Self::new_internal(entries, locale, true)
     }
 
-    fn new_internal(entries: &Vec<(String, String)>, locale: Locale, do_not_remove: bool) -> Self {
+    pub fn all_locales_empty() -> Vec<Self> {
+        Locale::for_generic_and_spas()
+            .iter()
+            .map(|locale| Self::new_internal(&[], *locale, false))
+            .collect()
+    }
+
+    fn new_internal(entries: &[(String, String)], locale: Locale, do_not_remove: bool) -> Self {
         // create wiki history file for each slug in the vector, in the configured root directory for the locale
         let mut folder_path = PathBuf::new();
         folder_path.push(root_for_locale(locale).unwrap());
@@ -53,13 +60,13 @@ impl RedirectFixtures {
 impl Drop for RedirectFixtures {
     fn drop(&mut self) {
         if self.do_not_remove {
-            println!(
+            tracing::info!(
                 "Leaving redirects fixture {} in place for debugging",
                 self.path.display()
             );
             return;
         }
 
-        fs::remove_file(&self.path).unwrap();
+        fs::remove_file(&self.path).ok();
     }
 }

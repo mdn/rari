@@ -11,7 +11,7 @@ use std::iter::once;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime, Utc};
 use crossbeam_channel::Sender;
 use itertools::Itertools;
 use rari_types::globals::{
@@ -83,12 +83,15 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     let mut built_page = page.build()?;
     if settings().json_issues {
         if let BuiltPage::Doc(json_doc) = &mut built_page {
-            if let Some(issues) = IN_MEMORY
+            let flaws = if let Some(issues) = IN_MEMORY
                 .get_events()
                 .get(page.full_path().to_string_lossy().as_ref())
             {
-                json_doc.doc.flaws = Some(to_display_issues(issues.value().clone(), page));
-            }
+                Some(to_display_issues(issues.value().clone(), page))
+            } else {
+                Some(Default::default())
+            };
+            json_doc.doc.flaws = flaws;
         }
     }
     let out_path = build_out_root()
@@ -281,6 +284,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
         return Err(DocError::NoBlogRoot);
     }
     copy_blog_author_avatars()?;
+    let now = Utc::now().date_naive();
 
     let rss_file = build_out_root()?
         .join(default_locale().as_folder_str())
@@ -289,7 +293,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     let sorted_posts: Vec<_> = blog_files()
         .posts
         .values()
-        .cloned()
+        .filter(|post| filter_unpublished(post, &now))
         .filter_map(|page| {
             if let Page::BlogPost(post) = page {
                 Some(post)
@@ -297,6 +301,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
                 None
             }
         })
+        .cloned()
         .sorted_by(|a, b| a.meta.date.cmp(&b.meta.date).reverse())
         .collect();
     create_rss(&rss_file, sorted_posts.as_slice(), base_url())?;
@@ -304,6 +309,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     blog_files()
         .posts
         .values()
+        .filter(|post| filter_unpublished(post, &now))
         .chain(once(&SPA::from_url("/en-US/blog/").unwrap()))
         .map(|page| {
             build_single_page(page).map(|_| SitemapMeta {
@@ -313,6 +319,15 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
             })
         })
         .collect()
+}
+
+fn filter_unpublished(post: &&Page, now: &NaiveDate) -> bool {
+    settings().blog_unpublished
+        || if let Page::BlogPost(post) = post {
+            post.meta.published && &post.meta.date <= now
+        } else {
+            false
+        }
 }
 
 /// Builds generic pages and returns their URLs.

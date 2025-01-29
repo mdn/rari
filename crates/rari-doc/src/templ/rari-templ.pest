@@ -39,6 +39,7 @@ string = _{
 
 boolean = { "true" | "false" }
 none = { "" }
+empty_string = { "\"\"" | "''" | "``" }
 
 
 all_chars = _{'a'..'z' | 'A'..'Z' | "_" | "-" | '0'..'9'}
@@ -47,7 +48,7 @@ ident = ${
     all_chars*
 }
 
-arg = _{ string | float | int | boolean | none }
+arg = _{ empty_string | string | float | int | boolean | none }
 kwargs  = !{ arg ~ ("," ~ arg )* ~ ","? }
 fn_call = !{ ident ~ "(" ~ kwargs? ~ ")" }
 

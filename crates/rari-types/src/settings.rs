@@ -25,6 +25,7 @@ pub struct Settings {
     pub reader_ignores_gitignore: bool,
     pub data_issues: bool,
     pub json_issues: bool,
+    pub blog_unpublished: bool,
     pub pagefind_index: bool,
 }
 

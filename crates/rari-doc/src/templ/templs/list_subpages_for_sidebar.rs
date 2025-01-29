@@ -50,6 +50,7 @@ pub fn list_subpages_for_sidebar(
                 code,
                 only_en_us: locale_page.locale() != env.locale,
             },
+            true,
         )?;
         out.push_str("</li>");
     }

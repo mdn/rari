@@ -164,10 +164,6 @@ struct BuildArgs {
     verbose: bool,
     #[arg(long)]
     sidebars: bool,
-    #[arg(long)]
-    check_dts: bool,
-    #[arg(long)]
-    ignore_ps: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -191,280 +187,16 @@ fn is_html(s: &str) -> bool {
 
 const IGNORED_KEYS: &[&str] = &[
     "doc.flaws",
-    "blogMeta.readTime",
     "doc.modified",
     "doc.popularity",
     "doc.source.github_url",
     "doc.source.last_commit_url",
-    //"doc.sidebarHTML",
-    "doc.sidebarMacro",
-    "doc.hasMathML",
     "doc.other_translations",
-    "doc.summary",
 ];
 
-static SKIP_GLOB_LIST: LazyLock<Vec<&str>> = LazyLock::new(|| {
-    vec![
-        "docs/mdn/writing_guidelines/",
-        "docs/mozilla/add-ons/webextensions/",
-        "docs/mozilla/firefox/releases/",
-    ]
-});
+static SKIP_GLOB_LIST: LazyLock<Vec<&str>> = LazyLock::new(Vec::new);
 
-static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| {
-    vec![
-        // Wrong auto-linking of example.com properly escaped link, unfixable in yari
-        ("docs/glossary/http/index.json", "doc.body.0.value.content"),
-        ("docs/learn/html/multimedia_and_embedding/other_embedding_technologies/index.json", "doc.body.4.value.content"),
-        ("docs/web/http/headers/content-security-policy/frame-ancestors/index.json", "doc.body.2.value.content"),
-        // Relative link to MDN Playground gets rendered as dead link in yari, correct in rari
-        ("docs/learn/learning_and_getting_help/index.json", "doc.body.3.value.content"),
-        ("docs/web/media/formats/video_codecs/index.json", "doc.body.6.value.content"),
-        // 'unsupported templ: livesamplelink' in rari, remove when supported
-        ("docs/learn/forms/form_validation/index.json", "doc.body.12.value.content"),
-        ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.9.value.content"),
-        ("docs/web/html/element/img/index.json", "doc.body.15.value.content"),
-        ("docs/web/css/_colon_-moz-window-inactive/index.json", "doc.body.5.value.content"),
-        // p tag removal in lists
-        ("docs/learn/server-side/express_nodejs/deployment/index.json", "doc.body.11.value.content"),
-        ("docs/web/http/headers/set-login/index.json", "doc.body.2.value.content"),
-        ("docs/web/html/element/a/index.json", "doc.body.2.value.content"),
-        ("docs/web/css/background-size/index.json", "doc.body.4.value.content"),
-        ("docs/web/css/color_value/color-mix/index.json", "doc.body.2.value.content"),
-        // link element re-structure, better in rari
-        ("docs/learn/common_questions/design_and_accessibility/design_for_all_types_of_users/index.json", "doc.body.5.value.content"),
-        ("docs/learn/html/multimedia_and_embedding/video_and_audio_content/index.json", "doc.body.2.value.content"),
-        ("docs/web/http/headers/content-security-policy/sources/index.json", "doc.body.1.value.content"),
-        // id changes, no problem
-        ("docs/learn/css/howto/css_faq/index.json", "doc.body.11.value.id"),
-        ("docs/learn/forms/property_compatibility_table_for_form_controls/index.json", "doc.body.2.value.content"),
-        ("docs/learn/html/howto/define_terms_with_html/index.json", "doc.body.0.value.content"),
-        ("docs/learn/tools_and_testing/client-side_javascript_frameworks/react_interactivity_filtering_conditional_rendering/index.json", "doc.toc.3.id"),
-        ("docs/learn/tools_and_testing/client-side_javascript_frameworks/react_interactivity_filtering_conditional_rendering/index.json", "doc.body.4.value.id"),
-        ("docs/mdn/mdn_product_advisory_board/index.json", "doc.body.1.value.content"),
-        ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.11.value.content"),
-        ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.12.value.content"),
-        ("docs/mdn/writing_guidelines/page_structures/live_samples/index.json", "doc.body.3.value.content"),
-        ("docs/web/performance/speculative_loading/index.json", "doc.body.9.value.id"),
-        ("docs/web/manifest/shortcuts/index.json", "doc.toc.1.id"),
-        ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.3.value.id"),
-        ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.4.value.id"),
-        ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.5.value.id"),
-        ("docs/web/svg/attribute/preserveaspectratio/index.json", "doc.body.6.value.id"),
-        ("docs/web/mathml/element/mfenced/index.json", "doc.body.4.value.content"),
-        ("docs/web/javascript/reference/classes/index.json", "doc.body.3.value.content"),
-        ("docs/web/javascript/reference/operators/nullish_coalescing/index.json", "doc.body.8.value.id"),
-        ("docs/web/css/css_containment/container_size_and_style_queries/index.json", "doc.toc.0.id"),
-        ("docs/web/css/css_containment/container_size_and_style_queries/index.json", "doc.toc.2.id"),
-        ("docs/web/css/@property/syntax/index.json", "doc.body.4.value.content"),
-        ("docs/web/css/css_nesting/nesting_and_specificity/index.json", "doc.body.1.value.id"),
-        ("docs/web/css/css_scroll_snap/using_scroll_snap_events/index.json", "doc.body.10.value.content"),
-        ("docs/web/css/css_nesting/nesting_and_specificity/index.json", "doc.toc.0.id"),
-        ("docs/web/css/nesting_selector/index.json", "doc.body.2.value.id"),
-        ("docs/web/css/offset/index.json", "doc.body.5.value.content"),
-        ("docs/web/css/position-try-fallbacks/index.json", "doc.body.7.value.content"),
-        ("docs/web/css/position-try/index.json", "doc.body.5.value.content"),
-        ("docs/web/css/position-area_value/index.json", "doc.toc.5.id"),
-        // absolute to relative link change, no problem
-        ("docs/learn/forms/styling_web_forms/index.json", "doc.body.10.value.content"),
-        ("docs/mdn/kitchensink/index.json", "doc.body.24.value.content"),
-        ("docs/web/svg/attribute/begin/index.json", "doc.body.3.value.content"),
-        ("docs/web/svg/attribute/begin/index.json", "doc.body.4.value.content"),
-        ("docs/web/svg/attribute/begin/index.json", "doc.body.5.value.content"),
-        ("docs/web/svg/attribute/begin/index.json", "doc.body.6.value.content"),
-        ("docs/web/svg/attribute/begin/index.json", "doc.body.7.value.content"),
-        ("docs/web/javascript/reference/global_objects/set/index.json", "doc.body.4.value.content"),
-        // encoding changes, no problem
-        ("docs/learn/html/introduction_to_html/html_text_fundamentals/index.json", "doc.body.15.value.content"),
-        ("docs/learn/tools_and_testing/client-side_javascript_frameworks/vue_computed_properties/index.json", "doc.body.1.value.content"),
-        ("docs/learn/tools_and_testing/client-side_javascript_frameworks/react_interactivity_filtering_conditional_rendering/index.json", "doc.body.4.value.i"),
-        ("docs/mdn/writing_guidelines/page_structures/links/index.json", "doc.body.3.value.content"),
-        ("docs/mdn/writing_guidelines/page_structures/links/index.json", "doc.body.4.value.content"),
-        ("docs/mdn/writing_guidelines/page_structures/macros/commonly_used_macros/index.json", "doc.body.14.value.content"),
-        ("docs/web/svg/attribute/d/index.json", "doc.body.7.value.content"),
-        ("docs/web/svg/attribute/d/index.json", "doc.body.8.value.content"),
-        // internal linking fixed in rari
-        ("docs/mdn/community/discussions/index.json", "doc.body.0.value.content"),
-        ("docs/web/http/headers/te/index.json", "doc.body.1.value.content"),
-        // baseline/specification change no problem
-        ("docs/mdn/kitchensink/index.json", "doc.baseline"),
-        ("docs/mdn/writing_guidelines/page_structures/compatibility_tables/index.json", "doc.baseline"),
-        ("docs/web/svg/attribute/data-_star_/index.json", "doc.body.1.value.specifications.0"),
-        ("docs/web/http/headers/permissions-policy/screen-wake-lock/index.json", "doc.baseline"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.3.value.content"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.3.value.content"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.4.type"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.4.value.content"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.4.value.id"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.4.value.query"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.4.value.title"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.5.type"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.5.value.content"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.5.value.id"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.5.value.query"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.5.value.title"),
-        ("docs/web/mathml/global_attributes/mathbackground/index.json", "doc.body.6"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.3.value.content"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.4.type"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.4.value.content"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.4.value.id"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.4.value.query"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.4.value.title"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.5.type"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.5.value.content"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.5.value.id"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.5.value.query"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.5.value.title"),
-        ("docs/web/mathml/global_attributes/mathcolor/index.json", "doc.body.6"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.3.value.content"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.4.type"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.4.value.content"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.4.value.id"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.4.value.query"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.4.value.title"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.5.type"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.5.value.content"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.5.value.id"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.5.value.query"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.5.value.title"),
-        ("docs/web/mathml/global_attributes/mathsize/index.json", "doc.body.6"),
-        ("docs/web/css/color_value/hwb/index.json", "doc.baseline"),
-        ("docs/web/css/@media/dynamic-range/index.json", "doc.baseline"),
-        ("docs/web/css/color_value/hwb/index.json", "doc.baseline"),
-        ("docs/web/css/cursor/index.json", "doc.body.5.value.content"),
-        ("docs/web/css/font-stretch/index.json", "doc.body.8.value.content"),
-        // whitespace changes no problem
-        ("docs/mdn/kitchensink/index.json", "doc.body.23.value.title"),
-        ("docs/mdn/writing_guidelines/howto/write_an_api_reference/index.json", "doc.body.8.value.content"),
-        ("docs/mdn/writing_guidelines/page_structures/code_examples/index.json", "doc.body.7.value.content"),
-        // bug in yari
-        ("docs/mdn/writing_guidelines/howto/write_an_api_reference/information_contained_in_a_webidl_file/index.json", "doc.body.23.value.content"),
-        ("docs/web/accessibility/aria/attributes/aria-autocomplete/index.json", "doc.body.4.value.specifications.1.bcdSpecificationURL"),
-        ("docs/web/accessibility/aria/attributes/aria-autocomplete/index.json", "doc.body.4.value.specifications.2"),
-        ("docs/web/accessibility/aria/roles/combobox_role/index.json", "doc.body.5.value.specifications.1.bcdSpecificationURL"),
-        ("docs/web/accessibility/aria/roles/combobox_role/index.json", "doc.body.5.value.specifications.2"),
-        ("docs/web/security/practical_implementation_guides/tls/index.json", "doc.body.10.value.content"),
-        ("docs/web/css/reference/index.json", "doc.body.4.value.content"),
-        // improvement by p-tag removal/addition
-        ("docs/web/html/element/input/button/index.json", "doc.body.11.value.content"),
-        ("docs/web/html/element/input/color/index.json", "doc.body.12.value.content"),
-        ("docs/web/html/element/input/date/index.json", "doc.body.16.value.content"),
-        ("docs/web/html/element/input/datetime-local/index.json", "doc.body.14.value.content"),
-        ("docs/web/html/element/input/email/index.json", "doc.body.22.value.content"),
-        ("docs/web/html/element/input/file/index.json", "doc.body.17.value.content"),
-        ("docs/web/html/element/input/hidden/index.json", "doc.body.9.value.content"),
-        ("docs/web/html/element/input/image/index.json", "doc.body.23.value.content"),
-        ("docs/web/html/element/input/month/index.json", "doc.body.20.value.content"),
-        ("docs/web/html/element/input/number/index.json", "doc.body.22.value.content"),
-        ("docs/web/html/element/input/password/index.json", "doc.body.20.value.content"),
-        ("docs/web/html/element/input/radio/index.json", "doc.body.11.value.content"),
-        ("docs/web/html/element/input/range/index.json", "doc.body.18.value.content"),
-        ("docs/web/html/element/input/search/index.json", "doc.body.27.value.content"),
-        ("docs/web/html/element/input/tel/index.json", "doc.body.21.value.content"),
-        ("docs/web/html/element/input/text/index.json", "doc.body.22.value.content"),
-        ("docs/web/html/element/input/time/index.json", "doc.body.22.value.content"),
-        ("docs/web/html/element/input/url/index.json", "doc.body.22.value.content"),
-        ("docs/web/html/element/input/week/index.json", "doc.body.17.value.content"),
-        ("docs/web/html/element/link/index.json", "doc.body.2.value.content"),
-        ("docs/web/html/element/script/index.json", "doc.body.1.value.content"),
-        ("docs/web/html/element/input/checkbox/index.json", "doc.body.14.value.content"),
-        ("docs/web/html/element/input/reset/index.json", "doc.body.11.value.content"),
-        ("docs/web/html/element/input/submit/index.json", "doc.body.16.value.content"),
-        ("docs/web/css/-webkit-mask-position-x/index.json", "doc.body.9.value.content"),
-        ("docs/web/css/-webkit-mask-position-y/index.json", "doc.body.9.value.content"),
-        ("docs/web/css/-webkit-mask-repeat-x/index.json", "doc.body.10.value.content"),
-        ("docs/web/css/-webkit-mask-repeat-y/index.json", "doc.body.10.value.content"),
-        // image dimension rounding error or similar, ok
-        ("docs/web/media/formats/video_concepts/index.json", "doc.body.3.value.content"),
-        ("docs/web/svg/tutorial/introduction/index.json", "doc.body.0.value.content"),
-        // rari macro improvement
-        ("docs/web/manifest/index.json", "doc.body.1.value.content"),
-        ("docs/web/manifest/orientation/index.json", "doc.body.6.value.content"),
-        ("docs/web/css/-moz-orient/index.json", "doc.body.3.value.content"),
-        ("docs/web/css/css_namespaces/index.json", "doc.body.0.value.content"),
-        ("docs/web/css/shape-outside/index.json", "doc.body.4.value.content"),
-        ("docs/web/css/stroke-dasharray/index.json", "doc.body.3.value.content"),
-        ("docs/web/css/stroke-dashoffset/index.json", "doc.body.3.value.content"),
-        ("docs/web/css/stroke-width/index.json", "doc.body.3.value.content"),
-        ("docs/web/css/text-anchor/index.json", "doc.body.3.value.content"),
-        ("docs/web/css/text-transform/index.json", "doc.body.15.value.content"), // <-- percent-encoded/plain iframe src param
-        ("docs/web/css/x/index.json", "doc.body.3.value.content"),
-        ("docs/web/css/y/index.json", "doc.body.3.value.content"),
-        // ("docs/web/css/stop-opacity/index.json", "doc.body.3.value.content"),
-        ("docs/web/css/stop-opacity/index.json", "doc.body.4.value.content"),
-        // attribute order, no problem
-        ("docs/web/svg/attribute/end/index.json", "doc.body.1.value.content"),
-        ("docs/web/html/element/track/index.json", "doc.body.5.value.content"),
-        ("docs/web/html/global_attributes/itemscope/index.json", "doc.body.3.value.content"),
-        // added <p> tags, no problem
-        ("docs/web/svg/attribute/index.json", "doc.body.30.value.content"),
-        ("docs/web/svg/attribute/index.json", "doc.body.31.value.content"),
-        ("docs/web/svg/element/animatemotion/index.json", "doc.body.4.value.content"),
-        ("docs/web/svg/element/font-face-format/index.json", "doc.body.2.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.18.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.19.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.20.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.21.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.22.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.23.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.24.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.25.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.27.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.28.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.29.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.30.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.31.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.32.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.33.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.34.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.35.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.38.value.content"),
-        ("docs/web/svg/element/index.json", "doc.body.39.value.content"),
-        ("docs/web/css/@font-face/font-stretch/index.json", "doc.body.7.value.content"),
-        ("docs/web/css/@starting-style/index.json", "doc.body.4.value.content"),
-        ("docs/web/css/css_multicol_layout/index.json", "doc.body.0.value.content"),
-        ("docs/web/css/font-variation-settings/index.json", "doc.body.5.value.content"),
-        // outdated and unsupported in rari
-        ("docs/web/css/-moz-image-region/index.json", "doc.body.3.value.content"),
-        // webref version mismatch
-        ("docs/web/css/@import/index.json", "doc.body.3.value.content"),
-        ("docs/web/css/@supports/index.json", "doc.body.8.value.content"),
-        ("docs/web/css/attr/index.json", "doc.body.4.value.content"),
-        ("docs/web/css/calc-size/index.json", "doc.body.8.value.content"),
-        ("docs/web/css/calc-sum/index.json", "doc.body.2.value.content"),
-        ("docs/web/css/content/index.json", "doc.body.5.value.content"),
-        ("docs/web/css/stop-color/index.json", "doc.body.3.value.content"),
-        ("docs/web/css/stop-color/index.json", "doc.body.4.value.content"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.type"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.value.content"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.value.id"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.value.query"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.10.value.title"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.11"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.8.value.content"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.type"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.value.content"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.value.id"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.value.query"),
-        ("docs/web/css/text-decoration-thickness/index.json", "doc.body.9.value.title"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.10.type"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.10.value.content"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.10.value.id"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.10.value.query"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.10.value.title"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.11.type"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.11.value.content"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.11.value.id"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.11.value.query"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.11.value.title"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.12"),
-        ("docs/web/css/text-overflow/index.json", "doc.body.9.value.content"),
-        ("docs/web/css/outline-color/index.json", "doc.body.7.value.content"),
-        ("docs/web/css/outline/index.json", "doc.body.8.value.content"),
-        ]
-    .into_iter()
-    .collect()
-});
+static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| vec![].into_iter().collect());
 
 static WS_DIFF: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
@@ -476,9 +208,9 @@ static DIFF_MAP: LazyLock<Arc<DashMap<String, String>>> =
 
 /// Run html content through these handlers to clean up the html before minifying and diffing.
 fn pre_diff_element_massaging_handlers<'a>(
-    args: &BuildArgs,
+    _args: &BuildArgs,
 ) -> Vec<(Cow<'a, Selector>, ElementContentHandlers<'a>)> {
-    let mut handlers = vec![
+    let handlers = vec![
         // remove data-flaw-src attributes
         element!("*[data-flaw-src]", |el| {
             el.remove_attribute("data-flaw-src");
@@ -488,42 +220,7 @@ fn pre_diff_element_massaging_handlers<'a>(
             el.remove_attribute("data-flaw");
             Ok(())
         }),
-        element!("*.page-not-created", |el| {
-            el.remove_attribute("class");
-            Ok(())
-        }),
-        // remove ids from notecards, example-headers, code-examples
-        element!("div.notecard, div.example-header, div.code-example", |el| {
-            el.remove_attribute("id");
-            Ok(())
-        }),
-        // lowercase ids
-        element!("*[id]", |el| {
-            el.set_attribute(
-                "id",
-                &el.get_attribute("id").unwrap_or_default().to_lowercase(),
-            )?;
-            Ok(())
-        }),
     ];
-    if args.ignore_ps {
-        handlers.extend([element!("p", |el| {
-            el.remove_and_keep_content();
-            Ok(())
-        })]);
-    }
-    if !args.check_dts {
-        handlers.extend([
-            element!("dt", |el| {
-                el.remove_attribute("id");
-                Ok(())
-            }),
-            element!("dt > a[href^=\"#\"", |el| {
-                el.remove_and_keep_content();
-                Ok(())
-            }),
-        ]);
-    }
     handlers
 }
 

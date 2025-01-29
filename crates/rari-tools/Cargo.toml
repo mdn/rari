@@ -1,6 +1,6 @@
 [package]
 name = "rari-tools"
-version = "0.1.13"
+version = "0.1.20"
 edition.workspace = true
 authors = [
   "Andi Pieper <apieper@mozilla.com>",
@@ -28,8 +28,8 @@ serde_yaml_ng.workspace = true
 pretty_yaml.workspace = true
 yaml_parser.workspace = true
 const_format.workspace = true
+dialoguer.workspace = true
 
-dialoguer = "0.11"
 csv = "1"
 
 
@@ -38,3 +38,4 @@ serial_test = { version = "3", features = ["file_locks"] }
 rari-types = { workspace = true, features = ["testing"] }
 fake = { version = "3", features = ["chrono", "serde_json"] }
 rand = "0.8"
+assert-json-diff = "2"

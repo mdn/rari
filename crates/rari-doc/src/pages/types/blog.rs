@@ -192,9 +192,14 @@ pub struct BlogPostFrontmatter {
     pub image: BlogImage,
     pub keywords: String,
     pub sponsored: bool,
+    #[serde(default = "published_default")]
     pub published: bool,
     pub date: NaiveDate,
     pub author: String,
+}
+
+const fn published_default() -> bool {
+    true
 }
 
 #[derive(Debug, Clone)]
@@ -211,7 +216,7 @@ impl BlogPost {
     }
 }
 
-impl PageReader for BlogPost {
+impl PageReader<Page> for BlogPost {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         read_blog_post(path).map(Arc::new).map(Page::BlogPost)
     }

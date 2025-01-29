@@ -5,7 +5,9 @@ use std::path::Path;
 
 use const_format::concatcp;
 use pretty_yaml::config::{FormatOptions, LanguageOptions};
-use rari_doc::html::sidebar::{BasicEntry, Sidebar, SidebarEntry, SubPageEntry, WebExtApiEntry};
+use rari_doc::html::sidebar::{
+    BasicEntry, CoreEntry, Sidebar, SidebarEntry, SubPageEntry, SubPageGroupedEntry, WebExtApiEntry,
+};
 use rari_types::globals::content_root;
 use rari_types::locale::{default_locale, Locale};
 use rari_utils::concat_strs;
@@ -22,7 +24,7 @@ type Pairs<'a> = &'a [Pair<'a>];
 pub fn sync_sidebars() -> Result<(), ToolError> {
     let mut redirects = HashMap::new();
     let path = redirects_path(Locale::default())?;
-    read_redirects_raw(&path, &mut redirects)?;
+    redirects.extend(read_redirects_raw(&path)?);
     let pairs = redirects
         .iter()
         .map(|(from, to)| {
@@ -45,26 +47,26 @@ pub fn sync_sidebars() -> Result<(), ToolError> {
 fn traverse_and_extract_l10nable<'a, 'b: 'a>(entry: &'a SidebarEntry) -> HashSet<&'a str> {
     let (title, hash, children) = match entry {
         SidebarEntry::Section(basic_entry) => (
-            basic_entry.title.as_deref(),
-            basic_entry.hash.as_deref(),
+            basic_entry.core.title.as_deref(),
+            basic_entry.core.hash.as_deref(),
             Some(&basic_entry.children),
         ),
         SidebarEntry::ListSubPages(sub_page_entry) => (
-            sub_page_entry.title.as_deref(),
-            sub_page_entry.hash.as_deref(),
+            sub_page_entry.core.title.as_deref(),
+            sub_page_entry.core.hash.as_deref(),
             None,
         ),
         SidebarEntry::ListSubPagesGrouped(sub_page_entry) => (
-            sub_page_entry.title.as_deref(),
-            sub_page_entry.hash.as_deref(),
+            sub_page_entry.core.title.as_deref(),
+            sub_page_entry.core.hash.as_deref(),
             None,
         ),
         SidebarEntry::WebExtApi(web_ext_api_entry) => {
             (Some(web_ext_api_entry.title.as_str()), None, None)
         }
         SidebarEntry::Default(basic_entry) => (
-            basic_entry.title.as_deref(),
-            basic_entry.hash.as_deref(),
+            basic_entry.core.title.as_deref(),
+            basic_entry.core.hash.as_deref(),
             Some(&basic_entry.children),
         ),
         _ => (None, None, None),
@@ -156,7 +158,7 @@ fn write_sidebar(sidebar: &Sidebar, path: &Path) -> Result<(), ToolError> {
         &y,
         &FormatOptions {
             language: LanguageOptions {
-                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                quotes: pretty_yaml::config::Quotes::ForceDouble,
                 indent_block_sequence_in_map: true,
                 ..Default::default()
             },
@@ -228,106 +230,137 @@ fn replace_pairs(link: Option<String>, pairs: Pairs<'_>) -> Option<String> {
     }
 }
 
+fn process_basic_entry(
+    BasicEntry {
+        core:
+            CoreEntry {
+                link,
+                hash,
+                title,
+                details,
+                code,
+            },
+        children,
+    }: BasicEntry,
+    pairs: Pairs<'_>,
+) -> Option<BasicEntry> {
+    let new_link: Option<String> = replace_pairs(link.clone(), pairs);
+    if link.is_some() && new_link.is_none() {
+        return None;
+    }
+    Some(BasicEntry {
+        core: CoreEntry {
+            link: new_link,
+            hash,
+            title,
+            details,
+            code,
+        },
+        children: children
+            .into_iter()
+            .map(|c| process_entry(c, pairs))
+            .collect(),
+    })
+}
+
+fn process_sub_page_grouped_entry(
+    SubPageGroupedEntry {
+        core:
+            CoreEntry {
+                link,
+                hash,
+                title,
+                details,
+                code,
+            },
+        tags,
+        path,
+        include_parent,
+        depth,
+    }: SubPageGroupedEntry,
+    pairs: Pairs<'_>,
+) -> Option<SubPageGroupedEntry> {
+    let new_path: String = replace_pairs(Some(path), pairs)?;
+    Some(SubPageGroupedEntry {
+        core: CoreEntry {
+            link: replace_pairs(link.clone(), pairs),
+            hash,
+            title,
+            details,
+            code,
+        },
+        tags,
+        path: new_path,
+        include_parent,
+        depth,
+    })
+}
+fn process_sub_page_entry(
+    SubPageEntry {
+        core:
+            CoreEntry {
+                link,
+                hash,
+                title,
+                details,
+                code,
+            },
+        tags,
+        path,
+        include_parent,
+        depth,
+        nested,
+    }: SubPageEntry,
+    pairs: Pairs<'_>,
+) -> Option<SubPageEntry> {
+    let new_path: String = replace_pairs(Some(path), pairs)?;
+    Some(SubPageEntry {
+        core: CoreEntry {
+            link: replace_pairs(link.clone(), pairs),
+            hash,
+            title,
+            details,
+            code,
+        },
+        tags,
+        path: new_path,
+        include_parent,
+        depth,
+        nested,
+    })
+}
+
 fn process_entry(entry: SidebarEntry, pairs: Pairs<'_>) -> SidebarEntry {
     match entry {
-        SidebarEntry::Section(BasicEntry {
-            link,
-            hash,
-            title,
-            code,
-            children,
-            details,
-        }) => {
-            let new_link: Option<String> = replace_pairs(link.clone(), pairs);
-            if link.is_some() && new_link.is_none() {
-                return SidebarEntry::None;
+        SidebarEntry::Section(basic_entry) => {
+            if let Some(entry) = process_basic_entry(basic_entry, pairs) {
+                SidebarEntry::Section(entry)
+            } else {
+                SidebarEntry::None
             }
-            SidebarEntry::Section(BasicEntry {
-                link: new_link,
-                hash,
-                title,
-                code,
-                children: children
-                    .into_iter()
-                    .map(|c| process_entry(c, pairs))
-                    .collect(),
-                details,
-            })
         }
-        SidebarEntry::ListSubPages(SubPageEntry {
-            details,
-            tags,
-            link,
-            hash,
-            title,
-            path,
-            include_parent,
-            code,
-        }) => {
-            let new_path: Option<String> = replace_pairs(Some(path), pairs);
-            if new_path.is_none() {
-                return SidebarEntry::None;
+        SidebarEntry::Default(basic_entry) => {
+            if let Some(entry) = process_basic_entry(basic_entry, pairs) {
+                SidebarEntry::Default(entry)
+            } else {
+                SidebarEntry::None
             }
-            SidebarEntry::ListSubPages(SubPageEntry {
-                details,
-                tags,
-                link: replace_pairs(link.clone(), pairs),
-                hash,
-                title,
-                path: new_path.unwrap(),
-                include_parent,
-                code,
-            })
         }
-        SidebarEntry::ListSubPagesGrouped(SubPageEntry {
-            details,
-            tags,
-            link,
-            hash,
-            title,
-            path,
-            include_parent,
-            code,
-        }) => {
-            let new_path: Option<String> = replace_pairs(Some(path), pairs);
-            if new_path.is_none() {
-                return SidebarEntry::None;
+        SidebarEntry::ListSubPages(sub_page_entry) => {
+            if let Some(entry) = process_sub_page_entry(sub_page_entry, pairs) {
+                SidebarEntry::ListSubPages(entry)
+            } else {
+                SidebarEntry::None
             }
-            SidebarEntry::ListSubPagesGrouped(SubPageEntry {
-                details,
-                tags,
-                link: replace_pairs(link.clone(), pairs),
-                hash,
-                title,
-                path: new_path.unwrap(),
-                include_parent,
-                code,
-            })
         }
-        SidebarEntry::Default(BasicEntry {
-            link,
-            hash,
-            title,
-            code,
-            children,
-            details,
-        }) => {
-            let new_link: Option<String> = replace_pairs(link.clone(), pairs);
-            if link.is_some() && new_link.is_none() {
-                return SidebarEntry::None;
+        SidebarEntry::ListSubPagesGrouped(sub_page_entry) => {
+            if let Some(entry) = process_sub_page_grouped_entry(sub_page_entry, pairs) {
+                SidebarEntry::ListSubPagesGrouped(entry)
+            } else {
+                SidebarEntry::None
             }
-            SidebarEntry::Default(BasicEntry {
-                link: replace_pairs(link.clone(), pairs),
-                hash,
-                title,
-                code,
-                children: children
-                    .into_iter()
-                    .map(|c| process_entry(c, pairs))
-                    .collect(),
-                details,
-            })
         }
+
         SidebarEntry::Link(link) => {
             let new_link: Option<String> = replace_pairs(Some(link), pairs);
             if new_link.is_none() {
@@ -434,7 +467,7 @@ mod test {
         path.push("sidebars");
         path.push("sidebar_0.yaml");
         let content = fs::read_to_string(&path).unwrap();
-        // println!("{}", content);
+        // tracing::info!("{}", content);
         let sb = serde_yaml_ng::from_str::<Sidebar>(&content).unwrap();
 
         // replacement of link of the first child in the third item of the sidebar
@@ -444,7 +477,10 @@ mod test {
             } else {
                 panic!("Expected a Section entry with children");
             };
-        let link = if let SidebarEntry::Default(BasicEntry { link: l, .. }) = third_item_first_child
+        let link = if let SidebarEntry::Default(BasicEntry {
+            core: CoreEntry { link: l, .. },
+            ..
+        }) = third_item_first_child
         {
             l.clone().unwrap()
         } else {

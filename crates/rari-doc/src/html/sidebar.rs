@@ -21,7 +21,8 @@ use crate::cached_readers::read_sidebar;
 use crate::error::DocError;
 use crate::helpers;
 use crate::helpers::subpages::{
-    list_sub_pages_grouped_internal, list_sub_pages_internal, ListSubPagesContext,
+    list_sub_pages_flattened_grouped_internal, list_sub_pages_flattened_internal,
+    list_sub_pages_nested_internal, ListSubPagesContext,
 };
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
@@ -253,9 +254,25 @@ fn details_is_none(details: &Details) -> bool {
     matches!(details, Details::None)
 }
 
+const fn depth_is_default(depth: &usize) -> bool {
+    *depth == 1
+}
+const fn default_depth() -> usize {
+    1
+}
+
+/// depth == 0 => None which means infinite otherwise Some(depth).
+const fn depth_to_option(depth: usize) -> Option<usize> {
+    if depth == 0 {
+        None
+    } else {
+        Some(depth)
+    }
+}
+
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct BasicEntry {
+pub struct CoreEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub link: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -266,6 +283,13 @@ pub struct BasicEntry {
     pub details: Details,
     #[serde(default, skip_serializing_if = "is_default")]
     pub code: bool,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BasicEntry {
+    #[serde(flatten)]
+    pub core: CoreEntry,
     #[serde(
         default,
         skip_serializing_if = "sidebar_entries_are_empty",
@@ -278,12 +302,6 @@ pub struct BasicEntry {
 #[serde(rename_all = "camelCase")]
 pub struct SubPageEntry {
     pub path: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub link: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub hash: Option<String>,
     #[serde(
         default,
         deserialize_with = "t_or_vec",
@@ -291,12 +309,33 @@ pub struct SubPageEntry {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub tags: Vec<PageType>,
-    #[serde(default, skip_serializing_if = "details_is_none")]
-    pub details: Details,
-    #[serde(default, skip_serializing_if = "is_default")]
-    pub code: bool,
     #[serde(default, skip_serializing_if = "is_default")]
     pub include_parent: bool,
+    #[serde(default = "default_depth", skip_serializing_if = "depth_is_default")]
+    pub depth: usize,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub nested: bool,
+    #[serde(flatten)]
+    pub core: CoreEntry,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SubPageGroupedEntry {
+    pub path: String,
+    #[serde(
+        default,
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub tags: Vec<PageType>,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub include_parent: bool,
+    #[serde(default = "default_depth", skip_serializing_if = "depth_is_default")]
+    pub depth: usize,
+    #[serde(flatten)]
+    pub core: CoreEntry,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
@@ -310,7 +349,7 @@ pub struct WebExtApiEntry {
 pub enum SidebarEntry {
     Section(BasicEntry),
     ListSubPages(SubPageEntry),
-    ListSubPagesGrouped(SubPageEntry),
+    ListSubPagesGrouped(SubPageGroupedEntry),
     WebExtApi(WebExtApiEntry),
     #[serde(untagged)]
     Default(BasicEntry),
@@ -323,12 +362,20 @@ pub enum SidebarEntry {
 #[derive(Debug, Default)]
 pub enum MetaChildren {
     Children(Vec<SidebarMetaEntry>),
-    ListSubPages(String, Vec<PageType>, bool, bool),
+    ListSubPages {
+        path: String,
+        tags: Vec<PageType>,
+        code: bool,
+        include_parent: bool,
+        depth: Option<usize>,
+        nested: bool,
+    },
     ListSubPagesGrouped {
         path: String,
         tags: Vec<PageType>,
         code: bool,
         include_parent: bool,
+        depth: Option<usize>,
     },
     WebExtApi,
     #[default]
@@ -404,12 +451,15 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
     fn try_from(value: SidebarEntry) -> Result<Self, Self::Error> {
         let res = match value {
             SidebarEntry::Section(BasicEntry {
-                link,
-                hash,
-                title,
-                code,
+                core:
+                    CoreEntry {
+                        link,
+                        hash,
+                        title,
+                        details,
+                        code,
+                    },
                 children,
-                details,
             }) => SidebarMetaEntry {
                 section: true,
                 details,
@@ -426,50 +476,74 @@ impl TryFrom<SidebarEntry> for SidebarMetaEntry {
                     )
                 },
             },
+
             SidebarEntry::ListSubPages(SubPageEntry {
-                details,
+                core:
+                    CoreEntry {
+                        link,
+                        hash,
+                        title,
+                        details,
+                        code,
+                    },
                 tags,
-                link,
-                hash,
-                title,
                 path,
-                code,
                 include_parent,
+                depth,
+                nested,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
                 code: false,
                 content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
-                children: MetaChildren::ListSubPages(path, tags, code, include_parent),
-            },
-            SidebarEntry::ListSubPagesGrouped(SubPageEntry {
-                details,
-                tags,
-                link,
-                hash,
-                title,
-                path,
-                code,
-                include_parent,
-            }) => SidebarMetaEntry {
-                section: false,
-                details,
-                code: false,
-                content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
-                children: MetaChildren::ListSubPagesGrouped {
+                children: MetaChildren::ListSubPages {
                     path,
                     tags,
                     code,
                     include_parent,
+                    depth: depth_to_option(depth),
+                    nested,
                 },
             },
+            SidebarEntry::ListSubPagesGrouped(sub_page_entry) => {
+                let SubPageGroupedEntry {
+                    core:
+                        CoreEntry {
+                            link,
+                            hash,
+                            title,
+                            details,
+                            code,
+                        },
+                    tags,
+                    path,
+                    include_parent,
+                    depth,
+                } = sub_page_entry;
+                SidebarMetaEntry {
+                    section: false,
+                    details,
+                    code: false,
+                    content: SidebarMetaEntryContent::from_link_title_hash(link, title, hash),
+                    children: MetaChildren::ListSubPagesGrouped {
+                        path,
+                        tags,
+                        code,
+                        include_parent,
+                        depth: depth_to_option(depth),
+                    },
+                }
+            }
             SidebarEntry::Default(BasicEntry {
-                link,
-                hash,
-                title,
-                code,
+                core:
+                    CoreEntry {
+                        link,
+                        hash,
+                        title,
+                        details,
+                        code,
+                    },
                 children,
-                details,
             }) => SidebarMetaEntry {
                 section: false,
                 details,
@@ -581,35 +655,13 @@ impl SidebarMetaEntry {
                     child.render(out, locale, slug, l10n)?;
                 }
             }
-            MetaChildren::ListSubPages(url, page_types, code, include_parent) => {
-                let url = if url.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
-                    Cow::Borrowed(url)
-                } else {
-                    Cow::Owned(concat_strs!(
-                        "/",
-                        Locale::default().as_url_str(),
-                        "/docs",
-                        url
-                    ))
-                };
-                list_sub_pages_internal(
-                    out,
-                    &url,
-                    locale,
-                    Some(1),
-                    ListSubPagesContext {
-                        sorter: None,
-                        page_types,
-                        code: *code,
-                        include_parent: *include_parent,
-                    },
-                )?
-            }
-            MetaChildren::ListSubPagesGrouped {
+            MetaChildren::ListSubPages {
                 path,
                 tags,
                 code,
                 include_parent,
+                depth,
+                nested,
             } => {
                 let url = if path.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
                     Cow::Borrowed(path)
@@ -621,10 +673,41 @@ impl SidebarMetaEntry {
                         path
                     ))
                 };
-                list_sub_pages_grouped_internal(
+                let ctx = ListSubPagesContext {
+                    sorter: None,
+                    page_types: tags,
+                    code: *code,
+                    include_parent: *include_parent,
+                };
+                if *nested {
+                    list_sub_pages_nested_internal(out, &url, locale, *depth, ctx)?
+                } else {
+                    list_sub_pages_flattened_internal(out, &url, locale, *depth, ctx)?
+                }
+            }
+
+            MetaChildren::ListSubPagesGrouped {
+                path,
+                tags,
+                code,
+                include_parent,
+                depth,
+            } => {
+                let url = if path.starts_with(concat!("/", default_locale().as_url_str(), "/")) {
+                    Cow::Borrowed(path)
+                } else {
+                    Cow::Owned(concat_strs!(
+                        "/",
+                        Locale::default().as_url_str(),
+                        "/docs",
+                        path
+                    ))
+                };
+                list_sub_pages_flattened_grouped_internal(
                     out,
                     &url,
                     locale,
+                    *depth,
                     ListSubPagesContext {
                         sorter: None,
                         page_types: tags,
@@ -663,6 +746,6 @@ mod test {
     fn test_details_ser() {
         let yaml_str = r#"details: closed"#;
         let entry: BasicEntry = serde_yaml_ng::from_str(yaml_str).unwrap();
-        assert_eq!(entry.details, Details::Closed);
+        assert_eq!(entry.core.details, Details::Closed);
     }
 }

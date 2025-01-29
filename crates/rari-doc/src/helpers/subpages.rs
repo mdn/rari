@@ -84,6 +84,7 @@ pub fn write_li_with_badges(
             code,
             only_en_us: locale_page.locale() != locale,
         },
+        true,
     )?;
     if closed {
         write!(out, "</li>")?;
@@ -106,6 +107,7 @@ pub fn write_parent_li(out: &mut String, page: &Page, locale: Locale) -> Result<
             code: false,
             only_en_us: page.locale() != locale,
         },
+        true,
     )?;
     out.push_str("</li>");
     Ok(())
@@ -137,7 +139,7 @@ pub struct ListSubPagesContext<'a> {
     pub include_parent: bool,
 }
 
-pub fn list_sub_pages_internal(
+pub fn list_sub_pages_flattened_internal(
     out: &mut String,
     url: &str,
     locale: Locale,
@@ -149,8 +151,7 @@ pub fn list_sub_pages_internal(
         include_parent,
     }: ListSubPagesContext<'_>,
 ) -> Result<(), DocError> {
-    let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
-    let depth = depth.map(|i| i.saturating_sub(1));
+    let sub_pages = get_sub_pages(url, depth, sorter.unwrap_or_default())?;
     if include_parent {
         let page = Page::from_url_with_locale_and_fallback(url, locale)?;
         write_parent_li(out, &page, locale)?;
@@ -159,15 +160,46 @@ pub fn list_sub_pages_internal(
         if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
             continue;
         }
+        write_li_with_badges(out, &sub_page, locale, code, true)?;
+    }
+    Ok(())
+}
+pub fn list_sub_pages_nested_internal(
+    out: &mut String,
+    url: &str,
+    locale: Locale,
+    depth: Option<usize>,
+    ListSubPagesContext {
+        sorter,
+        page_types,
+        code,
+        include_parent,
+    }: ListSubPagesContext<'_>,
+) -> Result<(), DocError> {
+    if depth == Some(0) {
+        return Ok(());
+    }
+    let sub_pages = get_sub_pages(url, Some(1), sorter.unwrap_or_default())?;
+    let depth = depth.map(|i| i.saturating_sub(1));
+    if include_parent {
+        let page = Page::from_url_with_locale_and_fallback(url, locale)?;
+        write_parent_li(out, &page, locale)?;
+    }
+    for sub_page in sub_pages {
+        let page_type_match = page_types.is_empty() || page_types.contains(&sub_page.page_type());
         let sub_sub_pages = get_sub_pages(sub_page.url(), depth, sorter.unwrap_or_default())?;
         if sub_sub_pages.is_empty() {
-            write_li_with_badges(out, &sub_page, locale, code, true)?;
+            if page_type_match {
+                write_li_with_badges(out, &sub_page, locale, code, true)?;
+            }
         } else {
-            write_li_with_badges(out, &sub_page, locale, code, false)?;
-            out.push_str("<ol>");
+            if page_type_match {
+                write_li_with_badges(out, &sub_page, locale, code, false)?;
+            }
+            let mut sub_pages_out = String::new();
 
-            list_sub_pages_internal(
-                out,
+            list_sub_pages_nested_internal(
+                &mut sub_pages_out,
                 sub_page.url(),
                 locale,
                 depth,
@@ -178,17 +210,24 @@ pub fn list_sub_pages_internal(
                     include_parent,
                 },
             )?;
-            out.push_str("</ol>");
-            out.push_str("</li>");
+            if !sub_pages_out.is_empty() {
+                out.push_str("<ol>");
+                out.push_str(&sub_pages_out);
+                out.push_str("</ol>");
+            }
+            if page_type_match {
+                out.push_str("</li>");
+            }
         }
     }
     Ok(())
 }
 
-pub fn list_sub_pages_grouped_internal(
+pub fn list_sub_pages_flattened_grouped_internal(
     out: &mut String,
     url: &str,
     locale: Locale,
+    depth: Option<usize>,
     ListSubPagesContext {
         sorter,
         page_types,
@@ -196,7 +235,7 @@ pub fn list_sub_pages_grouped_internal(
         include_parent,
     }: ListSubPagesContext<'_>,
 ) -> Result<(), DocError> {
-    let sub_pages = get_sub_pages(url, None, sorter.unwrap_or_default())?;
+    let sub_pages = get_sub_pages(url, depth, sorter.unwrap_or_default())?;
 
     let mut grouped = BTreeMap::new();
     for sub_page in sub_pages.iter() {

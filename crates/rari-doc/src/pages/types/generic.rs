@@ -62,7 +62,7 @@ impl GenericPageMeta {
     }
 }
 
-impl PageReader for GenericPage {
+impl PageReader<Page> for GenericPage {
     fn read(
         path: impl Into<PathBuf>,
         locale: Option<Locale>,
@@ -124,6 +124,9 @@ impl GenericPage {
 
     pub fn is_generic(slug: &str, locale: Locale) -> bool {
         let url = concat_strs!("/", locale.as_url_str(), "/", slug).to_ascii_lowercase();
+        if generic_content_root().is_none() {
+            return false;
+        }
         generic_content_files().contains_key(&url)
     }
 }

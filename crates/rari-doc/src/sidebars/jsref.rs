@@ -32,7 +32,7 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
     }
     if !matches!(
         main_object.as_ref(),
-        "Proxy" | "Atomics" | "Math" | "Intl" | "JSON" | "Reflect",
+        "Proxy" | "Atomics" | "Math" | "Intl" | "JSON" | "Reflect" | "Temporal",
     ) {
         // %Base% is the default inheritance when the class has no extends clause:
         // instances inherit from Object.prototype, and class inherits from Function.prototype
@@ -264,7 +264,7 @@ impl JSRefItem {
     }
 }
 
-const ASYNC_GENERATOR: &[Cow<'static, str>] = &[Cow::Borrowed("AsyncGenerator")];
+const ASYNC_ITERATOR: &[Cow<'static, str>] = &[Cow::Borrowed("AsyncGenerator")];
 const FUNCTION: &[Cow<'static, str>] = &[
     Cow::Borrowed("AsyncFunction"),
     Cow::Borrowed("AsyncGeneratorFunction"),
@@ -275,6 +275,7 @@ const TYPED_ARRAY: &[Cow<'static, str>] = &[
     Cow::Borrowed("TypedArray"),
     Cow::Borrowed("BigInt64Array"),
     Cow::Borrowed("BigUint64Array"),
+    Cow::Borrowed("Float16Array"),
     Cow::Borrowed("Float32Array"),
     Cow::Borrowed("Float64Array"),
     Cow::Borrowed("Int8Array"),
@@ -297,12 +298,18 @@ const ERROR: &[Cow<'static, str>] = &[
     Cow::Borrowed("URIError"),
 ];
 
+static INTL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> =
+    LazyLock::new(|| namespace_subpages("Intl"));
+static TEMPORAL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> =
+    LazyLock::new(|| namespace_subpages("Temporal"));
+
 // Related pages
-fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, str>> {
-    static GROUP_DATA: LazyLock<Vec<&[Cow<'static, str>]>> = LazyLock::new(|| {
+pub fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, str>> {
+    static GROUP_DATA: LazyLock<Vec<&[Cow<'_, str>]>> = LazyLock::new(|| {
         vec![
             ERROR,
             &INTL_SUBPAGES,
+            &TEMPORAL_SUBPAGES,
             &[
                 Cow::Borrowed("Intl/Segmenter/segment/Segments"),
                 Cow::Borrowed("Intl.Segmenter"),
@@ -312,7 +319,7 @@ fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, s
         ]
     });
     for g in GROUP_DATA.iter() {
-        if g.iter().any(|x| main_obj == x) {
+        if g.contains(&Cow::Borrowed(main_obj)) {
             return g
                 .iter()
                 .filter(|x| !inheritance.contains(x))
@@ -325,7 +332,7 @@ fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, s
 
 fn inheritance_data(obj: &str) -> Option<&str> {
     match obj {
-        o if ASYNC_GENERATOR.iter().any(|x| x == o) => Some("AsyncIterator"),
+        o if ASYNC_ITERATOR.iter().any(|x| x == o) => Some("AsyncIterator"),
         o if FUNCTION.iter().any(|x| x == o) => Some("Function"),
         o if ITERATOR.iter().any(|x| x == o) => Some("Iterator"),
         o if TYPED_ARRAY[1..].iter().any(|x| x == o) => Some("TypedArray"),
@@ -334,21 +341,31 @@ fn inheritance_data(obj: &str) -> Option<&str> {
     }
 }
 
-static INTL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> = LazyLock::new(|| {
-    once(Cow::Borrowed("Intl"))
+/// Intl and Temporal are big namespaces with many classes underneath it. The classes
+/// are shown as related pages.
+fn namespace_subpages(namespace: &str) -> Vec<Cow<'_, str>> {
+    once(Cow::Borrowed(namespace))
         .chain(
             get_sub_pages(
-                "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl",
+                &format!(
+                    "/en-US/docs/Web/JavaScript/Reference/Global_Objects/{}",
+                    namespace
+                ),
                 Some(1),
                 Default::default(),
             )
             .unwrap_or_default()
             .iter()
-            .filter(|page| page.page_type() == PageType::JavascriptClass)
+            .filter(|page| {
+                matches!(
+                    page.page_type(),
+                    PageType::JavascriptClass | PageType::JavascriptNamespace
+                )
+            })
             .map(|page| Cow::Owned(slug_to_object_name(page.slug()).to_string())),
         )
         .collect()
-});
+}
 
 fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
     let sub_path = slug
@@ -360,18 +377,24 @@ fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
     if sub_path.starts_with("Proxy/Proxy") {
         return "Proxy/handler".into();
     }
-    if let Some(intl) = sub_path.strip_prefix("Intl/") {
-        if intl
-            .chars()
-            .next()
-            .map(|c| c.is_ascii_lowercase())
-            .unwrap_or_default()
-        {
-            return "Intl".into();
+    for namespace in &["Intl/", "Temporal/"] {
+        if let Some(sub_sub_path) = sub_path.strip_prefix(namespace) {
+            if sub_sub_path
+                .chars()
+                .next()
+                .map(|c| c.is_ascii_lowercase())
+                .unwrap_or_default()
+            {
+                return Cow::Borrowed(&namespace[..namespace.len() - 1]);
+            }
+            return Cow::Owned(
+                sub_path[..sub_sub_path
+                    .find('/')
+                    .map(|i| i + namespace.len())
+                    .unwrap_or(sub_path.len())]
+                    .replace('/', "."),
+            );
         }
-        return Cow::Owned(
-            sub_path[..intl.find('/').map(|i| i + 5).unwrap_or(sub_path.len())].replace('/', "."),
-        );
     }
 
     sub_path[..sub_path.find('/').unwrap_or(sub_path.len())].into()
@@ -396,6 +419,16 @@ mod test {
                 "Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat/format"
             ),
             "Intl.DateTimeFormat"
+        );
+        assert_eq!(
+            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Temporal/Now"),
+            "Temporal.Now"
+        );
+        assert_eq!(
+            slug_to_object_name(
+                "Web/JavaScript/Reference/Global_Objects/Temporal/Now/plainDateISO"
+            ),
+            "Temporal.Now"
         );
         assert_eq!(
             slug_to_object_name(

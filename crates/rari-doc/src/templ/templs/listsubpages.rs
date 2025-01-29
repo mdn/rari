@@ -33,7 +33,7 @@ pub fn list_sub_pages(
             false,
         )?;
     } else {
-        subpages::list_sub_pages_internal(
+        subpages::list_sub_pages_nested_internal(
             &mut out,
             url,
             env.locale,

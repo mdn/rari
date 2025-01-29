@@ -23,7 +23,7 @@ pub(crate) fn parent_slug(slug: &str) -> Result<&str, ToolError> {
 /// Read all en-US and translated documents into a hash, with a key of `(locale, slug)`.
 /// This is similar to the `cached_reader` functionality, but not wrapped in a `onceLock`.
 pub(crate) fn read_all_doc_pages() -> Result<HashMap<(Locale, Cow<'static, str>), Page>, DocError> {
-    let docs = read_docs_parallel::<Doc>(&[content_root()], None)?;
+    let docs = read_docs_parallel::<Page, Doc>(&[content_root()], None)?;
     let mut docs_hash: HashMap<(Locale, Cow<'_, str>), Page> = docs
         .iter()
         .cloned()
@@ -31,7 +31,7 @@ pub(crate) fn read_all_doc_pages() -> Result<HashMap<(Locale, Cow<'static, str>)
         .collect();
 
     if let Some(translated_root) = content_translated_root() {
-        let translated_docs = read_docs_parallel::<Doc>(&[translated_root], None)?;
+        let translated_docs = read_docs_parallel::<Page, Doc>(&[translated_root], None)?;
         docs_hash.extend(
             translated_docs
                 .iter()
@@ -45,7 +45,7 @@ pub(crate) fn read_all_doc_pages() -> Result<HashMap<(Locale, Cow<'static, str>)
 pub(crate) fn get_redirects_map(locale: Locale) -> HashMap<String, String> {
     let redirects_path = redirects_path(locale).unwrap();
     let mut redirects = HashMap::new();
-    redirects::read_redirects_raw(&redirects_path, &mut redirects).unwrap();
+    redirects.extend(redirects::read_redirects_raw(&redirects_path).unwrap());
     redirects
 }
 

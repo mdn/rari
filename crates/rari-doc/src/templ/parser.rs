@@ -76,6 +76,7 @@ fn to_arg(pair: Pair<'_, Rule>) -> Option<Arg> {
         Rule::single_quoted_string => pair.into_inner().next().and_then(to_arg),
         Rule::double_quoted_string => pair.into_inner().next().and_then(to_arg),
         Rule::backquoted_quoted_string => pair.into_inner().next().and_then(to_arg),
+        Rule::empty_string => None,
         Rule::sq_string => {
             let s = pair.as_span().as_str();
             Some(Arg::String(
@@ -176,5 +177,14 @@ mod test {
     fn weird4() {
         let p = parse(r#"dasd \\{{foo}} 200 {{bar}}"#);
         println!("{:#?}", p);
+    }
+
+    #[test]
+    fn with_empty_string_arg() {
+        let p = parse(r#"{{foo("")}}"#);
+        assert!(matches!(
+            p.unwrap().first(),
+            Some(Token::Macro(macro_token)) if macro_token.args.first() == Some(&None)
+        ));
     }
 }

@@ -11,7 +11,7 @@ use rari_types::globals::settings;
 use tracing::error;
 
 use crate::error::DocError;
-use crate::pages::page::{Page, PageReader};
+use crate::pages::page::PageReader;
 use crate::walker::walk_builder;
 
 /// Reads documentation pages in parallel from the specified paths and collects them into a vector.
@@ -40,11 +40,11 @@ use crate::walker::walk_builder;
 /// This function will return an error if:
 /// - An error occurs while building the walk builder.
 /// - An error occurs while reading a page.
-pub fn read_docs_parallel<T: PageReader>(
+pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
     paths: &[impl AsRef<Path>],
     glob: Option<&str>,
-) -> Result<Vec<Page>, DocError> {
-    let (tx, rx) = crossbeam_channel::bounded::<Result<Page, DocError>>(100);
+) -> Result<Vec<P>, DocError> {
+    let (tx, rx) = crossbeam_channel::bounded::<Result<P, DocError>>(100);
     let stdout_thread = std::thread::spawn(move || rx.into_iter().collect());
     // For testing, we do not pay attention to the .gitignore files (walk_builder's
     // default is to obey them). The test configuration has `reader_ignores_gitignore = true`.

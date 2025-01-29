@@ -69,6 +69,7 @@ pub fn invoke(
         "specifications" => specification::specification_any,
         "glossary" => glossary::glossary_any,
         "csssyntax" => csssyntax::csssyntax_any,
+        "csssyntaxraw" => csssyntax::csssyntaxraw_any,
         "listsubpages" => listsubpages::list_sub_pages_any,
         "cssinfo" => cssinfo::cssinfo_any,
         "inheritancediagram" => inheritance_diagram::inheritance_diagram_any,

@@ -28,7 +28,7 @@ pub fn sync_translated_content(
     let bold = Style::new().bold();
 
     if verbose {
-        println!(
+        tracing::info!(
             "{}",
             green.apply_to(format!(
                 "Syncing translated content for locales: {:?}.\nFixing cross-locale redirects.",
@@ -36,10 +36,10 @@ pub fn sync_translated_content(
             )),
         );
     }
-    fix_redirects()?;
+    fix_redirects(Some(locales))?;
 
     if verbose {
-        println!("{}", green.apply_to("Reading all documents."));
+        tracing::info!("{}", green.apply_to("Reading all documents."));
     }
 
     let docs = read_all_doc_pages()?;
@@ -67,7 +67,7 @@ pub fn sync_translated_content(
                         (x, y + 1)
                     }
                 });
-        println!(
+        tracing::info!(
             "{}",
             dim.apply_to(format!(
                 "read {} docs: {} en-Us, {} translated.",
@@ -98,7 +98,7 @@ pub fn sync_translated_content(
                     );
                 }
             } else {
-                println!("Page is not a doc: {:?}", page);
+                tracing::info!("Page is not a doc: {:?}", page);
             }
             results
         });
@@ -122,34 +122,34 @@ pub fn sync_translated_content(
 
     if verbose {
         for (locale, result) in &res {
-            println!(
+            tracing::info!(
                 "{}",
                 green.apply_to(bold.apply_to(format!("Results for locale {}", locale)))
             );
-            println!(
+            tracing::info!(
                 "  {}",
                 green.apply_to(format!("Total of {} documents.", result.total_docs))
             );
-            println!(
+            tracing::info!(
                 "  {}",
                 green.apply_to(format!("Moved {} documents.", result.moved_docs))
             );
-            println!(
+            tracing::info!(
                 "  {}",
                 green.apply_to(format!("Renamed {} documents.", result.renamed_docs))
             );
-            println!(
+            tracing::info!(
                 "  {}",
                 green.apply_to(format!(
                     "Conflicting {} documents.",
                     result.conflicting_docs
                 ))
             );
-            println!(
+            tracing::info!(
                 "  {}",
                 green.apply_to(format!("Orphaned {} documents", result.orphaned_docs))
             );
-            println!(
+            tracing::info!(
                 "  {}",
                 green.apply_to(format!(
                     "Fixed {} redirected documents.",
@@ -240,7 +240,7 @@ fn sync_translated_document(
 
     if status.orphaned {
         if verbose {
-            println!(
+            tracing::info!(
                 "{}",
                 yellow.apply_to(format!("orphaned: {}", doc.path().to_string_lossy()))
             );
@@ -258,7 +258,7 @@ fn sync_translated_document(
         }
     } else if status.moved && md_exists(&resolved_slug, doc.locale())? {
         if verbose {
-            println!(
+            tracing::info!(
                 "{}",
                 dim.apply_to(format!(
                     "unrooting {} (conflicting translation)",
@@ -446,14 +446,14 @@ mod test {
         let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
         let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
 
-        let _de_redirects = RedirectFixtures::new(&vec![], Locale::De);
-        let _fr_redirects = RedirectFixtures::new(&vec![], Locale::Fr);
-        let _ja_redirects = RedirectFixtures::new(&vec![], Locale::Ja);
-        let _ko_redirects = RedirectFixtures::new(&vec![], Locale::Ko);
-        let _ptbr_redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
-        let _ru_redirects = RedirectFixtures::new(&vec![], Locale::Ru);
-        let _zhcn_redirects = RedirectFixtures::new(&vec![], Locale::ZhCn);
-        let _zhtw_redirects = RedirectFixtures::new(&vec![], Locale::ZhTw);
+        let _de_redirects = RedirectFixtures::new(&[], Locale::De);
+        let _fr_redirects = RedirectFixtures::new(&[], Locale::Fr);
+        let _ja_redirects = RedirectFixtures::new(&[], Locale::Ja);
+        let _ko_redirects = RedirectFixtures::new(&[], Locale::Ko);
+        let _ptbr_redirects = RedirectFixtures::new(&[], Locale::PtBr);
+        let _ru_redirects = RedirectFixtures::new(&[], Locale::Ru);
+        let _zhcn_redirects = RedirectFixtures::new(&[], Locale::ZhCn);
+        let _zhtw_redirects = RedirectFixtures::new(&[], Locale::ZhTw);
 
         let result = sync_translated_content(&[Locale::Es], false);
         assert!(result.is_ok());
@@ -501,14 +501,14 @@ mod test {
         let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
         let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
 
-        let _de_redirects = RedirectFixtures::new(&vec![], Locale::De);
-        let _fr_redirects = RedirectFixtures::new(&vec![], Locale::Fr);
-        let _ja_redirects = RedirectFixtures::new(&vec![], Locale::Ja);
-        let _ko_redirects = RedirectFixtures::new(&vec![], Locale::Ko);
-        let _ptbr_redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
-        let _ru_redirects = RedirectFixtures::new(&vec![], Locale::Ru);
-        let _zhcn_redirects = RedirectFixtures::new(&vec![], Locale::ZhCn);
-        let _zhtw_redirects = RedirectFixtures::new(&vec![], Locale::ZhTw);
+        let _de_redirects = RedirectFixtures::new(&[], Locale::De);
+        let _fr_redirects = RedirectFixtures::new(&[], Locale::Fr);
+        let _ja_redirects = RedirectFixtures::new(&[], Locale::Ja);
+        let _ko_redirects = RedirectFixtures::new(&[], Locale::Ko);
+        let _ptbr_redirects = RedirectFixtures::new(&[], Locale::PtBr);
+        let _ru_redirects = RedirectFixtures::new(&[], Locale::Ru);
+        let _zhcn_redirects = RedirectFixtures::new(&[], Locale::ZhCn);
+        let _zhtw_redirects = RedirectFixtures::new(&[], Locale::ZhTw);
 
         let result = sync_translated_content(&[Locale::Es], false);
         assert!(result.is_ok());
@@ -544,11 +544,8 @@ mod test {
         assert!(orphaned_path.exists());
 
         let mut redirects = HashMap::new();
-        read_redirects_raw(
-            redirects_path(Locale::Es).unwrap().as_path(),
-            &mut redirects,
-        )
-        .unwrap();
+        redirects
+            .extend(read_redirects_raw(redirects_path(Locale::Es).unwrap().as_path()).unwrap());
         assert_eq!(redirects.len(), 2);
         assert_eq!(
             redirects.get("/es/docs/Web/API/Other").unwrap(),
@@ -582,14 +579,14 @@ mod test {
         let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
         let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
 
-        let _de_redirects = RedirectFixtures::new(&vec![], Locale::De);
-        let _fr_redirects = RedirectFixtures::new(&vec![], Locale::Fr);
-        let _ja_redirects = RedirectFixtures::new(&vec![], Locale::Ja);
-        let _ko_redirects = RedirectFixtures::new(&vec![], Locale::Ko);
-        let _ptbr_redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
-        let _ru_redirects = RedirectFixtures::new(&vec![], Locale::Ru);
-        let _zhcn_redirects = RedirectFixtures::new(&vec![], Locale::ZhCn);
-        let _zhtw_redirects = RedirectFixtures::new(&vec![], Locale::ZhTw);
+        let _de_redirects = RedirectFixtures::new(&[], Locale::De);
+        let _fr_redirects = RedirectFixtures::new(&[], Locale::Fr);
+        let _ja_redirects = RedirectFixtures::new(&[], Locale::Ja);
+        let _ko_redirects = RedirectFixtures::new(&[], Locale::Ko);
+        let _ptbr_redirects = RedirectFixtures::new(&[], Locale::PtBr);
+        let _ru_redirects = RedirectFixtures::new(&[], Locale::Ru);
+        let _zhcn_redirects = RedirectFixtures::new(&[], Locale::ZhCn);
+        let _zhtw_redirects = RedirectFixtures::new(&[], Locale::ZhTw);
 
         let result = sync_translated_content(&[Locale::Es], false);
         assert!(result.is_ok());
@@ -624,11 +621,8 @@ mod test {
         assert!(moved_path.exists());
 
         let mut redirects = HashMap::new();
-        read_redirects_raw(
-            redirects_path(Locale::Es).unwrap().as_path(),
-            &mut redirects,
-        )
-        .unwrap();
+        redirects
+            .extend(read_redirects_raw(redirects_path(Locale::Es).unwrap().as_path()).unwrap());
         assert_eq!(redirects.len(), 1);
         assert_eq!(
             redirects.get("/es/docs/Web/API/Other").unwrap(),

@@ -10,9 +10,7 @@ pub fn rfc(
     content: Option<String>,
     anchor: Option<AnyArg>,
 ) -> Result<String, DocError> {
-    let content = content.and_then(|c| if c.is_empty() { None } else { Some(c) });
-    let anchor_str = anchor.and_then(|a| if a.is_empty() { None } else { Some(a) });
-    let (content, anchor): (String, String) = match (content, anchor_str) {
+    let (content, anchor): (String, String) = match (content, anchor) {
         (None, None) => Default::default(),
         (None, Some(anchor)) => (
             format!(

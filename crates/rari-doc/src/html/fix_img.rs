@@ -19,14 +19,14 @@ pub fn handle_img(
     base: &Url,
     base_url: &ParseOptions,
 ) -> HandlerResult {
-    // Leave dimensions alone if we have a `width` attribute
-    if el.get_attribute("width").is_some() {
-        return Ok(());
-    }
     if let Some(src) = el.get_attribute("src") {
         let url = base_url.parse(&src)?;
         if url.host() == base.host() && !url.path().starts_with("/assets/") {
             el.set_attribute("src", url.path())?;
+            // Leave dimensions alone if we have a `width` attribute
+            if el.get_attribute("width").is_some() {
+                return Ok(());
+            }
             let mut file = page.full_path().parent().unwrap().join(&src);
             if !file.try_exists().unwrap_or_default() {
                 if let Ok(en_us_page) =

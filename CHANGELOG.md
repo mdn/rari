@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.20](https://github.com/mdn/rari/compare/v0.1.19...v0.1.20) (2025-01-24)
+
+
+### Features
+
+* **issues:** improve flaw compatibility ([#95](https://github.com/mdn/rari/issues/95)) ([8b1f018](https://github.com/mdn/rari/commit/8b1f0181af3d5d4c0b48583f5a53b1d467108c23))
+
+## [0.1.19](https://github.com/mdn/rari/compare/v0.1.18...v0.1.19) (2025-01-22)
+
+
+### Features
+
+* **templ:** add csssyntaxraw  ([#92](https://github.com/mdn/rari/issues/92)) ([25808bd](https://github.com/mdn/rari/commit/25808bdb2fa525b0d524d61f1354d05229bacc1d))
+
+
+### Bug Fixes
+
+* **build/parser:** parse empty string args for macros as `None`s ([#88](https://github.com/mdn/rari/issues/88)) ([4f5751f](https://github.com/mdn/rari/commit/4f5751fa506cf87366bc3dc777725df095913e8a))
+* **html:** trim the first empty line in `&lt;pre&gt;` tag ([#90](https://github.com/mdn/rari/issues/90)) ([95f142f](https://github.com/mdn/rari/commit/95f142fecaad38cb696dc9606b2b9fa615c1f084))
+
+## [0.1.18](https://github.com/mdn/rari/compare/v0.1.17...v0.1.18) (2025-01-16)
+
+
+### Bug Fixes
+
+* **build:** fix html img src ([b5af77e](https://github.com/mdn/rari/commit/b5af77e60be879c423f442fad5e0477423e17222))
+
+## [0.1.17](https://github.com/mdn/rari/compare/v0.1.16...v0.1.17) (2025-01-14)
+
+
+### Bug Fixes
+
+* **blog:** respect published and date front matter ([ba9743d](https://github.com/mdn/rari/commit/ba9743d079eb2c0dc5c799dd516f3d222c98dc92))
+
+## [0.1.16](https://github.com/mdn/rari/compare/v0.1.15...v0.1.16) (2025-01-10)
+
+
+### Bug Fixes
+
+* **issues:** add empty flaws for --json-issues ([c6be69e](https://github.com/mdn/rari/commit/c6be69eb91dfe71e7e12554ef04b49c5fcd0bc83))
+
+## [0.1.15](https://github.com/mdn/rari/compare/v0.1.14...v0.1.15) (2025-01-09)
+
+
+### Features
+
+* **content:** add inventory command ([#80](https://github.com/mdn/rari/issues/80)) ([bafc0f9](https://github.com/mdn/rari/commit/bafc0f97479cf7210a39cd74d2f41450b92aff2f)), closes [#75](https://github.com/mdn/rari/issues/75)
+* **sidebars:** add support for depth and nested ([#78](https://github.com/mdn/rari/issues/78)) ([84b6358](https://github.com/mdn/rari/commit/84b6358c4fb6783e36ea59649103c69e4eac397b))
+
+
+### Bug Fixes
+
+* **l10n:** correct the prefix string for notecards in zh-TW locale ([#81](https://github.com/mdn/rari/issues/81)) ([432bb40](https://github.com/mdn/rari/commit/432bb40b4729c66b186323428c872c033df51589))
+* typo ([#82](https://github.com/mdn/rari/issues/82)) ([892f96f](https://github.com/mdn/rari/commit/892f96fa3403da2f35dc44c8a43a61d49e9837ed))
+
+## [0.1.14](https://github.com/mdn/rari/compare/v0.1.13...v0.1.14) (2025-01-07)
+
+
+### Features
+
+* **baseline:** compute asterisk ([#77](https://github.com/mdn/rari/issues/77)) ([c35af8e](https://github.com/mdn/rari/commit/c35af8e46f3c57fdd3ba98cf92e63f2dd2064660))
+* **sidebars/jsref:** support temporal ([#72](https://github.com/mdn/rari/issues/72)) ([3d70866](https://github.com/mdn/rari/commit/3d708668719208d1cbfd0b34959a771ee29bc350))
+
+
+### Bug Fixes
+
+* **json:** don't use camelCase for featured articles ([512080d](https://github.com/mdn/rari/commit/512080d804381d3dbc2facb93907e00c5d3c4bb1))
+
 ## [0.1.13](https://github.com/mdn/rari/compare/v0.1.12...v0.1.13) (2025-01-01)
 
 
