@@ -47,7 +47,7 @@ pub struct TocEntry {
 /// # Fields
 ///
 /// * `folder` - A `PathBuf` that specifies the directory where the source file is located.
-/// * `github_url` - A `String` that holds the GitHUb URL to the spource file.
+/// * `github_url` - A `String` that holds the GitHUb URL to the source file.
 /// * `last_commit_url` - A `String` that holds the URL to the last commit in the GitHub repository.
 /// * `filename` - A `String` that specifies the name of the source file.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
@@ -151,7 +151,7 @@ pub struct Compat {
 ///
 /// * `id` - An `Option<String>` that holds an optional `id` element attribute for the specification section.
 /// * `title` - An `Option<String>` that holds an optional title for the specification section.
-/// * `is_h3` - A `bool` that indicates whether the specificaytion section's `title` will be rendered as a &lt;H3&gt;
+/// * `is_h3` - A `bool` that indicates whether the specification section's `title` will be rendered as a &lt;H3&gt;
 /// * `specifications` - A `Vec<Specification>` that holds the list of `Specification` items within the section.
 /// * `query` - A `String` that holds the BCD query string associated with the specification section.
 /// * `content` - An `Option<String>` that holds the optional content of the specification section. This field is
@@ -220,7 +220,7 @@ pub enum Section {
 ///   during serialization if it is `None`.
 /// * `sidebar_macro` - An `Option<String>` that holds the macro content for the sidebar. Serialized as `sidebarMacro` and
 ///   skipped during serialization if it is `None`.
-/// * `source` - A `Source` that holds the git source countrol information of the document.
+/// * `source` - A `Source` that holds the git source control information of the document.
 /// * `summary` - An `Option<String>` that holds the summary of the document. This field is skipped during serialization if it is `None`.
 /// * `title` - A `String` that holds the title of the document.
 /// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the document.

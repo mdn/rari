@@ -106,7 +106,7 @@ pub fn invoke(
         "embedghlivesample" => embeds::embed_gh_live_sample::embed_gh_live_sample_any,
         "embedlivesample" => embeds::embed_live_sample::embed_live_sample_any,
         "embedyoutube" => embeds::embed_youtube::embed_youtube_any,
-        "jsfiddleembed" => embeds::jsfiddle_embed::embded_jsfiddle_any,
+        "jsfiddleembed" => embeds::jsfiddle_embed::embed_jsfiddle_any,
 
         // live sample link
         "livesamplelink" => embeds::live_sample_link::live_sample_link_any,

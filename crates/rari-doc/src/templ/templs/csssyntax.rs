@@ -14,7 +14,7 @@ static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     (LinkedToken::Plus, "Plus: the entity may occur one or several times".to_string()),
     (LinkedToken::QuestionMark, "Question mark: the entity is optional".to_string()),
     (LinkedToken::CurlyBraces, "Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required".to_string()),
-    (LinkedToken::HashMark, "Hash mark: the entity is repeated one or several times, each occurence separated by a comma".to_string()),
+    (LinkedToken::HashMark, "Hash mark: the entity is repeated one or several times, each occurrence separated by a comma".to_string()),
     (LinkedToken::ExclamationPoint,"Exclamation point: the group must produce at least one value".to_string()),
     (LinkedToken::Brackets, "Brackets: enclose several entities, combinators, and multipliers to transform them as a single component".to_string()),
     (LinkedToken::SingleBar, "Single bar: exactly one of the entities must be present".to_string()),

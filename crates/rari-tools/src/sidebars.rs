@@ -433,7 +433,7 @@ mod test {
                 Box_alignment_in_block_layout: CSS first steps
                 Box_model: Box model
               fr:
-                Backgrounds_and_Borders: Tutoriels
+                Backgrounds_and_Borders: Tutorials
                 Box_alignment_in_block_layout: Les premiers pas de CSS
                 Box_model: Box model
             "#
