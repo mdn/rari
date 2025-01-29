@@ -121,6 +121,9 @@ anyhow.workspace = true
 dashmap.workspace = true
 schemars.workspace = true
 dialoguer.workspace = true
+pagefind.workspace = true
+tokio.workspace = true
+crossbeam-channel.workspace = true
 
 self_update = { version = "0.42", default-features = false, features = [
   "rustls",
