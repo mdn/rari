@@ -404,7 +404,8 @@ mod tests {
         assert_eq!(meta.status.len(), 2);
 
         let fm = r#"
-        status: experimental
+        status:
+          - experimental
       "#;
         let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.status.len(), 1);
