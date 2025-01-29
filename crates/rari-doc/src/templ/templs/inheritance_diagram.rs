@@ -45,7 +45,7 @@ pub fn inheritance_diagram(interface: Option<String>) -> Result<String, DocError
         };
         let rect_width = calculate_rect_width(interface);
 
-        // Minumum space required to continue the current row
+        // Minimum space required to continue the current row
         let req_space = match i {
             0 => rect_width,
             _ if i == iter_len => rect_width + 47,

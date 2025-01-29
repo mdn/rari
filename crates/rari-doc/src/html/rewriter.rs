@@ -213,7 +213,7 @@ pub fn post_process_html<T: PageLike>(
             let mut curriculum_links = vec![element!("a[href^=\".\"]", |el| {
                 let href = el.get_attribute("href").unwrap_or_default();
                 let split_href = href.split_once('#');
-                if let Ok(page) = CurriculumPage::page_from_realitve_file(
+                if let Ok(page) = CurriculumPage::page_from_relative_file(
                     page.full_path(),
                     split_href.map(|s| s.0).unwrap_or(&href),
                 ) {

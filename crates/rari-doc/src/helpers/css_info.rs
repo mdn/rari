@@ -85,7 +85,7 @@ pub fn css_info_properties(
         ));
     }
 
-    out.push(("initial", Cow::Owned(css_inital(locale)?)));
+    out.push(("initial", Cow::Owned(css_initial(locale)?)));
 
     if at_rule.is_none() {
         out.push((
@@ -326,7 +326,7 @@ pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
     )
 }
 
-pub fn css_inital(locale: Locale) -> Result<String, DocError> {
+pub fn css_initial(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinitial", locale)?;
     RariApi::link(
         "/Web/CSS/initial_value",

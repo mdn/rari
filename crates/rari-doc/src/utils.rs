@@ -376,7 +376,7 @@ pub fn trim_after<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
     input
 }
 
-pub fn trim_fefore<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
+pub fn trim_before<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
     if let Some(pat) = pat {
         if let Some(i) = input.find(pat) {
             return &input[i..];

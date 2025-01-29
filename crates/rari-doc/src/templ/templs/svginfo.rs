@@ -83,7 +83,7 @@ pub fn svginfo() -> Result<String, DocError> {
 
         out.push_str(r#"</td></tr></tbody></table>"#);
     } else {
-        return Err(DocError::InvalidTempl(format!("No svginfor for {name}")));
+        return Err(DocError::InvalidTempl(format!("No svginfo for {name}")));
     }
 
     Ok(out)

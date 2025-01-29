@@ -18,7 +18,7 @@ use crate::pages::json::{
 };
 use crate::pages::page::{Page, PageLike};
 
-pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
+pub fn latest_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
     urls.iter()
         .filter_map(|url| match Page::from_url_with_fallback(url) {
             Ok(Page::BlogPost(post)) => Some(Ok(HomePageLatestNewsItem {

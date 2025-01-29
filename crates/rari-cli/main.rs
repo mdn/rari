@@ -70,7 +70,7 @@ enum Commands {
     Serve(ServeArgs),
     /// Collect the git history.
     GitHistory,
-    /// Self-update rari (caution if istalled from npm)
+    /// Self-update rari (caution if installed from npm)
     Update(UpdateArgs),
     /// Export json schema.
     ExportSchema(ExportSchemaArgs),
@@ -388,9 +388,9 @@ fn main() -> Result<(), Error> {
             }
             if args.all || args.curriculum {
                 let start = std::time::Instant::now();
-                let curriclum_pages = build_curriculum_pages()?;
-                let num = curriclum_pages.len();
-                urls.extend(curriclum_pages);
+                let curriculum_pages = build_curriculum_pages()?;
+                let num = curriculum_pages.len();
+                urls.extend(curriculum_pages);
                 info!(
                     "Took: {: >10.3?} to build curriculum pages ({num})",
                     start.elapsed()
@@ -537,7 +537,7 @@ fn update(version: Option<String>) -> Result<(), Error> {
     let latest = update.get_latest_release().ok();
 
     let target_version = match (&latest, &target_release) {
-        (None, None) => return Err(anyhow!("No latest release, specigy a version!")),
+        (None, None) => return Err(anyhow!("No latest release, specify a version!")),
         (None, Some(target)) => {
             info!("Updating rari to {}", target.version);
             &target.version

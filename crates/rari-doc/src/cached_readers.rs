@@ -168,7 +168,7 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
 ///
 /// If the page is found in the cache, it returns `Ok(page)`.
 /// If the page is not found, it returns a `DocError::NotFoundInStaticCache` error.
-/// If there is aproblem with the cache, it returns a `DocError::FileCacheBroken` error.
+/// If there is a problem with the cache, it returns a `DocError::FileCacheBroken` error.
 ///
 /// # Arguments
 ///
@@ -618,7 +618,7 @@ pub fn generic_content_files() -> Cow<'static, UrlToPageMap> {
     }
 }
 
-/// Retrieves the contributor spotlight pages, using the cacche if it is enabled.
+/// Retrieves the contributor spotlight pages, using the cache if it is enabled.
 ///
 /// This function returns a `Cow<'static, UrlToPageMap>` containing the contributor spotlight pages.
 /// If caching is enabled (as determined by `cache_content()`), it attempts to get the cached

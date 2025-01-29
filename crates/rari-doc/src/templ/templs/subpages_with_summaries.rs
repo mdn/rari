@@ -2,7 +2,7 @@ use rari_templ_func::rari_f;
 
 use crate::error::DocError;
 use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
-use crate::helpers::summary_hack::{get_hacky_summary_md, strip_paragraph_unckecked};
+use crate::helpers::summary_hack::{get_hacky_summary_md, strip_paragraph_unchecked};
 use crate::pages::page::PageLike;
 
 #[rari_f]
@@ -18,7 +18,7 @@ pub fn subpages_with_summaries() -> Result<String, DocError> {
             r#"">"#,
             page.title(),
             r#"</a></dt><dd class="landingPageList"><p>"#,
-            strip_paragraph_unckecked(get_hacky_summary_md(&page)?.as_str()),
+            strip_paragraph_unchecked(get_hacky_summary_md(&page)?.as_str()),
             r#"</p></dd>"#,
         ]);
     }

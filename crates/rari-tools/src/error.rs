@@ -56,7 +56,7 @@ pub enum ToolError {
     #[error("Page has subpages: {0}")]
     HasSubpagesError(Cow<'static, str>),
 
-    #[error("Unknonwn error")]
+    #[error("Unknown error")]
     Unknown(&'static str),
 }
 

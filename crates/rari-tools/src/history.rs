@@ -12,13 +12,13 @@ use crate::error::ToolError;
 use crate::git::exec_git;
 
 pub fn gather_history() -> Result<(), ToolError> {
-    let hanlde = content_translated_root().map(|translated_root| {
+    let handle = content_translated_root().map(|translated_root| {
         spawn(|| {
             modification_times(translated_root).unwrap();
         })
     });
     modification_times(content_root())?;
-    if let Some(handle) = hanlde {
+    if let Some(handle) = handle {
         handle.join().expect("Unable to join history thread.");
     }
     Ok(())

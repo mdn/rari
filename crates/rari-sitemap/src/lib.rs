@@ -22,7 +22,7 @@ use ser::prefix_base_url;
 pub enum SitemapError {
     #[error("Error writing xml: {0}")]
     XmlSeError(#[from] quick_xml::SeError),
-    #[error("Error swriting xml: {0}")]
+    #[error("Error writing xml: {0}")]
     XmlFmtError(#[from] std::fmt::Error),
     #[error("io error: {0}")]
     IoError(#[from] std::io::Error),

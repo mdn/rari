@@ -1,7 +1,7 @@
 //! # Build Module
 //!
 //! The `build` module provides functionality for building pages. The module leverages parallel
-//! processing for documentzation pages to improve the efficiency of building large sets files.
+//! processing for documentation pages to improve the efficiency of building large sets files.
 
 use std::borrow::Cow;
 use std::collections::HashMap;

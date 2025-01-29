@@ -26,7 +26,7 @@ pub enum DocError {
     NoParent(PathBuf),
     #[error(transparent)]
     NoSuchPrefix(#[from] StripPrefixError),
-    #[error("No curricm root set")]
+    #[error("No curriculum root set")]
     NoCurriculumRoot,
     #[error("No generic content root set")]
     NoGenericContentRoot,

@@ -11,7 +11,7 @@ use rari_types::RariEnv;
 use rari_utils::concat_strs;
 
 use super::spa_homepage::{
-    featured_articles, featured_contributor, lastet_news, recent_contributions,
+    featured_articles, featured_contributor, latest_news, recent_contributions,
 };
 use crate::cached_readers::{blog_files, generic_content_config, BasicSPA, BuildSPA, SPAData};
 use crate::error::DocError;
@@ -157,7 +157,7 @@ impl SPA {
                     )?,
                     featured_contributor: featured_contributor(self.locale)?,
                     latest_news: ItemContainer {
-                        items: lastet_news(&[
+                        items: latest_news(&[
                             "/en-US/blog/mdn-scrimba-partnership/",
                             "/en-US/blog/mdn-http-observatory-launch/",
                             "/en-US/blog/mdn-curriculum-launch/",
