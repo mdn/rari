@@ -52,12 +52,7 @@ pub struct FrontMatter {
     pub slug: String,
     #[serde(rename = "page-type", skip_serializing_if = "is_page_type_none")]
     pub page_type: PageType,
-    #[serde(
-        deserialize_with = "t_or_vec",
-        serialize_with = "serialize_t_or_vec",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub status: Vec<FeatureStatus>,
     #[serde(
         rename = "browser-compat",
