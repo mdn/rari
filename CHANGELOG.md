@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.21](https://github.com/mdn/rari/compare/v0.1.20...v0.1.21) (2025-01-29)
+
+
+### Features
+
+* **cli:** use info! instead of println! ([797e299](https://github.com/mdn/rari/commit/797e29999c222eb4cd4e4d0d55fa468232b72001))
+* **templ:** support full syntax for csssyntaxraw ([1d78439](https://github.com/mdn/rari/commit/1d7843962ba9d2ccdc15b88106a373e16b705a0f))
+* **tools:** add validate-redirects and support locale arg ([4488aed](https://github.com/mdn/rari/commit/4488aedb5949d66e5b1fc6e7c72b206c1bf182b7))
+
+
+### Bug Fixes
+
+* **build:** canonicalize file arguments ([5e2cccf](https://github.com/mdn/rari/commit/5e2cccf14638aa5b389b73c969540daf85366f18)), closes [#98](https://github.com/mdn/rari/issues/98)
+* **build:** don't try to read generic pages if not set ([508b26f](https://github.com/mdn/rari/commit/508b26f8073a5cc014d7df8054635f108062e7a4))
+* **frontmatter:** status is always an array ([5b5206b](https://github.com/mdn/rari/commit/5b5206b655c8672b23d13e655ef39520af8d1d35))
+* **tool:** make `status` frontmatter serialize like in yari ([#109](https://github.com/mdn/rari/issues/109)) ([c43860d](https://github.com/mdn/rari/commit/c43860d4351bb3192004590756f6137440d580b8))
+* **yaml:** force double quotes for fm and sidebars ([9890c7d](https://github.com/mdn/rari/commit/9890c7d321b9cc3d91054549552df3b88d826c83))
+
 ## [0.1.20](https://github.com/mdn/rari/compare/v0.1.19...v0.1.20) (2025-01-24)
 
 
