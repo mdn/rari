@@ -2594,13 +2594,17 @@ dependencies = [
  "css-syntax-types",
  "csv",
  "flate2",
+ "indexmap",
  "rari-types",
  "rari-utils",
  "reqwest",
+ "semver",
  "serde",
  "serde_json",
  "tar",
  "thiserror 1.0.69",
+ "tracing",
+ "url",
 ]
 
 [[package]]
@@ -2739,6 +2743,7 @@ dependencies = [
  "indexmap",
  "normalize-path",
  "schemars",
+ "semver",
  "serde",
  "serde_json",
  "serde_variant",
@@ -3167,6 +3172,9 @@ name = "semver"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cb6eb87a131f756572d7fb904f6e7b68633f09cca868c5df1c4b8d1a694bbba"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "serde"

@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use crate::error::EnvError;
 use crate::locale::Locale;
-use crate::settings::Settings;
+use crate::settings::{Deps, Settings};
 use crate::{HistoryEntry, Popularities};
 
 #[inline(always)]
@@ -72,6 +72,11 @@ pub static SETTINGS: OnceLock<Settings> = OnceLock::new();
 
 pub fn settings() -> &'static Settings {
     SETTINGS.get_or_init(|| Settings::new().expect("error generating settings"))
+}
+
+pub static DEPS: OnceLock<Deps> = OnceLock::new();
+pub fn deps() -> &'static Deps {
+    DEPS.get_or_init(|| Deps::new().expect("error generating deps"))
 }
 
 #[derive(Debug, Deserialize)]

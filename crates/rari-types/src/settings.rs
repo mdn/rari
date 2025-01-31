@@ -1,9 +1,31 @@
 use std::path::PathBuf;
 
 use config::{Config, ConfigError, Environment, File};
+use semver::VersionReq;
 use serde::{Deserialize, Serialize};
 
 use crate::locale::Locale;
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
+pub struct Deps {
+    pub bcd: Option<VersionReq>,
+    pub mdn_data: Option<VersionReq>,
+    pub web_features: Option<VersionReq>,
+    pub web_specs: Option<VersionReq>,
+    pub webref_css: Option<VersionReq>,
+}
+
+impl Deps {
+    pub fn new() -> Result<Self, ConfigError> {
+        let s = Config::builder()
+            .add_source(Environment::default().prefix("deps").try_parsing(true))
+            .build()?;
+
+        let deps: Self = s.try_deserialize::<Self>()?;
+        Ok(deps)
+    }
+}
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
@@ -26,6 +48,7 @@ pub struct Settings {
     pub data_issues: bool,
     pub json_issues: bool,
     pub blog_unpublished: bool,
+    pub deps: Deps,
 }
 
 impl Settings {

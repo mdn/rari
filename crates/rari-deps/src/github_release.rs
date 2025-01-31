@@ -4,20 +4,56 @@ use std::path::{Path, PathBuf};
 
 use chrono::{Duration, Utc};
 use rari_utils::io::read_to_string;
-use reqwest::redirect::Policy;
+use semver::{Version, VersionReq};
+use serde::Deserialize;
 
+use crate::client::get;
 use crate::current::Current;
 use crate::error::DepsError;
+#[derive(Deserialize, Debug, Clone)]
+struct VersionEntry {
+    tag_name: Option<String>,
+}
 
+type Releases = Vec<VersionEntry>;
+
+fn get_version(repo: &str, version_req: &VersionReq) -> Result<(Version, String), DepsError> {
+    let releases = get(format!(
+        "https://api.github.com/repos/{repo}/releases?per_page=10"
+    ))?;
+
+    let releases: Releases = serde_json::from_value(releases.json()?)?;
+    if let Some(version) = releases.iter().find_map(|k| {
+        let version = k
+            .tag_name
+            .as_ref()
+            .and_then(|v| Version::parse(v.trim_start_matches('v')).ok());
+        if version
+            .as_ref()
+            .map(|v| version_req.matches(v))
+            .unwrap_or_default()
+        {
+            version.map(|version| (version, k.tag_name.clone().unwrap()))
+        } else {
+            None
+        }
+    }) {
+        Ok(version)
+    } else {
+        Err(DepsError::VersionNotFound)
+    }
+}
 /// Download a github release artifact for a given version (defaults to latest).
 pub fn get_artifact(
-    base_url: &str,
+    repo: &str,
     artifact: &str,
     name: &str,
-    version: Option<&str>,
+    version_req: &Option<VersionReq>,
     out_path: &Path,
 ) -> Result<Option<PathBuf>, DepsError> {
-    let version = version.unwrap_or("latest");
+    let star = VersionReq::default();
+
+    let version_req = version_req.as_ref().unwrap_or(&star);
     let package_path = out_path.join(name);
     let last_check_path = package_path.join("last_check.json");
     let now = Utc::now();
@@ -25,44 +61,27 @@ pub fn get_artifact(
         .ok()
         .and_then(|current| serde_json::from_str::<Current>(&current).ok())
         .unwrap_or_default();
-    if version != current.version
-        || version == "latest"
-            && current.latest_last_check.unwrap_or_default() < now - Duration::days(1)
+    if !current
+        .current_version
+        .as_ref()
+        .map(|v| version_req.matches(v))
+        .unwrap_or_default()
+        || current.latest_last_check.unwrap_or_default() < now - Duration::days(1)
     {
-        let prev_url = format!(
-            "{base_url}/releases/download/{}/{artifact}",
-            current.version
-        );
-        let url = if version == "latest" {
-            let client = reqwest::blocking::ClientBuilder::default()
-                .redirect(Policy::none())
-                .build()?;
-            let res = client
-                .get(format!("{base_url}/releases/latest/download/{artifact}"))
-                .send()?;
-            res.headers()
-                .get("location")
-                .ok_or(DepsError::InvalidGitHubVersion)?
-                .to_str()?
-                .to_string()
-        } else {
-            format!("{base_url}/releases/download/{version}/{artifact}")
-        };
+        let (version, tag_name) = get_version(repo, version_req)?;
+        let url = format!("https://github.com/{repo}/releases/download/{tag_name}/{artifact}");
 
         let artifact_path = package_path.join(artifact);
-        let download_update = if artifact_path.exists() {
-            prev_url != url
-        } else {
-            true
-        };
+        let download_update = current.current_version.as_ref() != Some(&version);
 
         if download_update {
+            tracing::info!("DEPS: Updating {repo} ({artifact}) to {version}");
             if package_path.exists() {
                 fs::remove_dir_all(&package_path)?;
             }
             fs::create_dir_all(&package_path)?;
             let mut buf = vec![];
-            let _ = reqwest::blocking::get(url)?.read_to_end(&mut buf)?;
+            let _ = get(url)?.read_to_end(&mut buf)?;
 
             let file = File::create(artifact_path).unwrap();
             let mut buffed = BufWriter::new(file);
@@ -70,15 +89,13 @@ pub fn get_artifact(
             buffed.write_all(&buf)?;
         }
 
-        if version == "latest" {
-            fs::write(
-                package_path.join("last_check.json"),
-                serde_json::to_string_pretty(&Current {
-                    version: version.to_string(),
-                    latest_last_check: Some(now),
-                })?,
-            )?;
-        }
+        fs::write(
+            package_path.join("last_check.json"),
+            serde_json::to_string_pretty(&Current {
+                current_version: Some(version),
+                latest_last_check: Some(now),
+            })?,
+        )?;
         if download_update {
             return Ok(Some(package_path));
         }
