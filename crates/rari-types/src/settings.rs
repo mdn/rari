@@ -1,4 +1,5 @@
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use config::{Config, ConfigError, Environment, File};
 use semver::VersionReq;
@@ -9,15 +10,37 @@ use crate::locale::Locale;
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
 pub struct Deps {
+    #[serde(alias = "@mdn/browser-compat-data")]
     pub bcd: Option<VersionReq>,
+    #[serde(alias = "mdn-data")]
     pub mdn_data: Option<VersionReq>,
+    #[serde(alias = "web-features")]
     pub web_features: Option<VersionReq>,
+    #[serde(alias = "web-specs")]
     pub web_specs: Option<VersionReq>,
+    #[serde(alias = "@webref/css")]
     pub webref_css: Option<VersionReq>,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
+pub struct DepsPackageJson {
+    dependencies: Deps,
 }
 
 impl Deps {
     pub fn new() -> Result<Self, ConfigError> {
+        if let Some(package_json) = std::env::var_os("deps_package_json") {
+            let path = Path::new(&package_json);
+            if let Some(deps) = fs::read_to_string(path)
+                .ok()
+                .and_then(|json_str| serde_json::from_str(&json_str).ok())
+            {
+                return Ok(deps);
+            } else {
+                tracing::error!("unable to parse {}", path.display());
+            }
+        }
         let s = Config::builder()
             .add_source(Environment::default().prefix("deps").try_parsing(true))
             .build()?;

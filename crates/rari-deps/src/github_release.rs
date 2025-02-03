@@ -75,7 +75,7 @@ pub fn get_artifact(
         let download_update = current.current_version.as_ref() != Some(&version);
 
         if download_update {
-            tracing::info!("DEPS: Updating {repo} ({artifact}) to {version}");
+            tracing::info!("Updating {repo} ({artifact}) to {version}");
             if package_path.exists() {
                 fs::remove_dir_all(&package_path)?;
             }
