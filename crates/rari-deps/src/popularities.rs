@@ -34,7 +34,6 @@ fn should_update(now: &DateTime<Utc>, current: &Option<DateTime<Utc>>) -> bool {
 }
 
 pub fn update_popularities(base_path: &Path) -> Result<Option<PathBuf>, DepsError> {
-    let version = "latest";
     let package_path = base_path.join("popularities");
     let last_check_path = package_path.join("last_check.json");
     let now = Utc::now();
@@ -77,7 +76,7 @@ pub fn update_popularities(base_path: &Path) -> Result<Option<PathBuf>, DepsErro
         fs::write(
             package_path.join("last_check.json"),
             serde_json::to_string_pretty(&Current {
-                version: version.to_string(),
+                current_version: None,
                 latest_last_check: Some(now),
             })?,
         )?;

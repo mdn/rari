@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use rari_types::globals::deps;
 use rari_utils::io::read_to_string;
 use serde_json::Value;
 
@@ -9,10 +10,10 @@ use crate::error::DepsError;
 use crate::npm::get_package;
 
 pub fn update_bcd(base_path: &Path) -> Result<(), DepsError> {
-    if let Some(path) = get_package("@mdn/browser-compat-data", None, base_path)? {
+    if let Some(path) = get_package("@mdn/browser-compat-data", &deps().bcd, base_path)? {
         extract_spec_urls(&path)?;
     }
-    get_package("web-specs", None, base_path)?;
+    get_package("web-specs", &deps().web_specs, base_path)?;
     Ok(())
 }
 

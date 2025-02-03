@@ -229,15 +229,6 @@ fn main() -> Result<(), Error> {
         info!("Using env_file: {}", env_file.display())
     }
     let cli = Cli::parse();
-    if !cli.skip_updates {
-        rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;
-        rari_deps::web_features::update_web_features(rari_types::globals::data_dir())?;
-        rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;
-        rari_deps::mdn_data::update_mdn_data(rari_types::globals::data_dir())?;
-        rari_deps::web_ext_examples::update_web_ext_examples(rari_types::globals::data_dir())?;
-        rari_deps::popularities::update_popularities(rari_types::globals::data_dir())?;
-    }
-
     let fmt_filter =
         filter::Targets::new().with_target("rari_doc", cli.verbose.tracing_level_filter());
 
@@ -249,6 +240,7 @@ fn main() -> Result<(), Error> {
     let cli_filter = filter::Targets::new()
         .with_target("rari", cli_level)
         .with_target("rari_tools", cli_level)
+        .with_target("rari_deps", cli_level)
         .with_target("rari_doc", LevelFilter::OFF);
 
     let memory_filter = filter::Targets::new()
@@ -272,6 +264,15 @@ fn main() -> Result<(), Error> {
         )
         .with(memory_layer.clone().with_filter(memory_filter))
         .init();
+
+    if !cli.skip_updates {
+        rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;
+        rari_deps::web_features::update_web_features(rari_types::globals::data_dir())?;
+        rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;
+        rari_deps::mdn_data::update_mdn_data(rari_types::globals::data_dir())?;
+        rari_deps::web_ext_examples::update_web_ext_examples(rari_types::globals::data_dir())?;
+        rari_deps::popularities::update_popularities(rari_types::globals::data_dir())?;
+    }
 
     match cli.command {
         Commands::Build(args) => {

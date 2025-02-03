@@ -1,4 +1,5 @@
 pub mod bcd;
+pub mod client;
 pub mod current;
 pub mod error;
 pub mod external_json;

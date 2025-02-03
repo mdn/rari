@@ -14,6 +14,10 @@ serde_json.workspace = true
 chrono.workspace = true
 thiserror.workspace = true
 reqwest.workspace = true
+url.workspace = true
+indexmap.workspace = true
+tracing.workspace = true
+semver.workspace = true
 
 css-syntax-types = { path = "../css-syntax-types" }
 tar = "0.4"

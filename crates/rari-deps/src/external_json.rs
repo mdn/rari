@@ -6,6 +6,7 @@ use chrono::{DateTime, Duration, Utc};
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 
+use crate::client::get;
 use crate::error::DepsError;
 
 #[derive(Deserialize, Serialize, Default, Debug)]
@@ -26,7 +27,7 @@ pub fn get_json(name: &str, url: &str, out_path: &Path) -> Result<Option<PathBuf
             fs::remove_dir_all(&package_path)?;
         }
         fs::create_dir_all(&package_path)?;
-        let buf = reqwest::blocking::get(url)?.bytes()?;
+        let buf = get(url)?.bytes()?;
 
         let out_file = package_path.join("data.json");
         let file = File::create(out_file).unwrap();

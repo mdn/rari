@@ -17,6 +17,8 @@ serde_json.workspace = true
 indexmap.workspace = true
 chrono.workspace = true
 schemars.workspace = true
+semver.workspace = true
+tracing.workspace = true
 
 serde_variant = "0.1"
 normalize-path = "0.2"
