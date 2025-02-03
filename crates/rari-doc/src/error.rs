@@ -110,6 +110,12 @@ pub enum DocError {
     SlugRequiredForSidebarEntry,
     #[error("Invalid sidebar entry")]
     InvalidSidebarEntry,
+    #[error(
+        "The document's slug ({0}) doesn't match its disk folder name ({1}): expected path ({2})"
+    )]
+    SlugFolderMismatch(String, String, String),
+    #[error("Fatal error reading docs")]
+    DocsReadError,
 }
 
 /// Represents various errors that can occur while processing URLs.

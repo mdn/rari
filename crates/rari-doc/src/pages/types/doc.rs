@@ -9,6 +9,7 @@ use rari_md::m2h;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::locale::{default_locale, Locale};
 use rari_types::RariEnv;
+use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 use serde_yaml_ng::Value;
@@ -307,7 +308,29 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?
         .to_path_buf();
-
+    let folder_path = path
+        .strip_prefix(locale.as_folder_str())
+        .ok()
+        .and_then(|path| path.parent());
+    let folder_path_from_slug = url_to_folder_path(&slug);
+    if Some(folder_path_from_slug.as_path()) != folder_path {
+        return Err(DocError::SlugFolderMismatch(
+            slug,
+            concat_strs!(
+                locale.as_folder_str(),
+                "/",
+                folder_path
+                    .map(|path| path.to_string_lossy())
+                    .unwrap_or_default()
+                    .as_ref()
+            ),
+            concat_strs!(
+                locale.as_folder_str(),
+                "/",
+                folder_path_from_slug.to_string_lossy().as_ref()
+            ),
+        ));
+    }
     Ok(Doc {
         meta: Meta {
             title,
