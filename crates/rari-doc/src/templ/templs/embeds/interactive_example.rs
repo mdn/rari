@@ -7,16 +7,17 @@ use crate::templ::api::RariApi;
 /// Adds an <interactive-example> element to the content
 ///
 /// Parameters:
-///  $0 - Optional custom height class to set on interactive-example element
+///  $0 - Name of interactive example
+///  $1 - Optional custom height class to set on interactive-example element
 ///
-///  Example call {{InteractiveExample("taller")}}
+///  Example call {{InteractiveExample("JavaScript Demo: Array.from()", "taller")}}
 #[rari_f]
-pub fn interactive_example(height: Option<String>) -> Result<String, DocError> {
+pub fn interactive_example(name: String, height: Option<String>) -> Result<String, DocError> {
     let title = l10n_json_data("Template", "interactive_example_cta", env.locale)?;
     let id = RariApi::anchorize(title);
     let h = height.unwrap_or_default();
     Ok(format!(
         r#"<h2 id="{id}">{title}</h2>
-<interactive-example height="{h}"></interactive-example>"#
+<interactive-example name="{name}" height="{h}"></interactive-example>"#
     ))
 }
