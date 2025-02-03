@@ -109,7 +109,7 @@ pub fn render_link_via_page(
                     source = "ill-cased-link",
                     ic = ic,
                     url = url,
-                    href = page.url()
+                    redirect = page.url()
                 );
             }
             let url = page.url();

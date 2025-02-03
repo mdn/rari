@@ -8,7 +8,7 @@ use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_doc::html::sidebar::{
     BasicEntry, CoreEntry, Sidebar, SidebarEntry, SubPageEntry, SubPageGroupedEntry, WebExtApiEntry,
 };
-use rari_doc::pages::page::{Page, PageLike};
+use rari_doc::redirects::resolve_redirect;
 use rari_types::globals::content_root;
 use rari_types::locale::{default_locale, Locale};
 use rari_utils::concat_strs;
@@ -58,19 +58,19 @@ impl LinkFixer for Pairs<'_> {
 }
 
 pub struct CaseFixer {}
+static EN_US_DOCS_SLASH_PREFIX: &str = concatcp!("/", default_locale().as_url_str(), "/docs/");
 
 impl LinkFixer for CaseFixer {
     fn fix_link(&self, link: Option<String>) -> Option<String> {
         if let Some(link) = &link {
             if let Some(slug) = link.strip_prefix("/") {
-                if let Ok(page) = Page::from_url(&concat_strs!(
-                    "/",
-                    default_locale().as_url_str(),
-                    "/docs/",
-                    slug
-                )) {
-                    if slug != page.slug() {
-                        return Some(concat_strs!("/", page.slug()));
+                if let Some(redirect) =
+                    resolve_redirect(&concat_strs!(EN_US_DOCS_SLASH_PREFIX, slug))
+                {
+                    if let Some(new_slug) = redirect.strip_prefix(EN_US_DOCS_SLASH_PREFIX) {
+                        if new_slug != slug {
+                            return Some(concat_strs!("/", new_slug));
+                        }
                     }
                 }
             }

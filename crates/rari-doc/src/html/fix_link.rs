@@ -162,8 +162,15 @@ pub fn handle_internal_link(
                                     url = original_href,
                                 );
                             } else {
+                                let source = if original_href.to_lowercase()
+                                    == resolved_href.to_lowercase()
+                                {
+                                    "ill-cased-link"
+                                } else {
+                                    "redirected-link"
+                                };
                                 tracing::warn!(
-                                    source = "redirected-link",
+                                    source = source,
                                     ic = ic,
                                     line = line,
                                     col = col,
@@ -181,8 +188,14 @@ pub fn handle_internal_link(
                     if remove_href {
                         tracing::warn!(source = "broken-link", ic = ic, url = original_href);
                     } else {
+                        let source = if original_href.to_lowercase() == resolved_href.to_lowercase()
+                        {
+                            "ill-cased-link"
+                        } else {
+                            "redirected-link"
+                        };
                         tracing::warn!(
-                            source = "redirected-link",
+                            source = source,
                             ic = ic,
                             url = original_href,
                             redirect = resolved_href
