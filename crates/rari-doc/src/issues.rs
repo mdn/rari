@@ -204,6 +204,7 @@ pub enum IssueType {
     TemplBrokenLink,
     RedirectedLink,
     BrokenLink,
+    IllCasedLink,
     #[default]
     Unknown,
 }
@@ -217,6 +218,7 @@ impl FromStr for IssueType {
             "templ-broken-link" => Self::TemplBrokenLink,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
+            "ill-cased-link" => Self::IllCasedLink,
             _ => Self::Unknown,
         })
     }
@@ -309,6 +311,18 @@ impl DIssue {
             }
         }
         match di.name {
+            IssueType::IllCasedLink => {
+                di.fixed = false;
+                di.fixable = Some(true);
+                di.explanation = Some(format!(
+                    "{} is ill cased",
+                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                ));
+                DIssue::BrokenLink {
+                    display_issue: di,
+                    href: additional.remove("url"),
+                }
+            }
             IssueType::RedirectedLink => {
                 di.fixed = false;
                 di.fixable = Some(true);
