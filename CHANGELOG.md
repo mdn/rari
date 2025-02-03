@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.22](https://github.com/mdn/rari/compare/v0.1.21...v0.1.22) (2025-02-03)
+
+
+### Features
+
+* **build:** fail build on slug folder mismatch ([0628bc6](https://github.com/mdn/rari/commit/0628bc6eec244751ef1f02394080e4e84a1ff96f))
+* **deps:** support versioning  ([#116](https://github.com/mdn/rari/issues/116)) ([e1e7418](https://github.com/mdn/rari/commit/e1e741804e93d9c512f00844a7a9ec466a736c81))
+* **issues:** issues for ill cased links ([#115](https://github.com/mdn/rari/issues/115)) ([d8b6c2b](https://github.com/mdn/rari/commit/d8b6c2b393c85c0cdcc354c6062e30a03887a766))
+
+
+### Bug Fixes
+
+* **templ:** don't parse incomplete macro tags ([85692ec](https://github.com/mdn/rari/commit/85692eca0599131b7d2d9155daf5af5b238453c0))
+
 ## [0.1.21](https://github.com/mdn/rari/compare/v0.1.20...v0.1.21) (2025-01-29)
 
 
