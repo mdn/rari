@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 use rari_doc::error::{DocError, UrlError};
 use rari_types::error::EnvError;
@@ -55,6 +56,8 @@ pub enum ToolError {
     InvalidFrontmatter(#[from] serde_yaml_ng::Error),
     #[error("Page has subpages: {0}")]
     HasSubpagesError(Cow<'static, str>),
+    #[error("Target directory ({0}) for slug ({1}) already exists")]
+    TargetDirExists(PathBuf, String),
 
     #[error("Unknown error")]
     Unknown(&'static str),

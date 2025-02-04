@@ -104,6 +104,19 @@ fn do_move(
         return Ok(vec![]);
     }
 
+    let old_folder_path = slug_to_repo_folder_path(real_old_slug, locale)?;
+    let new_folder_path = slug_to_repo_folder_path(new_slug, locale)?;
+
+    if root_for_locale(locale)?
+        .join(&new_folder_path)
+        .try_exists()?
+    {
+        return Err(ToolError::TargetDirExists(
+            new_folder_path,
+            new_slug.to_string(),
+        ));
+    }
+
     let pairs = [doc.clone()]
         .iter()
         .chain(&subpages)
@@ -145,16 +158,6 @@ fn do_move(
     // Now we use the git command to move the whole parent directory
     // to a new location. This will move all children as well and
     // makes sure that we get a proper "file moved" in the git history.
-
-    let mut old_folder_path = PathBuf::from(locale.as_folder_str());
-    let url = build_url(real_old_slug, locale, PageCategory::Doc)?;
-    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
-    old_folder_path.push(folder_path);
-
-    let mut new_folder_path = PathBuf::from(locale.as_folder_str());
-    let url = build_url(new_slug, locale, PageCategory::Doc)?;
-    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
-    new_folder_path.push(folder_path);
 
     // Make sure the target parent directory exists.
     if let Some(target_parent_path) = new_folder_path.parent() {
@@ -217,6 +220,14 @@ fn do_move(
 
     // finally, return the pairs of old and new slugs
     Ok(pairs)
+}
+
+fn slug_to_repo_folder_path(slug: &str, locale: Locale) -> Result<PathBuf, ToolError> {
+    let mut new_folder_path = PathBuf::from(locale.as_folder_str());
+    let url = build_url(slug, locale, PageCategory::Doc)?;
+    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
+    new_folder_path.push(folder_path);
+    Ok(new_folder_path)
 }
 
 fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
