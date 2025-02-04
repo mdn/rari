@@ -124,7 +124,7 @@ impl CurriculumPage {
         curriculum_files().by_path.get(path).cloned()
     }
 
-    pub fn page_from_realitve_file(
+    pub fn page_from_relative_file(
         base_file: &Path,
         relative_file: &str,
     ) -> Result<Page, DocError> {

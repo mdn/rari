@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.22](https://github.com/mdn/rari/compare/v0.1.21...v0.1.22) (2025-02-03)
+
+
+### Features
+
+* **build:** fail build on slug folder mismatch ([0628bc6](https://github.com/mdn/rari/commit/0628bc6eec244751ef1f02394080e4e84a1ff96f))
+* **deps:** support versioning  ([#116](https://github.com/mdn/rari/issues/116)) ([e1e7418](https://github.com/mdn/rari/commit/e1e741804e93d9c512f00844a7a9ec466a736c81))
+* **issues:** issues for ill cased links ([#115](https://github.com/mdn/rari/issues/115)) ([d8b6c2b](https://github.com/mdn/rari/commit/d8b6c2b393c85c0cdcc354c6062e30a03887a766))
+
+
+### Bug Fixes
+
+* **templ:** don't parse incomplete macro tags ([85692ec](https://github.com/mdn/rari/commit/85692eca0599131b7d2d9155daf5af5b238453c0))
+
+## [0.1.21](https://github.com/mdn/rari/compare/v0.1.20...v0.1.21) (2025-01-29)
+
+
+### Features
+
+* **cli:** use info! instead of println! ([797e299](https://github.com/mdn/rari/commit/797e29999c222eb4cd4e4d0d55fa468232b72001))
+* **templ:** support full syntax for csssyntaxraw ([1d78439](https://github.com/mdn/rari/commit/1d7843962ba9d2ccdc15b88106a373e16b705a0f))
+* **tools:** add validate-redirects and support locale arg ([4488aed](https://github.com/mdn/rari/commit/4488aedb5949d66e5b1fc6e7c72b206c1bf182b7))
+
+
+### Bug Fixes
+
+* **build:** canonicalize file arguments ([5e2cccf](https://github.com/mdn/rari/commit/5e2cccf14638aa5b389b73c969540daf85366f18)), closes [#98](https://github.com/mdn/rari/issues/98)
+* **build:** don't try to read generic pages if not set ([508b26f](https://github.com/mdn/rari/commit/508b26f8073a5cc014d7df8054635f108062e7a4))
+* **frontmatter:** status is always an array ([5b5206b](https://github.com/mdn/rari/commit/5b5206b655c8672b23d13e655ef39520af8d1d35))
+* **tool:** make `status` frontmatter serialize like in yari ([#109](https://github.com/mdn/rari/issues/109)) ([c43860d](https://github.com/mdn/rari/commit/c43860d4351bb3192004590756f6137440d580b8))
+* **yaml:** force double quotes for fm and sidebars ([9890c7d](https://github.com/mdn/rari/commit/9890c7d321b9cc3d91054549552df3b88d826c83))
+
+## [0.1.20](https://github.com/mdn/rari/compare/v0.1.19...v0.1.20) (2025-01-24)
+
+
+### Features
+
+* **issues:** improve flaw compatibility ([#95](https://github.com/mdn/rari/issues/95)) ([8b1f018](https://github.com/mdn/rari/commit/8b1f0181af3d5d4c0b48583f5a53b1d467108c23))
+
+## [0.1.19](https://github.com/mdn/rari/compare/v0.1.18...v0.1.19) (2025-01-22)
+
+
+### Features
+
+* **templ:** add csssyntaxraw  ([#92](https://github.com/mdn/rari/issues/92)) ([25808bd](https://github.com/mdn/rari/commit/25808bdb2fa525b0d524d61f1354d05229bacc1d))
+
+
+### Bug Fixes
+
+* **build/parser:** parse empty string args for macros as `None`s ([#88](https://github.com/mdn/rari/issues/88)) ([4f5751f](https://github.com/mdn/rari/commit/4f5751fa506cf87366bc3dc777725df095913e8a))
+* **html:** trim the first empty line in `&lt;pre&gt;` tag ([#90](https://github.com/mdn/rari/issues/90)) ([95f142f](https://github.com/mdn/rari/commit/95f142fecaad38cb696dc9606b2b9fa615c1f084))
+
+## [0.1.18](https://github.com/mdn/rari/compare/v0.1.17...v0.1.18) (2025-01-16)
+
+
+### Bug Fixes
+
+* **build:** fix html img src ([b5af77e](https://github.com/mdn/rari/commit/b5af77e60be879c423f442fad5e0477423e17222))
+
+## [0.1.17](https://github.com/mdn/rari/compare/v0.1.16...v0.1.17) (2025-01-14)
+
+
+### Bug Fixes
+
+* **blog:** respect published and date front matter ([ba9743d](https://github.com/mdn/rari/commit/ba9743d079eb2c0dc5c799dd516f3d222c98dc92))
+
+## [0.1.16](https://github.com/mdn/rari/compare/v0.1.15...v0.1.16) (2025-01-10)
+
+
+### Bug Fixes
+
+* **issues:** add empty flaws for --json-issues ([c6be69e](https://github.com/mdn/rari/commit/c6be69eb91dfe71e7e12554ef04b49c5fcd0bc83))
+
 ## [0.1.15](https://github.com/mdn/rari/compare/v0.1.14...v0.1.15) (2025-01-09)
 
 

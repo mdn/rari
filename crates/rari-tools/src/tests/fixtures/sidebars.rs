@@ -41,7 +41,7 @@ impl SidebarFixtures {
 impl Drop for SidebarFixtures {
     fn drop(&mut self) {
         if self.do_not_remove {
-            println!("Leaving doc fixtures in place for debugging");
+            tracing::info!("Leaving doc fixtures in place for debugging");
             return;
         }
         // Perform cleanup actions, recursively remove all files

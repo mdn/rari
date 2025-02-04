@@ -16,6 +16,7 @@ use rari_utils::error::RariIoError;
 use tracing::error;
 
 use crate::error::DocError;
+use crate::pages::page::{Page, PageLike};
 
 static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     let mut map = HashMap::new();
@@ -90,33 +91,48 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-/// Resolves a URL redirect based on the configured redirects.
+/// Resolves a given URL to a redirect URL if one exists.
 ///
-/// This function attempts to resolve a redirect for the given URL by looking it up in the `REDIRECTS` hashmap.
-/// If a redirect is found, it returns the target URL, optionally appending any hash fragment from the original URL.
-/// If no redirect is found, it returns `None`.
+/// Takes a URL string as input and returns an Option containing either:
+/// - A `Cow<str>` with the redirect URL if a redirect exists
+/// - None if no redirect is found
 ///
-/// # Arguments
-///
-/// * `url` - A string slice that holds the URL to be resolved.
-///
-/// # Returns
-///
-/// * `Option<Cow<'_, str>>` - Returns `Some(Cow::Borrowed(target_url))` if a redirect is found and the target URL
-///   does not contain a hash fragment, or `Some(Cow::Owned(format!("{target_url}{hash}")))` if the target URL
-///   contains a hash fragment or the original URL has a hash fragment. Returns `None` if no redirect is found.
-pub(crate) fn resolve_redirect<'a>(url: impl AsRef<str>) -> Option<Cow<'a, str>> {
+/// The function handles hash fragments in URLs and preserves them in the redirect.
+/// It also normalizes URLs and can resolve both explicit redirects from the redirects file
+/// as well as implicit redirects based on page URL normalization.
+pub fn resolve_redirect<'a>(url: impl AsRef<str>) -> Option<Cow<'a, str>> {
     let url = url.as_ref();
     let hash_index = url.find('#').unwrap_or(url.len());
     let (url_no_hash, hash) = (&url[..hash_index], &url[hash_index..]);
-    match (
-        REDIRECTS
-            .get(&url_no_hash.to_lowercase())
-            .map(|s| s.as_str()),
-        hash,
-    ) {
+    let redirect = match REDIRECTS
+        .get(&url_no_hash.to_lowercase())
+        .map(|s| s.as_str())
+    {
+        Some(redirect) if redirect.starts_with("/") => Some(
+            Page::from_url(redirect)
+                .ok()
+                .and_then(|page| {
+                    if url != page.url() {
+                        Some(Cow::Owned(page.url().to_string()))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(Cow::Borrowed(redirect)),
+        ),
+        Some(redirect) => Some(Cow::Borrowed(redirect)),
+        None if url.starts_with("/") => Page::from_url(url).ok().and_then(|page| {
+            if url != page.url() {
+                Some(Cow::Owned(page.url().to_string()))
+            } else {
+                None
+            }
+        }),
+        None => None,
+    };
+    match (redirect, hash) {
         (None, _) => None,
-        (Some(url), hash) if url.contains('#') || hash.is_empty() => Some(Cow::Borrowed(url)),
+        (Some(url), hash) if url.contains('#') || hash.is_empty() => Some(url),
         (Some(url), hash) => Some(Cow::Owned(format!("{url}{hash}"))),
     }
 }

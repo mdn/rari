@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use lol_html::html_content::ContentType;
-use lol_html::{element, rewrite_str, HtmlRewriter, RewriteStrSettings, Settings};
+use lol_html::{element, rewrite_str, text, HtmlRewriter, RewriteStrSettings, Settings};
 use rari_md::ext::DELIM_START;
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;
@@ -48,6 +48,7 @@ pub fn post_process_html<T: PageLike>(
     ))?;
     let base_url = options.base_url(Some(&base));
     let data_issues = settings().data_issues;
+    let mut in_pre = false;
 
     let mut element_content_handlers = vec![
         element!("*[id]", |el| {
@@ -98,12 +99,25 @@ pub fn post_process_html<T: PageLike>(
             Ok(())
         }),
         element!("a[href]", |el| {
-            check_and_fix_link(el, page, data_issues)
+            check_and_fix_link(el, page, data_issues)?;
+            Ok(())
         }),
         element!("pre:not(.notranslate)", |el| {
             let mut class = el.get_attribute("class").unwrap_or_default();
             class.push_str(" notranslate");
             el.set_attribute("class", &class)?;
+            Ok(())
+        }),
+        text!("pre[class*=brush]", |text| {
+            // trim the first _empty_ line,
+            // fixes issue: https://github.com/mdn/yari/issues/12364
+            if !in_pre && text.as_str().starts_with('\n') {
+                text.as_mut_str().remove(0);
+            }
+            in_pre = true;
+            if text.last_in_text_node() {
+                in_pre = false;
+            }
             Ok(())
         }),
         element!("pre[class*=brush]", |el| {
@@ -202,7 +216,7 @@ pub fn post_process_html<T: PageLike>(
             let mut curriculum_links = vec![element!("a[href^=\".\"]", |el| {
                 let href = el.get_attribute("href").unwrap_or_default();
                 let split_href = href.split_once('#');
-                if let Ok(page) = CurriculumPage::page_from_realitve_file(
+                if let Ok(page) = CurriculumPage::page_from_relative_file(
                     page.full_path(),
                     split_href.map(|s| s.0).unwrap_or(&href),
                 ) {

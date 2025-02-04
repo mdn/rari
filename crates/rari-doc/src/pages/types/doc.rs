@@ -9,6 +9,7 @@ use rari_md::m2h;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::locale::{default_locale, Locale};
 use rari_types::RariEnv;
+use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 use serde_yaml_ng::Value;
@@ -52,12 +53,7 @@ pub struct FrontMatter {
     pub slug: String,
     #[serde(rename = "page-type", skip_serializing_if = "is_page_type_none")]
     pub page_type: PageType,
-    #[serde(
-        deserialize_with = "t_or_vec",
-        serialize_with = "serialize_t_or_vec",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub status: Vec<FeatureStatus>,
     #[serde(
         rename = "browser-compat",
@@ -312,7 +308,29 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?
         .to_path_buf();
-
+    let folder_path = path
+        .strip_prefix(locale.as_folder_str())
+        .ok()
+        .and_then(|path| path.parent());
+    let folder_path_from_slug = url_to_folder_path(&slug);
+    if Some(folder_path_from_slug.as_path()) != folder_path {
+        return Err(DocError::SlugFolderMismatch(
+            slug,
+            concat_strs!(
+                locale.as_folder_str(),
+                "/",
+                folder_path
+                    .map(|path| path.to_string_lossy())
+                    .unwrap_or_default()
+                    .as_ref()
+            ),
+            concat_strs!(
+                locale.as_folder_str(),
+                "/",
+                folder_path_from_slug.to_string_lossy().as_ref()
+            ),
+        ));
+    }
     Ok(Doc {
         meta: Meta {
             title,
@@ -383,7 +401,7 @@ fn fm_to_string(fm: &FrontMatter) -> Result<String, DocError> {
         &fm_str,
         &FormatOptions {
             language: LanguageOptions {
-                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                quotes: pretty_yaml::config::Quotes::ForceDouble,
                 indent_block_sequence_in_map: true,
                 ..Default::default()
             },
@@ -409,7 +427,8 @@ mod tests {
         assert_eq!(meta.status.len(), 2);
 
         let fm = r#"
-        status: experimental
+        status:
+          - experimental
       "#;
         let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.status.len(), 1);

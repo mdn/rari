@@ -1,7 +1,7 @@
 //! # Rari Documentation System
 //!
 //! The `rari_doc` crate is the central crate of the `rari` build system. It provides a robust build pipeline
-//! and various utilities to handle different aspects of the documentation pipline, including reading,
+//! and various utilities to handle different aspects of the documentation pipeline, including reading,
 //! parsing, and rendering pages.
 //!
 //! ## Modules

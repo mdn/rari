@@ -84,6 +84,7 @@ pub fn write_li_with_badges(
             code,
             only_en_us: locale_page.locale() != locale,
         },
+        true,
     )?;
     if closed {
         write!(out, "</li>")?;
@@ -106,6 +107,7 @@ pub fn write_parent_li(out: &mut String, page: &Page, locale: Locale) -> Result<
             code: false,
             only_en_us: page.locale() != locale,
         },
+        true,
     )?;
     out.push_str("</li>");
     Ok(())

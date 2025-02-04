@@ -5,7 +5,7 @@ use crate::error::DocError;
 use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::html::links::{render_internal_link, LinkModifier};
 use crate::pages::page::{Page, PageLike};
-use crate::utils::{trim_after, trim_fefore};
+use crate::utils::{trim_after, trim_before};
 
 /// List sub pages for sidebar
 #[rari_f]
@@ -36,7 +36,7 @@ pub fn list_subpages_for_sidebar(
             &page
         };
         let title = locale_page.short_title().unwrap_or(locale_page.title());
-        let title = trim_fefore(title, title_only_after.as_deref());
+        let title = trim_before(title, title_only_after.as_deref());
         let title = trim_after(title, title_only_before.as_deref());
         render_internal_link(
             &mut out,
@@ -50,6 +50,7 @@ pub fn list_subpages_for_sidebar(
                 code,
                 only_en_us: locale_page.locale() != env.locale,
             },
+            true,
         )?;
         out.push_str("</li>");
     }

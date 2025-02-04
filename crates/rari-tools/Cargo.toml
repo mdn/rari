@@ -1,6 +1,6 @@
 [package]
 name = "rari-tools"
-version = "0.1.15"
+version = "0.1.22"
 edition.workspace = true
 authors = [
   "Andi Pieper <apieper@mozilla.com>",
@@ -28,8 +28,8 @@ serde_yaml_ng.workspace = true
 pretty_yaml.workspace = true
 yaml_parser.workspace = true
 const_format.workspace = true
+dialoguer.workspace = true
 
-dialoguer = "0.11"
 csv = "1"
 
 [dev-dependencies]

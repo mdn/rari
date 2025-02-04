@@ -6,6 +6,7 @@
 //! efficiency of reading large sets of documentation files.
 
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use rari_types::globals::settings;
 use tracing::error;
@@ -48,22 +49,27 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
     let stdout_thread = std::thread::spawn(move || rx.into_iter().collect());
     // For testing, we do not pay attention to the .gitignore files (walk_builder's
     // default is to obey them). The test configuration has `reader_ignores_gitignore = true`.
+    let success = AtomicBool::new(true);
     let ignore_gitignore = !settings().reader_ignores_gitignore;
     walk_builder(paths, glob)?
         .git_ignore(ignore_gitignore)
         .build_parallel()
         .run(|| {
             let tx = tx.clone();
+            let success = &success;
             Box::new(move |result| {
                 if let Ok(f) = result {
                     if f.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
                         let p = f.into_path();
                         match T::read(p, None) {
                             Ok(doc) => {
-                                tx.send(Ok(doc)).unwrap();
+                                if let Err(e) = tx.send(Ok(doc)) {
+                                    error!("{e}");
+                                }
                             }
                             Err(e) => {
                                 error!("{e}");
+                                success.store(false, Ordering::Relaxed);
                                 //tx.send(Err(e.into())).unwrap();
                             }
                         }
@@ -74,5 +80,10 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
         });
 
     drop(tx);
-    stdout_thread.join().unwrap()
+    let docs = stdout_thread.join().unwrap();
+    if success.load(Ordering::Relaxed) {
+        docs
+    } else {
+        Err(DocError::DocsReadError)
+    }
 }

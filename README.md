@@ -1,10 +1,9 @@
+# Welcome to `rari`
+
 > [!Warning]
 > This project is work in progress and lacking most of its documentation.
 > Anything might change and code will move a lot. We do not encourage using it yet.
 > We'll have an official announcement before we migrate, so stay tuned.
-
-
-# Welcome to `rari`
 
 `rari` is the build system for [MDN](https://developer.mozilla.org).
 
@@ -17,11 +16,12 @@ To get up and running, follow these steps:
 Make sure you have [Rust](https://www.rust-lang.org/) installed, otherwise go to [https://rustup.rs/](https://rustup.rs/).
 
 Clone this repository and run:
+
 ```plain
 cargo run -- --help
 ```
 
-### Configuation
+### Configuration
 
 Create a `.config.toml` in the current working directory.
 Add the following:
@@ -41,6 +41,7 @@ Our project welcomes contributions from any member of our community.
 To get started contributing, please see our [Contributor Guide](CONTRIBUTING.md).
 
 -->
+
 By participating in and contributing to our projects and discussions, you acknowledge that you have read and agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Resources
@@ -54,7 +55,6 @@ To be updated...
 ## Communications
 
 If you have any questions, please reach out to us on [Discord](https://developer.mozilla.org/discord)
-
 
 ## License
 

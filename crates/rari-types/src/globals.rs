@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use crate::error::EnvError;
 use crate::locale::Locale;
-use crate::settings::Settings;
+use crate::settings::{Deps, Settings};
 use crate::{HistoryEntry, Popularities};
 
 #[inline(always)]
@@ -74,6 +74,11 @@ pub fn settings() -> &'static Settings {
     SETTINGS.get_or_init(|| Settings::new().expect("error generating settings"))
 }
 
+pub static DEPS: OnceLock<Deps> = OnceLock::new();
+pub fn deps() -> &'static Deps {
+    DEPS.get_or_init(|| Deps::new().expect("error generating deps"))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct JsonSpecData {
     pub url: String,
@@ -88,7 +93,7 @@ pub fn json_spec_data_lookup() -> &'static JsonSpecDataLookup {
         let json_str = fs::read_to_string(content_root().join("jsondata/SpecData.json"))
             .expect("unable to read SpecData.json");
         let data: HashMap<String, JsonSpecData> =
-            serde_json::from_str(&json_str).expect("unabeld to parse SpecData.json");
+            serde_json::from_str(&json_str).expect("unable to parse SpecData.json");
         data.into_iter().map(|(k, v)| (v.url, k)).collect()
     })
 }
@@ -129,7 +134,7 @@ pub fn json_svg_data_lookup() -> &'static JsonSVGDataLookup {
         let json_str = fs::read_to_string(content_root().join("jsondata/SVGData.json"))
             .expect("unable to read SVGData.json");
         let data: SVGDataContainer =
-            serde_json::from_str(&json_str).expect("unabeld to parse SVGData.json");
+            serde_json::from_str(&json_str).expect("unable to parse SVGData.json");
         data.elements
     })
 }

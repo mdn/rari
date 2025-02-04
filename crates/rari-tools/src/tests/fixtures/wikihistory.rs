@@ -59,7 +59,7 @@ impl WikihistoryFixtures {
 impl Drop for WikihistoryFixtures {
     fn drop(&mut self) {
         if self.do_not_remove {
-            println!(
+            tracing::info!(
                 "Leaving wikihistory fixture {} in place for debugging",
                 self.path.display()
             );

@@ -37,10 +37,10 @@ pub fn r#move(
     let bold = Style::new().bold();
     let changes = do_move(old_slug, new_slug, locale, true)?;
     if changes.is_empty() {
-        println!("{}", style("No changes would be made").green());
+        tracing::info!("{}", style("No changes would be made").green());
         return Ok(());
     } else {
-        println!(
+        tracing::info!(
             "{} {} {} {} {} {}",
             green.apply_to("This will move"),
             bold.apply_to(changes.len()),
@@ -50,7 +50,7 @@ pub fn r#move(
             green.apply_to(new_slug)
         );
         for (old_slug, new_slug) in changes {
-            println!(
+            tracing::info!(
                 "{} -> {}",
                 red.apply_to(&old_slug),
                 green.apply_to(&new_slug)
@@ -66,7 +66,7 @@ pub fn r#move(
             .unwrap_or_default()
     {
         let moved = do_move(old_slug, new_slug, locale, false)?;
-        println!(
+        tracing::info!(
             "{} {} {}",
             green.apply_to("Moved"),
             bold.apply_to(moved.len()),
@@ -130,7 +130,7 @@ fn do_move(
             doc.meta.slug = new_slug.to_string();
             Some(doc.to_owned())
         } else {
-            println!("This does not look like a document");
+            tracing::info!("This does not look like a document");
             None
         }
     });

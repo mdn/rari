@@ -212,10 +212,13 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
     let mut pairs = HashMap::new();
     let path = redirects_path(locale)?;
 
-    if let Err(e) = read_redirects_raw(&path, &mut pairs) {
-        error!("Error reading redirects: {e}");
-        return Err(ToolError::ReadRedirectsError(e.to_string()));
-    }
+    match read_redirects_raw(&path) {
+        Ok(iter) => pairs.extend(iter),
+        Err(e) => {
+            error!("Error reading redirects: {e}");
+            return Err(ToolError::ReadRedirectsError(e.to_string()));
+        }
+    };
 
     // Separate the pairs into case-only changes and proper redirects
     let (case_changed_targets, new_pairs) = separate_case_changes(update_pairs);
@@ -240,53 +243,205 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
     Ok(())
 }
 
-/// Optimizes redirect rules based on all supported locales.
+/// Optimizes and rewrites redirect rules for supported locales.
 ///
-/// It loads all redirects into a single structure and runs the short_cuts algorithm on it.
-/// The goal is to optimize redirects across locale boundaries.
+/// This function:
+/// 1. Loads all existing redirects into a unified data structure
+/// 2. Runs the `short_cuts` algorithm to optimize the redirect paths
+/// 3. Validates and cleans the redirects across locale boundaries
+/// 4. Overwrites the original redirect files with optimized versions
 ///
-/// This function overwrites all redirect files.
+/// An optional locale filter can be provided to only dix specific locales.
+///
+/// # Arguments
+///
+/// * `locale_filter` - Optional slice of locales to fix. If None, fixes all locales.
 ///
 /// # Returns
 ///
-/// - `Ok(())` if all operations complete successfully.
-/// - `Err(ToolError)` if any step fails, such as:
-///     - Invalid locale strings that cannot be parsed.
-///     - I/O errors during file reading or writing.
-///     - Errors from the `short_cuts` processing function.
-pub fn fix_redirects() -> Result<(), ToolError> {
+/// - `Ok(())` if optimization succeeds and files are written successfully
+/// - `Err(ToolError)` if:
+///     - A locale string is invalid or cannot be parsed
+///     - File I/O operations fail during read/write
+///     - The `short_cuts` optimization encounters errors
+///     - Validation of the optimized redirects fails
+pub fn fix_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolError> {
     let locales = Locale::for_generic_and_spas();
     let mut pairs = HashMap::new();
     for locale in locales {
         let path = redirects_path(*locale)?;
-        read_redirects_raw(&path, &mut pairs)?;
+        pairs.extend(read_redirects_raw(&path)?);
     }
-    let clean_pairs: HashMap<String, String> = short_cuts(&pairs)?.into_iter().collect();
+
+    let locale_pairs = fix_redirects_internal(&pairs)?;
+
+    // Write the updated maps back to their redirects files
+    for (locale, pairs) in locale_pairs.iter().filter(|(locale, _)| {
+        if let Some(locale_filter) = locale_filter {
+            locale_filter.contains(locale)
+        } else {
+            true
+        }
+    }) {
+        let path = redirects_path(*locale)?;
+        write_redirects(&path, pairs)?;
+    }
+    Ok(())
+}
+
+/// Fix redirects for supported locales by optimizing redirect paths.
+///
+/// This function takes a set of redirect pairs and processes them as follows:
+/// 1. Separates the pairs into case-only changes and proper redirects
+/// 2. Removes any old redirects that conflict with the new ones
+/// 3. Fixes redirect target cases
+/// 4. Runs `short_cuts` algorithm to optimize paths
+/// 5. Validates the cleaned redirects
+///
+/// The function returns a mapping of locales to their cleaned redirects.
+///
+/// # Parameters
+///
+/// - `pairs`: Map of redirect pairs representing the from/to paths
+///
+/// # Returns
+///
+/// - `Ok(HashMap<Locale, HashMap<String, String>>)`: Map of locales to their cleaned redirects
+/// - `Err(ToolError)`: If validation fails or cycles are detected in the redirect graph
+///
+/// # Errors
+///
+/// - `ToolError::InvalidLocale`: If a locale in a redirect path is invalid
+/// - `ToolError::RedirectError`: If redirect validation fails or cycles are detected
+fn fix_redirects_internal(
+    pairs: &HashMap<impl AsRef<str>, impl AsRef<str>>,
+) -> Result<HashMap<Locale, HashMap<String, String>>, ToolError> {
+    let clean_pairs: HashMap<String, String> = short_cuts(pairs)?.into_iter().collect();
 
     // Split the clean pairs into their respective locales
     let locale_pairs = clean_pairs.into_iter().try_fold(
-        HashMap::<Locale, HashMap<String, String>>::new(),
-        |mut acc, (from, to)| -> Result<HashMap<Locale, HashMap<String, String>>, ToolError> {
-            // Extract the locale string from the 'from' path
-            let locale_str = from.split('/').nth(1).unwrap_or_default();
+    HashMap::<Locale, HashMap<String, String>>::new(),
+    |mut acc, (from, to)| -> Result<HashMap<Locale, HashMap<String, String>>, ToolError> {
+        // Extract the locale string from the 'from' path
+        let locale_str = from.split('/').nth(1).unwrap_or_default();
 
-            // Parse the locale string into a Locale enum
-            let locale = Locale::from_str(locale_str).map_err(|_| {
-                ToolError::InvalidLocale(Cow::Owned(format!(
-                    "Cannot detect a valid locale for '{}'. Search for a '{}\t{}' pair in all _redirects.txt files to locate the problem.",
-                    from, from, to
-                )))
-            })?;
-            let locale_map = acc.entry(locale).or_default();
-            locale_map.insert(from, to);
-            Ok(acc)
-        },
-    )?;
+        // Parse the locale string into a Locale enum
+        let locale = Locale::from_str(locale_str).map_err(|_| {
+            ToolError::InvalidLocale(Cow::Owned(format!(
+                "Cannot detect a valid locale for '{}'. Search for a '{}\t{}' pair in all _redirects.txt files to locate the problem.",
+                from, from, to
+            )))
+        })?;
+        let locale_map = acc.entry(locale).or_default();
+        locale_map.insert(from, to);
+        Ok(acc)
+    },
+)?;
+    Ok(locale_pairs)
+}
 
-    // Write the updated maps back to their redirects files
-    for (locale, pairs) in &locale_pairs {
+/// Validates all redirects for supported locales.
+///
+/// This function checks the validity and optimal structure of redirect files:
+/// 1. Reads all redirects files
+/// 2. Validates that redirects are stored in sorted order within each file (only if filter applies)
+/// 3. Applies `fix_redirects_internal` to optimize and check for cycles
+/// 4. Compares generated optimized redirects against existing ones if filter applies.
+///
+/// # Parameters
+///
+/// * `locale_filter` - Optional slice of locales to validate. If None, validates all locales.
+///
+/// # Returns
+///
+/// * `Ok(())` - All redirect files are valid and optimally structured
+/// * `Err(ToolError)` if:
+///     - Redirects are not in sorted order
+///     - Redirect optimization would change existing redirects
+///     - Invalid locales found in redirect paths
+///     - Cycles detected in redirect graph
+///
+/// # Errors
+///
+/// - `ToolError::InvalidRedirectOrder` if redirects are not sorted
+/// - `ToolError::InvalidRedirect` if optimized redirects differ from existing ones
+/// - `ToolError::InvalidLocale` if invalid locale found in redirect path
+/// - `ToolError::RedirectError` if cycles detected in redirect graph_redirects
+pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolError> {
+    let locales = Locale::for_generic_and_spas();
+    let locales_to_validate = locale_filter.unwrap_or(locales);
+
+    let mut pairs = HashMap::new();
+    let mut per_locale_pairs: HashMap<Locale, HashMap<_, _>> = HashMap::new();
+    for locale in locales {
         let path = redirects_path(*locale)?;
-        write_redirects(&path, pairs)?;
+        let iter = read_redirects_raw(&path)?.into_iter();
+        if locales_to_validate.contains(locale) {
+            let v = iter.collect::<Vec<_>>();
+            if let Some(t) = v.windows(2).find(|t| t[0].0 > t[1].0) {
+                return Err(ToolError::InvalidRedirectOrder(
+                    t[0].0.to_string(),
+                    t[0].1.to_string(),
+                    t[1].0.to_string(),
+                    t[0].1.to_string(),
+                ));
+            }
+            per_locale_pairs
+                .entry(*locale)
+                .or_insert(v.iter().cloned().collect());
+            pairs.extend(v);
+        } else {
+            pairs.extend(iter);
+        }
+    }
+
+    // Fix and validate within locales.
+
+    for locale in locales_to_validate {
+        if let Some(locale_pairs) = per_locale_pairs.get(locale) {
+            let old_sorted_map = locale_pairs.iter().collect::<BTreeMap<_, _>>();
+            if let Some(locale_pairs) = fix_redirects_internal(locale_pairs)?.get(locale) {
+                let new_sorted_map = locale_pairs.clone().into_iter().collect::<BTreeMap<_, _>>();
+                validate_pairs(locale_pairs, *locale)?;
+                compare_sorted_redirects(old_sorted_map, new_sorted_map)?;
+            }
+        }
+    }
+
+    // Fix and validate cross locales.
+
+    let mut fixed_paris = fix_redirects_internal(&pairs)?;
+
+    for locale in locales_to_validate {
+        let locale_prefix = concat_strs!("/", locale.as_url_str(), "/");
+        let old_sorted_map: BTreeMap<_, _> = pairs
+            .iter()
+            .filter(|(from, _)| from.starts_with(&locale_prefix))
+            .collect();
+        let new_sorted_map: BTreeMap<_, _> = fixed_paris
+            .remove(locale)
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
+        compare_sorted_redirects(old_sorted_map, new_sorted_map)?;
+    }
+
+    Ok(())
+}
+
+fn compare_sorted_redirects(
+    old_sorted_map: BTreeMap<&String, &String>,
+    new_sorted_map: BTreeMap<String, String>,
+) -> Result<(), ToolError> {
+    for (old, new) in old_sorted_map.into_iter().zip(new_sorted_map.into_iter()) {
+        if old.0 != &new.0 || old.1 != &new.1 {
+            return Err(ToolError::InvalidRedirect(
+                old.0.clone(),
+                old.1.clone(),
+                new.0,
+                new.1,
+            ));
+        }
     }
     Ok(())
 }
@@ -501,10 +656,9 @@ fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
 /// * **File Read Error:** If the file at the specified `path` cannot be opened or read.
 pub(crate) fn read_redirects_raw(
     path: &Path,
-    map: &mut HashMap<String, String>,
-) -> Result<(), ToolError> {
+) -> Result<impl IntoIterator<Item = (String, String)>, ToolError> {
     let lines = read_lines(path)?;
-    map.extend(lines.map_while(Result::ok).filter_map(|line| {
+    let iter = lines.map_while(Result::ok).filter_map(|line| {
         if line.starts_with('#') {
             return None;
         }
@@ -514,10 +668,9 @@ pub(crate) fn read_redirects_raw(
         } else {
             None
         }
-    }));
-    Ok(())
+    });
+    Ok(iter)
 }
-
 /// Writes the redirects from the HashMap to the specified file path.
 ///
 /// Each redirect is written in the format: `from to`.
@@ -681,6 +834,7 @@ use serial_test::file_serial;
 mod tests {
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
+    use crate::tests::fixtures::redirects::RedirectFixtures;
 
     fn s(s: &str) -> String {
         s.to_string()
@@ -1115,5 +1269,44 @@ mod tests {
             sorted_transitive, sorted_expected,
             "The transitive redirects do not match the expected shortcuts."
         );
+    }
+
+    #[test]
+    fn validate_invalid() {
+        let _docs = DocFixtures::new(&["C".to_string()], Locale::EnUs);
+        let pairs = [("docs/A", "docs/B"), ("docs/B", "docs/C")]
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .into_iter()
+            .collect::<Vec<_>>();
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
+        let res = validate_redirects(Some(&[Locale::EnUs]));
+        assert!(matches!(res, Err(ToolError::InvalidRedirect(..))))
+    }
+
+    #[test]
+    fn validate_invalid_file_not_exists() {
+        let _docs = DocFixtures::new(&[], Locale::EnUs);
+        let pairs = [("docs/A", "docs/B")]
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .into_iter()
+            .collect::<Vec<_>>();
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
+        let res = validate_redirects(Some(&[Locale::EnUs]));
+        assert!(matches!(res, Err(ToolError::InvalidRedirectToURL(..))))
+    }
+
+    #[test]
+    fn validate_order() {
+        let _docs = DocFixtures::new(&["C".to_string()], Locale::EnUs);
+        let pairs = [("docs/B", "docs/C"), ("docs/A", "docs/C")]
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .into_iter()
+            .collect::<Vec<_>>();
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
+        let res = validate_redirects(Some(&[Locale::EnUs]));
+        assert!(matches!(res, Err(ToolError::InvalidRedirectOrder(..))))
     }
 }

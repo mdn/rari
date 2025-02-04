@@ -8,6 +8,7 @@ use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_doc::html::sidebar::{
     BasicEntry, CoreEntry, Sidebar, SidebarEntry, SubPageEntry, SubPageGroupedEntry, WebExtApiEntry,
 };
+use rari_doc::redirects::resolve_redirect;
 use rari_types::globals::content_root;
 use rari_types::locale::{default_locale, Locale};
 use rari_utils::concat_strs;
@@ -21,10 +22,67 @@ static EN_US_DOCS_PREFIX: &str = concatcp!("/", default_locale().as_url_str(), "
 type Pair<'a> = (Cow<'a, str>, Option<Cow<'a, str>>);
 type Pairs<'a> = &'a [Pair<'a>];
 
+pub trait LinkFixer {
+    fn fix_link(&self, link: Option<String>) -> Option<String>;
+}
+
+impl LinkFixer for Pairs<'_> {
+    fn fix_link(&self, link: Option<String>) -> Option<String> {
+        match link {
+            Some(link) => {
+                let mut has_prefix = false;
+                let link = if let Some(l) = link.strip_prefix(EN_US_DOCS_PREFIX) {
+                    has_prefix = true;
+                    l.to_string()
+                } else {
+                    link
+                };
+                for (from, to) in *self {
+                    if link == *from {
+                        if let Some(to) = to {
+                            if has_prefix {
+                                return Some(concat_strs!(EN_US_DOCS_PREFIX, to));
+                            } else {
+                                return Some(to.to_string());
+                            }
+                        } else {
+                            return None;
+                        }
+                    }
+                }
+                Some(link)
+            }
+            None => None,
+        }
+    }
+}
+
+pub struct CaseFixer {}
+static EN_US_DOCS_SLASH_PREFIX: &str = concatcp!("/", default_locale().as_url_str(), "/docs/");
+
+impl LinkFixer for CaseFixer {
+    fn fix_link(&self, link: Option<String>) -> Option<String> {
+        if let Some(link) = &link {
+            if let Some(slug) = link.strip_prefix("/") {
+                if let Some(redirect) =
+                    resolve_redirect(&concat_strs!(EN_US_DOCS_SLASH_PREFIX, slug))
+                {
+                    if let Some(new_slug) = redirect.strip_prefix(EN_US_DOCS_SLASH_PREFIX) {
+                        if new_slug != slug {
+                            return Some(concat_strs!("/", new_slug));
+                        }
+                    }
+                }
+            }
+        }
+        link
+    }
+}
+
 pub fn sync_sidebars() -> Result<(), ToolError> {
     let mut redirects = HashMap::new();
     let path = redirects_path(Locale::default())?;
-    read_redirects_raw(&path, &mut redirects)?;
+    redirects.extend(read_redirects_raw(&path)?);
     let pairs = redirects
         .iter()
         .map(|(from, to)| {
@@ -100,9 +158,16 @@ fn consolidate_l10n(sidebar: &mut Sidebar) {
 }
 
 pub fn fmt_sidebars() -> Result<(), ToolError> {
-    for (path, mut sidebar) in read_sidebars()? {
-        consolidate_l10n(&mut sidebar);
-        write_sidebar(&sidebar, &path)?;
+    let fixer = CaseFixer {};
+    for (path, mut parsed_sidebar) in read_sidebars()? {
+        consolidate_l10n(&mut parsed_sidebar);
+        let entries = parsed_sidebar
+            .sidebar
+            .into_iter()
+            .map(|entry| process_entry(entry, &fixer))
+            .collect();
+        parsed_sidebar.sidebar = entries;
+        write_sidebar(&parsed_sidebar, &path)?;
     }
     Ok(())
 }
@@ -130,6 +195,7 @@ pub(crate) fn update_sidebars(pairs: Pairs<'_>) -> Result<(), ToolError> {
         })
         .collect::<Vec<Pair<'_>>>();
 
+    let fixer: Pairs = pairs.as_slice();
     // Walk the sidebars and potentially replace the links.
     // `process_entry`` is called recursively to process all children
     for (path, mut parsed_sidebar) in sidebars {
@@ -138,7 +204,7 @@ pub(crate) fn update_sidebars(pairs: Pairs<'_>) -> Result<(), ToolError> {
         let entries = parsed_sidebar
             .sidebar
             .into_iter()
-            .map(|entry| process_entry(entry, pairs))
+            .map(|entry| process_entry(entry, &fixer))
             .collect();
 
         // If the sidebar contents have changed, write it back to the file.
@@ -158,7 +224,7 @@ fn write_sidebar(sidebar: &Sidebar, path: &Path) -> Result<(), ToolError> {
         &y,
         &FormatOptions {
             language: LanguageOptions {
-                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                quotes: pretty_yaml::config::Quotes::ForceDouble,
                 indent_block_sequence_in_map: true,
                 ..Default::default()
             },
@@ -201,35 +267,6 @@ fn read_sidebars() -> Result<Vec<(std::path::PathBuf, Sidebar)>, ToolError> {
         .collect()
 }
 
-fn replace_pairs(link: Option<String>, pairs: Pairs<'_>) -> Option<String> {
-    match link {
-        Some(link) => {
-            let mut has_prefix = false;
-            let link = if let Some(l) = link.strip_prefix(EN_US_DOCS_PREFIX) {
-                has_prefix = true;
-                l.to_string()
-            } else {
-                link
-            };
-            for (from, to) in pairs {
-                if link == *from {
-                    if let Some(to) = to {
-                        if has_prefix {
-                            return Some(concat_strs!(EN_US_DOCS_PREFIX, to));
-                        } else {
-                            return Some(to.to_string());
-                        }
-                    } else {
-                        return None;
-                    }
-                }
-            }
-            Some(link)
-        }
-        None => None,
-    }
-}
-
 fn process_basic_entry(
     BasicEntry {
         core:
@@ -242,9 +279,9 @@ fn process_basic_entry(
             },
         children,
     }: BasicEntry,
-    pairs: Pairs<'_>,
+    fixer: &impl LinkFixer,
 ) -> Option<BasicEntry> {
-    let new_link: Option<String> = replace_pairs(link.clone(), pairs);
+    let new_link: Option<String> = fixer.fix_link(link.clone());
     if link.is_some() && new_link.is_none() {
         return None;
     }
@@ -258,7 +295,7 @@ fn process_basic_entry(
         },
         children: children
             .into_iter()
-            .map(|c| process_entry(c, pairs))
+            .map(|c| process_entry(c, fixer))
             .collect(),
     })
 }
@@ -278,12 +315,12 @@ fn process_sub_page_grouped_entry(
         include_parent,
         depth,
     }: SubPageGroupedEntry,
-    pairs: Pairs<'_>,
+    fixer: &impl LinkFixer,
 ) -> Option<SubPageGroupedEntry> {
-    let new_path: String = replace_pairs(Some(path), pairs)?;
+    let new_path: String = fixer.fix_link(Some(path))?;
     Some(SubPageGroupedEntry {
         core: CoreEntry {
-            link: replace_pairs(link.clone(), pairs),
+            link: fixer.fix_link(link.clone()),
             hash,
             title,
             details,
@@ -311,12 +348,12 @@ fn process_sub_page_entry(
         depth,
         nested,
     }: SubPageEntry,
-    pairs: Pairs<'_>,
+    fixer: &impl LinkFixer,
 ) -> Option<SubPageEntry> {
-    let new_path: String = replace_pairs(Some(path), pairs)?;
+    let new_path: String = fixer.fix_link(Some(path))?;
     Some(SubPageEntry {
         core: CoreEntry {
-            link: replace_pairs(link.clone(), pairs),
+            link: fixer.fix_link(link.clone()),
             hash,
             title,
             details,
@@ -330,31 +367,31 @@ fn process_sub_page_entry(
     })
 }
 
-fn process_entry(entry: SidebarEntry, pairs: Pairs<'_>) -> SidebarEntry {
+fn process_entry(entry: SidebarEntry, fixer: &impl LinkFixer) -> SidebarEntry {
     match entry {
         SidebarEntry::Section(basic_entry) => {
-            if let Some(entry) = process_basic_entry(basic_entry, pairs) {
+            if let Some(entry) = process_basic_entry(basic_entry, fixer) {
                 SidebarEntry::Section(entry)
             } else {
                 SidebarEntry::None
             }
         }
         SidebarEntry::Default(basic_entry) => {
-            if let Some(entry) = process_basic_entry(basic_entry, pairs) {
+            if let Some(entry) = process_basic_entry(basic_entry, fixer) {
                 SidebarEntry::Default(entry)
             } else {
                 SidebarEntry::None
             }
         }
         SidebarEntry::ListSubPages(sub_page_entry) => {
-            if let Some(entry) = process_sub_page_entry(sub_page_entry, pairs) {
+            if let Some(entry) = process_sub_page_entry(sub_page_entry, fixer) {
                 SidebarEntry::ListSubPages(entry)
             } else {
                 SidebarEntry::None
             }
         }
         SidebarEntry::ListSubPagesGrouped(sub_page_entry) => {
-            if let Some(entry) = process_sub_page_grouped_entry(sub_page_entry, pairs) {
+            if let Some(entry) = process_sub_page_grouped_entry(sub_page_entry, fixer) {
                 SidebarEntry::ListSubPagesGrouped(entry)
             } else {
                 SidebarEntry::None
@@ -362,7 +399,7 @@ fn process_entry(entry: SidebarEntry, pairs: Pairs<'_>) -> SidebarEntry {
         }
 
         SidebarEntry::Link(link) => {
-            let new_link: Option<String> = replace_pairs(Some(link), pairs);
+            let new_link: Option<String> = fixer.fix_link(Some(link));
             if new_link.is_none() {
                 return SidebarEntry::None;
             }
@@ -467,7 +504,7 @@ mod test {
         path.push("sidebars");
         path.push("sidebar_0.yaml");
         let content = fs::read_to_string(&path).unwrap();
-        // println!("{}", content);
+        // tracing::info!("{}", content);
         let sb = serde_yaml_ng::from_str::<Sidebar>(&content).unwrap();
 
         // replacement of link of the first child in the third item of the sidebar

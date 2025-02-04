@@ -12,7 +12,7 @@ pub fn web_ext_all_examples() -> Result<String, DocError> {
 
     out.extend([
         r#"<table class="standard-table fullwidth-table">"#,
-        r#"<tr><th>Name</th><th>Description</th><th style="wdith: 40%">JavaScript APIs</th></tr>"#,
+        r#"<tr><th>Name</th><th>Description</th><th style="width: 40%">JavaScript APIs</th></tr>"#,
     ]);
 
     for example in all_examples {
