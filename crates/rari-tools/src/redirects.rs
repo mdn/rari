@@ -372,6 +372,7 @@ pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolEr
     let locales_to_validate = locale_filter.unwrap_or(locales);
 
     let mut pairs = HashMap::new();
+    let mut per_locale_pairs: HashMap<Locale, HashMap<_, _>> = HashMap::new();
     for locale in locales {
         let path = redirects_path(*locale)?;
         let iter = read_redirects_raw(&path)?.into_iter();
@@ -385,13 +386,31 @@ pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolEr
                     t[0].1.to_string(),
                 ));
             }
+            per_locale_pairs
+                .entry(*locale)
+                .or_insert(v.iter().cloned().collect());
             pairs.extend(v);
         } else {
             pairs.extend(iter);
         }
     }
 
-    let mut locale_pairs = fix_redirects_internal(&pairs)?;
+    // Fix and validate within locales.
+
+    for locale in locales_to_validate {
+        if let Some(locale_pairs) = per_locale_pairs.get(locale) {
+            let old_sorted_map = locale_pairs.iter().collect::<BTreeMap<_, _>>();
+            if let Some(locale_pairs) = fix_redirects_internal(locale_pairs)?.get(locale) {
+                let new_sorted_map = locale_pairs.clone().into_iter().collect::<BTreeMap<_, _>>();
+                validate_pairs(locale_pairs, *locale)?;
+                compare_sorted_redirects(old_sorted_map, new_sorted_map)?;
+            }
+        }
+    }
+
+    // Fix and validate cross locales.
+
+    let mut fixed_paris = fix_redirects_internal(&pairs)?;
 
     for locale in locales_to_validate {
         let locale_prefix = concat_strs!("/", locale.as_url_str(), "/");
@@ -399,24 +418,31 @@ pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolEr
             .iter()
             .filter(|(from, _)| from.starts_with(&locale_prefix))
             .collect();
-        let new_sorted_map: BTreeMap<_, _> = locale_pairs
+        let new_sorted_map: BTreeMap<_, _> = fixed_paris
             .remove(locale)
             .unwrap_or_default()
             .into_iter()
             .collect();
-
-        for (old, new) in old_sorted_map.into_iter().zip(new_sorted_map.into_iter()) {
-            if old.0 != &new.0 || old.1 != &new.1 {
-                return Err(ToolError::InvalidRedirect(
-                    old.0.clone(),
-                    old.1.clone(),
-                    new.0,
-                    new.1,
-                ));
-            }
-        }
+        compare_sorted_redirects(old_sorted_map, new_sorted_map)?;
     }
 
+    Ok(())
+}
+
+fn compare_sorted_redirects(
+    old_sorted_map: BTreeMap<&String, &String>,
+    new_sorted_map: BTreeMap<String, String>,
+) -> Result<(), ToolError> {
+    for (old, new) in old_sorted_map.into_iter().zip(new_sorted_map.into_iter()) {
+        if old.0 != &new.0 || old.1 != &new.1 {
+            return Err(ToolError::InvalidRedirect(
+                old.0.clone(),
+                old.1.clone(),
+                new.0,
+                new.1,
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -1247,33 +1273,40 @@ mod tests {
 
     #[test]
     fn validate_invalid() {
-        let pairs = [
-            ("/en-US/docs/A", "/en-US/docs/B"),
-            ("/en-US/docs/B", "/en-US/docs/C"),
-        ]
-        .map(|(a, b)| (a.to_string(), b.to_string()))
-        .into_iter()
-        .collect::<Vec<_>>();
+        let _docs = DocFixtures::new(&["C".to_string()], Locale::EnUs);
+        let pairs = [("docs/A", "docs/B"), ("docs/B", "docs/C")]
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .into_iter()
+            .collect::<Vec<_>>();
         let _all_redirects = RedirectFixtures::all_locales_empty();
         let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
         let res = validate_redirects(Some(&[Locale::EnUs]));
-        println!("{res:?}");
         assert!(matches!(res, Err(ToolError::InvalidRedirect(..))))
     }
 
     #[test]
-    fn validate_order() {
-        let pairs = [
-            ("/en-US/docs/B", "/en-US/docs/C"),
-            ("/en-US/docs/A", "/en-US/docs/C"),
-        ]
-        .map(|(a, b)| (a.to_string(), b.to_string()))
-        .into_iter()
-        .collect::<Vec<_>>();
+    fn validate_invalid_file_not_exists() {
+        let _docs = DocFixtures::new(&[], Locale::EnUs);
+        let pairs = [("docs/A", "docs/B")]
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .into_iter()
+            .collect::<Vec<_>>();
         let _all_redirects = RedirectFixtures::all_locales_empty();
         let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
         let res = validate_redirects(Some(&[Locale::EnUs]));
-        println!("{res:?}");
+        assert!(matches!(res, Err(ToolError::InvalidRedirectToURL(..))))
+    }
+
+    #[test]
+    fn validate_order() {
+        let _docs = DocFixtures::new(&["C".to_string()], Locale::EnUs);
+        let pairs = [("docs/B", "docs/C"), ("docs/A", "docs/C")]
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .into_iter()
+            .collect::<Vec<_>>();
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
+        let res = validate_redirects(Some(&[Locale::EnUs]));
         assert!(matches!(res, Err(ToolError::InvalidRedirectOrder(..))))
     }
 }
