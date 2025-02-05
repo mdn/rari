@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.23](https://github.com/mdn/rari/compare/v0.1.22...v0.1.23) (2025-02-05)
+
+
+### Features
+
+* **macros:** add InteractiveExample macro ([#84](https://github.com/mdn/rari/issues/84)) ([ca2f1e3](https://github.com/mdn/rari/commit/ca2f1e327cf275749b13fd414b99a5badf4639fd))
+
+
+### Bug Fixes
+
+* **move:** error when target directory exists ([3ce09de](https://github.com/mdn/rari/commit/3ce09de9e57ec17ae168453d1d774013b6f124ac))
+* **validate-redirects:** validate to urls correct ([7de48c0](https://github.com/mdn/rari/commit/7de48c0f366529df530a683df0527f2893e2aa6c))
+
 ## [0.1.22](https://github.com/mdn/rari/compare/v0.1.21...v0.1.22) (2025-02-03)
 
 
