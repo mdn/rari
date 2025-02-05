@@ -220,6 +220,22 @@ fn pre_diff_element_massaging_handlers<'a>(
             el.remove_attribute("data-flaw");
             Ok(())
         }),
+        element!("iframe.interactive", |el| {
+            el.remove();
+            Ok(())
+        }),
+        element!("interactive-example", |el| {
+            el.remove();
+            Ok(())
+        }),
+        element!("pre.interactive-example", |el| {
+            el.remove();
+            Ok(())
+        }),
+        element!("div.code-example", |el| {
+            el.remove_and_keep_content();
+            Ok(())
+        }),
     ];
     handlers
 }
@@ -358,7 +374,7 @@ fn full_diff(
                     diff_hash.write_all(rhs.as_bytes()).unwrap();
                     let diff_hash = BASE64_STANDARD_NO_PAD.encode(&diff_hash.finalize()[..]);
                     if let Some(hash) = DIFF_MAP.get(&diff_hash) {
-                        diff.insert(key, format!("See {}", hash.as_str()));
+                        // diff.insert(key, format!("See {}", hash.as_str()));
                         return;
                     }
                     DIFF_MAP.insert(diff_hash, "somewhere else".into());
