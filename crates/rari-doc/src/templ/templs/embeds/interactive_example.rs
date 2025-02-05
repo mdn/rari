@@ -21,7 +21,7 @@ pub fn interactive_example(name: String, height: Option<String>) -> Result<Strin
     let height = height
         .map(|height| {
             concat_strs!(
-                r#" height="#,
+                r#" height=""#,
                 &encode_double_quoted_attribute(&height).as_ref(),
                 r#"""#
             )
