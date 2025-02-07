@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.24](https://github.com/mdn/rari/compare/v0.1.23...v0.1.24) (2025-02-06)
+
+
+### Bug Fixes
+
+* **interactive-example:** missing quote at start of height attribute ([#120](https://github.com/mdn/rari/issues/120)) ([7fda86e](https://github.com/mdn/rari/commit/7fda86e5021c5ed307b0227ff05e86eeb12d8336))
+
 ## [0.1.23](https://github.com/mdn/rari/compare/v0.1.22...v0.1.23) (2025-02-05)
 
 
