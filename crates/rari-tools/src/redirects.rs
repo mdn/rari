@@ -243,6 +243,66 @@ pub fn add_redirects(locale: Locale, update_pairs: &[(String, String)]) -> Resul
     Ok(())
 }
 
+/// Remove old redirect pairs from the existing redirects.
+///
+/// This function performs the following steps:
+///
+/// 1. **Reads Existing Redirects**: It reads the current redirects from a `_redirects.txt` file specific to the provided `locale`.
+/// 2. **Removes Old Redirects**: It filters out any old redirects that is present in the `targets`.
+/// 3. **Validates Redirect Pairs**: It validates the remaining redirects to ensure they are valid.
+/// 4. **Writes Back to File**: It writes the updated redirects back to the `_redirects.txt` file.
+///
+/// # Parameters
+///
+/// - `locale`: The `Locale` for which the redirects are to be added. This determines the specific `_redirects.txt` file to be read and updated.
+/// - `targets`: A slice of strings representing the redirect targets to be removed.
+///
+/// # Returns
+///
+/// - `Ok(())` if the redirects are successfully removed and processed.
+/// - `Err(ToolError)` if any errors occur during processing, such as issues with reading the redirects file or invalid locale.
+///
+/// # Errors
+///
+/// - **LocaleError**: Returned if there's an issue determining the root path for the given locale.
+/// - **ReadRedirectsError**: Returned if there's an error reading the existing redirects from the `_redirects.txt` file.
+/// - *Additional errors can be added based on further implementations and validations.*
+pub fn remove_redirects_by_targets(locale: Locale, targets: &[String]) -> Result<(), ToolError> {
+    // read the redirect map for the locale
+    // we do not use REDIRECTS since it is static and has all the locales
+
+    // Read the redirects file for the locale and populate the map.
+    let mut pairs = HashMap::new();
+    let path = redirects_path(locale)?;
+
+    match read_redirects_raw(&path) {
+        Ok(iter) => pairs.extend(iter),
+        Err(e) => {
+            error!("Error reading redirects: {e}");
+            return Err(ToolError::ReadRedirectsError(e.to_string()));
+        }
+    };
+
+    let targets = targets
+        .iter()
+        .map(|t| t.to_lowercase())
+        .collect::<HashSet<_>>();
+
+    let num_pairs = pairs.len();
+
+    pairs.retain(|_, v| !targets.contains(v));
+
+    if num_pairs == pairs.len() {
+        return Ok(());
+    }
+
+    validate_pairs(&pairs, locale)?;
+
+    write_redirects(&path, &pairs)?;
+
+    Ok(())
+}
+
 /// Optimizes and rewrites redirect rules for supported locales.
 ///
 /// This function:

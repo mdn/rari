@@ -18,7 +18,7 @@ use rayon::iter::{once, IntoParallelIterator, ParallelIterator};
 
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
-use crate::redirects::add_redirects;
+use crate::redirects::{add_redirects, remove_redirects_by_targets};
 use crate::sidebars::update_sidebars;
 use crate::wikihistory::delete_from_wiki_history;
 
@@ -236,7 +236,7 @@ fn do_remove(
         update_sidebars(&pairs)?;
     }
 
-    // update the redirects map if needed
+    // update the redirects map
     if let Some(new_target) = redirect_target {
         let pairs = slugs_to_remove
             .iter()
@@ -247,6 +247,12 @@ fn do_remove(
             })
             .collect::<Result<Vec<_>, ToolError>>()?;
         add_redirects(locale, &pairs)?;
+    } else {
+        let targets = slugs_to_remove
+            .iter()
+            .map(|slug| Ok(build_url(slug, locale, PageCategory::Doc)?))
+            .collect::<Result<Vec<_>, ToolError>>()?;
+        remove_redirects_by_targets(locale, &targets)?;
     }
     Ok(slugs_to_remove)
 }
