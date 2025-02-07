@@ -23,5 +23,5 @@ tracing.workspace = true
 serde_variant = "0.1"
 normalize-path = "0.2"
 strum = { version = "0.26", features = ["derive"] }
-dirs = "5"
+dirs = "6"
 config = { version = "0.15", default-features = false, features = ["toml"] }

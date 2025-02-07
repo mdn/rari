@@ -34,7 +34,7 @@ yaml-rust = "0.4"
 percent-encoding = "2"
 pest = "2"
 pest_derive = "2"
-validator = { version = "0.19", features = ["derive"] }
+validator = { version = "0.20", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 scraper = { version = "0.22", features = ["deterministic"] }
 lol_html = "2"
@@ -52,7 +52,7 @@ icu_locid = "1"
 strum = { version = "0.26", features = ["derive"] }
 imagesize = "0.13"
 svg_metadata = "0.5"
-memoize = "0.4"
+memoize = "0.5"
 unescaper = "0.1"
 
 
