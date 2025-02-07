@@ -9,6 +9,9 @@ on:
         default: false
         type: boolean
 
+# No GITHUB_TOKEN permissions, as we don't use it.
+permissions: {}
+
 jobs:
   test-run:
     runs-on: ubuntu-latest
