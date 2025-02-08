@@ -1,4 +1,4 @@
-use comrak::nodes::{AstNode, NodeValue};
+use comrak::nodes::{AlertType, AstNode, NodeValue};
 use rari_types::locale::Locale;
 
 pub enum NoteCard {
@@ -106,4 +106,26 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
         }
     }
     None
+}
+
+/// Returns the default title for an alert type
+pub fn alert_type_default_title(alert_type: &AlertType) -> String {
+    match *alert_type {
+        AlertType::Note => String::from("Note"),
+        AlertType::Tip => String::from("Tip"),
+        AlertType::Important => String::from("Important"),
+        AlertType::Warning => String::from("Warning"),
+        AlertType::Caution => String::from("Caution"),
+    }
+}
+
+/// Returns the CSS class to use for an alert type
+pub fn alert_type_css_class(alert_type: &AlertType) -> String {
+    match *alert_type {
+        AlertType::Note => String::from("markdown-alert-note"),
+        AlertType::Tip => String::from("markdown-alert-tip"),
+        AlertType::Important => String::from("markdown-alert-important"),
+        AlertType::Warning => String::from("markdown-alert-warning"),
+        AlertType::Caution => String::from("markdown-alert-caution"),
+    }
 }

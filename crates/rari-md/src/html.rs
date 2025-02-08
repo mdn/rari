@@ -23,7 +23,7 @@ use crate::anchor;
 use crate::character_set::character_set;
 use crate::ctype::isspace;
 use crate::ext::{Flag, DELIM_START};
-use crate::node_card::{is_callout, NoteCard};
+use crate::node_card::{alert_type_css_class, alert_type_default_title, is_callout, NoteCard};
 
 /// Formats an AST as HTML, modified by the given options.
 pub fn format_document<'a>(
@@ -889,7 +889,7 @@ where
                 }
             }
             NodeValue::Link(ref nl) => {
-                // Unreliable sourcepos.                let parent_node = node.parent();
+                // Unreliable sourcepos.
                 let parent_node = node.parent();
 
                 if !self.options.parse.relaxed_autolinks
@@ -1196,6 +1196,31 @@ where
             NodeValue::EscapedTag(ref net) => {
                 // Nowhere to put sourcepos.
                 self.output.write_all(net.as_bytes())?;
+            }
+            NodeValue::Alert(ref alert) => {
+                if entering {
+                    self.cr()?;
+                    self.output.write_all(b"<div class=\"markdown-alert ")?;
+                    self.output
+                        .write_all(alert_type_css_class(&alert.alert_type).as_bytes())?;
+                    self.output.write_all(b"\"")?;
+                    self.render_sourcepos(node)?;
+                    self.output.write_all(b">\n")?;
+                    self.output
+                        .write_all(b"<p class=\"markdown-alert-title\">")?;
+                    match alert.title {
+                        Some(ref title) => self.escape(title.as_bytes())?,
+                        None => {
+                            self.output.write_all(
+                                alert_type_default_title(&alert.alert_type).as_bytes(),
+                            )?;
+                        }
+                    }
+                    self.output.write_all(b"</p>\n")?;
+                } else {
+                    self.cr()?;
+                    self.output.write_all(b"</div>\n")?;
+                }
             }
         }
         Ok((false, Flag::None))
