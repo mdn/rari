@@ -417,7 +417,10 @@ mod test {
     #[test]
     fn test_remove_single_and_redirect() {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
-        let redirects = vec![("Web/API/OldExampleOne".to_string(), "Web/API/ExampleOne".to_string())];
+        let redirects = vec![(
+            "Web/API/OldExampleOne".to_string(),
+            "Web/API/ExampleOne".to_string(),
+        )];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(&redirects, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
