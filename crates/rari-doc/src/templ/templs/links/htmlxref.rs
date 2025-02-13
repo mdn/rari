@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
@@ -13,16 +11,11 @@ pub fn htmlxref(
     anchor: Option<String>,
     _: Option<AnyArg>,
 ) -> Result<String, DocError> {
-    let display = display.as_deref().filter(|s| !s.is_empty());
-    let element_name = element_name.to_lowercase();
+    let display = display.filter(|s| !s.is_empty());
     let mut code = false;
-    let display = display.map(Cow::Borrowed).unwrap_or_else(|| {
-        if element_name.contains(' ') {
-            Cow::Borrowed(element_name.as_str())
-        } else {
-            code = true;
-            Cow::Owned(format!("&lt;{element_name}&gt;"))
-        }
+    let display = display.unwrap_or_else(|| {
+        code = true;
+        format!("&lt;{element_name}&gt;")
     });
     let mut url = format!(
         "/{}/docs/Web/HTML/Element/{}",
