@@ -116,12 +116,12 @@ export async function do_download(url, dest, opts) {
  * @param {string} _url
  * @param {any} opts
  */
-function get(_url, opts) {
+async function get(_url, opts) {
   console.log(`GET ${_url}`);
 
   const proxy = getProxyForUrl(URLparse(_url));
   if (proxy !== "") {
-    var HttpsProxyAgent = require("https-proxy-agent");
+    const HttpsProxyAgent = await import("https-proxy-agent");
     opts = {
       ...opts,
       agent: new HttpsProxyAgent.HttpsProxyAgent(proxy),
