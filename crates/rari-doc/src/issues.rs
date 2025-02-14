@@ -202,6 +202,7 @@ pub struct DisplayIssue {
 pub enum IssueType {
     TemplRedirectedLink,
     TemplBrokenLink,
+    TemplInvalidArg,
     RedirectedLink,
     BrokenLink,
     IllCasedLink,
@@ -216,6 +217,7 @@ impl FromStr for IssueType {
         Ok(match s {
             "templ-redirected-link" => Self::TemplRedirectedLink,
             "templ-broken-link" => Self::TemplBrokenLink,
+            "templ-invalid-arg" => Self::TemplInvalidArg,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
             "ill-cased-link" => Self::IllCasedLink,
@@ -371,6 +373,18 @@ impl DIssue {
                     display_issue: di,
                     macro_name: additional.remove("templ"),
                     href: additional.remove("url"),
+                }
+            }
+            IssueType::TemplInvalidArg => {
+                di.fixed = false;
+                di.explanation = Some(format!(
+                    "Argument ({}) is not valid.",
+                    additional.get("arg").map(|s| s.as_str()).unwrap_or("?")
+                ));
+                DIssue::Macros {
+                    display_issue: di,
+                    macro_name: additional.remove("templ"),
+                    href: None,
                 }
             }
             _ => {

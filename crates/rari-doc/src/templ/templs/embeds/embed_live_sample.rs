@@ -4,6 +4,7 @@ use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
 use crate::error::DocError;
+use crate::issues::get_issue_counter;
 use crate::templ::api::RariApi;
 use crate::utils::dedup_whitespace;
 
@@ -17,6 +18,7 @@ pub fn embed_live_sample(
     _deprecated_4: Option<String>,
     _deprecated_5: Option<String>,
     allowed_features: Option<String>,
+    sandbox: Option<String>,
 ) -> Result<String, DocError> {
     let title = dedup_whitespace(&id.replace('_', " "));
     let id = RariApi::anchorize(&id);
@@ -50,6 +52,21 @@ pub fn embed_live_sample(
     if let Some(allowed_features) = allowed_features {
         write!(&mut out, r#"allow="{}" "#, allowed_features)?;
     }
-    out.push_str(r#"sandbox="allow-same-origin allow-scripts" loading="lazy"></iframe></div>"#);
+    out.push_str(r#"sandbox=""#);
+    if let Some(sandbox) = sandbox {
+        let is_sane = sandbox.split_ascii_whitespace().all(|attr| {
+            if matches!(attr, "allow-modals" | "allow-forms" | "allow-popups") {
+                true
+            } else {
+                let ic = get_issue_counter();
+                tracing::warn!(source = "templ-invalid-arg", ic = ic, arg = attr);
+                false
+            }
+        });
+        if is_sane {
+            out.extend([&sandbox, " "]);
+        }
+    }
+    out.push_str(r#"allow-same-origin allow-scripts" loading="lazy"></iframe></div>"#);
     Ok(out)
 }
