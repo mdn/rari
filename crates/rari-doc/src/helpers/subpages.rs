@@ -244,7 +244,12 @@ pub fn list_sub_pages_flattened_grouped_internal(
         }
         let title = sub_page.title();
         let prefix_index = if !title.is_empty() {
-            title[1..].find('-').map(|i| i + 1)
+            title
+                .chars()
+                .enumerate()
+                .skip_while(|(_, c)| matches!(c, ':' | '-'))
+                .find(|(_, c)| *c == '-')
+                .map(|(i, _)| i)
         } else {
             None
         };
