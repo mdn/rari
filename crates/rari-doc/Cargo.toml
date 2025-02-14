@@ -29,6 +29,7 @@ pretty_yaml.workspace = true
 serde_yaml_ng.workspace = true
 yaml_parser.workspace = true
 schemars.workspace = true
+strum.workspace = true
 
 yaml-rust = "0.4"
 percent-encoding = "2"
@@ -49,7 +50,6 @@ rayon = "1"
 enum_dispatch = "0.3"
 icu_collator = "1"
 icu_locid = "1"
-strum = { version = "0.26", features = ["derive"] }
 imagesize = "0.13"
 svg_metadata = "0.5"
 memoize = "0.5"

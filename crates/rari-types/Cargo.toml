@@ -19,9 +19,9 @@ chrono.workspace = true
 schemars.workspace = true
 semver.workspace = true
 tracing.workspace = true
+strum.workspace = true
 
 serde_variant = "0.1"
 normalize-path = "0.2"
-strum = { version = "0.26", features = ["derive"] }
 dirs = "6"
 config = { version = "0.15", default-features = false, features = ["toml"] }
