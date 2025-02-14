@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.25](https://github.com/mdn/rari/compare/v0.1.24...v0.1.25) (2025-02-14)
+
+
+### Features
+
+* **build:** support --file-list ([fe44b01](https://github.com/mdn/rari/commit/fe44b01b04803f3d363d18406ee3eb5e8427a96a))
+* **deps:** support DEPS_DATA_DIR env var to set data dir ([8dce98a](https://github.com/mdn/rari/commit/8dce98ad628724435cd2efdbd4ca12a85a0aa10e))
+* **templ:** support sandbox attr in embedlivesample ([dd5ac86](https://github.com/mdn/rari/commit/dd5ac867f5ffc55793ccc0837ec6f11282c6fa78))
+* **title:** update root_doc_url ([d2930a0](https://github.com/mdn/rari/commit/d2930a06ee6c39b3b916fad8c22938f9f66e7c27))
+* **tools:** remove redirects that reference to deleted docs ([#126](https://github.com/mdn/rari/issues/126)) ([7f99fc6](https://github.com/mdn/rari/commit/7f99fc6035979a26183e3d0277b1cdba83f4b767))
+
+
+### Bug Fixes
+
+* **npm:** use `import` to dynamically load esm modules ([#130](https://github.com/mdn/rari/issues/130)) ([9fcfe1a](https://github.com/mdn/rari/commit/9fcfe1a8a516e683e8e1c024a9787e79011dc529))
+* **redirects:** check for actual doc instead of path ([f9be824](https://github.com/mdn/rari/commit/f9be8240700d9952d458c7248e07d76fa1b2e817))
+* **templ:** fix grouping for in cssref sidebar ([da781c5](https://github.com/mdn/rari/commit/da781c5a8e44b214ffda498c4fa6076429e8d4cd))
+* **templ:** htmlelement/htmlxref don't lowercase ([4e331b3](https://github.com/mdn/rari/commit/4e331b38cd5d8be134f4836c7e70a19ae6a631a3))
+* **workflows:** assign explicit permissions ([#123](https://github.com/mdn/rari/issues/123)) ([e446222](https://github.com/mdn/rari/commit/e4462229eb73e67a0b2d8ea2850cd05bef46a276))
+* **workflows:** pin 3rd party actions ([#124](https://github.com/mdn/rari/issues/124)) ([0edec41](https://github.com/mdn/rari/commit/0edec412c012c82d08383b71f5dd2b652fc82cbb))
+
 ## [0.1.24](https://github.com/mdn/rari/compare/v0.1.23...v0.1.24) (2025-02-06)
 
 
