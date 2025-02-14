@@ -62,7 +62,10 @@ pub static DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 pub fn data_dir() -> &'static Path {
     DATA_DIR.get_or_init(|| {
-        dirs::data_local_dir()
+        std::env::var_os("DEPS_DATA_DIR")
+            .or_else(|| std::env::var_os("deps_data_dir"))
+            .map(PathBuf::from)
+            .or_else(dirs::data_local_dir)
             .map(|p| p.join("rari"))
             .unwrap_or_default()
     })

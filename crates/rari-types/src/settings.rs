@@ -30,7 +30,9 @@ pub struct DepsPackageJson {
 
 impl Deps {
     pub fn new() -> Result<Self, ConfigError> {
-        if let Some(package_json) = std::env::var_os("deps_package_json") {
+        if let Some(package_json) =
+            std::env::var_os("DEPS_PACKAGE_JSON").or_else(|| std::env::var_os("deps_package_json"))
+        {
             let path = Path::new(&package_json);
             if let Some(deps) = fs::read_to_string(path)
                 .ok()
