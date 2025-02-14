@@ -18,7 +18,7 @@ use rayon::iter::{once, IntoParallelIterator, ParallelIterator};
 
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
-use crate::redirects::add_redirects;
+use crate::redirects::{add_redirects, remove_redirects_by_targets};
 use crate::sidebars::update_sidebars;
 use crate::wikihistory::delete_from_wiki_history;
 
@@ -236,7 +236,7 @@ fn do_remove(
         update_sidebars(&pairs)?;
     }
 
-    // update the redirects map if needed
+    // update the redirects map
     if let Some(new_target) = redirect_target {
         let pairs = slugs_to_remove
             .iter()
@@ -247,6 +247,12 @@ fn do_remove(
             })
             .collect::<Result<Vec<_>, ToolError>>()?;
         add_redirects(locale, &pairs)?;
+    } else {
+        let targets = slugs_to_remove
+            .iter()
+            .map(|slug| Ok(build_url(slug, locale, PageCategory::Doc)?))
+            .collect::<Result<Vec<_>, ToolError>>()?;
+        remove_redirects_by_targets(locale, &targets)?;
     }
     Ok(slugs_to_remove)
 }
@@ -391,6 +397,8 @@ mod test {
     fn test_remove_single() {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        // The redirects file is needed to attempt removing the redirects
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
         let _sidebars = SidebarFixtures::default();
 
@@ -407,7 +415,35 @@ mod test {
     }
 
     #[test]
-    fn test_remove_single_with_redirect() {
+    fn test_remove_single_and_redirect() {
+        let slugs = vec!["Web/API/ExampleOne".to_string()];
+        let redirects = vec![(
+            "Web/API/OldExampleOne".to_string(),
+            "Web/API/ExampleOne".to_string(),
+        )];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&redirects, Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
+
+        let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
+        assert!(result.is_ok());
+
+        let should_exist = vec![];
+        let should_not_exist = vec!["en-us/web/api/exampleone/index.md"];
+        let root_path = root_for_locale(Locale::EnUs).unwrap();
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let redirects = get_redirects_map(Locale::EnUs);
+        assert!(!redirects.contains_key("Web/API/OldExampleOne"));
+        assert!(!redirects.contains_key("Web/API/exampleone"));
+
+        let wiki_history = test_get_wiki_history(Locale::EnUs);
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
+    }
+
+    #[test]
+    fn test_remove_single_with_redirect_target() {
         let slugs = vec![
             "Web/API/ExampleOne".to_string(),
             "Web/API/RedirectTarget".to_string(),
