@@ -643,15 +643,10 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
         let bare_url = url.split('#').next().unwrap_or("");
 
         let UrlMeta {
-            folder_path: path,
-            locale: to_locale,
-            ..
+            folder_path: path, ..
         } = url_meta_from(bare_url)?;
 
-        let path = root_for_locale(to_locale)?
-            .join(to_locale.as_folder_str())
-            .join(path);
-        if !path.exists() {
+        if !Page::exists(bare_url) {
             return Err(ToolError::InvalidRedirectToURL(format!(
                 "To-URL '{}' resolves to a non-existing file/folder at '{}' for locale '{}'.",
                 url,
