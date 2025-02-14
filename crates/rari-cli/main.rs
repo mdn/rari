@@ -4,6 +4,7 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread::spawn;
@@ -38,6 +39,7 @@ use rari_tools::sync_translated_content::sync_translated_content;
 use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
 use rari_types::locale::Locale;
 use rari_types::settings::Settings;
+use rari_utils::io::read_to_string;
 use schemars::schema_for;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
@@ -169,6 +171,8 @@ struct ServeArgs {
 struct BuildArgs {
     #[arg(short, long, help = "Build only content <FILES>")]
     files: Vec<PathBuf>,
+    #[arg(short, long, help = "Build only content listed in <FILE_LIST>")]
+    file_list: Option<PathBuf>,
     #[arg(short, long, help = "Abort build on warnings")]
     deny_warnings: bool,
     #[arg(long, help = "Disable caching (only for debugging)")]
@@ -283,11 +287,21 @@ fn main() -> Result<(), Error> {
             settings.json_issues = args.json_issues;
             let _ = SETTINGS.set(settings);
 
-            let arg_files = args
+            let mut arg_files = args
                 .files
                 .iter()
                 .map(|path| path.canonicalize())
                 .collect::<Result<Vec<PathBuf>, _>>()?;
+
+            if let Some(file_list) = args.file_list {
+                arg_files.extend(
+                    read_to_string(&file_list)?
+                        .lines()
+                        .filter(|s| !s.is_empty())
+                        .map(|line| Ok(PathBuf::from_str(line)?.canonicalize()?))
+                        .collect::<Result<Vec<PathBuf>, Error>>()?,
+                );
+            }
 
             let templ_stats = if args.templ_stats {
                 let (tx, rx) = channel::<String>();
