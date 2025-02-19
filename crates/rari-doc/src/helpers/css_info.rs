@@ -305,7 +305,7 @@ pub fn get_for_locale(locale: Locale, lookup: &Value) -> &Value {
 pub fn css_computed(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_csscomputed", locale)?;
     RariApi::link(
-        "/Web/CSS/computed_value",
+        "/Web/CSS/CSS_cascade/computed_value",
         locale,
         Some(copy),
         false,
@@ -317,7 +317,7 @@ pub fn css_computed(locale: Locale) -> Result<String, DocError> {
 pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinherited", locale)?;
     RariApi::link(
-        "/Web/CSS/inheritance",
+        "/Web/CSS/CSS_cascade/Inheritance",
         locale,
         Some(copy),
         false,
@@ -329,7 +329,7 @@ pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
 pub fn css_initial(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinitial", locale)?;
     RariApi::link(
-        "/Web/CSS/initial_value",
+        "/Web/CSS/CSS_cascade/initial_value",
         locale,
         Some(copy),
         false,
