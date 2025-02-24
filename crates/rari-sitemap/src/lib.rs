@@ -183,7 +183,6 @@ impl Sitemaps<'_> {
                 let out_path = sitemaps_out_path.join(locale.as_folder_str());
                 fs::create_dir_all(&out_path)?;
                 self.write_sitemap_xml_gz(&out_path, *locale)
-                    .map_err(SitemapError::from)
                     .and_then(|path| {
                         Ok(Url {
                             loc: Cow::Owned(
