@@ -860,7 +860,8 @@ mod test {
     fn test_render_terms() -> Result<(), SyntaxError> {
         let renderer = SyntaxRenderer {
             locale_str: "en-US",
-            value_definition_url: "/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
+            value_definition_url:
+                "/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
         };
