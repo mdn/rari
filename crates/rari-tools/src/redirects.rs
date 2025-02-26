@@ -381,7 +381,7 @@ fn fix_redirects_internal(
     // Split the clean pairs into their respective locales
     let locale_pairs = clean_pairs.into_iter().try_fold(
     HashMap::<Locale, HashMap<String, String>>::new(),
-    |mut acc, (from, to)| -> Result<HashMap<Locale, HashMap<String, String>>, ToolError> {
+    |mut acc, (from, mut to)| -> Result<HashMap<Locale, HashMap<String, String>>, ToolError> {
         // Extract the locale string from the 'from' path
         let locale_str = from.split('/').nth(1).unwrap_or_default();
 
@@ -392,6 +392,14 @@ fn fix_redirects_internal(
                 from, from, to
             )))
         })?;
+        if to.starts_with('/') {
+            let (bare_url, hash) = to.split_once('#').map(|(u, h)| (u, Some(h))).unwrap_or((&to, None));
+            if let Ok(page) = Page::from_url(bare_url) {
+                if page.url() != bare_url {
+                    to = if let Some(hash) = hash { concat_strs!(page.url(), "#", hash) } else { page.url().to_string() } ;
+                }
+            }
+        }
         let locale_map = acc.entry(locale).or_default();
         locale_map.insert(from, to);
         Ok(acc)
@@ -653,6 +661,17 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
                 path.display(),
                 locale
             )));
+        }
+        if let Ok(page) = Page::from_url(bare_url) {
+            if page.url() != bare_url {
+                return Err(ToolError::InvalidRedirectToURL(format!(
+                    "To-URL '{}' does not equal page url '{}' for '{}' for locale '{}'.",
+                    bare_url,
+                    page.url(),
+                    path.display(),
+                    locale
+                )));
+            }
         }
     } else {
         return Err(ToolError::InvalidRedirectToURL(format!(
