@@ -21,6 +21,7 @@ use rari_types::locale::Locale;
 use rari_types::Popularities;
 use rari_utils::io::read_to_string;
 use serde::Serialize;
+use tokio::join;
 use tracing::{error, span, Level};
 
 static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -187,8 +188,27 @@ pub fn serve() -> Result<(), anyhow::Error> {
                 .route("/{locale}/search-index.json", get(get_search_index_handler))
                 .fallback(handler);
 
-            let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();
-            axum::serve(listener, app).await.unwrap();
+            let ipv4_listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await;
+            let ipv6_listener = tokio::net::TcpListener::bind("[::]:8083").await;
+            match (ipv4_listener, ipv6_listener) {
+                (Ok(ipv4_listener), Ok(ipv6_listener)) => {
+                    let (r4, r6) = join!(
+                        axum::serve(ipv4_listener, app.clone()),
+                        axum::serve(ipv6_listener, app)
+                    );
+                    r4.unwrap();
+                    r6.unwrap();
+                }
+                (Ok(ipv4_listener), Err(e2)) => {
+                    error!("{e2}");
+                    axum::serve(ipv4_listener, app).await.unwrap();
+                }
+                (Err(e1), Ok(ipv6_listener)) => {
+                    error!("{e1}");
+                    axum::serve(ipv6_listener, app).await.unwrap();
+                }
+                (Err(e1), Err(e2)) => panic!("{e1}\n{e2}"),
+            }
         });
     Ok(())
 }
