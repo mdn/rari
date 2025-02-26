@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.26](https://github.com/mdn/rari/compare/v0.1.25...v0.1.26) (2025-02-26)
+
+
+### Features
+
+* **redirects:** vaildate to urls better ([4360e26](https://github.com/mdn/rari/commit/4360e26cf6df08aed3251e8947d526eb500e0433))
+
+
+### Bug Fixes
+
+* **macro:** fix some CSS redirects ([#136](https://github.com/mdn/rari/issues/136)) ([6f284f4](https://github.com/mdn/rari/commit/6f284f49f1a7421b7fba5eaf14e23af154c7170f))
+* **macro:** update redirects in CSSInfo ([#133](https://github.com/mdn/rari/issues/133)) ([28b1a2c](https://github.com/mdn/rari/commit/28b1a2ca4d56b514fab0c5b35791d833c6e264e1))
+
 ## [0.1.25](https://github.com/mdn/rari/compare/v0.1.24...v0.1.25) (2025-02-14)
 
 
