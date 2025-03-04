@@ -6,7 +6,7 @@ use rari_types::globals::{deny_warnings, settings};
 use rari_types::locale::Locale;
 
 use crate::error::DocError;
-use crate::html::links::render_link_via_page;
+use crate::html::links::{render_link_via_page, LinkFlags};
 use crate::issues::get_issue_counter;
 use crate::pages::page::Page;
 use crate::percent::PATH_SEGMENT;
@@ -78,10 +78,21 @@ impl RariApi {
         content: Option<&str>,
         code: bool,
         title: Option<&str>,
-        with_badge: bool,
+        with_badges: bool,
     ) -> Result<String, DocError> {
         let mut out = String::new();
-        render_link_via_page(&mut out, link, locale, content, code, title, with_badge)?;
+        render_link_via_page(
+            &mut out,
+            link,
+            locale,
+            content,
+            title,
+            LinkFlags {
+                code,
+                with_badges,
+                report: false,
+            },
+        )?;
         Ok(out)
     }
 }

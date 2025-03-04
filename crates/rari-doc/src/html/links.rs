@@ -87,14 +87,24 @@ pub fn render_link_from_page(
     render_internal_link(out, page.url(), None, &content, None, modifier, true)
 }
 
+#[derive(Clone, Copy)]
+pub struct LinkFlags {
+    pub code: bool,
+    pub with_badges: bool,
+    pub report: bool,
+}
+
 pub fn render_link_via_page(
     out: &mut String,
     link: &str,
     locale: Locale,
     content: Option<&str>,
-    code: bool,
     title: Option<&str>,
-    with_badges: bool,
+    LinkFlags {
+        code,
+        with_badges,
+        report,
+    }: LinkFlags,
 ) -> Result<(), DocError> {
     let mut url = Cow::Borrowed(link);
     if let Some(link) = link.strip_prefix('/') {
@@ -103,7 +113,7 @@ pub fn render_link_via_page(
         }
         let (url, anchor) = url.split_once('#').unwrap_or((&url, ""));
         if let Ok(page) = RariApi::get_page(url) {
-            if url != page.url() && url.to_lowercase() == page.url().to_lowercase() {
+            if report && url != page.url() && url.to_lowercase() == page.url().to_lowercase() {
                 let ic = get_issue_counter();
                 tracing::warn!(
                     source = "ill-cased-link",

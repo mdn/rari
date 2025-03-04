@@ -14,7 +14,7 @@ use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize, Serializer};
 use tracing::{span, Level};
 
-use super::links::{render_link_from_page, render_link_via_page, LinkModifier};
+use super::links::{render_link_from_page, render_link_via_page, LinkFlags, LinkModifier};
 use super::modifier::insert_attribute;
 use super::rewriter::post_process_html;
 use crate::cached_readers::read_sidebar;
@@ -609,14 +609,36 @@ impl SidebarMetaEntry {
                 let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));
                 let hash = l10n.lookup(hash.as_str(), locale);
                 let link = concat_strs!(link.as_str(), "#", hash);
-                render_link_via_page(out, &link, locale, title, self.code, None, true)?;
+                render_link_via_page(
+                    out,
+                    &link,
+                    locale,
+                    title,
+                    None,
+                    LinkFlags {
+                        code: self.code,
+                        with_badges: true,
+                        report: true,
+                    },
+                )?;
             }
             SidebarMetaEntryContent::Link {
                 link: Some(link),
                 title,
             } => {
                 let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));
-                render_link_via_page(out, link, locale, title, self.code, None, true)?;
+                render_link_via_page(
+                    out,
+                    link,
+                    locale,
+                    title,
+                    None,
+                    LinkFlags {
+                        code: self.code,
+                        with_badges: true,
+                        report: true,
+                    },
+                )?;
             }
             SidebarMetaEntryContent::Link { link: None, title } => {
                 let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));

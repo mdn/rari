@@ -5,7 +5,7 @@ use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
-use crate::html::links::render_link_via_page;
+use crate::html::links::{render_link_via_page, LinkFlags};
 
 const OLD_VERSIONS: &[&str] = &["3.6", "3.5", "3", "2", "1.5"];
 
@@ -76,9 +76,12 @@ fn generate_release_link<T: Display>(
         &format!("/Mozilla/Firefox/Releases/{version}"),
         locale,
         Some(&format!("Firefox {version} {for_developers}")),
-        false,
         None,
-        false,
+        LinkFlags {
+            code: false,
+            with_badges: false,
+            report: false,
+        },
     )?;
     out.push_str("</li>");
     Ok(())
