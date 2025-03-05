@@ -148,7 +148,7 @@ impl SPA {
                     page_description: self.page_description,
                     featured_articles: featured_articles(
                         &[
-                            "/en-US/blog/javascript-temporal-is-coming",
+                            "/en-US/blog/javascript-temporal-is-coming/",
                             "/en-US/docs/Web/CSS/CSS_anchor_positioning",
                             "/en-US/docs/Web/API/View_Transition_API/Using",
                             "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal",
