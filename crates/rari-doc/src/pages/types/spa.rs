@@ -148,20 +148,20 @@ impl SPA {
                     page_description: self.page_description,
                     featured_articles: featured_articles(
                         &[
-                            "/en-US/blog/mdn-scrimba-partnership/",
-                            "/en-US/blog/learn-javascript-console-methods/",
-                            "/en-US/blog/introduction-to-web-sustainability/",
-                            "/en-US/docs/Web/API/CSS_Custom_Highlight_API",
+                            "/en-US/blog/javascript-temporal-is-coming/",
+                            "/en-US/docs/Web/CSS/CSS_anchor_positioning",
+                            "/en-US/docs/Web/API/View_Transition_API/Using",
+                            "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal",
                         ],
                         self.locale,
                     )?,
                     featured_contributor: featured_contributor(self.locale)?,
                     latest_news: ItemContainer {
                         items: latest_news(&[
-                            "/en-US/blog/mdn-scrimba-partnership/",
-                            "/en-US/blog/mdn-http-observatory-launch/",
-                            "/en-US/blog/mdn-curriculum-launch/",
-                            "/en-US/blog/baseline-evolution-on-mdn/",
+                            "/en-US/blog/mdn-2024-content-projects/",
+                            "/en-US/blog/curriculum-learn-web-development/",
+                            "/en-US/blog/new-community-page/",
+                            "/en-US/blog/javascript-intl-segmenter-i18n/",
                         ])?,
                     },
                     recent_contributions: ItemContainer {
