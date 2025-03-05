@@ -533,7 +533,7 @@ impl<'de> serde::Deserialize<'de> for Shortname {
             })
     }
 }
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct SpecInExtract {
     pub title: String,
