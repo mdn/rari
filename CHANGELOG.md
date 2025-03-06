@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.27](https://github.com/mdn/rari/compare/v0.1.26...v0.1.27) (2025-03-06)
+
+
+### Features
+
+* **templ:** don't report ill cased links for macros ([42411f5](https://github.com/mdn/rari/commit/42411f5202bddb15f93e7a88bad9c75e26310594))
+
 ## [0.1.26](https://github.com/mdn/rari/compare/v0.1.25...v0.1.26) (2025-02-26)
 
 
