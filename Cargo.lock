@@ -572,6 +572,7 @@ dependencies = [
  "css-definition-syntax",
  "css-syntax-types",
  "html-escape",
+ "itertools",
  "rari-deps",
  "rari-types",
  "regress",

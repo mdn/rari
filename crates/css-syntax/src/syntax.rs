@@ -8,6 +8,7 @@ use css_definition_syntax::generate::{self, GenerateOptions};
 use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
 use css_definition_syntax::walk::{walk, WalkOptions};
 use css_syntax_types::{Css, CssValueType, CssValuesItem, SpecInExtract};
+use itertools::{intersperse, Itertools};
 #[cfg(all(feature = "rari", not(test)))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
@@ -761,21 +762,30 @@ fn write_formal_syntax_internal(
     write!(out, r#"<pre class="notranslate">"#)?;
     let constituents = renderer.get_constituent_syntaxes(syntax)?;
 
-    if let Some(spec) = constituents
-        .get(if skip_first { 1 } else { 0 })
-        .and_then(|s| s.spec)
-    {
-        out.push_str(&format!(
-            r#"//<a href="{}">{}</a><br/><br/>"#,
-            spec.url, spec.title
-        ));
-    }
     for constituent in constituents.iter().skip(if skip_first { 1 } else { 0 }) {
         renderer.render(&mut out, constituent)?;
         out.push_str("<br/>");
     }
 
+    let specs = constituents.iter().fold(vec![], |mut acc, s| {
+        if let Some(spec) = s.spec {
+            if !acc.contains(&spec) {
+                acc.push(spec)
+            }
+        }
+        acc
+    });
     out.push_str("</pre>");
+    if !specs.is_empty() {
+        out.push_str("<footer>");
+        out.extend(intersperse(
+            specs
+                .iter()
+                .map(|spec| format!(r#"<a href="{}">{}</a>"#, spec.url, spec.title)),
+            ", ".to_string(),
+        ));
+        out.push_str("</footer>");
+    }
     Ok(out)
 }
 
