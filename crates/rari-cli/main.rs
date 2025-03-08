@@ -80,6 +80,7 @@ enum Commands {
     /// Subcommands for altering content programmatically
     #[command(subcommand)]
     Content(ContentSubcommand),
+    Lsp,
 }
 
 #[derive(Args)]
@@ -469,6 +470,15 @@ fn main() -> Result<(), Error> {
             settings.blog_unpublished = true;
             let _ = SETTINGS.set(settings);
             serve::serve()?
+        }
+        Commands::Lsp => {
+            let mut settings = Settings::new()?;
+            settings.cache_content = true;
+            settings.data_issues = true;
+            settings.blog_unpublished = true;
+            let _ = SETTINGS.set(settings);
+            read_and_cache_doc_pages()?;
+            rari_lsp::run()?
         }
         Commands::GitHistory => {
             info!("Gathering history 📜");
