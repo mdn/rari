@@ -133,7 +133,7 @@ impl BuildSection<'_> {
 pub struct PageContent {
     body: Vec<Section>,
     toc: Vec<TocEntry>,
-    summary: Option<String>,
+    pub summary: Option<String>,
     sidebar: Option<String>,
 }
 
@@ -144,7 +144,7 @@ pub fn make_toc(sections: &[BuildSection], with_h3: bool) -> Vec<TocEntry> {
         .collect()
 }
 
-fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
+pub fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     let (ks_rendered_doc, templs, sidebars) = if let Some(rari_env) = &page.rari_env() {
         let Rendered {
             content,
