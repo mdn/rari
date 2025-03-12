@@ -231,6 +231,7 @@ pub enum Section {
 /// * `page_type` - A `PageType` that specifies the type of the page, for example `LandingPage`, `LearnModule`, `CssAtRule` or
 ///    `HtmlAttribute`. Serialized as `pageType`.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
+#[schemars(rename = "Doc")]
 pub struct JsonDoc {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub body: Vec<Section>,
@@ -367,6 +368,7 @@ pub struct JsonDocMetadata {
 /// * `doc` - A `JsonDoc` that holds the main content and metadata of the documentation page.
 /// * `url` - A `String` that holds the URL of the documentation page.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
+#[schemars(rename = "DocPage")]
 pub struct JsonDocPage {
     pub doc: JsonDoc,
     pub url: String,
@@ -412,6 +414,7 @@ pub struct BlogIndex {
 ///    serialization if it is `None`.
 /// * `template` - A `Template` that specifies the template used for rendering the document.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
+#[schemars(rename = "CurriculumDoc")]
 pub struct JsonCurriculumDoc {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub body: Vec<Section>,
@@ -453,6 +456,7 @@ pub struct JsonCurriculumDoc {
 /// * `page_title` - A `String` that holds the title of the curriculum page. Serialized as `pageTitle`.
 /// * `locale` - A `Locale` that specifies the locale of the curriculum page.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
+#[schemars(rename = "CurriculumPage")]
 pub struct JsonCurriculumPage {
     pub doc: JsonCurriculumDoc,
     pub url: String,
@@ -485,6 +489,7 @@ pub struct JsonCurriculumPage {
 /// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the blog post. This field is
 ///   skipped during serialization if it is empty.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
+#[schemars(rename = "BlogPostDoc")]
 pub struct JsonBlogPostDoc {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub body: Vec<Section>,
@@ -523,6 +528,7 @@ pub struct JsonBlogPostDoc {
 /// * `hy_data` - An `Option<BlogIndex>` that holds data related to the blog index, if available.
 ///   Serialized as `hyData` and skipped during serialization if it is `None`.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
+#[schemars(rename = "BlogPostPage")]
 pub struct JsonBlogPostPage {
     pub doc: JsonBlogPostDoc,
     pub locale: Locale,
@@ -581,6 +587,7 @@ pub struct ContributorSpotlightHyData {
 /// * `page_title` - A `String` that holds the title of the contributor spotlight page. Serialized as `pageTitle`.
 /// * `hy_data` - A `ContributorSpotlightHyData` that holds the data related to the contributor. Serialized as `hyData`.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
+#[schemars(rename = "ContributorSpotlightPage")]
 pub struct JsonContributorSpotlightPage {
     pub url: String,
     #[serde(rename = "pageTitle")]
@@ -699,6 +706,7 @@ pub struct UrlNTitle {
 /// * `url` - A `String` that holds the URL of the page.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[schemars(rename = "SPAPage")]
 pub struct JsonSPAPage {
     pub slug: &'static str,
     pub page_title: &'static str,
@@ -839,6 +847,7 @@ where
 /// * `recent_contributions` - An `ItemContainer<HomePageRecentContribution>` that holds the recent contributions to be displayed on the home page.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[schemars(rename = "HomePageSPAHyData")]
 pub struct JsonHomePageSPAHyData {
     pub page_description: Option<&'static str>,
     pub featured_articles: Vec<HomePageFeaturedArticle>,
@@ -861,6 +870,7 @@ pub struct JsonHomePageSPAHyData {
 /// * `url` - A `String` that holds the URL of the page.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[schemars(rename = "HomePage")]
 pub struct JsonHomePage {
     pub hy_data: JsonHomePageSPAHyData,
     pub page_title: &'static str,
@@ -881,6 +891,7 @@ pub struct JsonHomePage {
 /// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the generic page.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[schemars(rename = "GenericHyData")]
 pub struct JsonGenericHyData {
     pub sections: Vec<Section>,
     pub title: String,
@@ -903,6 +914,7 @@ pub struct JsonGenericHyData {
 /// * `id` - A `String` that holds the unique identifier for the generic page.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[schemars(rename = "GenericPage")]
 pub struct JsonGenericPage {
     pub hy_data: JsonGenericHyData,
     pub page_title: String,
