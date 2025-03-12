@@ -53,7 +53,7 @@ pub fn sidebar(group: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         &mut entries,
         &web_api_groups.methods,
         methods_label,
-        APILink::from,
+        APILink::from_method,
     );
     build_interface_list(
         &mut entries,
@@ -85,6 +85,13 @@ impl APILink {
         ev.split_once(": ").map(|(interface, event)| Self {
             link: format!("/Web/API/{interface}/{event}_event"),
             title: Some(ev.to_string()),
+        })
+    }
+
+    pub fn from_method(s: &str) -> Option<Self> {
+        Some(Self {
+            title: Some(s.replace("_static", "").to_string()),
+            link: format!("/Web/API/{}", s.replace("()", "").replace('.', "/")),
         })
     }
 }

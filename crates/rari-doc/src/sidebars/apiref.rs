@@ -130,7 +130,7 @@ fn build_sublist(entries: &mut Vec<SidebarMetaEntry>, sub_pages: &[Page], label:
             details: Details::Open,
             content: SidebarMetaEntryContent::Link {
                 link: None,
-                title: Some(label.to_string()),
+                title: Some(label.replace("_static", "").to_string()),
             },
             children: MetaChildren::Children(
                 sub_pages
@@ -168,7 +168,7 @@ fn build_interface_list(entries: &mut Vec<SidebarMetaEntry>, interfaces: &[&str]
                     .map(|interface| SidebarMetaEntry {
                         code: true,
                         content: SidebarMetaEntryContent::Link {
-                            title: Some(interface.to_string()),
+                            title: Some(interface.replace("_static", "").to_string()),
                             link: Some(format!(
                                 "/Web/API/{}",
                                 interface.replace("()", "").replace('.', "/")
