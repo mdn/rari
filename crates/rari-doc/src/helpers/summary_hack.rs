@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use rari_md::{m2h_internal, M2HOptions};
+use scraper::Html;
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike};
@@ -45,4 +46,9 @@ pub fn strip_paragraph_unchecked(input: &str) -> &str {
     let out = out.trim().strip_suffix("</p>").unwrap_or(out);
 
     out
+}
+
+pub fn text_content(html_str: &str) -> String {
+    let fragment = Html::parse_fragment(html_str);
+    fragment.root_element().text().collect()
 }
