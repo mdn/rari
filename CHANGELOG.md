@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.28](https://github.com/mdn/rari/compare/v0.1.27...v0.1.28) (2025-03-12)
+
+
+### Bug Fixes
+
+* **npm:** rename types to remove `Json` prefix ([#147](https://github.com/mdn/rari/issues/147)) ([81248d1](https://github.com/mdn/rari/commit/81248d1114222e569167e9aae5b3da59aca08e32))
+
 ## [0.1.27](https://github.com/mdn/rari/compare/v0.1.26...v0.1.27) (2025-03-10)
 
 
