@@ -90,7 +90,7 @@ impl APILink {
 
     pub fn from_method(s: &str) -> Option<Self> {
         Some(Self {
-            title: Some(s.replace("_static", "").to_string()),
+            title: Some(s.strip_suffix("_static").unwrap_or(s).to_string()),
             link: format!("/Web/API/{}", s.replace("()", "").replace('.', "/")),
         })
     }
