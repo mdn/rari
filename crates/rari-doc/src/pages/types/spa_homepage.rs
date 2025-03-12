@@ -11,7 +11,7 @@ use regex::Regex;
 use crate::cached_readers::contributor_spotlight_files;
 use crate::error::DocError;
 use crate::helpers::parents::parents;
-use crate::helpers::summary_hack::get_hacky_summary_md;
+use crate::helpers::summary_hack::{get_hacky_summary_md, text_content};
 use crate::pages::json::{
     HomePageFeaturedArticle, HomePageFeaturedContributor, HomePageLatestNewsItem,
     HomePageRecentContribution, NameUrl, Parent,
@@ -62,7 +62,9 @@ pub fn featured_articles(
                 })),
                 Ok(ref page @ Page::Doc(ref doc)) => Some(Ok(HomePageFeaturedArticle {
                     mdn_url: doc.url().to_string(),
-                    summary: get_hacky_summary_md(page).unwrap_or_default(),
+                    summary: get_hacky_summary_md(page)
+                        .map(|summary| text_content(&summary))
+                        .unwrap_or_default(),
                     title: doc.title().to_string(),
                     tag: parents(page).get(1).cloned(),
                 })),
