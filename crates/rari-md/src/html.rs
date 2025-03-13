@@ -917,6 +917,12 @@ where
                             self.output.write_all(b"\" title=\"")?;
                             self.escape(nl.title.as_bytes())?;
                         }
+                        let mut text_content = Vec::with_capacity(20);
+                        Self::collect_text(node, &mut text_content);
+
+                        if text_content == url {
+                            self.output.write_all(b"\" data-autolink=\"")?;
+                        }
                         self.output.write_all(b"\">")?;
                     } else {
                         self.output.write_all(b"</a>")?;
