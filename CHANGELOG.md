@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.29](https://github.com/mdn/rari/compare/v0.1.28...v0.1.29) (2025-03-13)
+
+
+### Bug Fixes
+
+* **homepage:** use text content for summary on homepage ([#146](https://github.com/mdn/rari/issues/146)) ([57758b2](https://github.com/mdn/rari/commit/57758b22231422d86e12036a0ed461d5bf70cc41))
+* **issue-template:** make `CONTRIBUTING.md` link absolute ([#143](https://github.com/mdn/rari/issues/143)) ([29f914f](https://github.com/mdn/rari/commit/29f914fea3d3690fc3fc8d2f7e74cbd13be98db9))
+* **sidebars:** strip "_static" suffix ([#145](https://github.com/mdn/rari/issues/145)) ([d4b32e0](https://github.com/mdn/rari/commit/d4b32e007543dd4017c783ec99774bd7e747cd42))
+* **templ:** allow empty string for embed live sample ([bd063f3](https://github.com/mdn/rari/commit/bd063f3a0206a4cddab878364746f4909f827038))
+
 ## [0.1.28](https://github.com/mdn/rari/compare/v0.1.27...v0.1.28) (2025-03-12)
 
 
