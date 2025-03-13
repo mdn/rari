@@ -23,9 +23,13 @@ pub fn check_and_fix_link(
     }
     let original_href = el.get_attribute("href").expect("href was required");
 
+    let auto_link = el.has_attribute("data-autolink");
+    if auto_link {
+        el.remove_attribute("data-autolink");
+    }
     if original_href.starts_with('/') || original_href.starts_with("https://developer.mozilla.org")
     {
-        handle_internal_link(&original_href, el, page, data_issues, templ_link)
+        handle_internal_link(&original_href, el, page, data_issues, templ_link, auto_link)
     } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
         handle_external_link(el)
     } else {
@@ -41,6 +45,7 @@ pub fn handle_external_link(el: &mut Element) -> HandlerResult {
             &concat_strs!(&class, if class.is_empty() { "" } else { " " }, "external"),
         )?;
     }
+    el.remove_attribute("data-autolink");
     if !el.has_attribute("target") {
         el.set_attribute("target", "_blank")?;
     }
@@ -53,11 +58,13 @@ pub fn handle_internal_link(
     page: &impl PageLike,
     data_issues: bool,
     templ_link: bool,
+    auto_link: bool,
 ) -> HandlerResult {
     // Strip prefix for curriculum links.
-    let original_href = if page.page_type() == PageType::Curriculum {
+    let original_href = if page.page_type() == PageType::Curriculum || auto_link {
         original_href
             .strip_prefix("https://developer.mozilla.org")
+            .map(|stripped| if stripped.is_empty() { "/" } else { stripped })
             .unwrap_or(original_href)
     } else {
         original_href
