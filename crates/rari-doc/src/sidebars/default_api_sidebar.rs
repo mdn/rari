@@ -47,13 +47,13 @@ pub fn sidebar(group: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         &mut entries,
         &web_api_groups.properties,
         properties_label,
-        APILink::from,
+        APILink::from_maybe_static,
     );
     build_interface_list(
         &mut entries,
         &web_api_groups.methods,
         methods_label,
-        APILink::from,
+        APILink::from_maybe_static,
     );
     build_interface_list(
         &mut entries,
@@ -85,6 +85,13 @@ impl APILink {
         ev.split_once(": ").map(|(interface, event)| Self {
             link: format!("/Web/API/{interface}/{event}_event"),
             title: Some(ev.to_string()),
+        })
+    }
+
+    pub fn from_maybe_static(s: &str) -> Option<Self> {
+        Some(Self {
+            title: Some(s.strip_suffix("_static").unwrap_or(s).to_string()),
+            link: format!("/Web/API/{}", s.replace("()", "").replace('.', "/")),
         })
     }
 }
