@@ -11,7 +11,7 @@ use crate::utils::dedup_whitespace;
 #[allow(clippy::too_many_arguments)]
 #[rari_f]
 pub fn embed_live_sample(
-    id: String,
+    id: Option<String>,
     width: Option<AnyArg>,
     height: Option<AnyArg>,
     _deprecated_3: Option<String>,
@@ -20,6 +20,7 @@ pub fn embed_live_sample(
     allowed_features: Option<String>,
     sandbox: Option<String>,
 ) -> Result<String, DocError> {
+    let id = id.unwrap_or_default();
     let title = dedup_whitespace(&id.replace('_', " "));
     let id = RariApi::anchorize(&id);
     let mut out = String::new();
