@@ -79,6 +79,11 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
             let mut data = marker.data.borrow_mut();
             if let NodeValue::Text(ref text) = data.value {
                 if text.starts_with(NoteCard::Callout.new_prefix()) {
+                    if let Some(n) = child.children().nth(1) {
+                        if matches!(n.data.borrow().value, NodeValue::LineBreak) {
+                            n.data.borrow_mut().value = NodeValue::SoftBreak;
+                        }
+                    };
                     if text.trim() == NoteCard::Callout.new_prefix() {
                         marker.detach();
                     } else if let Some(tail) = text.strip_prefix(NoteCard::Callout.new_prefix()) {
@@ -87,6 +92,11 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
                     return Some(NoteCard::Callout);
                 }
                 if text.starts_with(NoteCard::Warning.new_prefix()) {
+                    if let Some(n) = child.children().nth(1) {
+                        if matches!(n.data.borrow().value, NodeValue::LineBreak) {
+                            n.data.borrow_mut().value = NodeValue::SoftBreak;
+                        }
+                    };
                     if text.trim() == NoteCard::Warning.new_prefix() {
                         marker.detach();
                     } else if let Some(tail) = text.strip_prefix(NoteCard::Warning.new_prefix()) {
@@ -95,6 +105,11 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
                     return Some(NoteCard::Warning);
                 }
                 if text.starts_with(NoteCard::Note.new_prefix()) {
+                    if let Some(n) = child.children().nth(1) {
+                        if matches!(n.data.borrow().value, NodeValue::LineBreak) {
+                            n.data.borrow_mut().value = NodeValue::SoftBreak;
+                        }
+                    };
                     if text.trim() == NoteCard::Note.new_prefix() {
                         marker.detach();
                     } else if let Some(tail) = text.strip_prefix(NoteCard::Note.new_prefix()) {

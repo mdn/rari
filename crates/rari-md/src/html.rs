@@ -23,7 +23,7 @@ use crate::anchor;
 use crate::character_set::character_set;
 use crate::ctype::isspace;
 use crate::ext::{Flag, DELIM_START};
-use crate::node_card::{alert_type_css_class, alert_type_default_title, is_callout, NoteCard};
+use crate::note_card::{alert_type_css_class, alert_type_default_title, is_callout, NoteCard};
 
 /// Formats an AST as HTML, modified by the given options.
 pub fn format_document<'a>(
