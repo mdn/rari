@@ -6,7 +6,6 @@ use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
 use crate::error::DocError;
-use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
 use crate::resolve::locale_from_url;
 use crate::templ::api::RariApi;
