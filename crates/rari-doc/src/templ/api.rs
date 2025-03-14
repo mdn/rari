@@ -12,6 +12,12 @@ use crate::pages::page::Page;
 use crate::percent::PATH_SEGMENT;
 use crate::redirects::resolve_redirect;
 
+enum LinkWarn {
+    No,
+    All,
+    IgnoreCase,
+}
+
 pub struct RariApi {}
 impl RariApi {
     pub fn anchorize(content: &str) -> Cow<'_, str> {
@@ -22,25 +28,44 @@ impl RariApi {
         &settings().live_samples_base_url
     }
     pub fn get_page_nowarn(url: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, false)
+        RariApi::get_page_internal(url, LinkWarn::No)
+    }
+
+    pub fn get_page_ignore_case(url: &str) -> Result<Page, DocError> {
+        RariApi::get_page_internal(url, LinkWarn::IgnoreCase)
     }
 
     pub fn get_page(url: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, true)
+        RariApi::get_page_internal(url, LinkWarn::All)
     }
 
-    fn get_page_internal(url: &str, warn: bool) -> Result<Page, DocError> {
+    fn get_page_internal(url: &str, warn: LinkWarn) -> Result<Page, DocError> {
         let redirect = resolve_redirect(url);
         let url = match redirect.as_ref() {
             Some(redirect) => {
-                if warn {
-                    let ic = get_issue_counter();
-                    tracing::warn!(
-                        source = "templ-redirected-link",
-                        ic = ic,
-                        url = url,
-                        href = redirect.as_ref()
-                    );
+                if !matches!(warn, LinkWarn::No) {
+                    let ill_cased = url.to_lowercase() == redirect.to_lowercase();
+                    match warn {
+                        LinkWarn::All | LinkWarn::IgnoreCase if !ill_cased => {
+                            let ic = get_issue_counter();
+                            tracing::warn!(
+                                source = "templ-redirected-link",
+                                ic = ic,
+                                url = url,
+                                href = redirect.as_ref()
+                            );
+                        }
+                        LinkWarn::All if ill_cased => {
+                            let ic = get_issue_counter();
+                            tracing::warn!(
+                                source = "ill-cased-link",
+                                ic = ic,
+                                url = url,
+                                redirect = redirect.as_ref()
+                            );
+                        }
+                        _ => {}
+                    }
                 }
                 if deny_warnings() {
                     return Err(DocError::RedirectedLink {
@@ -55,7 +80,7 @@ impl RariApi {
         };
         Page::from_url_with_fallback(url).map_err(|e| {
             if let DocError::PageNotFound(_, _) = e {
-                if warn {
+                if !matches!(warn, LinkWarn::No) {
                     let ic = get_issue_counter();
                     tracing::warn!(source = "templ-broken-link", ic = ic, url = url);
                 }

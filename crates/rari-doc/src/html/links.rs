@@ -6,7 +6,6 @@ use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
 use crate::error::DocError;
-use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
 use crate::resolve::locale_from_url;
 use crate::templ::api::RariApi;
@@ -112,16 +111,11 @@ pub fn render_link_via_page(
             url = Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", link));
         }
         let (url, anchor) = url.split_once('#').unwrap_or((&url, ""));
-        if let Ok(page) = RariApi::get_page(url) {
-            if report && url != page.url() && url.to_lowercase() == page.url().to_lowercase() {
-                let ic = get_issue_counter();
-                tracing::warn!(
-                    source = "ill-cased-link",
-                    ic = ic,
-                    url = url,
-                    redirect = page.url()
-                );
-            }
+        if let Ok(page) = if report {
+            RariApi::get_page(url)
+        } else {
+            RariApi::get_page_ignore_case(url)
+        } {
             let url = page.url();
             let content = if let Some(content) = content {
                 Cow::Borrowed(content)
