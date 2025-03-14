@@ -84,7 +84,7 @@ enum Commands {
 
 #[derive(Args)]
 struct FixFlawsArgs {
-    #[arg(short, long)]
+    #[arg(short, long, help = "Only fix flaws for <LOCALE>")]
     locale: Option<Locale>,
 }
 #[derive(Args)]
@@ -117,7 +117,7 @@ enum ContentSubcommand {
     ValidateRedirects(ValidateRedirectArgs),
     /// Create content inventory as JSON
     Inventory,
-    /// Fix all flaws for a locale
+    /// Fix all flaws (currently only broken_links)
     FixFlaws(FixFlawsArgs),
 }
 
