@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use rari_md::ext::{DELIM_END, DELIM_START};
+use rari_md::ext::{DELIM_END, DELIM_END_LEN, DELIM_START, DELIM_START_LEN};
 use rari_types::globals::deny_warnings;
 use rari_types::{AnyArg, RariEnv};
 use tracing::{span, warn, Level};
@@ -76,16 +76,19 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                 match invoke(env, &name, mac.args) {
                     Ok((rendered, is_sidebar)) => {
                         if is_sidebar {
-                            sidebars.push(rendered)
+                            encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
+                            templs.push(String::default());
+                            sidebars.push(rendered);
                         } else {
-                            encode_ref(templs.len(), &mut out)?;
-                            templs.push(rendered)
+                            encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
+                            templs.push(rendered);
                         }
                     }
                     Err(e) if deny_warnings() => return Err(e),
                     Err(e) => {
                         warn!("{e}",);
-                        writeln!(&mut out, "{e}")?;
+                        encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
+                        templs.push(e.to_string());
                     }
                 };
             }
@@ -98,8 +101,9 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
     })
 }
 
-fn encode_ref(index: usize, out: &mut String) -> Result<(), DocError> {
-    Ok(write!(out, "{DELIM_START}{index}{DELIM_END}",)?)
+fn encode_ref(index: usize, out: &mut String, len: usize) -> Result<(), DocError> {
+    let padding = len - DELIM_START_LEN - DELIM_END_LEN;
+    Ok(write!(out, "{DELIM_START}{index:x>padding$}{DELIM_END}",)?)
 }
 
 pub(crate) fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
@@ -138,7 +142,7 @@ pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocEr
 
     for (i, frag) in frags.iter().enumerate() {
         if i % 2 == 1 {
-            let index = frag.parse::<usize>()?;
+            let index = frag.trim_start_matches("x").parse::<usize>()?;
             if let Some(templ) = templs.get(index) {
                 decoded.push_str(templ);
             } else {
