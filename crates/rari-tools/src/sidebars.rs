@@ -453,7 +453,7 @@ mod test {
                   - /Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
                   - /Web/CSS/CSS_Box_Model/Mastering_margin_collapsing
               - type: listSubPages
-                path: /en-US/docs/Web/HTTP/Headers
+                path: /en-US/docs/Web/HTTP/Reference/Headers
                 title: Headers
                 tags: []
                 details: closed
@@ -487,8 +487,8 @@ mod test {
                 Some(Cow::Borrowed("Web/CSS/CSS_Box_Alignment/Also_New")),
             ),
             (
-                Cow::Borrowed("Web/HTTP/Headers"),
-                Some(Cow::Borrowed("Web/HTTP/Headers_New")),
+                Cow::Borrowed("Web/HTTP/Reference/Headers"),
+                Some(Cow::Borrowed("Web/HTTP/Reference/Headers_New")),
             ),
             (
                 Cow::Borrowed("/Web/CSS/CSS_Box_Alignment/Box_Alignment_in_Multi-column_Layout"),
@@ -541,7 +541,7 @@ mod test {
 
         // replacement of the path of the fifth item in the sidebar (listSubPages)
         if let SidebarEntry::ListSubPages(SubPageEntry { path, .. }) = &sb.sidebar[4] {
-            assert_eq!(path, "/en-US/docs/Web/HTTP/Headers_New");
+            assert_eq!(path, "/en-US/docs/Web/HTTP/Reference/Headers_New");
         } else {
             panic!("Expected a listSubPages entry with a path field as the fifth entry");
         };
