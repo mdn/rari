@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.30](https://github.com/mdn/rari/compare/v0.1.29...v0.1.30) (2025-03-14)
+
+
+### Features
+
+* **content:** support fix-flaws command ([#158](https://github.com/mdn/rari/issues/158)) ([8e2ba1c](https://github.com/mdn/rari/commit/8e2ba1c868c6aded2b25088fe6c919ebd55c17b2))
+
+
+### Bug Fixes
+
+* **issues:** calculate correct positions ([#154](https://github.com/mdn/rari/issues/154)) ([b97a9c2](https://github.com/mdn/rari/commit/b97a9c214452d8f89ca4da7928ad6814add16a9e))
+* **templ:** don't report ill cased as broken in templs ([#159](https://github.com/mdn/rari/issues/159)) ([0927f47](https://github.com/mdn/rari/commit/0927f4772b9bdf3a3312d9b86bfaa53883535c16))
+* update paths for HTTP section move ([#155](https://github.com/mdn/rari/issues/155)) ([ca4e711](https://github.com/mdn/rari/commit/ca4e7118e5600e7984997268c5c271fa84b84fdc))
+
 ## [0.1.29](https://github.com/mdn/rari/compare/v0.1.28...v0.1.29) (2025-03-13)
 
 
