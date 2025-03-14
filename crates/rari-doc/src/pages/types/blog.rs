@@ -295,6 +295,10 @@ impl PageLike for BlogPost {
     fn fm_offset(&self) -> usize {
         self.raw[..self.content_start].lines().count()
     }
+
+    fn raw_content(&self) -> &str {
+        &self.raw
+    }
 }
 
 fn read_blog_post(path: impl Into<PathBuf>) -> Result<BlogPost, DocError> {

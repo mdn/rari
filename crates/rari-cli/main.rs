@@ -29,6 +29,7 @@ use rari_doc::search_index::build_search_index;
 use rari_doc::utils::TEMPL_RECORDER_SENDER;
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
+use rari_tools::fix::fixer::fix_all;
 use rari_tools::history::gather_history;
 use rari_tools::inventory::gather_inventory;
 use rari_tools::r#move::r#move;
@@ -82,6 +83,11 @@ enum Commands {
 }
 
 #[derive(Args)]
+struct FixFlawsArgs {
+    #[arg(short, long, help = "Only fix flaws for <LOCALE>")]
+    locale: Option<Locale>,
+}
+#[derive(Args)]
 struct ExportSchemaArgs {
     output_file: Option<PathBuf>,
 }
@@ -111,6 +117,8 @@ enum ContentSubcommand {
     ValidateRedirects(ValidateRedirectArgs),
     /// Create content inventory as JSON
     Inventory,
+    /// Fix all flaws (currently only broken_links)
+    FixFlaws(FixFlawsArgs),
 }
 
 #[derive(Args)]
@@ -502,6 +510,25 @@ fn main() -> Result<(), Error> {
             }
             ContentSubcommand::Inventory => {
                 gather_inventory()?;
+            }
+            ContentSubcommand::FixFlaws(args) => {
+                let start = std::time::Instant::now();
+                let mut settings = Settings::new()?;
+                settings.cache_content = true;
+                let _ = SETTINGS.set(settings);
+                let docs = read_and_cache_doc_pages()?;
+                info!(
+                    "Took: {: >10.3?} for reading {} docs",
+                    start.elapsed(),
+                    docs.len()
+                );
+                let start = std::time::Instant::now();
+                let fixed = fix_all(&docs, args.locale)?;
+                info!(
+                    "Took: {: >10.3?} for fixing {} docs",
+                    start.elapsed(),
+                    fixed.len()
+                );
             }
         },
         Commands::Update(args) => update(args.version)?,

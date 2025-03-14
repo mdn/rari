@@ -1,12 +1,13 @@
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::atomic::AtomicU64;
 
 use axum::body::Body;
-use axum::extract::{Path, Request};
+use axum::extract::{Path, Query, Request};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, put};
 use axum::{Json, Router};
 use rari_doc::cached_readers::wiki_histories;
 use rari_doc::contributors::contributors_txt;
@@ -16,6 +17,8 @@ use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
+use rari_tools::error::ToolError;
+use rari_tools::fix::issues::fix_page;
 use rari_types::globals::{self, content_root, content_translated_root};
 use rari_types::locale::Locale;
 use rari_types::Popularities;
@@ -36,6 +39,19 @@ async fn handler(req: Request) -> Response<Body> {
         get_contributors_handler(req).await.into_response()
     } else {
         get_json_handler(req).await.into_response()
+    }
+}
+
+async fn fix_issues(
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, AppError> {
+    if let Some(url) = params.get("url") {
+        tracing::info!("🔧 fixing {url}");
+        let page = Page::from_url_with_fallback(url)?;
+        fix_page(&page)?;
+        Ok(Json("ok").into_response())
+    } else {
+        Ok((StatusCode::BAD_REQUEST).into_response())
     }
 }
 
@@ -154,14 +170,14 @@ fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
 }
 
 #[derive(Debug)]
-struct AppError(DocError);
+struct AppError(ToolError);
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response<Body> {
         match self.0 {
-            DocError::RariIoError(_) | DocError::IOError(_) | DocError::PageNotFound(_, _) => {
-                (StatusCode::NOT_FOUND, "").into_response()
-            }
+            ToolError::DocError(
+                DocError::RariIoError(_) | DocError::IOError(_) | DocError::PageNotFound(_, _),
+            ) => (StatusCode::NOT_FOUND, "").into_response(),
 
             _ => (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response(),
         }
@@ -170,7 +186,7 @@ impl IntoResponse for AppError {
 
 impl<E> From<E> for AppError
 where
-    E: Into<DocError>,
+    E: Into<ToolError>,
 {
     fn from(err: E) -> Self {
         Self(err.into())
@@ -184,6 +200,7 @@ pub fn serve() -> Result<(), anyhow::Error> {
         .unwrap()
         .block_on(async {
             let app = Router::new()
+                .route("/_document/fixfixableflaws", put(fix_issues))
                 .route("/{locale}/search-index.json", get(get_search_index_handler))
                 .fallback(handler);
 

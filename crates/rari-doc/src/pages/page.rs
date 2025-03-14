@@ -250,6 +250,7 @@ pub trait PageLike {
     fn base_slug(&self) -> &str;
     fn trailing_slash(&self) -> bool;
     fn fm_offset(&self) -> usize;
+    fn raw_content(&self) -> &str;
 }
 
 impl<T: PageLike> PageLike for Arc<T> {
@@ -315,6 +316,10 @@ impl<T: PageLike> PageLike for Arc<T> {
 
     fn fm_offset(&self) -> usize {
         (**self).fm_offset()
+    }
+
+    fn raw_content(&self) -> &str {
+        (**self).raw_content()
     }
 }
 

@@ -201,6 +201,10 @@ impl PageLike for GenericPage {
     fn fm_offset(&self) -> usize {
         self.raw[..self.content_start].lines().count()
     }
+
+    fn raw_content(&self) -> &str {
+        &self.raw
+    }
 }
 
 fn read_generic_page(
