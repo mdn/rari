@@ -6,7 +6,7 @@ use crate::templ::api::RariApi;
 #[rari_f]
 pub fn csp(directive: String) -> Result<String, DocError> {
     let url = format!(
-        "/{}/docs/Web/HTTP/Headers/Content-Security-Policy/{directive}",
+        "/{}/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/{directive}",
         env.locale.as_url_str()
     );
     RariApi::link(
