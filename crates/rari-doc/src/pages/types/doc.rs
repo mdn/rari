@@ -283,6 +283,10 @@ impl PageLike for Doc {
     fn fm_offset(&self) -> usize {
         self.raw[..self.content_start].lines().count()
     }
+
+    fn raw_content(&self) -> &str {
+        &self.raw
+    }
 }
 
 fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {

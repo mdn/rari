@@ -243,6 +243,10 @@ impl PageLike for SPA {
     fn fm_offset(&self) -> usize {
         0
     }
+
+    fn raw_content(&self) -> &str {
+        ""
+    }
 }
 
 const MDN_PLUS_TITLE: &str = "MDN Plus";

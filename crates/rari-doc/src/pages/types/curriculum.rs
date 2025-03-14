@@ -259,6 +259,10 @@ impl PageLike for CurriculumPage {
     fn fm_offset(&self) -> usize {
         0
     }
+
+    fn raw_content(&self) -> &str {
+        &self.raw_content
+    }
 }
 
 pub fn curriculum_group(parents: &[Parent]) -> Option<String> {

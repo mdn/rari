@@ -247,10 +247,20 @@ pub enum DIssue {
     },
 }
 
+impl DIssue {
+    pub fn display_issue(&self) -> &DisplayIssue {
+        match self {
+            DIssue::BrokenLink { display_issue, .. }
+            | DIssue::Macros { display_issue, .. }
+            | DIssue::Unknown { display_issue } => display_issue,
+        }
+    }
+}
+
 pub type DisplayIssues = BTreeMap<&'static str, Vec<DIssue>>;
 
 impl DIssue {
-    fn from_issue_with_id(issue: Issue, page: &Page, id: usize) -> Self {
+    pub fn from_issue_with_id(issue: Issue, page: &Page, id: usize) -> Self {
         let mut di = DisplayIssue {
             id: id as i64,
             column: if issue.col == 0 {
