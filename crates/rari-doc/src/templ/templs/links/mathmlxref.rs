@@ -12,7 +12,7 @@ pub fn mathmlxref(element_name: String) -> Result<String, DocError> {
     let url = concat_strs!(
         "/",
         env.locale.as_url_str(),
-        "/docs/Web/MathML/Element/",
+        "/docs/Web/MathML/Reference/Element/",
         element_name.as_str()
     );
 
