@@ -38,7 +38,8 @@ pub(crate) fn render_for_summary(input: &str) -> Result<String, DocError> {
                     | "quicklinkswithsubpages" => None,
                     "glossary" => mac
                         .args
-                        .first()
+                        .get(1)
+                        .or(mac.args.first())
                         .and_then(|f| f.clone())
                         .map(|arg| AnyArg::try_from(arg).unwrap().to_string()),
                     _ => mac
