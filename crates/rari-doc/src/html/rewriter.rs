@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use lol_html::html_content::ContentType;
 use lol_html::{element, rewrite_str, text, HtmlRewriter, RewriteStrSettings, Settings};
 use rari_md::ext::DELIM_START;
-use rari_md::node_card::NoteCard;
+use rari_md::note_card::NoteCard;
 use rari_types::fm_types::PageType;
 use rari_types::globals::settings;
 use rari_utils::concat_strs;
