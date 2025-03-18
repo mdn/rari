@@ -2488,25 +2488,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pulldown-cmark"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e8bbe1a966bd2f362681a44f6edce3c2310ac21e4d5067a6e7ec396297a6ea0"
-dependencies = [
- "bitflags 2.9.0",
- "getopts",
- "memchr",
- "pulldown-cmark-escape",
- "unicase",
-]
-
-[[package]]
-name = "pulldown-cmark-escape"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "007d8adb5ddab6f8e3f491ac63566a7d5002cc7ed73901f72057943fa71ae1ae"
-
-[[package]]
 name = "quick-xml"
 version = "0.37.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2818,7 +2799,6 @@ version = "0.1.26"
 dependencies = [
  "anyhow",
  "lsp-textdocument",
- "pulldown-cmark",
  "rari-doc",
  "rari-types",
  "serde",
@@ -2829,6 +2809,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tree-sitter",
+ "tree-sitter-md",
  "tree-sitter-mdn",
 ]
 
@@ -4123,14 +4104,13 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter"
-version = "0.24.7"
+version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5387dffa7ffc7d2dae12b50c6f7aab8ff79d6210147c6613561fc3d474c6f75"
+checksum = "0203df02a3b6dd63575cc1d6e609edc2181c9a11867a271b25cfd2abff3ec5ca"
 dependencies = [
  "cc",
  "regex",
  "regex-syntax",
- "streaming-iterator",
  "tree-sitter-language",
 ]
 
@@ -4139,6 +4119,17 @@ name = "tree-sitter-language"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4013970217383f67b18aef68f6fb2e8d409bc5755227092d32efb0422ba24b8"
+
+[[package]]
+name = "tree-sitter-md"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17f968c22a01010b83fc960455ae729db08dbeb6388617d9113897cb9204b030"
+dependencies = [
+ "cc",
+ "tree-sitter",
+ "tree-sitter-language",
+]
 
 [[package]]
 name = "tree-sitter-mdn"
@@ -4180,12 +4171,6 @@ checksum = "c878a167baa8afd137494101a688ef8c67125089ff2249284bd2b5f9bfedb815"
 dependencies = [
  "thiserror 1.0.69",
 ]
-
-[[package]]
-name = "unicase"
-version = "2.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75b844d17643ee918803943289730bec8aac480150456169e647ed0b576ba539"
 
 [[package]]
 name = "unicode-ident"

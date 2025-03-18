@@ -1,4 +1,5 @@
 use rari_doc::{find::doc_pages_from_slugish, pages::page::PageLike};
+use tree_sitter_md::MarkdownParser;
 
 fn text_doc_change_to_tree_sitter_edit(
     change: &tower_lsp::lsp_types::TextDocumentContentChangeEvent,
@@ -36,8 +37,10 @@ fn text_doc_change_to_tree_sitter_edit(
 pub(crate) struct Backend {
     client: tower_lsp::Client,
     parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter::Parser>>,
+    md_parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter_md::MarkdownParser>>,
     curr_doc: std::sync::Arc<tokio::sync::Mutex<Option<lsp_textdocument::FullTextDocument>>>,
     tree: std::sync::Arc<tokio::sync::Mutex<Option<tree_sitter::Tree>>>,
+    md_tree: std::sync::Arc<tokio::sync::Mutex<Option<tree_sitter_md::MarkdownTree>>>,
     kw_docs: crate::keywords::KeywordDocsMap,
 }
 
@@ -48,8 +51,10 @@ impl Backend {
             parser: std::sync::Arc::new(
                 tokio::sync::Mutex::new(crate::parser::initialise_parser()),
             ),
+            md_parser: std::sync::Arc::new(tokio::sync::Mutex::new(MarkdownParser::default())),
             curr_doc: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             tree: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
+            md_tree: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             kw_docs: crate::keywords::load_kw_docs(),
         }
     }
@@ -75,6 +80,12 @@ impl tower_lsp::LanguageServer for Backend {
                     resolve_provider: Some(false),
                     work_done_progress_options: Default::default(),
                     all_commit_characters: None,
+                    trigger_characters: Some(vec![
+                        "/".to_string(),
+                        "-".to_string(),
+                        ":".to_string(),
+                        ".".to_string(),
+                    ]),
                     ..Default::default()
                 }),
                 ..tower_lsp::lsp_types::ServerCapabilities::default()
@@ -96,35 +107,42 @@ impl tower_lsp::LanguageServer for Backend {
         let mut curr_doc = self.curr_doc.lock().await;
         let mut tree = self.tree.lock().await;
         let mut parser = self.parser.lock().await;
+        let mut md_tree = self.md_tree.lock().await;
+        let mut md_parser = self.md_parser.lock().await;
 
         *curr_doc = Some(lsp_textdocument::FullTextDocument::new(
             params.text_document.language_id.clone(),
             params.text_document.version,
             params.text_document.text.clone(),
         ));
-        *tree = parser.parse(params.text_document.text, None);
+        *tree = parser.parse(&params.text_document.text, None);
+        *md_tree = md_parser.parse(params.text_document.text.as_bytes(), None);
     }
 
     async fn did_change(&self, params: tower_lsp::lsp_types::DidChangeTextDocumentParams) {
         let mut curr_doc = self.curr_doc.lock().await;
         let mut tree = self.tree.lock().await;
+        let mut md_tree = self.md_tree.lock().await;
 
         if let Some(ref mut doc) = *curr_doc {
             doc.update(&params.content_changes, params.text_document.version);
             for change in params.content_changes.iter() {
-                if let Some(ref mut curr_tree) = *tree {
-                    match text_doc_change_to_tree_sitter_edit(change, doc) {
-                        Ok(edit) => {
+                match text_doc_change_to_tree_sitter_edit(change, doc) {
+                    Ok(edit) => {
+                        if let Some(ref mut curr_tree) = *tree {
                             curr_tree.edit(&edit);
                         }
-                        Err(err) => {
-                            self.client
-                                .log_message(
-                                    tower_lsp::lsp_types::MessageType::ERROR,
-                                    format!("Bad edit info, failed to edit tree: {}", err),
-                                )
-                                .await;
+                        if let Some(ref mut curr_md_tree) = *md_tree {
+                            curr_md_tree.edit(&edit);
                         }
+                    }
+                    Err(err) => {
+                        self.client
+                            .log_message(
+                                tower_lsp::lsp_types::MessageType::ERROR,
+                                format!("Bad edit info, failed to edit tree: {}", err),
+                            )
+                            .await;
                     }
                 }
             }
@@ -197,14 +215,37 @@ impl tower_lsp::LanguageServer for Backend {
             _ => return Ok(None),
         };
 
-        let md = doc.get_content(None);
-        if let Some(crate::position::Element::Link { link }) =
-            crate::position::retrieve_element_at_position(
-                md,
-                params.text_document_position.position.line as usize,
-                params.text_document_position.position.character as usize,
+        self.client
+            .log_message(
+                tower_lsp::lsp_types::MessageType::INFO,
+                "Checking completion. Got doc ..",
             )
-        {
+            .await;
+
+        let md = doc.get_content(None);
+        let mut md_tree = self.md_tree.lock().await;
+        let mut md_parser = self.md_parser.lock().await;
+
+        let element = crate::position::retrieve_element_at_position(
+            md,
+            &mut md_parser,
+            &mut md_tree,
+            params.text_document_position.position.line as usize,
+            params.text_document_position.position.character as usize,
+        );
+        self.client
+            .log_message(
+                tower_lsp::lsp_types::MessageType::INFO,
+                format!("Checking completion. Got element {element:?}"),
+            )
+            .await;
+        if let Some(crate::position::Element::Link { link }) = element {
+            self.client
+                .log_message(
+                    tower_lsp::lsp_types::MessageType::INFO,
+                    format!("Checking completion for {link}"),
+                )
+                .await;
             let items = doc_pages_from_slugish(&link, rari_types::locale::Locale::EnUs)
                 .unwrap()
                 .into_iter()
