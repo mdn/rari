@@ -130,6 +130,7 @@ tabwriter = "1"
 axum = "0.8"
 tokio = "1"
 dotenvy = "0.15"
+socket2 = "0.5"
 
 [lints.clippy]
 print_stdout = "deny"

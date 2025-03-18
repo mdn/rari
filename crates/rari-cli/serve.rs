@@ -24,6 +24,9 @@ use rari_types::locale::Locale;
 use rari_types::Popularities;
 use rari_utils::io::read_to_string;
 use serde::Serialize;
+use socket2::{Domain, Socket, Type};
+use std::net::{SocketAddr, TcpListener};
+use tokio::net::TcpListener as TokioTcpListener;
 use tracing::{error, span, Level};
 
 static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -194,6 +197,15 @@ where
 }
 
 pub fn serve() -> Result<(), anyhow::Error> {
+    let socket = Socket::new(Domain::IPV6, Type::STREAM, Some(socket2::Protocol::TCP))?;
+    socket.set_only_v6(false)?;
+
+    let address: SocketAddr = "[::]:8083".parse()?;
+    socket.bind(&address.into())?;
+    socket.listen(128)?;
+
+    let std_listener: TcpListener = socket.into();
+    std_listener.set_nonblocking(true)?;
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -204,7 +216,7 @@ pub fn serve() -> Result<(), anyhow::Error> {
                 .route("/{locale}/search-index.json", get(get_search_index_handler))
                 .fallback(handler);
 
-            let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();
+            let listener: TokioTcpListener = TokioTcpListener::from_std(std_listener).unwrap();
             axum::serve(listener, app).await.unwrap();
         });
     Ok(())
