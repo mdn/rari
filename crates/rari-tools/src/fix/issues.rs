@@ -14,7 +14,7 @@ struct OLCMapper {
     column: usize,
 }
 
-pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
+pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     let file = page.full_path().to_string_lossy();
     let span = span!(
         Level::ERROR,
@@ -57,6 +57,12 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
             a.display_issue().line.cmp(&b.display_issue().line)
         }
     });
+
+    Ok(issues)
+}
+
+pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
+    let issues = get_fixable_issues(page)?;
 
     let raw = page.raw_content();
     let fixed = fix_issues(raw, &issues)?;

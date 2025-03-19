@@ -2800,6 +2800,7 @@ dependencies = [
  "anyhow",
  "lsp-textdocument",
  "rari-doc",
+ "rari-tools",
  "rari-types",
  "serde",
  "serde_json",

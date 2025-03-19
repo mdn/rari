@@ -150,7 +150,7 @@ pub fn handle_internal_link(
         };
         if (original_href != resolved_href || remove_href) && !en_us_fallback {
             if let Some(pos) = el.get_attribute("data-sourcepos") {
-                if let Some((start, _)) = pos.split_once('-') {
+                if let Some((start, end)) = pos.split_once('-') {
                     if let Some((line, col)) = start.split_once(':') {
                         let line = line
                             .parse::<i64>()
@@ -158,6 +158,18 @@ pub fn handle_internal_link(
                             .ok()
                             .unwrap_or(-1);
                         let col = col.parse::<i64>().ok().unwrap_or(0);
+                        let (end_line, end_col) = end
+                            .split_once(':')
+                            .map(|(end_line, end_col)| {
+                                let end_line = end_line
+                                    .parse::<i64>()
+                                    .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
+                                    .ok()
+                                    .unwrap_or(-1);
+                                let end_col = end_col.parse::<i64>().ok().unwrap_or(0);
+                                (end_line, end_col)
+                            })
+                            .unwrap_or((-1, -1));
                         let ic = get_issue_counter();
                         if remove_href {
                             tracing::warn!(
@@ -165,6 +177,8 @@ pub fn handle_internal_link(
                                 ic = ic,
                                 line = line,
                                 col = col,
+                                end_line = end_line,
+                                end_col = end_col,
                                 url = original_href,
                             );
                         } else {
@@ -179,6 +193,8 @@ pub fn handle_internal_link(
                                 ic = ic,
                                 line = line,
                                 col = col,
+                                end_line = end_line,
+                                end_col = end_col,
                                 url = original_href,
                                 redirect = resolved_href
                             );

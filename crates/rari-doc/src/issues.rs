@@ -28,6 +28,8 @@ pub struct Issue {
     pub ic: i64,
     pub col: i64,
     pub line: i64,
+    pub end_col: i64,
+    pub end_line: i64,
     pub file: String,
     pub fields: Vec<(&'static str, String)>,
     pub spans: Vec<(&'static str, String)>,
@@ -39,6 +41,8 @@ pub struct IssueEntries {
     ic: i64,
     col: i64,
     line: i64,
+    end_col: i64,
+    end_line: i64,
     file: String,
     entries: Vec<(&'static str, String)>,
 }
@@ -77,6 +81,10 @@ impl Visit for IssueEntries {
             self.col = value;
         } else if field.name() == "line" {
             self.line = value;
+        } else if field.name() == "end_col" {
+            self.end_col = value;
+        } else if field.name() == "end_line" {
+            self.end_line = value;
         }
     }
 }
@@ -103,6 +111,10 @@ impl Visit for Issue {
             self.col = value;
         } else if field.name() == "line" {
             self.line = value;
+        } else if field.name() == "end_col" {
+            self.end_col = value;
+        } else if field.name() == "end_line" {
+            self.end_line = value;
         }
     }
 }
@@ -131,6 +143,8 @@ where
             ic: 0,
             col: 0,
             line: 0,
+            end_col: 0,
+            end_line: 0,
             file: String::default(),
             fields: vec![],
             spans: vec![],
@@ -148,6 +162,12 @@ where
                 }
                 if entries.line != 0 {
                     issue.line = entries.line;
+                }
+                if entries.end_col != 0 {
+                    issue.end_col = entries.end_col;
+                }
+                if entries.end_line != 0 {
+                    issue.end_line = entries.end_line;
                 }
                 if !entries.file.is_empty() {
                     issue.file = entries.file.clone();
@@ -192,6 +212,8 @@ pub struct DisplayIssue {
     pub fixed: bool,
     pub line: Option<i64>,
     pub column: Option<i64>,
+    pub end_line: Option<i64>,
+    pub end_column: Option<i64>,
     pub source_context: Option<String>,
     pub filepath: Option<String>,
     pub name: IssueType,
@@ -255,6 +277,12 @@ impl DIssue {
             | DIssue::Unknown { display_issue } => display_issue,
         }
     }
+    pub fn content(&self) -> Option<&str> {
+        match self {
+            DIssue::BrokenLink { href, .. } | DIssue::Macros { href, .. } => href.as_deref(),
+            DIssue::Unknown { .. } => None,
+        }
+    }
 }
 
 pub type DisplayIssues = BTreeMap<&'static str, Vec<DIssue>>;
@@ -272,6 +300,16 @@ impl DIssue {
                 None
             } else {
                 Some(issue.line)
+            },
+            end_column: if issue.end_col == 0 {
+                None
+            } else {
+                Some(issue.end_col)
+            },
+            end_line: if issue.end_line == 0 {
+                None
+            } else {
+                Some(issue.end_line)
             },
             ..Default::default()
         };

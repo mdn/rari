@@ -3,7 +3,6 @@ use std::sync::LazyLock;
 #[derive(Clone, Debug)]
 pub enum Element {
     Link { link: String },
-    Unknown { name: String, kind: String },
 }
 
 pub(crate) fn retrieve_element_at_position(
@@ -38,10 +37,7 @@ pub(crate) fn retrieve_element_at_position(
             .map(|text| Element::Link {
                 link: text.to_string(),
             }),
-        s => Some(Element::Unknown {
-            name: s.to_string(),
-            kind: format!("{node:?}"),
-        }),
+        _ => None,
     }
 }
 

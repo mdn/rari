@@ -1,4 +1,13 @@
-use rari_doc::{find::doc_pages_from_slugish, pages::page::PageLike};
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use rari_doc::find::doc_pages_from_slugish;
+use rari_doc::pages::page::{Page, PageLike};
+use rari_doc::pages::types::doc::doc_from_raw;
+use rari_tools::fix::issues::get_fixable_issues;
+use tower_lsp::lsp_types::{
+    Diagnostic, DiagnosticSeverity, DidSaveTextDocumentParams, Position, Range,
+};
 use tree_sitter_md::MarkdownParser;
 
 fn text_doc_change_to_tree_sitter_edit(
@@ -36,6 +45,7 @@ fn text_doc_change_to_tree_sitter_edit(
 
 pub(crate) struct Backend {
     client: tower_lsp::Client,
+    curr_doc_path: std::sync::Arc<tokio::sync::Mutex<Option<PathBuf>>>,
     parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter::Parser>>,
     md_parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter_md::MarkdownParser>>,
     curr_doc: std::sync::Arc<tokio::sync::Mutex<Option<lsp_textdocument::FullTextDocument>>>,
@@ -51,6 +61,7 @@ impl Backend {
             parser: std::sync::Arc::new(
                 tokio::sync::Mutex::new(crate::parser::initialise_parser()),
             ),
+            curr_doc_path: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             md_parser: std::sync::Arc::new(tokio::sync::Mutex::new(MarkdownParser::default())),
             curr_doc: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             tree: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
@@ -75,6 +86,7 @@ impl tower_lsp::LanguageServer for Backend {
                 text_document_sync: Some(tower_lsp::lsp_types::TextDocumentSyncCapability::Kind(
                     tower_lsp::lsp_types::TextDocumentSyncKind::INCREMENTAL,
                 )),
+
                 hover_provider: Some(tower_lsp::lsp_types::HoverProviderCapability::Simple(true)),
                 completion_provider: Some(tower_lsp::lsp_types::CompletionOptions {
                     resolve_provider: Some(false),
@@ -105,6 +117,7 @@ impl tower_lsp::LanguageServer for Backend {
 
     async fn did_open(&self, params: tower_lsp::lsp_types::DidOpenTextDocumentParams) {
         let mut curr_doc = self.curr_doc.lock().await;
+        let mut curr_doc_path = self.curr_doc_path.lock().await;
         let mut tree = self.tree.lock().await;
         let mut parser = self.parser.lock().await;
         let mut md_tree = self.md_tree.lock().await;
@@ -115,6 +128,7 @@ impl tower_lsp::LanguageServer for Backend {
             params.text_document.version,
             params.text_document.text.clone(),
         ));
+        *curr_doc_path = params.text_document.uri.to_file_path().ok();
         *tree = parser.parse(&params.text_document.text, None);
         *md_tree = md_parser.parse(params.text_document.text.as_bytes(), None);
     }
@@ -299,5 +313,71 @@ impl tower_lsp::LanguageServer for Backend {
         }
 
         Ok(None)
+    }
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        let curr_doc = self.curr_doc.lock().await;
+        let curr_doc_path = self.curr_doc_path.lock().await;
+
+        let (doc, path) = match (&*curr_doc, &*curr_doc_path) {
+            (Some(doc), Some(path)) => (doc, path),
+            _ => return,
+        };
+
+        let page = match doc_from_raw(doc.get_content(None).to_string(), path) {
+            Ok(doc) => Page::Doc(Arc::new(doc)),
+            Err(e) => {
+                self.client
+                    .log_message(tower_lsp::lsp_types::MessageType::ERROR, format!("{e}"))
+                    .await;
+                return;
+            }
+        };
+
+        let issues = match get_fixable_issues(&page) {
+            Ok(issues) => issues,
+            Err(e) => {
+                self.client
+                    .log_message(tower_lsp::lsp_types::MessageType::ERROR, format!("{e}"))
+                    .await;
+                return;
+            }
+        };
+
+        self.client
+            .log_message(
+                tower_lsp::lsp_types::MessageType::INFO,
+                format!("Issues: {issues:?}"),
+            )
+            .await;
+        let diagnostics = issues
+            .into_iter()
+            .map(|issue| {
+                let display_issue = issue.display_issue();
+                Diagnostic {
+                    severity: Some(DiagnosticSeverity::WARNING),
+                    message: display_issue.explanation.clone().unwrap_or_default(),
+                    range: Range::new(
+                        Position::new(
+                            display_issue.line.unwrap_or(1).saturating_sub(1) as u32,
+                            display_issue.column.unwrap_or(1).saturating_sub(1) as u32,
+                        ),
+                        Position::new(
+                            display_issue.end_line.unwrap_or(1).saturating_sub(1) as u32,
+                            display_issue.end_column.unwrap_or(1) as u32,
+                        ),
+                    ),
+                    ..Default::default()
+                }
+            })
+            .collect::<Vec<_>>();
+        self.client
+            .log_message(
+                tower_lsp::lsp_types::MessageType::INFO,
+                format!("Diagnostics: {diagnostics:?}"),
+            )
+            .await;
+        self.client
+            .publish_diagnostics(params.text_document.uri.clone(), diagnostics, None)
+            .await;
     }
 }
