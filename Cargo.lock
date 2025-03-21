@@ -4135,6 +4135,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-mdn"
 version = "0.1.0"
+source = "git+https://github.com/fiji-flo/tree-sitter-mdn#2896bf9e242199884ca503531758a7412741bfa5"
 dependencies = [
  "cc",
  "tree-sitter-language",

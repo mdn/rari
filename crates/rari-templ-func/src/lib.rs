@@ -1,8 +1,8 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::punctuated::Punctuated;
-use syn::{parse_macro_input, parse_quote};
+use syn::{parse_macro_input, parse_quote, Lit};
 
 fn is_option(path: &syn::TypePath) -> bool {
     let idents_of_path = path.path.segments.iter().fold(String::new(), |mut acc, v| {
@@ -30,7 +30,46 @@ fn is_option(path: &syn::TypePath) -> bool {
 /// [RariEnv] reference.
 #[proc_macro_attribute]
 pub fn rari_f(_: TokenStream, input: TokenStream) -> TokenStream {
+    // Parse the input as a function.
     let mut function = parse_macro_input!(input as syn::ItemFn);
+
+    // Extract doc comments from attributes.
+    let doc_comments: Vec<String> = function
+        .attrs
+        .iter()
+        .filter(|attr| matches!(attr.style, syn::AttrStyle::Outer))
+        .filter_map(|attr| {
+            if let syn::Meta::NameValue(meta) = &attr.meta {
+                if let syn::Expr::Lit(lit) = &meta.value {
+                    if let Lit::Str(value) = &lit.lit {
+                        Some(value.value())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+    let doc_string = doc_comments.join("\n");
+
+    let doc_static_ident =
+        format_ident!("DOC_FOR_{}", function.sig.ident.to_string().to_uppercase());
+    let outline_static_ident = format_ident!(
+        "OUTLINE_FOR_{}",
+        function.sig.ident.to_string().to_uppercase()
+    );
+
+    let doc = quote! {
+        pub static #doc_static_ident: &str = #doc_string;
+    };
+    let original_sig = &function.sig.to_token_stream().to_string();
+    let outline = quote! {
+        pub static #outline_static_ident: &str = #original_sig;
+    };
 
     let mut dup = function.clone();
     dup.sig.ident = format_ident!("{}_{}", dup.sig.ident, "any");
@@ -82,6 +121,8 @@ pub fn rari_f(_: TokenStream, input: TokenStream) -> TokenStream {
         .inputs
         .insert(0, parse_quote!(env: &::rari_types::RariEnv));
     proc_macro::TokenStream::from(quote!(
+        #doc
+        #outline
         #[allow(dead_code)]
         #function
         #dup

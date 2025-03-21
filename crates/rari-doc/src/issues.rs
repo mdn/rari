@@ -7,7 +7,7 @@ use std::{fmt, iter};
 
 use dashmap::DashMap;
 use schemars::JsonSchema;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id};
 use tracing::{Event, Subscriber};
@@ -202,7 +202,7 @@ pub enum Additional {
     None,
 }
 
-#[derive(Serialize, Debug, Default, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DisplayIssue {
     pub id: i64,
@@ -219,7 +219,7 @@ pub struct DisplayIssue {
     pub name: IssueType,
 }
 
-#[derive(Serialize, Debug, Default, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, JsonSchema)]
 #[serde(rename_all = "PascalCase")]
 pub enum IssueType {
     TemplRedirectedLink,
@@ -248,7 +248,7 @@ impl FromStr for IssueType {
     }
 }
 
-#[derive(Serialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum DIssue {
     BrokenLink {

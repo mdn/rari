@@ -1,12 +1,18 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use rari_doc::find::doc_pages_from_slugish;
+use rari_doc::issues::{DIssue, DisplayIssue};
 use rari_doc::pages::page::{Page, PageLike};
 use rari_doc::pages::types::doc::doc_from_raw;
 use rari_tools::fix::issues::get_fixable_issues;
 use tower_lsp::lsp_types::{
-    Diagnostic, DiagnosticSeverity, DidSaveTextDocumentParams, Position, Range,
+    CodeAction, CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability,
+    CodeActionResponse, CompletionOptions, Diagnostic, DiagnosticSeverity,
+    DidSaveTextDocumentParams, DocumentChanges, ExecuteCommandOptions, ExecuteCommandParams,
+    HoverProviderCapability, InitializeParams, InitializeResult, OneOf,
+    OptionalVersionedTextDocumentIdentifier, Position, Range, ServerCapabilities, ServerInfo,
+    TextDocumentEdit, TextDocumentSyncCapability, TextEdit, Url, WorkDoneProgressOptions,
+    WorkspaceEdit,
 };
 use tree_sitter_md::MarkdownParser;
 
@@ -45,7 +51,7 @@ fn text_doc_change_to_tree_sitter_edit(
 
 pub(crate) struct Backend {
     client: tower_lsp::Client,
-    curr_doc_path: std::sync::Arc<tokio::sync::Mutex<Option<PathBuf>>>,
+    curr_doc_uri: std::sync::Arc<tokio::sync::Mutex<Option<Url>>>,
     parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter::Parser>>,
     md_parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter_md::MarkdownParser>>,
     curr_doc: std::sync::Arc<tokio::sync::Mutex<Option<lsp_textdocument::FullTextDocument>>>,
@@ -61,7 +67,7 @@ impl Backend {
             parser: std::sync::Arc::new(
                 tokio::sync::Mutex::new(crate::parser::initialise_parser()),
             ),
-            curr_doc_path: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
+            curr_doc_uri: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             md_parser: std::sync::Arc::new(tokio::sync::Mutex::new(MarkdownParser::default())),
             curr_doc: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             tree: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
@@ -75,20 +81,20 @@ impl Backend {
 impl tower_lsp::LanguageServer for Backend {
     async fn initialize(
         &self,
-        _: tower_lsp::lsp_types::InitializeParams,
-    ) -> tower_lsp::jsonrpc::Result<tower_lsp::lsp_types::InitializeResult> {
-        Ok(tower_lsp::lsp_types::InitializeResult {
-            server_info: Some(tower_lsp::lsp_types::ServerInfo {
+        _: InitializeParams,
+    ) -> tower_lsp::jsonrpc::Result<InitializeResult> {
+        Ok(InitializeResult {
+            server_info: Some(ServerInfo {
                 name: String::from("mdn-lsp"),
                 version: Some(String::from("0.0.1")),
             }),
-            capabilities: tower_lsp::lsp_types::ServerCapabilities {
-                text_document_sync: Some(tower_lsp::lsp_types::TextDocumentSyncCapability::Kind(
+            capabilities: ServerCapabilities {
+                text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     tower_lsp::lsp_types::TextDocumentSyncKind::INCREMENTAL,
                 )),
-
-                hover_provider: Some(tower_lsp::lsp_types::HoverProviderCapability::Simple(true)),
-                completion_provider: Some(tower_lsp::lsp_types::CompletionOptions {
+                code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
+                completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(false),
                     work_done_progress_options: Default::default(),
                     all_commit_characters: None,
@@ -100,7 +106,7 @@ impl tower_lsp::LanguageServer for Backend {
                     ]),
                     ..Default::default()
                 }),
-                ..tower_lsp::lsp_types::ServerCapabilities::default()
+                ..ServerCapabilities::default()
             },
         })
     }
@@ -117,7 +123,7 @@ impl tower_lsp::LanguageServer for Backend {
 
     async fn did_open(&self, params: tower_lsp::lsp_types::DidOpenTextDocumentParams) {
         let mut curr_doc = self.curr_doc.lock().await;
-        let mut curr_doc_path = self.curr_doc_path.lock().await;
+        let mut curr_doc_path = self.curr_doc_uri.lock().await;
         let mut tree = self.tree.lock().await;
         let mut parser = self.parser.lock().await;
         let mut md_tree = self.md_tree.lock().await;
@@ -128,7 +134,7 @@ impl tower_lsp::LanguageServer for Backend {
             params.text_document.version,
             params.text_document.text.clone(),
         ));
-        *curr_doc_path = params.text_document.uri.to_file_path().ok();
+        *curr_doc_path = Some(params.text_document.uri.clone());
         *tree = parser.parse(&params.text_document.text, None);
         *md_tree = md_parser.parse(params.text_document.text.as_bytes(), None);
     }
@@ -314,35 +320,14 @@ impl tower_lsp::LanguageServer for Backend {
 
         Ok(None)
     }
+
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let curr_doc = self.curr_doc.lock().await;
-        let curr_doc_path = self.curr_doc_path.lock().await;
-
-        let (doc, path) = match (&*curr_doc, &*curr_doc_path) {
-            (Some(doc), Some(path)) => (doc, path),
-            _ => return,
+        let issues = self.update_issues().await;
+        let issues = if let Some(issues) = issues.as_deref() {
+            issues
+        } else {
+            return;
         };
-
-        let page = match doc_from_raw(doc.get_content(None).to_string(), path) {
-            Ok(doc) => Page::Doc(Arc::new(doc)),
-            Err(e) => {
-                self.client
-                    .log_message(tower_lsp::lsp_types::MessageType::ERROR, format!("{e}"))
-                    .await;
-                return;
-            }
-        };
-
-        let issues = match get_fixable_issues(&page) {
-            Ok(issues) => issues,
-            Err(e) => {
-                self.client
-                    .log_message(tower_lsp::lsp_types::MessageType::ERROR, format!("{e}"))
-                    .await;
-                return;
-            }
-        };
-
         self.client
             .log_message(
                 tower_lsp::lsp_types::MessageType::INFO,
@@ -350,22 +335,14 @@ impl tower_lsp::LanguageServer for Backend {
             )
             .await;
         let diagnostics = issues
-            .into_iter()
+            .iter()
             .map(|issue| {
                 let display_issue = issue.display_issue();
                 Diagnostic {
                     severity: Some(DiagnosticSeverity::WARNING),
                     message: display_issue.explanation.clone().unwrap_or_default(),
-                    range: Range::new(
-                        Position::new(
-                            display_issue.line.unwrap_or(1).saturating_sub(1) as u32,
-                            display_issue.column.unwrap_or(1).saturating_sub(1) as u32,
-                        ),
-                        Position::new(
-                            display_issue.end_line.unwrap_or(1).saturating_sub(1) as u32,
-                            display_issue.end_column.unwrap_or(1) as u32,
-                        ),
-                    ),
+                    range: issue_line_col_to_range(display_issue),
+                    data: serde_json::to_value(issue).ok(),
                     ..Default::default()
                 }
             })
@@ -380,4 +357,106 @@ impl tower_lsp::LanguageServer for Backend {
             .publish_diagnostics(params.text_document.uri.clone(), diagnostics, None)
             .await;
     }
+
+    async fn code_action(
+        &self,
+        params: CodeActionParams,
+    ) -> tower_lsp::jsonrpc::Result<Option<CodeActionResponse>> {
+        let curr_doc = self.curr_doc.lock().await;
+        let curr_doc_uri = self.curr_doc_uri.lock().await;
+        if let Some((Some(issue), range)) = params.context.diagnostics.first().map(|d| {
+            (
+                d.data
+                    .clone()
+                    .and_then(|data| serde_json::from_value::<DIssue>(data).ok()),
+                d.range,
+            )
+        }) {
+            let (doc, uri) = match (&*curr_doc, &*curr_doc_uri) {
+                (Some(doc), Some(uri)) => (doc, uri.clone()),
+                _ => {
+                    return Ok(None);
+                }
+            };
+            let new_text = doc.get_content(Some(range)).replace(
+                issue.content().unwrap_or("<__never_ever__>"),
+                issue
+                    .display_issue()
+                    .suggestion
+                    .as_deref()
+                    .unwrap_or("<__invalid_suggestion__>"),
+            );
+            Ok(Some(vec![CodeActionOrCommand::CodeAction(CodeAction {
+                title: "fix issue".to_string(),
+                edit: Some(WorkspaceEdit {
+                    changes: None,
+                    document_changes: Some(DocumentChanges::Edits(vec![TextDocumentEdit {
+                        edits: vec![OneOf::Left(TextEdit { range, new_text })],
+                        text_document: OptionalVersionedTextDocumentIdentifier {
+                            uri,
+                            version: None,
+                        },
+                    }])),
+                    change_annotations: None,
+                }),
+                ..Default::default()
+            })]))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+impl Backend {
+    async fn update_issues(&self) -> Option<Vec<DIssue>> {
+        let curr_doc = self.curr_doc.lock().await;
+        let curr_doc_uri = self.curr_doc_uri.lock().await;
+
+        let (doc, path) = match (
+            &*curr_doc,
+            curr_doc_uri
+                .as_ref()
+                .and_then(|uri| uri.to_file_path().ok()),
+        ) {
+            (Some(doc), Some(path)) => (doc, path),
+            _ => {
+                return None;
+            }
+        };
+
+        let page = match doc_from_raw(doc.get_content(None).to_string(), path) {
+            Ok(doc) => Page::Doc(Arc::new(doc)),
+            Err(e) => {
+                self.client
+                    .log_message(tower_lsp::lsp_types::MessageType::ERROR, format!("{e}"))
+                    .await;
+                return None;
+            }
+        };
+
+        let issues = match get_fixable_issues(&page) {
+            Ok(issues) => issues,
+            Err(e) => {
+                self.client
+                    .log_message(tower_lsp::lsp_types::MessageType::ERROR, format!("{e}"))
+                    .await;
+                return None;
+            }
+        };
+
+        Some(issues)
+    }
+}
+
+fn issue_line_col_to_range(display_issue: &DisplayIssue) -> Range {
+    Range::new(
+        Position::new(
+            display_issue.line.unwrap_or(1).saturating_sub(1) as u32,
+            display_issue.column.unwrap_or(1).saturating_sub(1) as u32,
+        ),
+        Position::new(
+            display_issue.end_line.unwrap_or(1).saturating_sub(1) as u32,
+            display_issue.end_column.unwrap_or(1) as u32,
+        ),
+    )
 }
