@@ -4,6 +4,7 @@ pub mod badges;
 pub mod banners;
 pub mod compat;
 pub mod css_ref;
+pub mod css_ref_list;
 pub mod cssinfo;
 pub mod csssyntax;
 pub mod echo;
@@ -83,6 +84,7 @@ pub fn invoke(
         "listgroups" => api_list_specs::api_list_specs_any,
         "apilistalpha" => api_list_alpha::api_list_alpha_any,
         "css_ref" => css_ref::css_ref_any,
+        "css_ref_list" => css_ref_list::css_ref_list_any,
 
         // hacky
         "glossarydisambiguation" => glossarydisambiguation::glossarydisambiguation_any,
