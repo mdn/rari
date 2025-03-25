@@ -33,12 +33,13 @@ impl Deps {
         if let Some(package_json) =
             std::env::var_os("DEPS_PACKAGE_JSON").or_else(|| std::env::var_os("deps_package_json"))
         {
+            println!("{package_json:?}");
             let path = Path::new(&package_json);
-            if let Some(deps) = fs::read_to_string(path)
-                .ok()
-                .and_then(|json_str| serde_json::from_str(&json_str).ok())
-            {
-                return Ok(deps);
+            if let Some(deps_json) = fs::read_to_string(path).ok().and_then(|json_str| {
+                let s = serde_json::from_str::<DepsPackageJson>(&json_str);
+                s.ok()
+            }) {
+                return Ok(deps_json.dependencies);
             } else {
                 tracing::error!("unable to parse {}", path.display());
             }

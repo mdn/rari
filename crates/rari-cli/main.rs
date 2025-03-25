@@ -180,7 +180,7 @@ struct ServeArgs {
 struct BuildArgs {
     #[arg(short, long, help = "Build only content <FILES>")]
     files: Vec<PathBuf>,
-    #[arg(short, long, help = "Build only content listed in <FILE_LIST>")]
+    #[arg(long, help = "Build only content listed in <FILE_LIST>")]
     file_list: Option<PathBuf>,
     #[arg(short, long, help = "Abort build on warnings")]
     deny_warnings: bool,
