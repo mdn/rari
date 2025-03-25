@@ -8,10 +8,9 @@ use rari_tools::fix::issues::get_fixable_issues;
 use tower_lsp::lsp_types::{
     CodeAction, CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability,
     CodeActionResponse, CompletionOptions, Diagnostic, DiagnosticSeverity,
-    DidSaveTextDocumentParams, DocumentChanges, ExecuteCommandOptions, ExecuteCommandParams,
-    HoverProviderCapability, InitializeParams, InitializeResult, OneOf,
-    OptionalVersionedTextDocumentIdentifier, Position, Range, ServerCapabilities, ServerInfo,
-    TextDocumentEdit, TextDocumentSyncCapability, TextEdit, Url, WorkDoneProgressOptions,
+    DidSaveTextDocumentParams, DocumentChanges, HoverProviderCapability, InitializeParams,
+    InitializeResult, OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range,
+    ServerCapabilities, ServerInfo, TextDocumentEdit, TextDocumentSyncCapability, TextEdit, Url,
     WorkspaceEdit,
 };
 use tree_sitter_md::MarkdownParser;
