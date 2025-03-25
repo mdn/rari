@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.31](https://github.com/mdn/rari/compare/v0.1.30...v0.1.31) (2025-03-25)
+
+
+### Features
+
+* **templ:** add css_ref_list ([#177](https://github.com/mdn/rari/issues/177)) ([83f8241](https://github.com/mdn/rari/commit/83f8241bb7ab1a6b6a0d5eaff9f80180cb0b0236))
+
+
+### Bug Fixes
+
+* **deps:** fix package.json support ([5141e36](https://github.com/mdn/rari/commit/5141e36a95995a2fa438c190238ffdbe58aa4dde))
+* **templ:** render glossary marco better in GlossaryDisambiguation ([8de1517](https://github.com/mdn/rari/commit/8de15175064dc66b31fad65942c8d015e43eeb34))
+* update paths for SVG/MathML section move ([#156](https://github.com/mdn/rari/issues/156)) ([2a80835](https://github.com/mdn/rari/commit/2a808351fa5a9267bfe5b3bf25530480d4e41130))
+
 ## [0.1.30](https://github.com/mdn/rari/compare/v0.1.29...v0.1.30) (2025-03-14)
 
 
