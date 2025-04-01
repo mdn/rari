@@ -22,7 +22,7 @@ use rari_utils::concat_strs;
 
 use crate::error::{DocError, UrlError};
 use crate::pages::page::{PageCategory, PageLike};
-use crate::pages::types::generic::GenericPage;
+use crate::pages::types::generic::Generic;
 use crate::pages::types::spa::SPA;
 
 /// Converts a URL slug to a folder path by replacing certain special characters that are not allowed in path names
@@ -135,7 +135,7 @@ pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, UrlError> {
             let slug = slug.strip_prefix('/').unwrap_or(slug);
             if SPA::is_spa(slug, locale) {
                 (PageCategory::SPA, slug)
-            } else if GenericPage::is_generic(slug, locale) {
+            } else if Generic::is_generic(slug, locale) {
                 (PageCategory::GenericPage, slug)
             } else {
                 return Err(UrlError::InvalidUrl);
