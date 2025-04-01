@@ -13,6 +13,9 @@ use rari_types::locale::{Locale, Native};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use super::templates::{
+    BlogPage, ContributorSpotlightPage, CurriculumPage, DocPage, GenericPage, HomePage, SpaPage,
+};
 use super::types::contributors::Usernames;
 use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
 use crate::issues::DisplayIssues;
@@ -605,19 +608,19 @@ pub struct JsonContributorSpotlightPage {
 #[serde(untagged)]
 pub enum BuiltPage {
     /// Represents a standard documentation page, backed by a Markdown source.
-    Doc(Box<JsonDocPage>),
+    Doc(Box<DocPage>),
     /// Represents a curriculum page, backed by a Markdown source
-    Curriculum(Box<JsonCurriculumPage>),
+    Curriculum(Box<CurriculumPage>),
     /// Represents a blog post, backed by a Markdown source
-    BlogPost(Box<JsonBlogPostPage>),
+    BlogPost(Box<BlogPage>),
     /// Represents a contributor spotlight page, backed by a Markdown source.
-    ContributorSpotlight(Box<JsonContributorSpotlightPage>),
+    ContributorSpotlight(Box<ContributorSpotlightPage>),
     /// Represents a generic page, i.e Observatory FAQ, About pages, etc.
-    GenericPage(Box<JsonGenericPage>),
+    GenericPage(Box<GenericPage>),
     /// Represents a basic single-page application. i.e. AI Help, Observatory, etc.
-    SPA(Box<JsonSPAPage>),
+    SPA(Box<SpaPage>),
     /// Represents the home page.
-    Home(Box<JsonHomePage>),
+    Home(Box<HomePage>),
 }
 
 /// Represents the previous and next navigation links by slug.
@@ -707,7 +710,7 @@ pub struct UrlNTitle {
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "SPAPage")]
-pub struct JsonSPAPage {
+pub struct JsonSpaPage {
     pub slug: &'static str,
     pub page_title: &'static str,
     pub page_description: Option<&'static str>,

@@ -11,11 +11,11 @@ use rari_types::RariEnv;
 
 use super::json::BuiltPage;
 use super::types::contributors::contributor_spotlight_from_url;
-use super::types::generic::GenericPage;
+use super::types::generic::Generic;
 use crate::error::DocError;
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::contributors::ContributorSpotlight;
-use crate::pages::types::curriculum::CurriculumPage;
+use crate::pages::types::curriculum::Curriculum;
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
 use crate::resolve::{url_meta_from, UrlMeta};
@@ -31,9 +31,9 @@ pub enum Page {
     Doc(Arc<Doc>),
     BlogPost(Arc<BlogPost>),
     SPA(Arc<SPA>),
-    Curriculum(Arc<CurriculumPage>),
+    Curriculum(Arc<Curriculum>),
     ContributorSpotlight(Arc<ContributorSpotlight>),
-    GenericPage(Arc<GenericPage>),
+    GenericPage(Arc<Generic>),
 }
 
 /// Represents the category of a page in the documentation system.
@@ -117,7 +117,7 @@ impl Page {
                 url.to_string(),
                 PageCategory::BlogPost,
             )),
-            PageCategory::Curriculum => CurriculumPage::page_from_url(url).ok_or(
+            PageCategory::Curriculum => Curriculum::page_from_url(url).ok_or(
                 DocError::PageNotFound(url.to_string(), PageCategory::Curriculum),
             ),
             PageCategory::ContributorSpotlight => contributor_spotlight_from_url(url, locale)
@@ -125,7 +125,7 @@ impl Page {
                     url.to_string(),
                     PageCategory::ContributorSpotlight,
                 )),
-            PageCategory::GenericPage => GenericPage::from_slug(slug, locale).ok_or(
+            PageCategory::GenericPage => Generic::from_slug(slug, locale).ok_or(
                 DocError::PageNotFound(url.to_string(), PageCategory::GenericPage),
             ),
         }
@@ -225,9 +225,9 @@ impl PageReader<Page> for Page {
             PageCategory::Doc => Doc::read(path, locale),
             PageCategory::BlogPost => BlogPost::read(path, locale),
             PageCategory::SPA => SPA::read(path, locale),
-            PageCategory::Curriculum => CurriculumPage::read(path, locale),
+            PageCategory::Curriculum => Curriculum::read(path, locale),
             PageCategory::ContributorSpotlight => ContributorSpotlight::read(path, locale),
-            PageCategory::GenericPage => GenericPage::read(path, locale),
+            PageCategory::GenericPage => Generic::read(path, locale),
         }
     }
 }

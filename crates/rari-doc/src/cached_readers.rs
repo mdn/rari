@@ -42,11 +42,12 @@ use crate::contributors::{WikiHistories, WikiHistory};
 use crate::error::DocError;
 use crate::html::sidebar::{MetaSidebar, Sidebar};
 use crate::pages::page::{Page, PageLike};
+use crate::pages::templates::SpaBuildTemplate;
 use crate::pages::types::blog::{Author, AuthorFrontmatter, BlogPost, BlogPostBuildMeta};
 use crate::pages::types::contributors::ContributorSpotlight;
-use crate::pages::types::curriculum::{CurriculumIndexEntry, CurriculumPage};
+use crate::pages::types::curriculum::{Curriculum, CurriculumIndexEntry};
 use crate::pages::types::doc::Doc;
-use crate::pages::types::generic::GenericPage;
+use crate::pages::types::generic::Generic;
 use crate::reader::read_docs_parallel;
 use crate::sidebars::jsref;
 use crate::translations::init_translations_from_static_docs;
@@ -244,25 +245,23 @@ fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
 
 fn gather_generic_content() -> Result<HashMap<String, Page>, DocError> {
     if let Some(root) = generic_content_root() {
-        Ok(
-            read_docs_parallel::<Page, GenericPage>(&[root], Some("*.md"))?
-                .into_iter()
-                .filter_map(|page| {
-                    if let Page::GenericPage(generic) = page {
-                        Some(generic)
-                    } else {
-                        None
-                    }
-                })
-                .flat_map(|generic| {
-                    Locale::for_generic_and_spas()
-                        .iter()
-                        .map(|locale| Page::GenericPage(Arc::new(generic.as_locale(*locale))))
-                        .collect::<Vec<_>>()
-                })
-                .map(|page| (page.url().to_ascii_lowercase(), page))
-                .collect(),
-        )
+        Ok(read_docs_parallel::<Page, Generic>(&[root], Some("*.md"))?
+            .into_iter()
+            .filter_map(|page| {
+                if let Page::GenericPage(generic) = page {
+                    Some(generic)
+                } else {
+                    None
+                }
+            })
+            .flat_map(|generic| {
+                Locale::for_generic_and_spas()
+                    .iter()
+                    .map(|locale| Page::GenericPage(Arc::new(generic.as_locale(*locale))))
+                    .collect::<Vec<_>>()
+            })
+            .map(|page| (page.url().to_ascii_lowercase(), page))
+            .collect())
     } else {
         Err(DocError::NoGenericContentRoot)
     }
@@ -272,7 +271,7 @@ fn gather_curriculum() -> Result<CurriculumFiles, DocError> {
     if let Some(curriculum_root) = curriculum_root() {
         let curriculum_root = curriculum_root.join("curriculum");
         let pages: Vec<Page> =
-            read_docs_parallel::<Page, CurriculumPage>(&[curriculum_root], Some("*.md"))?
+            read_docs_parallel::<Page, Curriculum>(&[curriculum_root], Some("*.md"))?
                 .into_iter()
                 .collect();
         let by_url: HashMap<String, Page> = pages
@@ -779,4 +778,5 @@ pub struct BuildSPA {
     pub trailing_slash: bool,
     pub en_us_only: bool,
     pub data: SPAData,
+    pub template: SpaBuildTemplate,
 }

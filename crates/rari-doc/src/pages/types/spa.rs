@@ -18,9 +18,10 @@ use crate::error::DocError;
 use crate::helpers::title::page_title;
 use crate::pages::json::{
     BlogIndex, BuiltPage, ItemContainer, JsonBlogPostDoc, JsonBlogPostPage, JsonHomePage,
-    JsonHomePageSPAHyData, JsonSPAPage,
+    JsonHomePageSPAHyData, JsonSpaPage,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
+use crate::pages::templates::{BlogPage, HomePage, SpaBuildTemplate, SpaPage};
 use crate::pages::types::blog::BlogMeta;
 
 #[derive(Debug, Clone)]
@@ -33,6 +34,7 @@ pub struct SPA {
     pub data: SPAData,
     pub base_slug: Cow<'static, str>,
     pub page_description: Option<&'static str>,
+    pub template: SpaBuildTemplate,
 }
 impl SPA {
     pub fn from_url(url: &str) -> Option<Page> {
@@ -66,6 +68,7 @@ impl SPA {
                     data: build_spa.data,
                     base_slug: Cow::Owned(concat_strs!("/", locale.as_url_str(), "/")),
                     page_description: build_spa.page_description.as_deref(),
+                    template: build_spa.template,
                 })))
             }
         })
@@ -96,79 +99,91 @@ impl SPA {
 
     pub fn as_built_doc(&self) -> Result<BuiltPage, DocError> {
         match &self.data {
-            SPAData::BlogIndex => Ok(BuiltPage::BlogPost(Box::new(JsonBlogPostPage {
-                doc: JsonBlogPostDoc {
-                    title: self.title().to_string(),
-                    mdn_url: self.url().to_owned(),
-                    native: self.locale().into(),
-                    page_title: page_title(self, true)?,
+            SPAData::BlogIndex => Ok(BuiltPage::BlogPost(Box::new(BlogPage::BlogIndex(
+                JsonBlogPostPage {
+                    doc: JsonBlogPostDoc {
+                        title: self.title().to_string(),
+                        mdn_url: self.url().to_owned(),
+                        native: self.locale().into(),
+                        page_title: page_title(self, true)?,
+                        locale: self.locale(),
+                        ..Default::default()
+                    },
+                    url: self.url().to_owned(),
                     locale: self.locale(),
+                    blog_meta: None,
+                    hy_data: Some(BlogIndex {
+                        posts: blog_files()
+                            .sorted_meta
+                            .iter()
+                            .rev()
+                            .map(BlogMeta::from)
+                            .map(|mut m| {
+                                m.links = Default::default();
+                                m
+                            })
+                            .collect(),
+                    }),
+                    page_title: self.title().to_owned(),
                     ..Default::default()
                 },
-                url: self.url().to_owned(),
-                locale: self.locale(),
-                blog_meta: None,
-                hy_data: Some(BlogIndex {
-                    posts: blog_files()
-                        .sorted_meta
-                        .iter()
-                        .rev()
-                        .map(BlogMeta::from)
-                        .map(|mut m| {
-                            m.links = Default::default();
-                            m
-                        })
-                        .collect(),
-                }),
-                page_title: self.title().to_owned(),
-                ..Default::default()
-            }))),
-            SPAData::BasicSPA(basic_spa) => Ok(BuiltPage::SPA(Box::new(JsonSPAPage {
-                slug: self.slug,
-                page_title: self.page_title,
-                page_description: self.page_description,
-                only_follow: basic_spa.only_follow,
-                no_indexing: basic_spa.no_indexing,
-                page_not_found: false,
-                url: concat_strs!(self.base_slug.as_ref(), self.slug),
-            }))),
-            SPAData::NotFound => Ok(BuiltPage::SPA(Box::new(JsonSPAPage {
-                slug: self.slug,
-                page_title: self.page_title,
-                page_description: self.page_description,
-                only_follow: false,
-                no_indexing: true,
-                page_not_found: true,
-                url: concat_strs!(self.base_slug.as_ref(), self.slug),
-            }))),
-            SPAData::HomePage => Ok(BuiltPage::Home(Box::new(JsonHomePage {
-                url: concat_strs!("/", self.locale().as_url_str(), "/", self.slug),
-                page_title: self.page_title,
-                hy_data: JsonHomePageSPAHyData {
-                    page_description: self.page_description,
-                    featured_articles: featured_articles(
-                        &[
-                            "/en-US/blog/javascript-temporal-is-coming/",
-                            "/en-US/docs/Web/CSS/CSS_anchor_positioning",
-                            "/en-US/docs/Web/API/View_Transition_API/Using",
-                            "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal",
-                        ],
-                        self.locale,
-                    )?,
-                    featured_contributor: featured_contributor(self.locale)?,
-                    latest_news: ItemContainer {
-                        items: latest_news(&[
-                            "/en-US/blog/mdn-2024-content-projects/",
-                            "/en-US/blog/curriculum-learn-web-development/",
-                            "/en-US/blog/new-community-page/",
-                            "/en-US/blog/javascript-intl-segmenter-i18n/",
-                        ])?,
+            )))),
+            SPAData::BasicSPA(basic_spa) => {
+                Ok(BuiltPage::SPA(Box::new(SpaPage::from_page_and_template(
+                    JsonSpaPage {
+                        slug: self.slug,
+                        page_title: self.page_title,
+                        page_description: self.page_description,
+                        only_follow: basic_spa.only_follow,
+                        no_indexing: basic_spa.no_indexing,
+                        page_not_found: false,
+                        url: concat_strs!(self.base_slug.as_ref(), self.slug),
                     },
-                    recent_contributions: ItemContainer {
-                        items: recent_contributions()?,
+                    self.template,
+                ))))
+            }
+            SPAData::NotFound => Ok(BuiltPage::SPA(Box::new(SpaPage::from_page_and_template(
+                JsonSpaPage {
+                    slug: self.slug,
+                    page_title: self.page_title,
+                    page_description: self.page_description,
+                    only_follow: false,
+                    no_indexing: true,
+                    page_not_found: true,
+                    url: concat_strs!(self.base_slug.as_ref(), self.slug),
+                },
+                self.template,
+            )))),
+            SPAData::HomePage => Ok(BuiltPage::Home(Box::new(HomePage::Homepage(
+                JsonHomePage {
+                    url: concat_strs!("/", self.locale().as_url_str(), "/", self.slug),
+                    page_title: self.page_title,
+                    hy_data: JsonHomePageSPAHyData {
+                        page_description: self.page_description,
+                        featured_articles: featured_articles(
+                            &[
+                                "/en-US/blog/javascript-temporal-is-coming/",
+                                "/en-US/docs/Web/CSS/CSS_anchor_positioning",
+                                "/en-US/docs/Web/API/View_Transition_API/Using",
+                                "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal",
+                            ],
+                            self.locale,
+                        )?,
+                        featured_contributor: featured_contributor(self.locale)?,
+                        latest_news: ItemContainer {
+                            items: latest_news(&[
+                                "/en-US/blog/mdn-2024-content-projects/",
+                                "/en-US/blog/curriculum-learn-web-development/",
+                                "/en-US/blog/new-community-page/",
+                                "/en-US/blog/javascript-intl-segmenter-i18n/",
+                            ])?,
+                        },
+                        recent_contributions: ItemContainer {
+                            items: recent_contributions()?,
+                        },
                     },
                 },
-            }))),
+            )))),
         }
     }
 }
@@ -269,6 +284,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                         page_title: Cow::Borrowed("MDN Web Docs"),
                         trailing_slash: true,
                         data: SPAData::HomePage,
+                        template: SpaBuildTemplate::SpaHomepage,
                         ..Default::default()
                     },
                 ),
@@ -279,6 +295,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                         page_title: Cow::Borrowed("404"),
                         en_us_only: true,
                         data: SPAData::NotFound,
+                        template: SpaBuildTemplate::SpaNotFound,
                         ..Default::default()
                     },
                 ),
@@ -290,6 +307,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                         trailing_slash: true,
                         en_us_only: true,
                         data: SPAData::BlogIndex,
+                        template: SpaBuildTemplate::SpaUnknown,
                         ..Default::default()
                     },
                 ),
@@ -298,6 +316,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed("play"),
                         page_title: Cow::Borrowed("Playground | MDN"),
+                        template: SpaBuildTemplate::SpaPlay,
                         ..Default::default()
                     },
                 ),
@@ -310,6 +329,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             OBSERVATORY_TITLE_FULL
                         )),
                         page_description: Some(Cow::Borrowed(OBSERVATORY_DESCRIPTION)),
+                        template: SpaBuildTemplate::SpaObservatoryLanding,
                         ..Default::default()
                     },
                 ),
@@ -326,6 +346,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             no_indexing: true,
                             only_follow: false,
                         }),
+                        template: SpaBuildTemplate::SpaObservatoryAnalyze,
                         ..Default::default()
                     },
                 ),
@@ -338,6 +359,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             only_follow: true,
                             no_indexing: false,
                         }),
+                        template: SpaBuildTemplate::SpaSearch,
                         ..Default::default()
                     },
                 ),
@@ -346,6 +368,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed("plus/ai-help"),
                         page_title: Cow::Borrowed(concat!("AI Help | ", MDN_PLUS_TITLE)),
+                        template: SpaBuildTemplate::SpaPlusAiHelp,
                         ..Default::default()
                     },
                 ),
@@ -358,6 +381,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             no_indexing: true,
                             only_follow: false,
                         }),
+                        template: SpaBuildTemplate::SpaPlusCollections,
                         ..Default::default()
                     },
                 ),
@@ -373,6 +397,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             no_indexing: true,
                             only_follow: false,
                         }),
+                        template: SpaBuildTemplate::SpaPlusCollectionsFrequentlyViewed,
                         ..Default::default()
                     },
                 ),
@@ -381,6 +406,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     BuildSPA {
                         slug: Cow::Borrowed("plus/updates"),
                         page_title: Cow::Borrowed(concat!("Updates | ", MDN_PLUS_TITLE)),
+                        template: SpaBuildTemplate::SpaPlusUpdates,
                         ..Default::default()
                     },
                 ),
@@ -393,14 +419,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             no_indexing: true,
                             only_follow: false,
                         }),
-                        ..Default::default()
-                    },
-                ),
-                (
-                    "newsletter",
-                    BuildSPA {
-                        slug: Cow::Borrowed("newsletter"),
-                        page_title: Cow::Borrowed("Stay Informed with MDN"),
+                        template: SpaBuildTemplate::SpaPlusSettings,
                         ..Default::default()
                     },
                 ),
