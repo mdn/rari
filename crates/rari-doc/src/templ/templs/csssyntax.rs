@@ -7,7 +7,8 @@ use css_syntax::syntax::{
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 
-use crate::{error::DocError, helpers::l10n::l10n_json_data};
+use crate::error::DocError;
+use crate::helpers::l10n::l10n_json_data;
 
 static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     [(LinkedToken::Asterisk, "Asterisk: the entity may occur zero, one or several times".to_string()),
