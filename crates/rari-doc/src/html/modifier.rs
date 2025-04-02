@@ -141,7 +141,7 @@ pub fn wrap_children_with_link(html: &mut Html, node_id: NodeId, href: String) {
 /// * `Result<(), DocError>` - Returns `Ok(())` if all operations succeed, otherwise
 ///   returns a `DocError` if an error is encountered.
 pub fn insert_self_links_for_dts(html: &mut Html) -> Result<(), DocError> {
-    let selector = Selector::parse("dt:not(:has(> a)").unwrap();
+    let selector = Selector::parse("dt:not(:has(a)").unwrap();
     let subs = html.select(&selector).map(|el| el.id()).collect::<Vec<_>>();
     for el_id in subs {
         wrap_children_with_link_to_id(html, el_id);
