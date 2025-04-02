@@ -130,6 +130,7 @@ impl WebFeatures {
                     .and_then(|status| status.baseline)
                 })
                 .collect::<Vec<_>>();
+
             if sub_status
                 .iter()
                 .all(|baseline| baseline == &status.baseline)

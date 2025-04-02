@@ -14,8 +14,9 @@ use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::utils::split_fm;
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
 pub enum Template {
+    #[default]
     GenericDoc,
     GenericAbout,
     GenericCommunity,
@@ -23,7 +24,7 @@ pub enum Template {
 #[derive(Debug, Clone, Deserialize)]
 pub struct GenericFrontmatter {
     pub title: String,
-    pub template: Template,
+    pub template: Option<Template>,
 }
 
 #[derive(Debug, Clone)]
@@ -66,7 +67,7 @@ impl GenericMeta {
             full_path,
             title_suffix,
             page,
-            template: fm.template,
+            template: fm.template.unwrap_or_default(),
         })
     }
 }
