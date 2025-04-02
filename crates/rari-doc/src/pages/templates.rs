@@ -31,7 +31,6 @@ pub enum SpaBuildTemplate {
 pub enum SpaPage {
     SpaUnknown(JsonSpaPage),
     SpaNotFound(JsonSpaPage),
-    SpaHomepage(JsonSpaPage),
     SpaObservatoryLanding(JsonSpaPage),
     SpaObservatoryAnalyze(JsonSpaPage),
     SpaAdvertise(JsonSpaPage),
@@ -48,9 +47,8 @@ pub enum SpaPage {
 impl SpaPage {
     pub fn from_page_and_template(page: JsonSpaPage, template: SpaBuildTemplate) -> Self {
         match template {
-            SpaBuildTemplate::SpaUnknown => Self::SpaUnknown(page),
+            SpaBuildTemplate::SpaUnknown | SpaBuildTemplate::SpaHomepage => Self::SpaUnknown(page),
             SpaBuildTemplate::SpaNotFound => Self::SpaNotFound(page),
-            SpaBuildTemplate::SpaHomepage => Self::SpaHomepage(page),
             SpaBuildTemplate::SpaObservatoryLanding => Self::SpaObservatoryLanding(page),
             SpaBuildTemplate::SpaObservatoryAnalyze => Self::SpaObservatoryAnalyze(page),
             SpaBuildTemplate::SpaAdvertise => Self::SpaAdvertise(page),
