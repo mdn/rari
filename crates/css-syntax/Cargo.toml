@@ -13,6 +13,7 @@ serde_json.workspace = true
 serde.workspace = true
 url.workspace = true
 html-escape.workspace = true
+itertools.workspace = true
 rari-types = { workspace = true, optional = true }
 
 css-syntax-types = { path = "../css-syntax-types" }
