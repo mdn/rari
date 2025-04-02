@@ -1,6 +1,6 @@
 [package]
 name = "rari-types"
-version = "0.1.31"
+version = "0.1.32"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.32](https://github.com/mdn/rari/compare/v0.1.31...v0.1.32) (2025-04-02)
+
+
+### Features
+
+* **css-syntax:** add sources ([#181](https://github.com/mdn/rari/issues/181)) ([31c4f5f](https://github.com/mdn/rari/commit/31c4f5f6b38508facadccbed00bae4c1fc6b6f21))
+* **json:** add renderer to index.json for fred ([#180](https://github.com/mdn/rari/issues/180)) ([a290438](https://github.com/mdn/rari/commit/a290438627c1022ae5c9f0d2da1720db46efe625))
+
+
+### Bug Fixes
+
+* **dt:** don't add links if the dt contains a link ([6d81769](https://github.com/mdn/rari/commit/6d817692fe4fb2e8d5eab3edf82c7cc7700c44c5))
+* **json:** make generic content template fm optional ([fb89132](https://github.com/mdn/rari/commit/fb89132213c2564ef81751dd086ab753e86a6d3d))
+* **templ:** fix webextapi sidebar ([67d40bc](https://github.com/mdn/rari/commit/67d40bcc7c1fb7fdbd641302b57b52fa69016f60))
+
 ## [0.1.31](https://github.com/mdn/rari/compare/v0.1.30...v0.1.31) (2025-03-25)
 
 
