@@ -160,7 +160,7 @@ fn get_specs_for_item<'a>(item_name: &str, item_type: ItemType) -> Vec<&'a str> 
 /// let grid_template_rows = css_syntax::syntax::get_property_syntax("grid-template-rows");
 /// assert_eq!(grid_template_rows, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
 /// ```
-pub fn get_property_syntax(name: &str) -> String {
+pub fn get_property_syntax(name: &str) -> Syntax {
     // 1) Get all specs which list this property
     let mut specs = get_specs_for_item(name, ItemType::Property);
     // 2) If we have more than one spec, filter out
@@ -177,31 +177,41 @@ pub fn get_property_syntax(name: &str) -> String {
     if specs.len() == 1 {
         return CSS_REF
             .get(specs[0])
-            .and_then(|s| s.properties.get(name))
-            .and_then(|i| i.value.clone())
+            .and_then(|s| s.properties.get(name).map(|p| (&s.spec, p)))
+            .and_then(|(spec, p)| {
+                p.value.clone().map(|v| Syntax {
+                    syntax: v,
+                    specs: Some(vec![spec]),
+                })
+            })
             .unwrap_or_default();
     }
     // 4) If we have > 1 spec, assume that:
     // - one of them is the base spec, which defines `values`,
     // - the others define incremental additions as `newValues`
 
+    let mut used_specs = vec![];
     let (mut syntax, new_syntaxes) = specs.into_iter().fold(
         (String::new(), String::new()),
         |(mut syntax, mut new_syntaxes), spec_name| {
-            let base_value = CSS_REF
-                .get(spec_name)
-                .and_then(|s| s.properties.get(name))
-                .and_then(|i| i.value.as_ref());
-            let new_values = CSS_REF
-                .get(spec_name)
-                .and_then(|s| s.properties.get(name))
-                .and_then(|i| i.new_values.as_ref());
-            if let Some(base_value) = base_value {
-                syntax.push_str(base_value);
-            }
-            if let Some(new_values) = new_values {
-                new_syntaxes.push_str(" | ");
-                new_syntaxes.push_str(new_values);
+            let css_ref = CSS_REF.get(spec_name);
+            if let Some(css_ref) = css_ref {
+                let base_value = css_ref.properties.get(name).and_then(|i| i.value.as_ref());
+                let new_values = css_ref
+                    .properties
+                    .get(name)
+                    .and_then(|i| i.new_values.as_ref());
+                if let Some(base_value) = base_value {
+                    syntax.push_str(base_value);
+                }
+                if let Some(new_values) = new_values {
+                    new_syntaxes.push_str(" | ");
+                    new_syntaxes.push_str(new_values);
+                }
+
+                if new_values.is_some() || base_value.is_some() {
+                    used_specs.push(&css_ref.spec)
+                }
             }
             (syntax, new_syntaxes)
         },
@@ -211,7 +221,10 @@ pub fn get_property_syntax(name: &str) -> String {
     if !new_syntaxes.is_empty() {
         syntax.push_str(&new_syntaxes);
     }
-    syntax
+    Syntax {
+        syntax,
+        specs: Some(used_specs),
+    }
 }
 
 /// Get the formal syntax for an at-rule from the webref data.
@@ -221,7 +234,7 @@ pub fn get_property_syntax(name: &str) -> String {
 /// let media = css_syntax::syntax::get_at_rule_syntax("@media");
 /// assert_eq!(media, "@media <media-query-list> { <rule-list> }");
 /// ```
-pub fn get_at_rule_syntax(name: &str) -> (String, Option<&'static SpecInExtract>) {
+pub fn get_at_rule_syntax(name: &str) -> Syntax {
     let specs = get_specs_for_item(name, ItemType::AtRule);
 
     specs
@@ -231,10 +244,13 @@ pub fn get_at_rule_syntax(name: &str) -> (String, Option<&'static SpecInExtract>
                 s.atrules
                     .get(name)
                     .and_then(|a| a.value.clone())
-                    .map(|v| (v, Some(&s.spec)))
+                    .map(|v| Syntax {
+                        syntax: v,
+                        specs: Some(vec![&s.spec]),
+                    })
             })
         })
-        .unwrap_or_else(|| (Default::default(), None))
+        .unwrap_or_default()
 }
 
 /// Get the formal syntax for an at-rule descriptor from the webref data.
@@ -243,10 +259,7 @@ pub fn get_at_rule_syntax(name: &str) -> (String, Option<&'static SpecInExtract>
 /// let descriptor = css_syntax::syntax::get_at_rule_descriptor_syntax("width", "@media");
 /// assert_eq!(descriptor, "<length>");
 /// ```
-pub fn get_at_rule_descriptor_syntax(
-    at_rule_descriptor_name: &str,
-    at_rule_name: &str,
-) -> (String, Option<&'static SpecInExtract>) {
+pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
     let specs = get_specs_for_item(at_rule_name, ItemType::AtRule);
 
     specs
@@ -257,17 +270,36 @@ pub fn get_at_rule_descriptor_syntax(
                     .get(at_rule_name)
                     .and_then(|a| a.descriptors.get(at_rule_descriptor_name))
                     .and_then(|d| d.value.clone())
-                    .map(|v| (v, Some(&s.spec)))
+                    .map(|v| Syntax {
+                        syntax: v,
+                        specs: Some(vec![&s.spec]),
+                    })
             })
         })
-        .unwrap_or_else(|| (Default::default(), None))
+        .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Syntax {
+pub struct SyntaxLine {
     pub name: String,
     pub syntax: String,
-    pub spec: Option<&'static SpecInExtract>,
+    pub specs: Option<Vec<&'static SpecInExtract>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Syntax {
+    pub syntax: String,
+    pub specs: Option<Vec<&'static SpecInExtract>>,
+}
+
+impl Syntax {
+    pub fn to_syntax_line(self, name: impl Into<String>) -> SyntaxLine {
+        SyntaxLine {
+            name: name.into(),
+            syntax: self.syntax,
+            specs: self.specs,
+        }
+    }
 }
 
 #[inline]
@@ -275,61 +307,72 @@ fn skip(name: &str) -> bool {
     name == "color" || name == "gradient"
 }
 
-pub fn get_syntax(typ: CssType) -> Syntax {
+pub fn get_syntax(typ: CssType) -> SyntaxLine {
     get_syntax_internal(typ, false)
 }
-fn get_syntax_internal(typ: CssType, top_level: bool) -> Syntax {
-    let (name, (syntax, spec)) = match typ {
+fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
+    match typ {
         CssType::ShorthandProperty(name) | CssType::Property(name) => {
             let trimmed = name
                 .trim_start_matches(['<', '\''])
                 .trim_end_matches(['\'', '>']);
-            (name.to_string(), (get_property_syntax(trimmed), None))
+            get_property_syntax(trimmed).to_syntax_line(name)
         }
-        CssType::AtRule(name) => (name.to_string(), get_at_rule_syntax(name)),
-        CssType::AtRuleDescriptor(name, at_rule_name) => (
-            name.to_string(),
-            get_at_rule_descriptor_syntax(name, at_rule_name),
-        ),
+        CssType::AtRule(name) => get_at_rule_syntax(name).to_syntax_line(name),
+        CssType::AtRuleDescriptor(name, at_rule_name) => {
+            get_at_rule_descriptor_syntax(name, at_rule_name).to_syntax_line(name)
+        }
+
         CssType::Function(name) => {
             let name = format!("{name}()");
-            (
-                format!("<{name}>"),
-                FLATTENED
-                    .functions
-                    .get(name.as_str())
-                    .and_then(|(v, spec)| (v.value.clone().map(|v| (v, Some(*spec)))))
-                    .unwrap_or_else(|| (Default::default(), None)),
-            )
+            FLATTENED
+                .functions
+                .get(name.as_str())
+                .and_then(|(v, spec)| {
+                    v.value.clone().map(|v| Syntax {
+                        syntax: v,
+                        specs: Some(vec![*spec]),
+                    })
+                })
+                .unwrap_or_default()
+                .to_syntax_line(format!("<{name}>"))
         }
         CssType::Type(name) => {
             let name = name.trim_end_matches("_value");
             if skip(name) && !top_level {
-                (format!("<{name}>"), (Default::default(), None))
+                Syntax::default().to_syntax_line(format!("<{name}>"))
             } else {
                 let syntax = FLATTENED
                     .types
                     .get(name)
-                    .and_then(|(item, spec)| item.value.clone().map(|v| (v, Some(*spec))))
+                    .and_then(|(item, spec)| {
+                        item.value.clone().map(|v| Syntax {
+                            syntax: v,
+                            specs: Some(vec![*spec]),
+                        })
+                    })
                     .unwrap_or(
                         FLATTENED
                             .values
                             .get(name)
-                            .and_then(|(item, spec)| item.value.clone().map(|v| (v, Some(*spec))))
-                            .unwrap_or_else(|| (Default::default(), None)),
+                            .and_then(|(item, spec)| {
+                                item.value.clone().map(|v| Syntax {
+                                    syntax: v,
+                                    specs: Some(vec![*spec]),
+                                })
+                            })
+                            .unwrap_or_default(),
                     );
                 let formatted_name = format!("<{name}>");
-                let syntax = if name == syntax.0 || formatted_name == syntax.0 {
-                    (Default::default(), None)
+                let syntax = if name == syntax.syntax || formatted_name == syntax.syntax {
+                    Default::default()
                 } else {
                     syntax
                 };
-                (formatted_name, syntax)
+                syntax.to_syntax_line(formatted_name)
             }
         }
-    };
-
-    Syntax { name, syntax, spec }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -389,7 +432,7 @@ pub struct SyntaxRenderer<'a> {
 }
 
 impl SyntaxRenderer<'_> {
-    pub fn render(&self, output: &mut String, syntax: &Syntax) -> Result<(), SyntaxError> {
+    pub fn render(&self, output: &mut String, syntax: &SyntaxLine) -> Result<(), SyntaxError> {
         let typ = html_escape::encode_safe(&syntax.name);
         write!(
             output,
@@ -621,13 +664,16 @@ impl SyntaxRenderer<'_> {
             },
         )
     }
-    fn get_constituent_syntaxes(&mut self, syntax: Syntax) -> Result<Vec<Syntax>, SyntaxError> {
+    fn get_constituent_syntaxes(
+        &mut self,
+        syntax: SyntaxLine,
+    ) -> Result<Vec<SyntaxLine>, SyntaxError> {
         let mut all_constituents = vec![];
 
         let mut last_len: usize;
         let mut last_syntax_len = 0;
 
-        let mut constituent_syntaxes: Vec<Syntax> = vec![syntax];
+        let mut constituent_syntaxes: Vec<SyntaxLine> = vec![syntax];
 
         loop {
             last_len = all_constituents.len();
@@ -713,10 +759,10 @@ pub fn write_formal_syntax_from_syntax(
     } else {
         ("dummy", syntax_str, true)
     };
-    let syntax = Syntax {
+    let syntax = SyntaxLine {
         name: name.trim().to_string(),
         syntax,
-        spec: None,
+        specs: None,
     };
     write_formal_syntax_internal(
         syntax,
@@ -735,7 +781,7 @@ pub fn write_formal_syntax(
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
     sources_prefix: Option<&str>,
 ) -> Result<String, SyntaxError> {
-    let syntax: Syntax = get_syntax_internal(css, true);
+    let syntax: SyntaxLine = get_syntax_internal(css, true);
     if syntax.syntax.is_empty() {
         return Err(SyntaxError::NoSyntaxFound);
     }
@@ -750,7 +796,7 @@ pub fn write_formal_syntax(
 }
 
 fn write_formal_syntax_internal(
-    syntax: Syntax,
+    syntax: SyntaxLine,
     locale_str: &str,
     value_definition_url: &str,
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
@@ -765,17 +811,19 @@ fn write_formal_syntax_internal(
     };
     let mut out = String::new();
     write!(out, r#"<pre class="notranslate css-formal-syntax">"#)?;
-    let constituents = renderer.get_constituent_syntaxes(syntax)?;
+    let mut constituents = renderer.get_constituent_syntaxes(syntax)?;
 
     for constituent in constituents.iter().skip(if skip_first { 1 } else { 0 }) {
         renderer.render(&mut out, constituent)?;
         out.push_str("<br/>");
     }
 
-    let specs = constituents.iter().fold(vec![], |mut acc, s| {
-        if let Some(spec) = s.spec {
-            if !acc.contains(&spec) {
-                acc.push(spec)
+    let specs = constituents.iter_mut().fold(vec![], |mut acc, s| {
+        if let Some(spec) = s.specs.take() {
+            for spec in spec {
+                if !acc.contains(&spec) {
+                    acc.push(spec)
+                }
             }
         }
         acc
@@ -798,7 +846,7 @@ fn write_formal_syntax_internal(
 }
 
 fn get_nodes_for_syntaxes(
-    syntaxes: &[Syntax],
+    syntaxes: &[SyntaxLine],
     constituents: &mut Vec<Constituent>,
 ) -> Result<(), SyntaxError> {
     for syntax in syntaxes {
@@ -845,55 +893,56 @@ mod test {
 
     #[test]
     fn test_get_syntax_color_property_color() {
-        let Syntax { name, syntax, .. } = get_syntax_internal(CssType::Property("color"), true);
+        let SyntaxLine { name, syntax, .. } = get_syntax_internal(CssType::Property("color"), true);
         assert_eq!(name, "color");
         assert_eq!(syntax, "<color>");
     }
     #[test]
     fn test_get_syntax_color_property_content_visibility() {
-        let Syntax { name, syntax, .. } = get_syntax(CssType::Property("content-visibility"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Property("content-visibility"));
         assert_eq!(name, "content-visibility");
         assert_eq!(syntax, "visible | auto | hidden");
     }
     #[test]
     fn test_get_syntax_length_type() {
-        let Syntax { name, syntax, .. } = get_syntax(CssType::Type("length"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Type("length"));
         assert_eq!(name, "<length>");
         assert_eq!(syntax, "");
     }
     #[test]
     fn test_get_syntax_color_type() {
-        let Syntax { name, syntax, .. } = get_syntax_internal(CssType::Type("color_value"), true);
+        let SyntaxLine { name, syntax, .. } =
+            get_syntax_internal(CssType::Type("color_value"), true);
         assert_eq!(name, "<color>");
         assert_eq!(syntax, "<color-base> | currentColor | <system-color>");
     }
     #[test]
     fn test_get_syntax_minmax_function() {
-        let Syntax { name, syntax, .. } = get_syntax(CssType::Function("minmax"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Function("minmax"));
         assert_eq!(name, "<minmax()>");
         assert_eq!(syntax, "minmax(min, max)");
     }
     #[test]
     fn test_get_syntax_sin_function() {
-        let Syntax { name, syntax, .. } = get_syntax(CssType::Function("sin"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Function("sin"));
         assert_eq!(name, "<sin()>");
         assert_eq!(syntax, "sin( <calc-sum> )");
     }
     #[test]
     fn test_get_syntax_media_at_rule() {
-        let Syntax { name, syntax, .. } = get_syntax(CssType::AtRule("@media"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::AtRule("@media"));
         assert_eq!(name, "@media");
         assert_eq!(syntax, "@media <media-query-list> { <rule-list> }");
     }
     #[test]
     fn test_get_syntax_padding_property() {
-        let Syntax { name, syntax, .. } = get_syntax(CssType::Property("padding"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Property("padding"));
         assert_eq!(name, "padding");
         assert_eq!(syntax, "<'padding-top'>{1,4}");
     }
     #[test]
     fn test_get_syntax_gradient_type() {
-        let Syntax { name, syntax, .. } = get_syntax_internal(CssType::Type("gradient"), true);
+        let SyntaxLine { name, syntax, .. } = get_syntax_internal(CssType::Type("gradient"), true);
         assert_eq!(name, "<gradient>");
         assert_eq!(syntax, "<linear-gradient()> | <repeating-linear-gradient()> | <radial-gradient()> | <repeating-radial-gradient()>");
     }
@@ -907,7 +956,7 @@ mod test {
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
         };
-        let Syntax {
+        let SyntaxLine {
             name: _, syntax, ..
         } = get_syntax_internal(CssType::Type("color_value"), true);
         if let Node::Group(group) = parse(&syntax)? {
