@@ -684,10 +684,7 @@ where
 
                                 highlighter.write_highlighted(
                                     self.output,
-                                    match str::from_utf8(&info[..first_tag]) {
-                                        Ok(lang) => Some(lang),
-                                        Err(_) => None,
-                                    },
+                                    str::from_utf8(&info[..first_tag]).ok(),
                                     &ncb.literal,
                                 )?;
 

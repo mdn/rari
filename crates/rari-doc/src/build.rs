@@ -58,7 +58,7 @@ pub struct SitemapMeta<'a> {
 /// # Returns
 ///
 /// * `Result<(BuiltPage, String), DocError> ` - Returns the `BuiltPage` and according hash
-///    if successful, or a `DocError` if an error occurs during the process.
+///   if successful, or a `DocError` if an error occurs during the process.
 ///
 pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     let file = page.full_path().to_string_lossy();
@@ -144,8 +144,8 @@ pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -200,8 +200,8 @@ pub fn build_top_level_meta(locale_meta: Vec<JsonDocMetadata>) -> Result<(), Doc
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -256,8 +256,8 @@ fn copy_blog_author_avatars() -> Result<(), DocError> {
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -323,8 +323,8 @@ fn filter_unpublished(post: &&Page, now: &NaiveDate) -> bool {
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -354,8 +354,8 @@ pub fn build_generic_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -385,8 +385,8 @@ pub fn build_contributor_spotlight_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, D
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///

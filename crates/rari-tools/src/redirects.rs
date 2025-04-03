@@ -45,7 +45,7 @@ static FORBIDDEN_URL_SYMBOLS: [char; 2] = ['\t', '\n'];
 /// - `s`: The starting URL/path as a string slice.
 /// - `froms`: A mutable vector that tracks the sequence of URLs/paths traversed to detect cycles.
 /// - `dag`: A reference to a `HashMap` representing the redirect graph, where each key is a source
-///          URL/path and the corresponding value is its redirect target.
+///   URL/path and the corresponding value is its redirect target.
 ///
 /// # Returns
 ///
@@ -92,7 +92,7 @@ fn transit<'a>(
 ///
 /// - `Ok(Vec<(String, String)>)`: A vector of `(from, to)` pairs representing the transitive redirects.
 /// - `Err(RedirectError)`: An error of type `RedirectError` if a cycle is detected or if case-sensitive
-///    mappings are missing.
+///   mappings are missing.
 ///
 /// # Errors
 ///
@@ -716,7 +716,7 @@ fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
 ///
 /// * `path` - A reference to a `Path` that points to the redirects file.
 /// * `map` - A mutable reference to a `HashMap<String, String>` where the redirect pairs will
-///           be stored. The `from` path serves as the key, and the `to` path serves as the value.
+///   be stored. The `from` path serves as the key, and the `to` path serves as the value.
 ///
 /// # Returns
 ///

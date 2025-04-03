@@ -394,7 +394,7 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     buffer.write_all(fm_str.as_bytes())?;
     buffer.write_all(b"---\n")?;
 
-    buffer.write_all(doc.raw[content_start..].as_bytes())?;
+    buffer.write_all(&doc.raw.as_bytes()[content_start..])?;
 
     Ok(())
 }

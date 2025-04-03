@@ -106,7 +106,7 @@ pub struct Translation {
 /// * `id` - An `Option<String>` that holds an optional `id` element attribute for the prose section.
 /// * `title` - An `Option<String>` that holds an optional title for the prose section.
 /// * `is_h3` - A `bool` that indicates whether the prose section's `title` will be rendered as a &lt;H3&gt;
-///    heading. This field is serialized as `isH3`.
+///   heading. This field is serialized as `isH3`.
 /// * `content` - A `String` that holds the actual prose HTML content.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Prose {
@@ -129,10 +129,10 @@ pub struct Prose {
 /// * `id` - An `Option<String>` that holds an optional `id` element attribute for the compatibility section.
 /// * `title` - An `Option<String>` that holds an optional title for the compatibility section.
 /// * `is_h3` - A `bool` that indicates whether the compatibility section's `title` will be rendered as a &lt;H3&gt;
-///    heading. This field is serialized as `isH3`.
+///   heading. This field is serialized as `isH3`.
 /// * `query` - A `String` that holds the query string for BCD data.
 /// * `content` - An `Option<String>` that holds the optional content of the compatibility section. This field
-///    is skipped during serialization if it is `None`.
+///   is skipped during serialization if it is `None`.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Compat {
     pub id: Option<String>,
@@ -228,11 +228,11 @@ pub enum Section {
 /// * `title` - A `String` that holds the title of the document.
 /// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the document.
 /// * `baseline` - An `Option<&'static SupportStatusWithByKey>` that holds the baseline support status. This field is skipped during
-///    serialization if it is `None`.
+///   serialization if it is `None`.
 /// * `browser_compat` - A `Vec<String>` that holds the browser compatibility information. Serialized as `browserCompat` and skipped
-///    during serialization if it is empty.
+///   during serialization if it is empty.
 /// * `page_type` - A `PageType` that specifies the type of the page, for example `LandingPage`, `LearnModule`, `CssAtRule` or
-///    `HtmlAttribute`. Serialized as `pageType`.
+///   `HtmlAttribute`. Serialized as `pageType`.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 #[schemars(rename = "Doc")]
 pub struct JsonDoc {
@@ -409,12 +409,12 @@ pub struct BlogIndex {
 /// * `summary` - An `Option<String>` that holds the summary of the document. This field is skipped during serialization if it is `None`.
 /// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the document.
 /// * `sidebar` - An `Option<Vec<CurriculumSidebarEntry>>` that holds the sidebar entries for the curriculum. This field is skipped during
-///    serialization if it is `None`.
+///   serialization if it is `None`.
 /// * `topic` - An `Option<Topic>` that holds the topic of the curriculum. This field is skipped during serialization if it is `None`.
 /// * `group` - An `Option<String>` that holds the group of the curriculum. This field is skipped during serialization if it is `None`.
 /// * `modules` - A `Vec<CurriculumIndexEntry>` that holds the modules of the curriculum. This field is skipped during serialization if it is empty.
 /// * `prev_next` - An `Option<PrevNextByUrl>` that holds the previous and next URLs for navigation. Serialized as `prevNext` and skipped during
-///    serialization if it is `None`.
+///   serialization if it is `None`.
 /// * `template` - A `Template` that specifies the template used for rendering the document.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 #[schemars(rename = "CurriculumDoc")]

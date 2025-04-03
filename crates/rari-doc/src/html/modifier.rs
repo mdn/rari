@@ -134,7 +134,7 @@ pub fn wrap_children_with_link(html: &mut Html, node_id: NodeId, href: String) {
 /// # Arguments
 ///
 /// * `html` - A mutable reference to the `Html` structure, representing the HTML
-///            document to be processed.
+///   document to be processed.
 ///
 /// # Returns
 ///
@@ -156,7 +156,7 @@ pub fn insert_self_links_for_dts(html: &mut Html) -> Result<(), DocError> {
 /// # Arguments
 ///
 /// * `html` - A mutable reference to the `Html` structure, representing the HTML
-///            document to be modified.
+///   document to be modified.
 ///
 /// # Returns
 ///
