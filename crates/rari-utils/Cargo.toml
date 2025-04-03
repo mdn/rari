@@ -1,6 +1,6 @@
 [package]
 name = "rari-utils"
-version = "0.1.32"
+version = "0.1.33"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
