@@ -581,7 +581,7 @@ fn read_generic_content_config() -> Result<GenericContentConfig, DocError> {
 pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
     fn gather() -> GenericContentConfig {
         read_generic_content_config().unwrap_or_else(|e| {
-            warn!("{e}");
+            warn!(ignore = true, "{e}");
             Default::default()
         })
     }
@@ -606,7 +606,7 @@ pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
 pub fn generic_content_files() -> Cow<'static, UrlToPageMap> {
     fn gather() -> UrlToPageMap {
         gather_generic_content().unwrap_or_else(|e| {
-            warn!("{e}");
+            warn!(ignore = true, "{e}");
             Default::default()
         })
     }
