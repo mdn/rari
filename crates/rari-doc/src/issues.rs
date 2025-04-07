@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::atomic::AtomicI64;
-use std::sync::{Arc, LazyLock};
+use std::sync::{Arc, LazyLock, OnceLock};
 use std::{fmt, iter};
 
 use dashmap::DashMap;
@@ -16,19 +16,25 @@ use tracing_subscriber::Layer;
 
 use crate::pages::page::{Page, PageLike};
 
+pub static ISSUE_COUNTER_F: OnceLock<fn() -> i64> = OnceLock::new();
 static ISSUE_COUNTER: AtomicI64 = AtomicI64::new(0);
 
 pub(crate) fn get_issue_counter() -> i64 {
+    ISSUE_COUNTER_F.get_or_init(|| get_issue_counter_f)()
+}
+
+pub(crate) fn get_issue_counter_f() -> i64 {
     ISSUE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
-#[derive(Debug, Default, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Issue {
     pub req: u64,
     pub ic: i64,
     pub col: i64,
     pub line: i64,
     pub file: String,
+    pub ignore: bool,
     pub fields: Vec<(&'static str, String)>,
     pub spans: Vec<(&'static str, String)>,
 }
@@ -40,6 +46,7 @@ pub struct IssueEntries {
     col: i64,
     line: i64,
     file: String,
+    ignore: bool,
     entries: Vec<(&'static str, String)>,
 }
 
@@ -70,6 +77,11 @@ impl Visit for IssueEntries {
             self.req = value;
         }
     }
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        if field.name() == "ignore" {
+            self.ignore = value;
+        }
+    }
     fn record_i64(&mut self, field: &Field, value: i64) {
         if field.name() == "ic" {
             self.ic = value;
@@ -94,6 +106,11 @@ impl Visit for Issue {
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field.name() == "req" {
             self.req = value;
+        }
+    }
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        if field.name() == "ignore" {
+            self.ignore = value;
         }
     }
     fn record_i64(&mut self, field: &Field, value: i64) {
@@ -128,10 +145,11 @@ where
     fn on_event(&self, event: &Event, ctx: tracing_subscriber::layer::Context<S>) {
         let mut issue = Issue {
             req: 0,
-            ic: 0,
+            ic: -1,
             col: 0,
             line: 0,
             file: String::default(),
+            ignore: false,
             fields: vec![],
             spans: vec![],
         };
@@ -152,20 +170,26 @@ where
                 if !entries.file.is_empty() {
                     issue.file = entries.file.clone();
                 }
-                if entries.ic != 0 {
+                if entries.ic != -1 {
                     issue.ic = entries.ic;
-                } else {
-                    issue.ic = get_issue_counter();
+                }
+                if entries.ignore {
+                    issue.ignore = entries.ignore;
                 }
                 issue.spans.extend(entries.entries.iter().rev().cloned());
             }
         }
 
-        event.record(&mut issue);
-        self.events
-            .entry(issue.file.clone())
-            .or_default()
-            .push(issue);
+        if issue.ic == -1 && !issue.ignore {
+            issue.ic = get_issue_counter();
+        }
+        if !issue.ignore {
+            event.record(&mut issue);
+            self.events
+                .entry(issue.file.clone())
+                .or_default()
+                .push(issue);
+        }
     }
 }
 
@@ -260,167 +284,173 @@ impl DIssue {
 pub type DisplayIssues = BTreeMap<&'static str, Vec<DIssue>>;
 
 impl DIssue {
-    pub fn from_issue_with_id(issue: Issue, page: &Page, id: usize) -> Self {
-        let mut di = DisplayIssue {
-            id: id as i64,
-            column: if issue.col == 0 {
-                None
-            } else {
-                Some(issue.col)
-            },
-            line: if issue.line == 0 {
-                None
-            } else {
-                Some(issue.line)
-            },
-            ..Default::default()
-        };
-        if let (Some(col), Some(line)) = (di.column, di.line) {
-            let line = line - page.fm_offset() as i64;
-            // take surrounding +- 3 lines (7 in total)
-            let (skip, take, highlight) = if line < 4 {
-                (0, 7 - (4 - line), (line - 1) as usize)
-            } else {
-                (line - 4, 7, 3)
+    pub fn from_issue(issue: Issue, page: &Page) -> Option<Self> {
+        if let Ok(id) = usize::try_from(issue.ic) {
+            let mut di = DisplayIssue {
+                id: id as i64,
+                column: if issue.col == 0 {
+                    None
+                } else {
+                    Some(issue.col)
+                },
+                line: if issue.line == 0 {
+                    None
+                } else {
+                    Some(issue.line)
+                },
+                ..Default::default()
             };
-            let context = page
-                .content()
-                .lines()
-                .skip(skip as usize)
-                .take(take as usize)
-                .collect::<Vec<_>>();
+            if let (Some(col), Some(line)) = (di.column, di.line) {
+                let line = line - page.fm_offset() as i64;
+                // take surrounding +- 3 lines (7 in total)
+                let (skip, take, highlight) = if line < 4 {
+                    (0, 7 - (4 - line), (line - 1) as usize)
+                } else {
+                    (line - 4, 7, 3)
+                };
+                let context = page
+                    .content()
+                    .lines()
+                    .skip(skip as usize)
+                    .take(take as usize)
+                    .collect::<Vec<_>>();
 
-            let source_context =
-                context
-                    .iter()
-                    .enumerate()
-                    .fold(String::new(), |mut acc, (i, line)| {
-                        acc.push_str(line);
-                        acc.push('\n');
-                        if i == highlight {
-                            acc.extend(iter::repeat_n('-', (col - 1) as usize));
-                            acc.push_str("^\n");
-                        }
-                        acc
-                    });
+                let source_context =
+                    context
+                        .iter()
+                        .enumerate()
+                        .fold(String::new(), |mut acc, (i, line)| {
+                            acc.push_str(line);
+                            acc.push('\n');
+                            if i == highlight {
+                                acc.extend(iter::repeat_n('-', (col - 1) as usize));
+                                acc.push_str("^\n");
+                            }
+                            acc
+                        });
 
-            di.source_context = Some(source_context);
-        }
+                di.source_context = Some(source_context);
+            }
 
-        di.filepath = Some(page.full_path().to_string_lossy().into_owned());
+            di.filepath = Some(page.full_path().to_string_lossy().into_owned());
 
-        let mut additional = HashMap::new();
-        for (key, value) in issue.spans.into_iter().chain(issue.fields.into_iter()) {
-            match key {
-                "source" => {
-                    di.name = IssueType::from_str(&value).unwrap();
+            let mut additional = HashMap::new();
+            for (key, value) in issue.spans.into_iter().chain(issue.fields.into_iter()) {
+                match key {
+                    "source" => {
+                        di.name = IssueType::from_str(&value).unwrap();
+                    }
+                    "redirect" => di.suggestion = Some(value),
+
+                    _ => {
+                        additional.insert(key, value);
+                    }
                 }
-                "redirect" => di.suggestion = Some(value),
-
+            }
+            let dissue = match di.name {
+                IssueType::IllCasedLink => {
+                    di.fixed = false;
+                    di.fixable = Some(true);
+                    di.explanation = Some(format!(
+                        "{} is ill cased",
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::BrokenLink {
+                        display_issue: di,
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::RedirectedLink => {
+                    di.fixed = false;
+                    di.fixable = Some(true);
+                    di.explanation = Some(format!(
+                        "{} is a redirect",
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::BrokenLink {
+                        display_issue: di,
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::BrokenLink => {
+                    di.fixed = false;
+                    di.fixable = Some(false);
+                    di.explanation = Some(format!(
+                        "Can't resolve {}",
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::BrokenLink {
+                        display_issue: di,
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::TemplBrokenLink => {
+                    di.fixed = false;
+                    di.fixable = Some(false);
+                    di.explanation = Some(format!(
+                        "Can't resolve {}",
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: additional.remove("templ"),
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::TemplRedirectedLink => {
+                    di.fixed = false;
+                    di.fixable = Some(true);
+                    di.explanation = Some(format!(
+                        "Macro produces link {} which is a redirect",
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: additional.remove("templ"),
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::TemplInvalidArg => {
+                    di.fixed = false;
+                    di.explanation = Some(format!(
+                        "Argument ({}) is not valid.",
+                        additional.get("arg").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: additional.remove("templ"),
+                        href: None,
+                    }
+                }
                 _ => {
-                    additional.insert(key, value);
+                    di.explanation = additional.remove("message");
+                    DIssue::Unknown { display_issue: di }
                 }
-            }
-        }
-        match di.name {
-            IssueType::IllCasedLink => {
-                di.fixed = false;
-                di.fixable = Some(true);
-                di.explanation = Some(format!(
-                    "{} is ill cased",
-                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
-                ));
-                DIssue::BrokenLink {
-                    display_issue: di,
-                    href: additional.remove("url"),
-                }
-            }
-            IssueType::RedirectedLink => {
-                di.fixed = false;
-                di.fixable = Some(true);
-                di.explanation = Some(format!(
-                    "{} is a redirect",
-                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
-                ));
-                DIssue::BrokenLink {
-                    display_issue: di,
-                    href: additional.remove("url"),
-                }
-            }
-            IssueType::BrokenLink => {
-                di.fixed = false;
-                di.fixable = Some(false);
-                di.explanation = Some(format!(
-                    "Can't resolve {}",
-                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
-                ));
-                DIssue::BrokenLink {
-                    display_issue: di,
-                    href: additional.remove("url"),
-                }
-            }
-            IssueType::TemplBrokenLink => {
-                di.fixed = false;
-                di.fixable = Some(false);
-                di.explanation = Some(format!(
-                    "Can't resolve {}",
-                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
-                ));
-                DIssue::Macros {
-                    display_issue: di,
-                    macro_name: additional.remove("templ"),
-                    href: additional.remove("url"),
-                }
-            }
-            IssueType::TemplRedirectedLink => {
-                di.fixed = false;
-                di.fixable = Some(true);
-                di.explanation = Some(format!(
-                    "Macro produces link {} which is a redirect",
-                    additional.get("url").map(|s| s.as_str()).unwrap_or("?")
-                ));
-                DIssue::Macros {
-                    display_issue: di,
-                    macro_name: additional.remove("templ"),
-                    href: additional.remove("url"),
-                }
-            }
-            IssueType::TemplInvalidArg => {
-                di.fixed = false;
-                di.explanation = Some(format!(
-                    "Argument ({}) is not valid.",
-                    additional.get("arg").map(|s| s.as_str()).unwrap_or("?")
-                ));
-                DIssue::Macros {
-                    display_issue: di,
-                    macro_name: additional.remove("templ"),
-                    href: None,
-                }
-            }
-            _ => {
-                di.explanation = additional.remove("message");
-                DIssue::Unknown { display_issue: di }
-            }
+            };
+            Some(dissue)
+        } else {
+            None
         }
     }
 }
 
 pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
     let mut map = BTreeMap::new();
-    for (id, issue) in issues.into_iter().enumerate() {
-        let di = DIssue::from_issue_with_id(issue, page, id);
-        match di {
-            DIssue::BrokenLink { .. } => {
-                let entry: &mut Vec<_> = map.entry("broken_links").or_default();
-                entry.push(di);
-            }
-            DIssue::Macros { .. } => {
-                let entry: &mut Vec<_> = map.entry("macros").or_default();
-                entry.push(di);
-            }
-            DIssue::Unknown { .. } => {
-                let entry: &mut Vec<_> = map.entry("unknown").or_default();
-                entry.push(di);
+    for issue in issues.into_iter() {
+        if let Some(di) = DIssue::from_issue(issue, page) {
+            match di {
+                DIssue::BrokenLink { .. } => {
+                    let entry: &mut Vec<_> = map.entry("broken_links").or_default();
+                    entry.push(di);
+                }
+                DIssue::Macros { .. } => {
+                    let entry: &mut Vec<_> = map.entry("macros").or_default();
+                    entry.push(di);
+                }
+                DIssue::Unknown { .. } => {
+                    let entry: &mut Vec<_> = map.entry("unknown").or_default();
+                    entry.push(di);
+                }
             }
         }
     }
