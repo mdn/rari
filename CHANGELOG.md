@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.33](https://github.com/mdn/rari/compare/v0.1.32...v0.1.33) (2025-04-08)
+
+
+### Features
+
+* **issues:** support ignoring issues ([#184](https://github.com/mdn/rari/issues/184)) ([df7636c](https://github.com/mdn/rari/commit/df7636cac43c1906bbf37e45df2a72ca5b37a898))
+* **serve:** serve docs assets ([#185](https://github.com/mdn/rari/issues/185)) ([3c971ad](https://github.com/mdn/rari/commit/3c971adec5c117f2140eecc6eb0f7a3f1018c3e6))
+
+
+### Bug Fixes
+
+* **csssyntax:** add sources for properties ([68df8aa](https://github.com/mdn/rari/commit/68df8aacefb8f92d89a2b06daec7c7411d5d3469))
+
 ## [0.1.32](https://github.com/mdn/rari/compare/v0.1.31...v0.1.32) (2025-04-02)
 
 
