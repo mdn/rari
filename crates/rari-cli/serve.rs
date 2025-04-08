@@ -26,6 +26,8 @@ use rari_types::locale::Locale;
 use rari_types::Popularities;
 use rari_utils::io::read_to_string;
 use serde::Serialize;
+use tower::ServiceExt;
+use tower_http::services::ServeFile;
 use tracing::{error, span, Level};
 
 static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -79,7 +81,7 @@ async fn wrapped_fix_issues(
         .await
 }
 
-async fn get_json_handler(req: Request) -> Result<Json<BuiltPage>, AppError> {
+async fn get_json_handler(req: Request) -> Result<Response, AppError> {
     let url = req.uri().path();
     let req_id = REQ_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let span = span!(Level::WARN, "serve", req = req_id);
@@ -87,27 +89,42 @@ async fn get_json_handler(req: Request) -> Result<Json<BuiltPage>, AppError> {
     let span = span!(Level::ERROR, "url", "{}", url);
     let _enter1 = span.enter();
     let url = url.strip_suffix("/index.json").unwrap_or(url);
-    let page = Page::from_url_with_fallback(url)?;
-    let file = page.full_path().to_string_lossy();
-    let span = span!(
-        Level::ERROR,
-        "page",
-        locale = page.locale().as_url_str(),
-        slug = page.slug(),
-        file = file.as_ref()
-    );
-    let _enter2 = span.enter();
-    let mut json = page.build()?;
-    tracing::info!("{url}");
-    if let BuiltPage::Doc(json_doc) = &mut json {
-        let DocPage::Doc(json_doc) = json_doc.deref_mut();
-        let m = IN_MEMORY.get_events();
-        let (_, req_issues) = m
-            .remove(page.full_path().to_string_lossy().as_ref())
-            .unwrap_or_default();
-        json_doc.doc.flaws = Some(to_display_issues(req_issues, &page));
+    match Page::from_url_with_fallback(url) {
+        Ok(page) => {
+            let file = page.full_path().to_string_lossy();
+            let span = span!(
+                Level::ERROR,
+                "page",
+                locale = page.locale().as_url_str(),
+                slug = page.slug(),
+                file = file.as_ref()
+            );
+            let _enter2 = span.enter();
+            let mut json = page.build()?;
+            tracing::info!("{url}");
+            if let BuiltPage::Doc(json_doc) = &mut json {
+                let DocPage::Doc(json_doc) = json_doc.deref_mut();
+                let m = IN_MEMORY.get_events();
+                let (_, req_issues) = m
+                    .remove(page.full_path().to_string_lossy().as_ref())
+                    .unwrap_or_default();
+                json_doc.doc.flaws = Some(to_display_issues(req_issues, &page));
+            }
+            Ok(Json(json).into_response())
+        }
+        Err(e @ (DocError::DocNotFound(..) | DocError::PageNotFound(..))) => {
+            if let Some((doc_url, file_name)) = url.rsplit_once('/') {
+                let page = Page::from_url_with_fallback(doc_url)?;
+                let path = page.full_path().with_file_name(file_name);
+                return Ok(ServeFile::new(path).oneshot(req).await.into_response());
+            }
+            Err(e.into())
+        }
+        Err(e) => {
+            tracing::warn!("{e:?}");
+            Err(e.into())
+        }
     }
-    Ok(Json(json))
 }
 
 async fn get_contributors_handler(req: Request) -> impl IntoResponse {
@@ -202,7 +219,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response<Body> {
         match self.0 {
             ToolError::DocError(
-                DocError::RariIoError(_) | DocError::IOError(_) | DocError::PageNotFound(_, _),
+                DocError::RariIoError(_) | DocError::IOError(_) | DocError::PageNotFound(..),
             ) => (StatusCode::NOT_FOUND, "").into_response(),
 
             _ => (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response(),
