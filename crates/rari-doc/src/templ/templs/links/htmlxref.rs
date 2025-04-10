@@ -18,7 +18,7 @@ pub fn htmlxref(
         format!("&lt;{element_name}&gt;")
     });
     let mut url = format!(
-        "/{}/docs/Web/HTML/Element/{}",
+        "/{}/docs/Web/HTML/Reference/Elements/{}",
         env.locale.as_url_str(),
         element_name,
     );
