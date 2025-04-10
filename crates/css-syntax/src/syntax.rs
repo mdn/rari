@@ -99,7 +99,14 @@ static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
                 CssValueType::Value => Some(&mut all.values),
                 CssValueType::Selector => None,
             } {
-                map.insert(k, (item, &spec.spec));
+                map.entry(k)
+                    .and_modify(|(e_item, e_spec)| {
+                        if item.value.is_some() || e_item.value.is_none() {
+                            *e_item = item;
+                            *e_spec = &spec.spec;
+                        }
+                    })
+                    .or_insert((item, &spec.spec));
             };
             if let Some(values) = item.values.as_ref() {
                 flatten_values(values, &spec.spec, &mut all);
