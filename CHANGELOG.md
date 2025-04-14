@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.34](https://github.com/mdn/rari/compare/v0.1.33...v0.1.34) (2025-04-14)
+
+
+### Bug Fixes
+
+* **csssyntax:** fix color() ([58b506e](https://github.com/mdn/rari/commit/58b506e7230e76fba6b39ffb7e7d0f46dffa57af))
+* **npm:** export types in an esm-compatible way ([#191](https://github.com/mdn/rari/issues/191)) ([8f523d7](https://github.com/mdn/rari/commit/8f523d7ead40582a6e75a48fff707d2ee1259c82))
+
 ## [0.1.33](https://github.com/mdn/rari/compare/v0.1.32...v0.1.33) (2025-04-08)
 
 
