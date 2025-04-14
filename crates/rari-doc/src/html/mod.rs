@@ -1,6 +1,8 @@
 pub mod bubble_up;
+pub mod code;
 mod fix_img;
 mod fix_link;
+pub mod ids;
 pub mod links;
 pub mod modifier;
 pub mod rewriter;

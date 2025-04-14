@@ -18,6 +18,7 @@ use super::templates::{
 };
 use super::types::contributors::Usernames;
 use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
+use crate::html::code::Code;
 use crate::issues::DisplayIssues;
 use crate::pages::types::blog::BlogMeta;
 use crate::specs::Specification;
@@ -275,6 +276,8 @@ pub struct JsonDoc {
     pub page_type: PageType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub flaws: Option<DisplayIssues>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub live_samples: Option<Vec<Code>>,
 }
 
 impl JsonDocMetadata {
@@ -510,6 +513,8 @@ pub struct JsonBlogPostDoc {
     pub title: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub toc: Vec<TocEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub live_samples: Option<Vec<Code>>,
 }
 
 /// Represents the outermost structure of the serialized JSON for a blog post. This struct

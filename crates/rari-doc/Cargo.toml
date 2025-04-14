@@ -43,6 +43,7 @@ html-escape = "0.2"
 html5ever = "0.29"
 ego-tree = "0.10"
 rss = { version = "2", features = [], default-features = false }
+cssparser = "0.34"
 
 ignore = "0.4"
 crossbeam-channel = "0.5"
