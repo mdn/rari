@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::marker::PhantomData;
@@ -6,9 +7,10 @@ use std::path::Path;
 use indexmap::IndexMap;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
-use schemars::JsonSchema;
+use schemars::schema::Schema;
+use schemars::{JsonSchema, SchemaGenerator};
 use serde::de::{self, value, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use url::Url;
 
@@ -141,7 +143,7 @@ impl WebFeatures {
                 });
             }
             match status.baseline {
-                Some(BaselineHighLow::False(false)) => {
+                Some(BaselineHighLow::False) => {
                     let Support {
                         chrome,
                         chrome_android,
@@ -301,13 +303,63 @@ pub struct Support {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     safari_ios: Option<String>,
 }
-#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BaselineHighLow {
     High,
     Low,
-    #[serde(untagged)]
-    False(bool),
+    #[serde(
+        untagged,
+        serialize_with = "serialize_false",
+        deserialize_with = "deserialize_false"
+    )]
+    False,
+}
+
+// Deriving JsonSchema fails to type the false case. So we do it manually.
+impl JsonSchema for BaselineHighLow {
+    fn schema_name() -> String {
+        "BaselineHighLow".into()
+    }
+
+    fn schema_id() -> Cow<'static, str> {
+        concat!(module_path!(), "::BaselineHighLow").into()
+    }
+
+    fn json_schema(_gen: &mut SchemaGenerator) -> Schema {
+        serde_json::from_str(
+            r#"{"oneOf": [
+          {
+            "type": "string",
+            "enum": ["high", "low"]
+          },
+          {
+            "type": "boolean",
+            "enum": [false]
+          }
+        ]}"#,
+        )
+        .unwrap()
+    }
+}
+
+fn serialize_false<S>(serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_bool(false)
+}
+
+fn deserialize_false<'de, D>(deserializer: D) -> Result<(), D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = bool::deserialize(deserializer)?;
+    if !value {
+        Ok(())
+    } else {
+        Err(serde::de::Error::custom("expected false"))
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
@@ -377,4 +429,19 @@ where
     }
 
     deserializer.deserialize_any(TOrVec::<T>(PhantomData))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_baseline_high_low() {
+        let json = r#"false"#;
+        let bl = serde_json::from_str::<BaselineHighLow>(json);
+        assert!(matches!(bl, Ok(BaselineHighLow::False)));
+        let json = r#""high""#;
+        let bl = serde_json::from_str::<BaselineHighLow>(json);
+        assert!(matches!(bl, Ok(BaselineHighLow::High)));
+    }
 }
