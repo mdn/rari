@@ -73,7 +73,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
             PageType::WebApiInstanceMethod => &mut instance_methods,
             PageType::WebApiConstructor => &mut constructors,
             PageType::WebApiEvent => &mut events,
-            PageType::WebglExtensionMethod => &mut instance_properties,
+            PageType::WebglExtensionMethod => &mut instance_methods,
             _ => continue,
         };
         v.push(page);
