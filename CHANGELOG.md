@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.35](https://github.com/mdn/rari/compare/v0.1.34...v0.1.35) (2025-04-15)
+
+
+### Features
+
+* **livesamples:** tag live sample code blocks ([#193](https://github.com/mdn/rari/issues/193)) ([4cbe2ae](https://github.com/mdn/rari/commit/4cbe2ae3acd60b50e3b96d4122be0c471cf79f18))
+
+
+### Bug Fixes
+
+* **typescript:** fix baseline types ([4ae7a0a](https://github.com/mdn/rari/commit/4ae7a0ab4993a623d87a173a5de26b19995d27b3))
+
 ## [0.1.34](https://github.com/mdn/rari/compare/v0.1.33...v0.1.34) (2025-04-14)
 
 

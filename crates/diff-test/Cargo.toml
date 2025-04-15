@@ -1,6 +1,6 @@
 [package]
 name = "diff-test"
-version = "0.1.34"
+version = "0.1.35"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
