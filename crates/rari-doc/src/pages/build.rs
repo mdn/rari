@@ -23,6 +23,7 @@ use crate::error::DocError;
 use crate::helpers::parents::parents;
 use crate::helpers::title::{page_title, transform_title};
 use crate::html::bubble_up::bubble_up_curriculum_page;
+use crate::html::code::{code_blocks, Code};
 use crate::html::modifier::{add_missing_ids, insert_self_links_for_dts, remove_empty_p};
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
 use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Split};
@@ -136,6 +137,7 @@ pub struct PageContent {
     toc: Vec<TocEntry>,
     summary: Option<String>,
     sidebar: Option<String>,
+    live_samples: Option<Vec<Code>>,
 }
 
 pub fn make_toc(sections: &[BuildSection], with_h3: bool) -> Vec<TocEntry> {
@@ -168,6 +170,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     add_missing_ids(&mut fragment)?;
     insert_self_links_for_dts(&mut fragment)?;
     expand_details_and_mark_current_for_inline_sidebar(&mut fragment, page.url())?;
+    let live_samples = code_blocks(&mut fragment);
     let Split {
         sections,
         summary,
@@ -195,6 +198,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
         toc,
         summary,
         sidebar,
+        live_samples,
     })
 }
 
@@ -204,6 +208,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         toc,
         summary,
         sidebar,
+        live_samples,
     } = build_content(doc)?;
     let sidebar_html = if sidebar.is_some() {
         sidebar
@@ -298,13 +303,19 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             other_translations,
             page_type: doc.meta.page_type,
             flaws: None,
+            live_samples,
         },
         url: doc.meta.url.clone(),
     }))))
 }
 
 fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
-    let PageContent { body, toc, .. } = build_content(post)?;
+    let PageContent {
+        body,
+        toc,
+        live_samples,
+        ..
+    } = build_content(post)?;
     Ok(BuiltPage::BlogPost(Box::new(BlogPage::BlogPost(
         JsonBlogPostPage {
             doc: JsonBlogPostDoc {
@@ -316,6 +327,7 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
                 body,
                 toc,
                 summary: Some(post.meta.description.clone()),
+                live_samples,
                 ..Default::default()
             },
             url: post.url().to_owned(),
