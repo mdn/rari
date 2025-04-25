@@ -19,9 +19,10 @@ use crate::error::Error;
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct Baseline<'a> {
     #[serde(flatten)]
-    pub support: &'a SupportStatusWithByKey,
+    pub support: &'a SupportStatus,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub asterisk: bool,
+    pub feature: &'a FeatureData,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -44,11 +45,6 @@ pub struct DirtyWebFeatures {
 #[inline]
 fn spaced(bcd_key: &str) -> String {
     bcd_key.replace('.', " ")
-}
-
-#[inline]
-fn unspaced(bcd_key: &str) -> String {
-    bcd_key.replace(' ', ".")
 }
 
 impl WebFeatures {
@@ -120,131 +116,116 @@ impl WebFeatures {
     // https://github.com/mdn/yari/issues/11546#issuecomment-2531611136
     pub fn feature_status(&self, bcd_key: &str) -> Option<Baseline> {
         let bcd_key_spaced = &spaced(bcd_key);
-        if let Some(status) = self.feature_status_internal(bcd_key_spaced) {
-            let sub_keys = self.sub_keys(bcd_key_spaced);
-            let sub_status = sub_keys
-                .iter()
-                .map(|sub_key| {
-                    self.feature_status_internal_with_feature_name(
-                        &sub_key.bcd_key,
-                        &sub_key.feature,
-                    )
-                    .and_then(|status| status.baseline)
-                })
-                .collect::<Vec<_>>();
+        if let Some(feature) = self.feature_status_internal(bcd_key_spaced) {
+            if let Some(status) = feature.status.as_ref() {
+                if let Some(support) = status
+                    .by_compat_key
+                    .as_ref()
+                    .and_then(|by_key| by_key.get(bcd_key))
+                {
+                    let sub_keys = self.sub_keys(bcd_key_spaced);
+                    let sub_status = sub_keys
+                        .iter()
+                        .map(|sub_key| {
+                            self.feature_internal_with_feature_name(&sub_key.feature)
+                                .and_then(|feature| feature.status.as_ref())
+                                .and_then(|status| status.baseline)
+                        })
+                        .collect::<Vec<_>>();
 
-            if sub_status
-                .iter()
-                .all(|baseline| baseline == &status.baseline)
-            {
-                return Some(Baseline {
-                    support: status,
-                    asterisk: false,
-                });
-            }
-            match status.baseline {
-                Some(BaselineHighLow::False) => {
-                    let Support {
-                        chrome,
-                        chrome_android,
-                        firefox,
-                        firefox_android,
-                        safari,
-                        safari_ios,
-                        ..
-                    } = &status.support;
-                    if chrome == chrome_android
-                        && firefox == firefox_android
-                        && safari == safari_ios
-                    {
-                        return Some(Baseline {
-                            support: status,
-                            asterisk: false,
-                        });
-                    }
-                }
-                Some(BaselineHighLow::Low) => {
                     if sub_status
                         .iter()
-                        .all(|ss| matches!(ss, Some(BaselineHighLow::Low | BaselineHighLow::High)))
+                        .all(|baseline| baseline == &status.baseline)
                     {
                         return Some(Baseline {
-                            support: status,
+                            support,
                             asterisk: false,
+                            feature,
                         });
                     }
+                    match status.baseline {
+                        Some(BaselineHighLow::False) => {
+                            let Support {
+                                chrome,
+                                chrome_android,
+                                firefox,
+                                firefox_android,
+                                safari,
+                                safari_ios,
+                                ..
+                            } = &status.support;
+                            if chrome == chrome_android
+                                && firefox == firefox_android
+                                && safari == safari_ios
+                            {
+                                return Some(Baseline {
+                                    support,
+                                    asterisk: false,
+                                    feature,
+                                });
+                            }
+                        }
+                        Some(BaselineHighLow::Low) => {
+                            if sub_status.iter().all(|ss| {
+                                matches!(ss, Some(BaselineHighLow::Low | BaselineHighLow::High))
+                            }) {
+                                return Some(Baseline {
+                                    support,
+                                    asterisk: false,
+                                    feature,
+                                });
+                            }
+                        }
+                        _ => {}
+                    }
+                    return Some(Baseline {
+                        support,
+                        asterisk: true,
+                        feature,
+                    });
                 }
-                _ => {}
             }
-            Some(Baseline {
-                support: status,
-                asterisk: true,
-            })
-        } else {
-            None
         }
+        None
     }
 
-    fn feature_status_internal(&self, bcd_key_spaced: &str) -> Option<&SupportStatusWithByKey> {
+    fn feature_status_internal(&self, bcd_key_spaced: &str) -> Option<&FeatureData> {
         if let Ok(i) = self
             .bcd_keys
             .binary_search_by(|ks| ks.bcd_key.as_str().cmp(bcd_key_spaced))
         {
             let feature_name = &self.bcd_keys[i].feature;
-            return self.feature_status_internal_with_feature_name(bcd_key_spaced, feature_name);
+            return self.feature_internal_with_feature_name(feature_name);
         }
         None
     }
 
-    fn feature_status_internal_with_feature_name(
-        &self,
-        bcd_key_spaced: &str,
-        feature_name: &str,
-    ) -> Option<&SupportStatusWithByKey> {
+    fn feature_internal_with_feature_name(&self, feature_name: &str) -> Option<&FeatureData> {
         if let Some(feature_data) = self.features.get(feature_name) {
             if feature_data.discouraged.is_some() {
                 return None;
             }
-            if let Some(ref status) = feature_data.status {
-                if let Some(by_key) = &status.by_compat_key {
-                    if let Some(key_status) = by_key.get(&unspaced(bcd_key_spaced)) {
-                        if key_status.baseline == status.baseline {
-                            return Some(status);
-                        }
-                    }
-                }
-            }
+            return Some(feature_data);
         }
         None
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct FeatureData {
     /** Specification */
-    #[serde(
-        deserialize_with = "t_or_vec",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(deserialize_with = "t_or_vec", default, skip_serializing)]
     pub spec: Vec<Url>,
     /** caniuse.com identifier */
-    #[serde(
-        deserialize_with = "t_or_vec",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(deserialize_with = "t_or_vec", default, skip_serializing)]
     pub caniuse: Vec<String>,
     /** Whether a feature is considered a "baseline" web platform feature and when it achieved that status */
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<SupportStatusWithByKey>,
     /** Sources of support data for this feature */
-    #[serde(
-        deserialize_with = "t_or_vec",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(deserialize_with = "t_or_vec", default, skip_serializing)]
     pub compat_features: Vec<String>,
+    #[serde(skip_serializing)]
     pub description: String,
     pub description_html: String,
     #[serde(
@@ -252,20 +233,17 @@ pub struct FeatureData {
         default,
         skip_serializing_if = "Vec::is_empty"
     )]
+    #[serde(skip_serializing)]
     pub group: Vec<String>,
     pub name: String,
-    #[serde(
-        deserialize_with = "t_or_vec",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(deserialize_with = "t_or_vec", default, skip_serializing)]
     pub snapshot: Vec<String>,
     /** Whether developers are formally discouraged from using this feature */
     #[serde(skip_serializing_if = "Option::is_none")]
     pub discouraged: Option<Discouraged>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct Discouraged {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     according_to: Vec<String>,
