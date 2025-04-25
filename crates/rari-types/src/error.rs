@@ -4,7 +4,7 @@ use thiserror::Error;
 pub enum EnvError {
     #[error("CONTENT_ROOT must be set")]
     NoContent,
-    #[error("TRANSLATED_CONTENT_ROOT must be set")]
+    #[error("CONTENT_TRANSLATED_ROOT must be set")]
     NoTranslatedContent,
     #[error("BUILD_OUT_ROOT must be set")]
     NoBuildOut,
