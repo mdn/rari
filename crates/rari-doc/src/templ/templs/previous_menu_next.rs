@@ -58,7 +58,7 @@ fn previous_next_menu_internal(
                 prev.as_str()
             ))?;
             let title = l10n_json_data("Template", "previous", locale)?;
-            generate_link(&mut out, page.slug(), locale, title)?;
+            generate_link(&mut out, page.slug(), locale, title, "prev")?;
         }
     }
     if let Some(menu) = menu {
@@ -73,7 +73,7 @@ fn previous_next_menu_internal(
                 l10n_json_data("Template", "prev_next_menu", locale)?,
                 page.title()
             );
-            generate_link(&mut out, page.slug(), locale, &title)?;
+            generate_link(&mut out, page.slug(), locale, &title, "menu")?;
         }
     }
     if let Some(next) = next {
@@ -85,7 +85,7 @@ fn previous_next_menu_internal(
                 next.as_str()
             ))?;
             let title = l10n_json_data("Template", "next", locale)?;
-            generate_link(&mut out, page.slug(), locale, title)?;
+            generate_link(&mut out, page.slug(), locale, title, "next")?;
         }
     }
     out.push_str("</ul>");
@@ -97,9 +97,12 @@ fn generate_link(
     slug: &str,
     locale: Locale,
     title: &str,
+    class: &str
 ) -> Result<(), DocError> {
     out.extend([
-        r#"<li><a data-templ-link class="button secondary" href="/"#,
+        r#"<li class="#,
+        class,
+        r#"><a data-templ-link class="button secondary" href="/"#,
         locale.as_url_str(),
         r#"/docs/"#,
         slug,
