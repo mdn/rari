@@ -92,15 +92,15 @@ pub fn m2h_internal(
 
 #[cfg(test)]
 mod test {
-    use comrak::html::escape_href;
 
     use super::*;
+    use crate::utils::escape_href;
 
     #[test]
     fn render_code_tags() -> Result<(), anyhow::Error> {
         let out = m2h("`<select>`", Locale::EnUs)?;
         assert_eq!(out,
-            "<p data-sourcepos=\"1:1-1:10\"><code data-sourcepos=\"1:2-1:9\">&lt;select&gt;</code></p>\n"
+            "<p data-sourcepos=\"1:1-1:10\"><code data-sourcepos=\"1:1-1:10\">&lt;select&gt;</code></p>\n"
         );
         Ok(())
     }
@@ -134,7 +134,17 @@ mod test {
     #[test]
     fn code_macro() -> Result<(), anyhow::Error> {
         let out = m2h(r#"`{{foo}}` bar"#, Locale::EnUs)?;
-        assert_eq!(out, "<p data-sourcepos=\"1:1-1:13\"><code data-sourcepos=\"1:2-1:8\">{{foo}}</code> bar</p>\n");
+        assert_eq!(out, "<p data-sourcepos=\"1:1-1:13\"><code data-sourcepos=\"1:1-1:9\">{{foo}}</code> bar</p>\n");
+        Ok(())
+    }
+
+    #[test]
+    fn code_macro2() -> Result<(), anyhow::Error> {
+        let out = m2h(r#"`aaaaaaa`"#, Locale::EnUs)?;
+        assert_eq!(
+            out,
+            "<p data-sourcepos=\"1:1-1:9\"><code data-sourcepos=\"1:1-1:9\">aaaaaaa</code></p>\n"
+        );
         Ok(())
     }
 

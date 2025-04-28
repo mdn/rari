@@ -155,17 +155,17 @@ fn get_specs_for_item<'a>(item_name: &str, item_type: ItemType) -> Vec<&'a str> 
 ///
 /// ```
 /// let color = css_syntax::syntax::get_property_syntax("color");
-/// assert_eq!(color, "<color>");
+/// assert_eq!(color.syntax, "<color>");
 /// ```
 ///
 /// ```
 /// let border = css_syntax::syntax::get_property_syntax("border");
-/// assert_eq!(border, "<line-width> || <line-style> || <color>");
+/// assert_eq!(border.syntax, "<line-width> || <line-style> || <color>");
 /// ```
 ///
 /// ```
 /// let grid_template_rows = css_syntax::syntax::get_property_syntax("grid-template-rows");
-/// assert_eq!(grid_template_rows, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
+/// assert_eq!(grid_template_rows.syntax, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
 /// ```
 pub fn get_property_syntax(name: &str) -> Syntax {
     // 1) Get all specs which list this property
@@ -239,7 +239,7 @@ pub fn get_property_syntax(name: &str) -> Syntax {
 /// Example:
 /// ```
 /// let media = css_syntax::syntax::get_at_rule_syntax("@media");
-/// assert_eq!(media, "@media <media-query-list> { <rule-list> }");
+/// assert_eq!(media.syntax, "@media <media-query-list> { <rule-list> }");
 /// ```
 pub fn get_at_rule_syntax(name: &str) -> Syntax {
     let specs = get_specs_for_item(name, ItemType::AtRule);
@@ -264,7 +264,7 @@ pub fn get_at_rule_syntax(name: &str) -> Syntax {
 /// # Example:
 /// ```
 /// let descriptor = css_syntax::syntax::get_at_rule_descriptor_syntax("width", "@media");
-/// assert_eq!(descriptor, "<length>");
+/// assert_eq!(descriptor.syntax, "<length>");
 /// ```
 pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
     let specs = get_specs_for_item(at_rule_name, ItemType::AtRule);
