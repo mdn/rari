@@ -12,7 +12,7 @@ pub(crate) mod dl;
 pub mod error;
 pub mod ext;
 pub(crate) mod html;
-pub mod node_card;
+pub mod note_card;
 pub(crate) mod p;
 
 use dl::{convert_dl, is_dl};
