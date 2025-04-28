@@ -9,7 +9,7 @@ authors = [
 ]
 homepage = "https://github.com/mdn/rari"
 repository = "https://github.com/mdn/rari"
-rust-version = "1.81"
+rust-version = "1.86"
 
 [[bin]]
 path = "crates/rari-cli/main.rs"
