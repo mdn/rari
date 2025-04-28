@@ -1,10 +1,12 @@
-use comrak::html::{collect_text, render_math_code_block, render_sourcepos, write_opening_tag};
-use comrak::{create_formatter, nodes::NodeValue};
 use core::str;
-use itertools::Itertools;
-use rari_types::locale::Locale;
 use std::collections::HashMap;
 use std::io::Write;
+
+use comrak::create_formatter;
+use comrak::html::{collect_text, render_math_code_block, render_sourcepos, write_opening_tag};
+use comrak::nodes::NodeValue;
+use itertools::Itertools;
+use rari_types::locale::Locale;
 
 use crate::anchor::anchorize;
 use crate::ctype::isspace;
