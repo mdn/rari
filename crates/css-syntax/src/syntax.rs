@@ -1,6 +1,7 @@
 use std::cmp::{max, min, Ordering};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
+#[cfg(any(feature = "rari", test))]
 use std::fs;
 use std::sync::LazyLock;
 
