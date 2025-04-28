@@ -10,14 +10,14 @@ use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Typ
 use css_definition_syntax::walk::{walk, WalkOptions};
 use css_syntax_types::{Css, CssValueType, CssValuesItem, SpecInExtract};
 use itertools::intersperse;
-#[cfg(all(feature = "rari", not(test)))]
+#[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
 
 use crate::error::SyntaxError;
 
 static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
-    #[cfg(test)]
+    #[cfg(any(feature = "doctest", test))]
     {
         let package_path = std::path::Path::new("package");
         rari_deps::webref_css::update_webref_css(package_path).unwrap();
@@ -25,12 +25,12 @@ static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
             .expect("no data dir");
         serde_json::from_str(&json_str).expect("Failed to parse JSON")
     }
-    #[cfg(all(not(feature = "rari"), not(test)))]
+    #[cfg(all(not(feature = "rari"), not(any(feature = "doctest", test))))]
     {
         let webref_css: &str = include_str!("../@webref/css/webref_css.json");
         serde_json::from_str(webref_css).expect("Failed to parse JSON")
     }
-    #[cfg(all(feature = "rari", not(test)))]
+    #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
     {
         let json_str = fs::read_to_string(data_dir().join("@webref/css").join("webref_css.json"))
             .expect("no data dir");

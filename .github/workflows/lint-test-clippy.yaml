@@ -32,6 +32,6 @@ jobs:
       - name: Run tests
         run: cargo test --verbose --workspace --all-targets --no-fail-fast
       - name: Run doc tests
-        run: cargo test --verbose --workspace --doc --no-fail-fast
+        run: cargo test --verbose --workspace --doc --features doctest --no-fail-fast
       - name: Run clippy
         run: cargo clippy --all-features --workspace -- -Dwarnings
