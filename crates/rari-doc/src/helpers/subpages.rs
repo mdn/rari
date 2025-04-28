@@ -21,6 +21,15 @@ fn title_sorter(a: &Page, b: &Page) -> Ordering {
     COLLATOR.with(|c| c.compare(a.title(), b.title()))
 }
 
+fn short_title_sorter(a: &Page, b: &Page) -> Ordering {
+    COLLATOR.with(|c| {
+        c.compare(
+            a.short_title().unwrap_or(a.title()),
+            b.short_title().unwrap_or(b.title()),
+        )
+    })
+}
+
 fn title_api_sorter(a: &Page, b: &Page) -> Ordering {
     COLLATOR.with(|c| c.compare(api_page_title(a), api_page_title(b)))
 }
@@ -33,6 +42,13 @@ fn title_natural_sorter(a: &Page, b: &Page) -> Ordering {
     natural_compare_with_floats(a.title(), b.title())
 }
 
+fn short_title_natural_sorter(a: &Page, b: &Page) -> Ordering {
+    natural_compare_with_floats(
+        a.short_title().unwrap_or(a.title()),
+        b.short_title().unwrap_or(b.title()),
+    )
+}
+
 fn slug_natural_sorter(a: &Page, b: &Page) -> Ordering {
     natural_compare_with_floats(a.slug(), b.slug())
 }
@@ -41,8 +57,10 @@ fn slug_natural_sorter(a: &Page, b: &Page) -> Ordering {
 pub enum SubPagesSorter {
     #[default]
     Title,
+    ShortTitle,
     Slug,
     TitleNatural,
+    ShortTitleNatural,
     SlugNatural,
     TitleAPI,
 }
@@ -51,8 +69,10 @@ impl SubPagesSorter {
     pub fn sorter(&self) -> fn(a: &Page, b: &Page) -> Ordering {
         match self {
             SubPagesSorter::Title => title_sorter,
+            SubPagesSorter::ShortTitle => short_title_sorter,
             SubPagesSorter::Slug => slug_sorter,
             SubPagesSorter::TitleNatural => title_natural_sorter,
+            SubPagesSorter::ShortTitleNatural => short_title_natural_sorter,
             SubPagesSorter::SlugNatural => slug_natural_sorter,
             SubPagesSorter::TitleAPI => title_api_sorter,
         }
