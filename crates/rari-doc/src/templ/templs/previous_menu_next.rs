@@ -97,7 +97,7 @@ fn generate_link(
     slug: &str,
     locale: Locale,
     title: &str,
-    class: &str
+    class: &str,
 ) -> Result<(), DocError> {
     out.extend([
         r#"<li class="#,
