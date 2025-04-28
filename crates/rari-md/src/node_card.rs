@@ -1,6 +1,7 @@
 use comrak::nodes::{AlertType, AstNode, NodeValue};
 use rari_types::locale::Locale;
 
+#[derive(PartialEq, Eq)]
 pub enum NoteCard {
     Callout,
     Warning,
