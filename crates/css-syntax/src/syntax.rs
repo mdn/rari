@@ -1,6 +1,7 @@
 use std::cmp::{max, min, Ordering};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
+#[cfg(any(feature = "rari", test))]
 use std::fs;
 use std::sync::LazyLock;
 
@@ -9,14 +10,14 @@ use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Typ
 use css_definition_syntax::walk::{walk, WalkOptions};
 use css_syntax_types::{Css, CssValueType, CssValuesItem, SpecInExtract};
 use itertools::intersperse;
-#[cfg(all(feature = "rari", not(test)))]
+#[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
 
 use crate::error::SyntaxError;
 
 static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
-    #[cfg(test)]
+    #[cfg(any(feature = "doctest", test))]
     {
         let package_path = std::path::Path::new("package");
         rari_deps::webref_css::update_webref_css(package_path).unwrap();
@@ -24,12 +25,12 @@ static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
             .expect("no data dir");
         serde_json::from_str(&json_str).expect("Failed to parse JSON")
     }
-    #[cfg(all(not(feature = "rari"), not(test)))]
+    #[cfg(all(not(feature = "rari"), not(any(feature = "doctest", test))))]
     {
         let webref_css: &str = include_str!("../@webref/css/webref_css.json");
         serde_json::from_str(webref_css).expect("Failed to parse JSON")
     }
-    #[cfg(all(feature = "rari", not(test)))]
+    #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
     {
         let json_str = fs::read_to_string(data_dir().join("@webref/css").join("webref_css.json"))
             .expect("no data dir");
@@ -155,17 +156,17 @@ fn get_specs_for_item<'a>(item_name: &str, item_type: ItemType) -> Vec<&'a str> 
 ///
 /// ```
 /// let color = css_syntax::syntax::get_property_syntax("color");
-/// assert_eq!(color, "<color>");
+/// assert_eq!(color.syntax, "<color>");
 /// ```
 ///
 /// ```
 /// let border = css_syntax::syntax::get_property_syntax("border");
-/// assert_eq!(border, "<line-width> || <line-style> || <color>");
+/// assert_eq!(border.syntax, "<line-width> || <line-style> || <color>");
 /// ```
 ///
 /// ```
 /// let grid_template_rows = css_syntax::syntax::get_property_syntax("grid-template-rows");
-/// assert_eq!(grid_template_rows, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
+/// assert_eq!(grid_template_rows.syntax, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
 /// ```
 pub fn get_property_syntax(name: &str) -> Syntax {
     // 1) Get all specs which list this property
@@ -239,7 +240,7 @@ pub fn get_property_syntax(name: &str) -> Syntax {
 /// Example:
 /// ```
 /// let media = css_syntax::syntax::get_at_rule_syntax("@media");
-/// assert_eq!(media, "@media <media-query-list> { <rule-list> }");
+/// assert_eq!(media.syntax, "@media <media-query-list> { <rule-list> }");
 /// ```
 pub fn get_at_rule_syntax(name: &str) -> Syntax {
     let specs = get_specs_for_item(name, ItemType::AtRule);
@@ -264,7 +265,7 @@ pub fn get_at_rule_syntax(name: &str) -> Syntax {
 /// # Example:
 /// ```
 /// let descriptor = css_syntax::syntax::get_at_rule_descriptor_syntax("width", "@media");
-/// assert_eq!(descriptor, "<length>");
+/// assert_eq!(descriptor.syntax, "<length>");
 /// ```
 pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
     let specs = get_specs_for_item(at_rule_name, ItemType::AtRule);

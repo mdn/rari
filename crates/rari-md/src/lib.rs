@@ -1,12 +1,12 @@
 use comrak::nodes::{AstNode, NodeValue};
 use comrak::{parse_document, Arena, ComrakOptions};
+use html::{CustomFormatter, RariContext};
 use rari_types::locale::Locale;
 
 use crate::error::MarkdownError;
 use crate::p::{fix_p, is_empty_p, is_escaped_templ_p};
 
 pub mod anchor;
-pub(crate) mod character_set;
 pub(crate) mod ctype;
 pub(crate) mod dl;
 pub mod error;
@@ -14,9 +14,10 @@ pub mod ext;
 pub(crate) mod html;
 pub mod node_card;
 pub(crate) mod p;
+pub(crate) mod utils;
 
 use dl::{convert_dl, is_dl};
-use html::format_document;
+//use html::format_document;
 
 fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &F)
 where
@@ -53,7 +54,6 @@ pub fn m2h_internal(
     let mut options = ComrakOptions::default();
     options.extension.tagfilter = false;
     options.render.sourcepos = m2h_options.sourcepos;
-    options.render.experimental_inline_sourcepos = true;
     options.render.unsafe_ = true;
     options.extension.table = true;
     options.extension.autolink = true;
@@ -75,23 +75,32 @@ pub fn m2h_internal(
     });
 
     let mut html = vec![];
-    format_document(root, &options, &mut html, locale)
-        .map_err(|_| MarkdownError::HTMLFormatError)?;
+    CustomFormatter::format_document(
+        root,
+        &options,
+        &mut html,
+        RariContext {
+            stack: Vec::new(),
+            locale,
+        },
+    )
+    //format_document(root, &options, &mut html, locale)
+    .map_err(|_| MarkdownError::HTMLFormatError)?;
     let encoded_html = String::from_utf8(html).map_err(|_| MarkdownError::HTMLFormatError)?;
     Ok(encoded_html)
 }
 
 #[cfg(test)]
 mod test {
-    use html::escape_href;
 
     use super::*;
+    use crate::utils::escape_href;
 
     #[test]
     fn render_code_tags() -> Result<(), anyhow::Error> {
         let out = m2h("`<select>`", Locale::EnUs)?;
         assert_eq!(out,
-            "<p data-sourcepos=\"1:1-1:10\"><code data-sourcepos=\"1:2-1:9\">&lt;select&gt;</code></p>\n"
+            "<p data-sourcepos=\"1:1-1:10\"><code data-sourcepos=\"1:1-1:10\">&lt;select&gt;</code></p>\n"
         );
         Ok(())
     }
@@ -125,7 +134,17 @@ mod test {
     #[test]
     fn code_macro() -> Result<(), anyhow::Error> {
         let out = m2h(r#"`{{foo}}` bar"#, Locale::EnUs)?;
-        assert_eq!(out, "<p data-sourcepos=\"1:1-1:13\"><code data-sourcepos=\"1:2-1:8\">{{foo}}</code> bar</p>\n");
+        assert_eq!(out, "<p data-sourcepos=\"1:1-1:13\"><code data-sourcepos=\"1:1-1:9\">{{foo}}</code> bar</p>\n");
+        Ok(())
+    }
+
+    #[test]
+    fn code_macro2() -> Result<(), anyhow::Error> {
+        let out = m2h(r#"`aaaaaaa`"#, Locale::EnUs)?;
+        assert_eq!(
+            out,
+            "<p data-sourcepos=\"1:1-1:9\"><code data-sourcepos=\"1:1-1:9\">aaaaaaa</code></p>\n"
+        );
         Ok(())
     }
 
