@@ -800,7 +800,6 @@ dependencies = [
  "anyhow",
  "base64",
  "clap",
- "dashmap",
  "html-minifier",
  "ignore",
  "itertools",
@@ -812,7 +811,6 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "sha2",
  "similar",
 ]
 
@@ -3125,6 +3123,7 @@ dependencies = [
  "schemars_derive",
  "serde",
  "serde_json",
+ "url",
 ]
 
 [[package]]
