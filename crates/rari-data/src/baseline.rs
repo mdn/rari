@@ -33,6 +33,7 @@ pub struct WebFeatures {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct KeyStatus {
+    bcd_key_spaced: String,
     bcd_key: String,
     feature: String,
 }
@@ -82,28 +83,29 @@ impl WebFeatures {
             .iter()
             .flat_map(|(feature, fd)| {
                 fd.compat_features.iter().map(|bcd_key| KeyStatus {
-                    bcd_key: spaced(bcd_key),
+                    bcd_key: bcd_key.clone(),
+                    bcd_key_spaced: spaced(bcd_key),
                     feature: feature.clone(),
                 })
             })
             .collect();
-        bcd_keys.sort_by(|a, b| a.bcd_key.cmp(&b.bcd_key));
-        bcd_keys.dedup_by(|a, b| a.bcd_key == b.bcd_key);
+        bcd_keys.sort_by(|a, b| a.bcd_key_spaced.cmp(&b.bcd_key_spaced));
+        bcd_keys.dedup_by(|a, b| a.bcd_key_spaced == b.bcd_key_spaced);
 
         let map = WebFeatures { features, bcd_keys };
         Ok(map)
     }
 
-    pub fn sub_keys(&self, bcd_key: &str) -> &[KeyStatus] {
-        let suffix = concat_strs!(bcd_key, " ");
+    pub fn sub_keys(&self, bcd_key_spaced: &str) -> &[KeyStatus] {
+        let suffix = concat_strs!(bcd_key_spaced, " ");
         if let Ok(start) = self
             .bcd_keys
-            .binary_search_by_key(&bcd_key, |ks| &ks.bcd_key)
+            .binary_search_by_key(&bcd_key_spaced, |ks| &ks.bcd_key_spaced)
         {
             if start < self.bcd_keys.len() {
                 if let Some(end) = self.bcd_keys[start + 1..]
                     .iter()
-                    .position(|ks| !ks.bcd_key.starts_with(&suffix))
+                    .position(|ks| !ks.bcd_key_spaced.starts_with(&suffix))
                 {
                     return &self.bcd_keys[start + 1..start + 1 + end];
                 }
@@ -114,11 +116,11 @@ impl WebFeatures {
 
     // Compute status according to:
     // https://github.com/mdn/yari/issues/11546#issuecomment-2531611136
-    pub fn feature_status(&self, bcd_key: &str) -> Option<Baseline> {
+    pub fn baseline_by_bcd_key(&self, bcd_key: &str) -> Option<Baseline> {
         let bcd_key_spaced = &spaced(bcd_key);
-        if let Some(feature) = self.feature_status_internal(bcd_key_spaced) {
+        if let Some(feature) = self.feature_data_by_key(bcd_key_spaced) {
             if let Some(status) = feature.status.as_ref() {
-                if let Some(support) = status
+                if let Some(status_for_key) = status
                     .by_compat_key
                     .as_ref()
                     .and_then(|by_key| by_key.get(bcd_key))
@@ -127,60 +129,44 @@ impl WebFeatures {
                     let sub_status = sub_keys
                         .iter()
                         .map(|sub_key| {
-                            self.feature_internal_with_feature_name(&sub_key.feature)
+                            self.feature_data_by_name(&sub_key.feature)
                                 .and_then(|feature| feature.status.as_ref())
-                                .and_then(|status| status.baseline)
+                                .and_then(|status| status.by_compat_key.as_ref())
+                                .and_then(|by_key| by_key.get(&sub_key.bcd_key))
+                                .and_then(|status_for_key| status_for_key.baseline)
                         })
                         .collect::<Vec<_>>();
 
-                    if sub_status
+                    let asterisk = if sub_status
                         .iter()
                         .all(|baseline| baseline == &status.baseline)
                     {
-                        return Some(Baseline {
-                            support,
-                            asterisk: false,
-                            feature,
-                        });
-                    }
-                    match status.baseline {
-                        Some(BaselineHighLow::False) => {
-                            let Support {
-                                chrome,
-                                chrome_android,
-                                firefox,
-                                firefox_android,
-                                safari,
-                                safari_ios,
-                                ..
-                            } = &status.support;
-                            if chrome == chrome_android
-                                && firefox == firefox_android
-                                && safari == safari_ios
-                            {
-                                return Some(Baseline {
-                                    support,
-                                    asterisk: false,
-                                    feature,
-                                });
+                        false
+                    } else {
+                        match status.baseline {
+                            Some(BaselineHighLow::False) => {
+                                let Support {
+                                    chrome,
+                                    chrome_android,
+                                    firefox,
+                                    firefox_android,
+                                    safari,
+                                    safari_ios,
+                                    ..
+                                } = &status.support;
+                                !(chrome == chrome_android
+                                    && firefox == firefox_android
+                                    && safari == safari_ios)
                             }
-                        }
-                        Some(BaselineHighLow::Low) => {
-                            if sub_status.iter().all(|ss| {
+                            Some(BaselineHighLow::Low) => !sub_status.iter().all(|ss| {
                                 matches!(ss, Some(BaselineHighLow::Low | BaselineHighLow::High))
-                            }) {
-                                return Some(Baseline {
-                                    support,
-                                    asterisk: false,
-                                    feature,
-                                });
-                            }
+                            }),
+                            _ => true,
                         }
-                        _ => {}
-                    }
+                    };
                     return Some(Baseline {
-                        support,
-                        asterisk: true,
+                        support: status_for_key,
+                        asterisk,
                         feature,
                     });
                 }
@@ -189,18 +175,18 @@ impl WebFeatures {
         None
     }
 
-    fn feature_status_internal(&self, bcd_key_spaced: &str) -> Option<&FeatureData> {
+    fn feature_data_by_key(&self, bcd_key_spaced: &str) -> Option<&FeatureData> {
         if let Ok(i) = self
             .bcd_keys
-            .binary_search_by(|ks| ks.bcd_key.as_str().cmp(bcd_key_spaced))
+            .binary_search_by(|ks| ks.bcd_key_spaced.as_str().cmp(bcd_key_spaced))
         {
             let feature_name = &self.bcd_keys[i].feature;
-            return self.feature_internal_with_feature_name(feature_name);
+            return self.feature_data_by_name(feature_name);
         }
         None
     }
 
-    fn feature_internal_with_feature_name(&self, feature_name: &str) -> Option<&FeatureData> {
+    fn feature_data_by_name(&self, feature_name: &str) -> Option<&FeatureData> {
         if let Some(feature_data) = self.features.get(feature_name) {
             if feature_data.discouraged.is_some() {
                 return None;
