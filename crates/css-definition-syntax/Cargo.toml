@@ -1,6 +1,6 @@
 [package]
 name = "css-definition-syntax"
-version = "0.1.35"
+version = "0.1.36"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true

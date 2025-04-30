@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.36](https://github.com/mdn/rari/compare/v0.1.35...v0.1.36) (2025-04-30)
+
+
+### Features
+
+* **baseline:** display baseline by bcd key ([#200](https://github.com/mdn/rari/issues/200)) ([83a402d](https://github.com/mdn/rari/commit/83a402dc748aaaff7626c64e6310887d2217a190))
+* **md:** update to comrak 0.38 ([#204](https://github.com/mdn/rari/issues/204)) ([ed5327b](https://github.com/mdn/rari/commit/ed5327b84b1d900e54c9167bf59ba18c1bfc14f7))
+* **sidebars:** allow webgl-extension-method to show up in ApiRef sidebar ([#195](https://github.com/mdn/rari/issues/195)) ([cda09bc](https://github.com/mdn/rari/commit/cda09bcddc264965bc759f998384fed169fba9ca))
+* **sidebars:** sort list subpages by short title ([#205](https://github.com/mdn/rari/issues/205)) ([117563a](https://github.com/mdn/rari/commit/117563acc5e741d247196f5b924acef18be65e80))
+
 ## [0.1.35](https://github.com/mdn/rari/compare/v0.1.34...v0.1.35) (2025-04-15)
 
 
