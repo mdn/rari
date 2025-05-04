@@ -131,6 +131,17 @@ mod test {
         );
         Ok(())
     }
+
+    #[test]
+    fn dt_double() -> Result<(), anyhow::Error> {
+        let out = m2h("- foo\n  - : item1\n  - : item2", Locale::EnUs)?;
+        assert_eq!(
+            out,
+            "<dl data-sourcepos=\"1:1-3:11\">\n<dt data-sourcepos=\"1:1-3:11\">foo</dt>\n<dd data-sourcepos=\"2:3-2:11\">\n<p data-sourcepos=\"2:5-2:11\">item1</p>\n</dd>\n<dd data-sourcepos=\"3:3-3:11\">\n<p data-sourcepos=\"3:5-3:11\">item2</p>\n</dd>\n</dl>\n"
+        );
+        Ok(())
+    }
+
     #[test]
     fn code_macro() -> Result<(), anyhow::Error> {
         let out = m2h(r#"`{{foo}}` bar"#, Locale::EnUs)?;
