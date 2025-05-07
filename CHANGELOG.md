@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.37](https://github.com/mdn/rari/compare/v0.1.36...v0.1.37) (2025-05-07)
+
+
+### Bug Fixes
+
+* **md:** render DD in order ([#207](https://github.com/mdn/rari/issues/207)) ([28d5aae](https://github.com/mdn/rari/commit/28d5aae65fa27a8d68cd7fac0a0bfea315637020))
+
 ## [0.1.36](https://github.com/mdn/rari/compare/v0.1.35...v0.1.36) (2025-04-30)
 
 
