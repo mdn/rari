@@ -561,7 +561,7 @@ dependencies = [
 name = "css-definition-syntax"
 version = "0.1.36"
 dependencies = [
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -578,7 +578,7 @@ dependencies = [
  "regress",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "url",
 ]
 
@@ -1690,9 +1690,9 @@ dependencies = [
 
 [[package]]
 name = "imagesize"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edcd27d72f2f071c64249075f42e205ff93c9a4c5f6c6da53e79ed9f9832c285"
+checksum = "09e54e57b4c48b40f7aec75635392b12b3421fa26fe8b4332e63138ed278459c"
 
 [[package]]
 name = "indexmap"
@@ -2639,7 +2639,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tracing",
  "url",
 ]
@@ -2660,7 +2660,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tar",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tracing",
  "url",
 ]
@@ -2708,7 +2708,7 @@ dependencies = [
  "sha2",
  "strum",
  "svg_metadata",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tracing",
  "tracing-subscriber",
  "unescaper",
@@ -2722,7 +2722,7 @@ dependencies = [
 name = "rari-linter"
 version = "0.1.36"
 dependencies = [
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -2735,7 +2735,7 @@ dependencies = [
  "itertools",
  "rari-types",
  "regex",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -2749,7 +2749,7 @@ dependencies = [
  "rari-types",
  "rari-utils",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -2786,7 +2786,7 @@ dependencies = [
  "serde_yaml_ng",
  "serial_test",
  "sha2",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tracing",
  "url",
  "yaml_parser",
@@ -2807,7 +2807,7 @@ dependencies = [
  "serde_json",
  "serde_variant",
  "strum",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tracing",
 ]
 
@@ -2817,7 +2817,7 @@ version = "0.1.36"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tracing",
 ]
 
