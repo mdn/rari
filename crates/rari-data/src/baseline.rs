@@ -139,11 +139,11 @@ impl WebFeatures {
 
                     let asterisk = if sub_status
                         .iter()
-                        .all(|baseline| baseline == &status.baseline)
+                        .all(|baseline| baseline == &status_for_key.baseline)
                     {
                         false
                     } else {
-                        match status.baseline {
+                        match status_for_key.baseline {
                             Some(BaselineHighLow::False) => {
                                 let Support {
                                     chrome,
@@ -153,7 +153,7 @@ impl WebFeatures {
                                     safari,
                                     safari_ios,
                                     ..
-                                } = &status.support;
+                                } = &status_for_key.support;
                                 !(chrome == chrome_android
                                     && firefox == firefox_android
                                     && safari == safari_ios)
