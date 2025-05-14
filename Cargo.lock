@@ -3510,12 +3510,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
-name = "streaming-iterator"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b2231b7c3057d5e4ad0156fb3dc807d900806020c5ffa3ee6ff2c8c76fb8520"
-
-[[package]]
 name = "string_cache"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3986,15 +3980,13 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter"
-version = "0.25.4"
+version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69aff09fea9a41fb061ae6b206cb87cac1b8db07df31be3ba271fbc26760f213"
+checksum = "0203df02a3b6dd63575cc1d6e609edc2181c9a11867a271b25cfd2abff3ec5ca"
 dependencies = [
  "cc",
  "regex",
  "regex-syntax",
- "serde_json",
- "streaming-iterator",
  "tree-sitter-language",
 ]
 
@@ -4007,6 +3999,7 @@ checksum = "c199356c799a8945965bb5f2c55b2ad9d9aa7c4b4f6e587fe9dea0bc715e5f9c"
 [[package]]
 name = "tree-sitter-mdn"
 version = "0.1.0"
+source = "git+https://github.com/mdn/tree-sitter-mdn.git#f177851519e6462024f1e0b96b48c28a11ef8334"
 dependencies = [
  "cc",
  "tree-sitter-language",
