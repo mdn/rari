@@ -23,6 +23,8 @@ pub enum Native {
     Es,
     #[serde(rename = r#"Français"#)]
     Fr,
+    #[serde(rename = r#"Italiano"#)]
+    It,
     #[serde(rename = r#"日本語"#)]
     Ja,
     #[serde(rename = r#"한국어"#)]
@@ -44,6 +46,7 @@ impl From<Locale> for Native {
             Locale::De => Self::De,
             Locale::Es => Self::Es,
             Locale::Fr => Self::Fr,
+            Locale::It => Self::It,
             Locale::Ja => Self::Ja,
             Locale::Ko => Self::Ko,
             Locale::PtBr => Self::PtBr,
@@ -88,6 +91,8 @@ pub enum Locale {
     Es,
     #[serde(rename = "fr")]
     Fr,
+    #[serde(rename = "it")]
+    It,
     #[serde(rename = "ja")]
     Ja,
     #[serde(rename = "ko")]
@@ -146,6 +151,7 @@ impl Locale {
             Self::De => "de",
             Self::Es => "es",
             Self::Fr => "fr",
+            Self::It => "it",
             Self::Ja => "ja",
             Self::Ko => "ko",
             Self::PtBr => "pt-BR",
@@ -186,6 +192,7 @@ impl FromStr for Locale {
             "de" => Ok(Self::De),
             "es" => Ok(Self::Es),
             "fr" => Ok(Self::Fr),
+            "it" => Ok(Self::It),
             "ja" => Ok(Self::Ja),
             "ko" => Ok(Self::Ko),
             "pt-br" | "pt-BR" => Ok(Self::PtBr),

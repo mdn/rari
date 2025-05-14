@@ -239,6 +239,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
     let repo = match doc.locale() {
         Locale::EnUs => "content",
         Locale::De => "translated-content-de",
+        Locale::It => "translated-content-it",
         _ => "translated-content",
     };
 
