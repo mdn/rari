@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::iter::once;
+use std::ops::DerefMut;
 use std::path::PathBuf;
 
 use chrono::{NaiveDate, NaiveDateTime, Utc};
@@ -31,6 +32,7 @@ use crate::issues::{to_display_issues, IN_MEMORY};
 use crate::pages::build::copy_additional_files;
 use crate::pages::json::{BuiltPage, JsonDocMetadata};
 use crate::pages::page::{Page, PageBuilder, PageLike};
+use crate::pages::templates::DocPage;
 use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
 use crate::rss::create_rss;
@@ -56,7 +58,7 @@ pub struct SitemapMeta<'a> {
 /// # Returns
 ///
 /// * `Result<(BuiltPage, String), DocError> ` - Returns the `BuiltPage` and according hash
-///    if successful, or a `DocError` if an error occurs during the process.
+///   if successful, or a `DocError` if an error occurs during the process.
 ///
 pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     let file = page.full_path().to_string_lossy();
@@ -70,7 +72,8 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     let _enter = span.enter();
     let mut built_page = page.build()?;
     if settings().json_issues {
-        if let BuiltPage::Doc(json_doc) = &mut built_page {
+        if let BuiltPage::Doc(inner) = &mut built_page {
+            let DocPage::Doc(json_doc) = inner.deref_mut();
             let flaws = if let Some(issues) = IN_MEMORY
                 .get_events()
                 .get(page.full_path().to_string_lossy().as_ref())
@@ -101,6 +104,7 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
 pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
     let (built_doc, hash) = build_single_page(page)?;
     if let BuiltPage::Doc(json) = built_doc {
+        let DocPage::Doc(json) = *json;
         let meta = JsonDocMetadata::from_json_doc(json.doc, hash);
 
         let out_path = build_out_root()
@@ -140,8 +144,8 @@ pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -196,8 +200,8 @@ pub fn build_top_level_meta(locale_meta: Vec<JsonDocMetadata>) -> Result<(), Doc
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -252,8 +256,8 @@ fn copy_blog_author_avatars() -> Result<(), DocError> {
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -319,8 +323,8 @@ fn filter_unpublished(post: &&Page, now: &NaiveDate) -> bool {
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -350,8 +354,8 @@ pub fn build_generic_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///
@@ -381,8 +385,8 @@ pub fn build_contributor_spotlight_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, D
 /// # Returns
 ///
 /// * `Result<Vec<SitemapMeta<'a>>, DocError>` - Returns a vector of `SitemapMeta` containing the URLs, Locales and
-///    optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
-///    the process.
+///   optionally the modification time of the built pages if successful, or a `DocError` if an error occurs during
+///   the process.
 ///
 /// # Errors
 ///

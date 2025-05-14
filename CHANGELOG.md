@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.36](https://github.com/mdn/rari/compare/v0.1.35...v0.1.36) (2025-04-30)
+
+
+### Features
+
+* **baseline:** display baseline by bcd key ([#200](https://github.com/mdn/rari/issues/200)) ([83a402d](https://github.com/mdn/rari/commit/83a402dc748aaaff7626c64e6310887d2217a190))
+* **md:** update to comrak 0.38 ([#204](https://github.com/mdn/rari/issues/204)) ([ed5327b](https://github.com/mdn/rari/commit/ed5327b84b1d900e54c9167bf59ba18c1bfc14f7))
+* **sidebars:** allow webgl-extension-method to show up in ApiRef sidebar ([#195](https://github.com/mdn/rari/issues/195)) ([cda09bc](https://github.com/mdn/rari/commit/cda09bcddc264965bc759f998384fed169fba9ca))
+* **sidebars:** sort list subpages by short title ([#205](https://github.com/mdn/rari/issues/205)) ([117563a](https://github.com/mdn/rari/commit/117563acc5e741d247196f5b924acef18be65e80))
+
+## [0.1.35](https://github.com/mdn/rari/compare/v0.1.34...v0.1.35) (2025-04-15)
+
+
+### Features
+
+* **livesamples:** tag live sample code blocks ([#193](https://github.com/mdn/rari/issues/193)) ([4cbe2ae](https://github.com/mdn/rari/commit/4cbe2ae3acd60b50e3b96d4122be0c471cf79f18))
+
+
+### Bug Fixes
+
+* **typescript:** fix baseline types ([4ae7a0a](https://github.com/mdn/rari/commit/4ae7a0ab4993a623d87a173a5de26b19995d27b3))
+
+## [0.1.34](https://github.com/mdn/rari/compare/v0.1.33...v0.1.34) (2025-04-14)
+
+
+### Bug Fixes
+
+* **csssyntax:** fix color() ([58b506e](https://github.com/mdn/rari/commit/58b506e7230e76fba6b39ffb7e7d0f46dffa57af))
+* **npm:** export types in an esm-compatible way ([#191](https://github.com/mdn/rari/issues/191)) ([8f523d7](https://github.com/mdn/rari/commit/8f523d7ead40582a6e75a48fff707d2ee1259c82))
+
+## [0.1.33](https://github.com/mdn/rari/compare/v0.1.32...v0.1.33) (2025-04-08)
+
+
+### Features
+
+* **issues:** support ignoring issues ([#184](https://github.com/mdn/rari/issues/184)) ([df7636c](https://github.com/mdn/rari/commit/df7636cac43c1906bbf37e45df2a72ca5b37a898))
+* **serve:** serve docs assets ([#185](https://github.com/mdn/rari/issues/185)) ([3c971ad](https://github.com/mdn/rari/commit/3c971adec5c117f2140eecc6eb0f7a3f1018c3e6))
+
+
+### Bug Fixes
+
+* **csssyntax:** add sources for properties ([68df8aa](https://github.com/mdn/rari/commit/68df8aacefb8f92d89a2b06daec7c7411d5d3469))
+
+## [0.1.32](https://github.com/mdn/rari/compare/v0.1.31...v0.1.32) (2025-04-02)
+
+
+### Features
+
+* **css-syntax:** add sources ([#181](https://github.com/mdn/rari/issues/181)) ([31c4f5f](https://github.com/mdn/rari/commit/31c4f5f6b38508facadccbed00bae4c1fc6b6f21))
+* **json:** add renderer to index.json for fred ([#180](https://github.com/mdn/rari/issues/180)) ([a290438](https://github.com/mdn/rari/commit/a290438627c1022ae5c9f0d2da1720db46efe625))
+
+
+### Bug Fixes
+
+* **dt:** don't add links if the dt contains a link ([6d81769](https://github.com/mdn/rari/commit/6d817692fe4fb2e8d5eab3edf82c7cc7700c44c5))
+* **json:** make generic content template fm optional ([fb89132](https://github.com/mdn/rari/commit/fb89132213c2564ef81751dd086ab753e86a6d3d))
+* **templ:** fix webextapi sidebar ([67d40bc](https://github.com/mdn/rari/commit/67d40bcc7c1fb7fdbd641302b57b52fa69016f60))
+
+## [0.1.31](https://github.com/mdn/rari/compare/v0.1.30...v0.1.31) (2025-03-25)
+
+
+### Features
+
+* **templ:** add css_ref_list ([#177](https://github.com/mdn/rari/issues/177)) ([83f8241](https://github.com/mdn/rari/commit/83f8241bb7ab1a6b6a0d5eaff9f80180cb0b0236))
+
+
+### Bug Fixes
+
+* **deps:** fix package.json support ([5141e36](https://github.com/mdn/rari/commit/5141e36a95995a2fa438c190238ffdbe58aa4dde))
+* **templ:** render glossary marco better in GlossaryDisambiguation ([8de1517](https://github.com/mdn/rari/commit/8de15175064dc66b31fad65942c8d015e43eeb34))
+* update paths for SVG/MathML section move ([#156](https://github.com/mdn/rari/issues/156)) ([2a80835](https://github.com/mdn/rari/commit/2a808351fa5a9267bfe5b3bf25530480d4e41130))
+
 ## [0.1.30](https://github.com/mdn/rari/compare/v0.1.29...v0.1.30) (2025-03-14)
 
 

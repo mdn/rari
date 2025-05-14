@@ -14,13 +14,21 @@ use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::utils::split_fm;
 
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
+pub enum Template {
+    #[default]
+    GenericDoc,
+    GenericAbout,
+    GenericCommunity,
+}
 #[derive(Debug, Clone, Deserialize)]
-pub struct GenericPageFrontmatter {
+pub struct GenericFrontmatter {
     pub title: String,
+    pub template: Option<Template>,
 }
 
 #[derive(Debug, Clone)]
-pub struct GenericPageMeta {
+pub struct GenericMeta {
     pub title: String,
     pub locale: Locale,
     pub slug: String,
@@ -29,11 +37,12 @@ pub struct GenericPageMeta {
     pub path: PathBuf,
     pub title_suffix: Option<String>,
     pub page: String,
+    pub template: Template,
 }
 
-impl GenericPageMeta {
+impl GenericMeta {
     pub fn from_fm(
-        fm: GenericPageFrontmatter,
+        fm: GenericFrontmatter,
         full_path: PathBuf,
         path: PathBuf,
         locale: Locale,
@@ -49,7 +58,7 @@ impl GenericPageMeta {
             "/",
             page.as_str()
         );
-        Ok(GenericPageMeta {
+        Ok(GenericMeta {
             title: fm.title,
             locale,
             slug,
@@ -58,11 +67,12 @@ impl GenericPageMeta {
             full_path,
             title_suffix,
             page,
+            template: fm.template.unwrap_or_default(),
         })
     }
 }
 
-impl PageReader<Page> for GenericPage {
+impl PageReader<Page> for Generic {
     fn read(
         path: impl Into<PathBuf>,
         locale: Option<Locale>,
@@ -95,13 +105,13 @@ impl PageReader<Page> for GenericPage {
     }
 }
 #[derive(Debug, Clone)]
-pub struct GenericPage {
-    pub meta: GenericPageMeta,
+pub struct Generic {
+    pub meta: GenericMeta,
     raw: String,
     content_start: usize,
 }
 
-impl GenericPage {
+impl Generic {
     pub fn from_slug(slug: &str, locale: Locale) -> Option<Page> {
         let url = concat_strs!("/", locale.as_url_str(), "/", slug).to_ascii_lowercase();
         generic_content_files().get(&url).cloned()
@@ -131,7 +141,7 @@ impl GenericPage {
     }
 }
 
-impl PageLike for GenericPage {
+impl PageLike for Generic {
     fn url(&self) -> &str {
         &self.meta.url
     }
@@ -213,12 +223,12 @@ fn read_generic_page(
     slug_prefix: Option<&str>,
     title_suffix: Option<&str>,
     root: &Path,
-) -> Result<GenericPage, DocError> {
+) -> Result<Generic, DocError> {
     let full_path: PathBuf = path.into();
     let raw = read_to_string(&full_path)?;
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
-    let fm: GenericPageFrontmatter = serde_yaml_ng::from_str(fm)?;
+    let fm: GenericFrontmatter = serde_yaml_ng::from_str(fm)?;
     let path = full_path.strip_prefix(root)?.to_path_buf();
     let page = path.with_extension("");
     let page = page.to_string_lossy();
@@ -228,8 +238,8 @@ fn read_generic_page(
         page.to_string()
     };
 
-    Ok(GenericPage {
-        meta: GenericPageMeta::from_fm(
+    Ok(Generic {
+        meta: GenericMeta::from_fm(
             fm,
             full_path,
             path,

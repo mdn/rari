@@ -123,10 +123,15 @@ fn build_sublist_and_expand_current(
                                 .strip_prefix("/en-US/docs")
                                 .map(String::from),
                         },
-                        children: if page.slug() == current_slug {
-                            MetaChildren::Children(entry(current_slug, locale)?)
+                        children: if current_slug.starts_with(page.slug()) {
+                            MetaChildren::Children(entry(page.slug(), locale)?)
                         } else {
                             Default::default()
+                        },
+                        details: if current_slug.starts_with(page.slug()) {
+                            Details::Open
+                        } else {
+                            Details::None
                         },
                         ..Default::default()
                     })

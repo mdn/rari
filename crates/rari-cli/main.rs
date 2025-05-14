@@ -218,6 +218,11 @@ struct BuildArgs {
     #[arg(long, help = "Add flaws field to index.json for docs")]
     json_issues: bool,
     #[arg(
+        long,
+        help = "Add live_samples field to index.json docs docs and blog posts"
+    )]
+    json_live_samples: bool,
+    #[arg(
         short,
         long,
         help = "Noop flag to legacy compatibility (has no effect on build)"
@@ -294,6 +299,7 @@ fn main() -> Result<(), Error> {
             settings.cache_content = !args.no_cache;
             settings.data_issues = args.data_issues;
             settings.json_issues = args.json_issues;
+            settings.json_live_samples = args.json_live_samples;
             let _ = SETTINGS.set(settings);
 
             let mut arg_files = args
@@ -468,6 +474,7 @@ fn main() -> Result<(), Error> {
             settings.cache_content = args.cache;
             settings.data_issues = true;
             settings.blog_unpublished = true;
+            settings.json_live_samples = true;
             let _ = SETTINGS.set(settings);
             serve::serve()?
         }

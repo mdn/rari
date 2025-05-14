@@ -33,10 +33,8 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
             .unwrap_or_default();
         req_issues
             .into_iter()
-            .enumerate()
-            .filter_map(|(id, issue)| {
-                let dissue = DIssue::from_issue_with_id(issue, page, id);
-
+            .filter_map(|issue| DIssue::from_issue(issue, page))
+            .filter_map(|dissue| {
                 let display_issue = dissue.display_issue();
                 if display_issue.suggestion.is_some()
                     && display_issue.fixable.unwrap_or_default()

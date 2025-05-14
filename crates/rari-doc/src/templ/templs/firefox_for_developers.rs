@@ -14,7 +14,10 @@ pub fn firefox_for_developers() -> Result<String, DocError> {
     let locale = env.locale;
     let slug = env.slug;
 
-    let version_str = slug.split('/').last().ok_or_else(|| invalid_slug(slug))?;
+    let version_str = slug
+        .split('/')
+        .next_back()
+        .ok_or_else(|| invalid_slug(slug))?;
 
     // Determine if version_str is a float (for OLD_VERSIONS) or integer
     let mut max_version: i32 = if let Ok(int_version) = version_str.parse::<i32>() {

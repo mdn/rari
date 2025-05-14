@@ -13,8 +13,12 @@ use rari_types::locale::{Locale, Native};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use super::templates::{
+    BlogPage, ContributorSpotlightPage, CurriculumPage, DocPage, GenericPage, HomePage, SpaPage,
+};
 use super::types::contributors::Usernames;
 use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
+use crate::html::code::Code;
 use crate::issues::DisplayIssues;
 use crate::pages::types::blog::BlogMeta;
 use crate::specs::Specification;
@@ -103,7 +107,7 @@ pub struct Translation {
 /// * `id` - An `Option<String>` that holds an optional `id` element attribute for the prose section.
 /// * `title` - An `Option<String>` that holds an optional title for the prose section.
 /// * `is_h3` - A `bool` that indicates whether the prose section's `title` will be rendered as a &lt;H3&gt;
-///    heading. This field is serialized as `isH3`.
+///   heading. This field is serialized as `isH3`.
 /// * `content` - A `String` that holds the actual prose HTML content.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Prose {
@@ -126,10 +130,10 @@ pub struct Prose {
 /// * `id` - An `Option<String>` that holds an optional `id` element attribute for the compatibility section.
 /// * `title` - An `Option<String>` that holds an optional title for the compatibility section.
 /// * `is_h3` - A `bool` that indicates whether the compatibility section's `title` will be rendered as a &lt;H3&gt;
-///    heading. This field is serialized as `isH3`.
+///   heading. This field is serialized as `isH3`.
 /// * `query` - A `String` that holds the query string for BCD data.
 /// * `content` - An `Option<String>` that holds the optional content of the compatibility section. This field
-///    is skipped during serialization if it is `None`.
+///   is skipped during serialization if it is `None`.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 pub struct Compat {
     pub id: Option<String>,
@@ -225,11 +229,11 @@ pub enum Section {
 /// * `title` - A `String` that holds the title of the document.
 /// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the document.
 /// * `baseline` - An `Option<&'static SupportStatusWithByKey>` that holds the baseline support status. This field is skipped during
-///    serialization if it is `None`.
+///   serialization if it is `None`.
 /// * `browser_compat` - A `Vec<String>` that holds the browser compatibility information. Serialized as `browserCompat` and skipped
-///    during serialization if it is empty.
+///   during serialization if it is empty.
 /// * `page_type` - A `PageType` that specifies the type of the page, for example `LandingPage`, `LearnModule`, `CssAtRule` or
-///    `HtmlAttribute`. Serialized as `pageType`.
+///   `HtmlAttribute`. Serialized as `pageType`.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 #[schemars(rename = "Doc")]
 pub struct JsonDoc {
@@ -272,6 +276,8 @@ pub struct JsonDoc {
     pub page_type: PageType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub flaws: Option<DisplayIssues>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub live_samples: Option<Vec<Code>>,
 }
 
 impl JsonDocMetadata {
@@ -406,12 +412,12 @@ pub struct BlogIndex {
 /// * `summary` - An `Option<String>` that holds the summary of the document. This field is skipped during serialization if it is `None`.
 /// * `toc` - A `Vec<TocEntry>` that holds the table of contents entries for the document.
 /// * `sidebar` - An `Option<Vec<CurriculumSidebarEntry>>` that holds the sidebar entries for the curriculum. This field is skipped during
-///    serialization if it is `None`.
+///   serialization if it is `None`.
 /// * `topic` - An `Option<Topic>` that holds the topic of the curriculum. This field is skipped during serialization if it is `None`.
 /// * `group` - An `Option<String>` that holds the group of the curriculum. This field is skipped during serialization if it is `None`.
 /// * `modules` - A `Vec<CurriculumIndexEntry>` that holds the modules of the curriculum. This field is skipped during serialization if it is empty.
 /// * `prev_next` - An `Option<PrevNextByUrl>` that holds the previous and next URLs for navigation. Serialized as `prevNext` and skipped during
-///    serialization if it is `None`.
+///   serialization if it is `None`.
 /// * `template` - A `Template` that specifies the template used for rendering the document.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 #[schemars(rename = "CurriculumDoc")]
@@ -507,6 +513,8 @@ pub struct JsonBlogPostDoc {
     pub title: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub toc: Vec<TocEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub live_samples: Option<Vec<Code>>,
 }
 
 /// Represents the outermost structure of the serialized JSON for a blog post. This struct
@@ -605,19 +613,19 @@ pub struct JsonContributorSpotlightPage {
 #[serde(untagged)]
 pub enum BuiltPage {
     /// Represents a standard documentation page, backed by a Markdown source.
-    Doc(Box<JsonDocPage>),
+    Doc(Box<DocPage>),
     /// Represents a curriculum page, backed by a Markdown source
-    Curriculum(Box<JsonCurriculumPage>),
+    Curriculum(Box<CurriculumPage>),
     /// Represents a blog post, backed by a Markdown source
-    BlogPost(Box<JsonBlogPostPage>),
+    BlogPost(Box<BlogPage>),
     /// Represents a contributor spotlight page, backed by a Markdown source.
-    ContributorSpotlight(Box<JsonContributorSpotlightPage>),
+    ContributorSpotlight(Box<ContributorSpotlightPage>),
     /// Represents a generic page, i.e Observatory FAQ, About pages, etc.
-    GenericPage(Box<JsonGenericPage>),
+    GenericPage(Box<GenericPage>),
     /// Represents a basic single-page application. i.e. AI Help, Observatory, etc.
-    SPA(Box<JsonSPAPage>),
+    SPA(Box<SpaPage>),
     /// Represents the home page.
-    Home(Box<JsonHomePage>),
+    Home(Box<HomePage>),
 }
 
 /// Represents the previous and next navigation links by slug.
@@ -707,7 +715,7 @@ pub struct UrlNTitle {
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "SPAPage")]
-pub struct JsonSPAPage {
+pub struct JsonSpaPage {
     pub slug: &'static str,
     pub page_title: &'static str,
     pub page_description: Option<&'static str>,

@@ -696,7 +696,7 @@ impl SidebarMetaEntry {
                     ))
                 };
                 let ctx = ListSubPagesContext {
-                    sorter: None,
+                    sorter: Some(helpers::subpages::SubPagesSorter::ShortTitle),
                     page_types: tags,
                     code: *code,
                     include_parent: *include_parent,
@@ -731,7 +731,7 @@ impl SidebarMetaEntry {
                     locale,
                     *depth,
                     ListSubPagesContext {
-                        sorter: None,
+                        sorter: Some(helpers::subpages::SubPagesSorter::ShortTitle),
                         page_types: tags,
                         code: *code,
                         include_parent: *include_parent,

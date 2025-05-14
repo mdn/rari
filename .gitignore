@@ -12,3 +12,6 @@ tests/data/translated_content/files/*
 # Must be top level so these are included in npm publish.
 rari-npm/schema.json
 rari-npm/lib/rari-types.d.ts
+
+# inline deps
+/.deps

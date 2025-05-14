@@ -1,21 +1,23 @@
 use std::cmp::{max, min, Ordering};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
+#[cfg(any(feature = "rari", test))]
 use std::fs;
 use std::sync::LazyLock;
 
 use css_definition_syntax::generate::{self, GenerateOptions};
 use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
 use css_definition_syntax::walk::{walk, WalkOptions};
-use css_syntax_types::{Css, CssValueType, CssValuesItem};
-#[cfg(all(feature = "rari", not(test)))]
+use css_syntax_types::{Css, CssValueType, CssValuesItem, SpecInExtract};
+use itertools::intersperse;
+#[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
 
 use crate::error::SyntaxError;
 
 static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
-    #[cfg(test)]
+    #[cfg(any(feature = "doctest", test))]
     {
         let package_path = std::path::Path::new("package");
         rari_deps::webref_css::update_webref_css(package_path).unwrap();
@@ -23,12 +25,12 @@ static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
             .expect("no data dir");
         serde_json::from_str(&json_str).expect("Failed to parse JSON")
     }
-    #[cfg(all(not(feature = "rari"), not(test)))]
+    #[cfg(all(not(feature = "rari"), not(any(feature = "doctest", test))))]
     {
         let webref_css: &str = include_str!("../@webref/css/webref_css.json");
         serde_json::from_str(webref_css).expect("Failed to parse JSON")
     }
-    #[cfg(all(feature = "rari", not(test)))]
+    #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
     {
         let json_str = fs::read_to_string(data_dir().join("@webref/css").join("webref_css.json"))
             .expect("no data dir");
@@ -36,7 +38,11 @@ static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
     }
 });
 
-fn flatten_values(values: &'static BTreeMap<String, CssValuesItem>, all: &mut Flattened) {
+fn flatten_values(
+    values: &'static BTreeMap<String, CssValuesItem>,
+    spec: &'static SpecInExtract,
+    all: &mut Flattened,
+) {
     for (k, v) in values.iter() {
         if let Some(map) = match v.type_ {
             CssValueType::Type => Some(&mut all.types),
@@ -44,21 +50,23 @@ fn flatten_values(values: &'static BTreeMap<String, CssValuesItem>, all: &mut Fl
             CssValueType::Value => Some(&mut all.values),
             CssValueType::Selector => None,
         } {
-            map.entry(k).or_insert(v);
+            map.entry(k).or_insert((v, spec));
         };
         for value in values.values() {
             if let Some(values) = value.values.as_ref() {
-                flatten_values(values, all);
+                flatten_values(values, spec, all);
             }
         }
     }
 }
 
+pub type ItemAndSpec = (&'static CssValuesItem, &'static SpecInExtract);
+
 #[derive(Default, Serialize, Debug)]
 pub struct Flattened {
-    pub values: BTreeMap<&'static str, &'static CssValuesItem>,
-    pub functions: BTreeMap<&'static str, &'static CssValuesItem>,
-    pub types: BTreeMap<&'static str, &'static CssValuesItem>,
+    pub values: BTreeMap<&'static str, ItemAndSpec>,
+    pub functions: BTreeMap<&'static str, ItemAndSpec>,
+    pub types: BTreeMap<&'static str, ItemAndSpec>,
 }
 
 // This relies on the ordered names of CSS_REF.
@@ -92,15 +100,22 @@ static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
                 CssValueType::Value => Some(&mut all.values),
                 CssValueType::Selector => None,
             } {
-                map.insert(k, item);
+                map.entry(k)
+                    .and_modify(|(e_item, e_spec)| {
+                        if item.value.is_some() || e_item.value.is_none() {
+                            *e_item = item;
+                            *e_spec = &spec.spec;
+                        }
+                    })
+                    .or_insert((item, &spec.spec));
             };
             if let Some(values) = item.values.as_ref() {
-                flatten_values(values, &mut all);
+                flatten_values(values, &spec.spec, &mut all);
             }
         }
         for (_, item) in spec.properties.iter() {
             if let Some(values) = item.values.as_ref() {
-                flatten_values(values, &mut all);
+                flatten_values(values, &spec.spec, &mut all);
             }
         }
     }
@@ -141,19 +156,19 @@ fn get_specs_for_item<'a>(item_name: &str, item_type: ItemType) -> Vec<&'a str> 
 ///
 /// ```
 /// let color = css_syntax::syntax::get_property_syntax("color");
-/// assert_eq!(color, "<color>");
+/// assert_eq!(color.syntax, "<color>");
 /// ```
 ///
 /// ```
 /// let border = css_syntax::syntax::get_property_syntax("border");
-/// assert_eq!(border, "<line-width> || <line-style> || <color>");
+/// assert_eq!(border.syntax, "<line-width> || <line-style> || <color>");
 /// ```
 ///
 /// ```
 /// let grid_template_rows = css_syntax::syntax::get_property_syntax("grid-template-rows");
-/// assert_eq!(grid_template_rows, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
+/// assert_eq!(grid_template_rows.syntax, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
 /// ```
-pub fn get_property_syntax(name: &str) -> String {
+pub fn get_property_syntax(name: &str) -> Syntax {
     // 1) Get all specs which list this property
     let mut specs = get_specs_for_item(name, ItemType::Property);
     // 2) If we have more than one spec, filter out
@@ -170,31 +185,41 @@ pub fn get_property_syntax(name: &str) -> String {
     if specs.len() == 1 {
         return CSS_REF
             .get(specs[0])
-            .and_then(|s| s.properties.get(name))
-            .and_then(|i| i.value.clone())
+            .and_then(|s| s.properties.get(name).map(|p| (&s.spec, p)))
+            .and_then(|(spec, p)| {
+                p.value.clone().map(|v| Syntax {
+                    syntax: v,
+                    specs: Some(vec![spec]),
+                })
+            })
             .unwrap_or_default();
     }
     // 4) If we have > 1 spec, assume that:
     // - one of them is the base spec, which defines `values`,
     // - the others define incremental additions as `newValues`
 
+    let mut used_specs = vec![];
     let (mut syntax, new_syntaxes) = specs.into_iter().fold(
         (String::new(), String::new()),
         |(mut syntax, mut new_syntaxes), spec_name| {
-            let base_value = CSS_REF
-                .get(spec_name)
-                .and_then(|s| s.properties.get(name))
-                .and_then(|i| i.value.as_ref());
-            let new_values = CSS_REF
-                .get(spec_name)
-                .and_then(|s| s.properties.get(name))
-                .and_then(|i| i.new_values.as_ref());
-            if let Some(base_value) = base_value {
-                syntax.push_str(base_value);
-            }
-            if let Some(new_values) = new_values {
-                new_syntaxes.push_str(" | ");
-                new_syntaxes.push_str(new_values);
+            let css_ref = CSS_REF.get(spec_name);
+            if let Some(css_ref) = css_ref {
+                let base_value = css_ref.properties.get(name).and_then(|i| i.value.as_ref());
+                let new_values = css_ref
+                    .properties
+                    .get(name)
+                    .and_then(|i| i.new_values.as_ref());
+                if let Some(base_value) = base_value {
+                    syntax.push_str(base_value);
+                }
+                if let Some(new_values) = new_values {
+                    new_syntaxes.push_str(" | ");
+                    new_syntaxes.push_str(new_values);
+                }
+
+                if new_values.is_some() || base_value.is_some() {
+                    used_specs.push(&css_ref.spec)
+                }
             }
             (syntax, new_syntaxes)
         },
@@ -204,7 +229,10 @@ pub fn get_property_syntax(name: &str) -> String {
     if !new_syntaxes.is_empty() {
         syntax.push_str(&new_syntaxes);
     }
-    syntax
+    Syntax {
+        syntax,
+        specs: Some(used_specs),
+    }
 }
 
 /// Get the formal syntax for an at-rule from the webref data.
@@ -212,18 +240,23 @@ pub fn get_property_syntax(name: &str) -> String {
 /// Example:
 /// ```
 /// let media = css_syntax::syntax::get_at_rule_syntax("@media");
-/// assert_eq!(media, "@media <media-query-list> { <rule-list> }");
+/// assert_eq!(media.syntax, "@media <media-query-list> { <rule-list> }");
 /// ```
-pub fn get_at_rule_syntax(name: &str) -> String {
+pub fn get_at_rule_syntax(name: &str) -> Syntax {
     let specs = get_specs_for_item(name, ItemType::AtRule);
 
     specs
         .into_iter()
         .find_map(|spec| {
-            CSS_REF
-                .get(spec)
-                .and_then(|s| s.atrules.get(name))
-                .and_then(|a| a.value.clone())
+            CSS_REF.get(spec).and_then(|s| {
+                s.atrules
+                    .get(name)
+                    .and_then(|a| a.value.clone())
+                    .map(|v| Syntax {
+                        syntax: v,
+                        specs: Some(vec![&s.spec]),
+                    })
+            })
         })
         .unwrap_or_default()
 }
@@ -232,27 +265,49 @@ pub fn get_at_rule_syntax(name: &str) -> String {
 /// # Example:
 /// ```
 /// let descriptor = css_syntax::syntax::get_at_rule_descriptor_syntax("width", "@media");
-/// assert_eq!(descriptor, "<length>");
+/// assert_eq!(descriptor.syntax, "<length>");
 /// ```
-pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> String {
+pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
     let specs = get_specs_for_item(at_rule_name, ItemType::AtRule);
 
     specs
         .into_iter()
         .find_map(|spec| {
-            CSS_REF
-                .get(spec)
-                .and_then(|s| s.atrules.get(at_rule_name))
-                .and_then(|a| a.descriptors.get(at_rule_descriptor_name))
-                .and_then(|d| d.value.clone())
+            CSS_REF.get(spec).and_then(|s| {
+                s.atrules
+                    .get(at_rule_name)
+                    .and_then(|a| a.descriptors.get(at_rule_descriptor_name))
+                    .and_then(|d| d.value.clone())
+                    .map(|v| Syntax {
+                        syntax: v,
+                        specs: Some(vec![&s.spec]),
+                    })
+            })
         })
         .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Syntax {
+pub struct SyntaxLine {
     pub name: String,
     pub syntax: String,
+    pub specs: Option<Vec<&'static SpecInExtract>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Syntax {
+    pub syntax: String,
+    pub specs: Option<Vec<&'static SpecInExtract>>,
+}
+
+impl Syntax {
+    pub fn to_syntax_line(self, name: impl Into<String>) -> SyntaxLine {
+        SyntaxLine {
+            name: name.into(),
+            syntax: self.syntax,
+            specs: self.specs,
+        }
+    }
 }
 
 #[inline]
@@ -260,61 +315,72 @@ fn skip(name: &str) -> bool {
     name == "color" || name == "gradient"
 }
 
-pub fn get_syntax(typ: CssType) -> Syntax {
+pub fn get_syntax(typ: CssType) -> SyntaxLine {
     get_syntax_internal(typ, false)
 }
-fn get_syntax_internal(typ: CssType, top_level: bool) -> Syntax {
-    let (name, syntax) = match typ {
+fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
+    match typ {
         CssType::ShorthandProperty(name) | CssType::Property(name) => {
             let trimmed = name
                 .trim_start_matches(['<', '\''])
                 .trim_end_matches(['\'', '>']);
-            (name.to_string(), get_property_syntax(trimmed))
+            get_property_syntax(trimmed).to_syntax_line(name)
         }
-        CssType::AtRule(name) => (name.to_string(), get_at_rule_syntax(name)),
-        CssType::AtRuleDescriptor(name, at_rule_name) => (
-            name.to_string(),
-            get_at_rule_descriptor_syntax(name, at_rule_name),
-        ),
+        CssType::AtRule(name) => get_at_rule_syntax(name).to_syntax_line(name),
+        CssType::AtRuleDescriptor(name, at_rule_name) => {
+            get_at_rule_descriptor_syntax(name, at_rule_name).to_syntax_line(name)
+        }
+
         CssType::Function(name) => {
             let name = format!("{name}()");
-            (
-                format!("<{name}>"),
-                FLATTENED
-                    .functions
-                    .get(name.as_str())
-                    .and_then(|item| item.value.clone())
-                    .unwrap_or_default(),
-            )
+            FLATTENED
+                .functions
+                .get(name.as_str())
+                .and_then(|(v, spec)| {
+                    v.value.clone().map(|v| Syntax {
+                        syntax: v,
+                        specs: Some(vec![*spec]),
+                    })
+                })
+                .unwrap_or_default()
+                .to_syntax_line(format!("<{name}>"))
         }
         CssType::Type(name) => {
             let name = name.trim_end_matches("_value");
             if skip(name) && !top_level {
-                (format!("<{name}>"), Default::default())
+                Syntax::default().to_syntax_line(format!("<{name}>"))
             } else {
                 let syntax = FLATTENED
                     .types
                     .get(name)
-                    .and_then(|item| item.value.clone())
+                    .and_then(|(item, spec)| {
+                        item.value.clone().map(|v| Syntax {
+                            syntax: v,
+                            specs: Some(vec![*spec]),
+                        })
+                    })
                     .unwrap_or(
                         FLATTENED
                             .values
                             .get(name)
-                            .and_then(|item| item.value.clone())
+                            .and_then(|(item, spec)| {
+                                item.value.clone().map(|v| Syntax {
+                                    syntax: v,
+                                    specs: Some(vec![*spec]),
+                                })
+                            })
                             .unwrap_or_default(),
                     );
                 let formatted_name = format!("<{name}>");
-                let syntax = if name == syntax || formatted_name == syntax {
+                let syntax = if name == syntax.syntax || formatted_name == syntax.syntax {
                     Default::default()
                 } else {
                     syntax
                 };
-                (formatted_name, syntax)
+                syntax.to_syntax_line(formatted_name)
             }
         }
-    };
-
-    Syntax { name, syntax }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -374,7 +440,7 @@ pub struct SyntaxRenderer<'a> {
 }
 
 impl SyntaxRenderer<'_> {
-    pub fn render(&self, output: &mut String, syntax: &Syntax) -> Result<(), SyntaxError> {
+    pub fn render(&self, output: &mut String, syntax: &SyntaxLine) -> Result<(), SyntaxError> {
         let typ = html_escape::encode_safe(&syntax.name);
         write!(
             output,
@@ -606,13 +672,16 @@ impl SyntaxRenderer<'_> {
             },
         )
     }
-    fn get_constituent_syntaxes(&mut self, syntax: Syntax) -> Result<Vec<Syntax>, SyntaxError> {
+    fn get_constituent_syntaxes(
+        &mut self,
+        syntax: SyntaxLine,
+    ) -> Result<Vec<SyntaxLine>, SyntaxError> {
         let mut all_constituents = vec![];
 
         let mut last_len: usize;
         let mut last_syntax_len = 0;
 
-        let mut constituent_syntaxes: Vec<Syntax> = vec![syntax];
+        let mut constituent_syntaxes: Vec<SyntaxLine> = vec![syntax];
 
         loop {
             last_len = all_constituents.len();
@@ -690,6 +759,7 @@ pub fn write_formal_syntax_from_syntax(
     locale_str: &str,
     value_definition_url: &str,
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
+    sources_prefix: Option<&str>,
 ) -> Result<String, SyntaxError> {
     let syntax_str = syntax_str.into();
     let (name, syntax, skip_first) = if let Some((name, syntax)) = syntax_str.split_once("=") {
@@ -697,15 +767,17 @@ pub fn write_formal_syntax_from_syntax(
     } else {
         ("dummy", syntax_str, true)
     };
-    let syntax = Syntax {
+    let syntax = SyntaxLine {
         name: name.trim().to_string(),
         syntax,
+        specs: None,
     };
     write_formal_syntax_internal(
         syntax,
         locale_str,
         value_definition_url,
         syntax_tooltip,
+        sources_prefix,
         skip_first,
     )
 }
@@ -715,8 +787,9 @@ pub fn write_formal_syntax(
     locale_str: &str,
     value_definition_url: &str,
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
+    sources_prefix: Option<&str>,
 ) -> Result<String, SyntaxError> {
-    let syntax: Syntax = get_syntax_internal(css, true);
+    let syntax: SyntaxLine = get_syntax_internal(css, true);
     if syntax.syntax.is_empty() {
         return Err(SyntaxError::NoSyntaxFound);
     }
@@ -725,15 +798,17 @@ pub fn write_formal_syntax(
         locale_str,
         value_definition_url,
         syntax_tooltip,
+        sources_prefix,
         false,
     )
 }
 
 fn write_formal_syntax_internal(
-    syntax: Syntax,
+    syntax: SyntaxLine,
     locale_str: &str,
     value_definition_url: &str,
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
+    sources_prefix: Option<&str>,
     skip_first: bool,
 ) -> Result<String, SyntaxError> {
     let mut renderer = SyntaxRenderer {
@@ -743,20 +818,43 @@ fn write_formal_syntax_internal(
         constituents: Default::default(),
     };
     let mut out = String::new();
-    write!(out, r#"<pre class="notranslate">"#)?;
-    let constituents = renderer.get_constituent_syntaxes(syntax)?;
+    write!(out, r#"<pre class="notranslate css-formal-syntax">"#)?;
+    let mut constituents = renderer.get_constituent_syntaxes(syntax)?;
 
     for constituent in constituents.iter().skip(if skip_first { 1 } else { 0 }) {
         renderer.render(&mut out, constituent)?;
         out.push_str("<br/>");
     }
 
+    let specs = constituents.iter_mut().fold(vec![], |mut acc, s| {
+        if let Some(spec) = s.specs.take() {
+            for spec in spec {
+                if !acc.contains(&spec) {
+                    acc.push(spec)
+                }
+            }
+        }
+        acc
+    });
     out.push_str("</pre>");
+    if !specs.is_empty() {
+        out.push_str("<footer>");
+        if let Some(sources_prefix) = sources_prefix {
+            out.push_str(sources_prefix);
+        }
+        out.extend(intersperse(
+            specs
+                .iter()
+                .map(|spec| format!(r#"<a href="{}">{}</a>"#, spec.url, spec.title)),
+            ", ".to_string(),
+        ));
+        out.push_str("</footer>");
+    }
     Ok(out)
 }
 
 fn get_nodes_for_syntaxes(
-    syntaxes: &[Syntax],
+    syntaxes: &[SyntaxLine],
     constituents: &mut Vec<Constituent>,
 ) -> Result<(), SyntaxError> {
     for syntax in syntaxes {
@@ -803,55 +901,56 @@ mod test {
 
     #[test]
     fn test_get_syntax_color_property_color() {
-        let Syntax { name, syntax } = get_syntax_internal(CssType::Property("color"), true);
+        let SyntaxLine { name, syntax, .. } = get_syntax_internal(CssType::Property("color"), true);
         assert_eq!(name, "color");
         assert_eq!(syntax, "<color>");
     }
     #[test]
     fn test_get_syntax_color_property_content_visibility() {
-        let Syntax { name, syntax } = get_syntax(CssType::Property("content-visibility"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Property("content-visibility"));
         assert_eq!(name, "content-visibility");
         assert_eq!(syntax, "visible | auto | hidden");
     }
     #[test]
     fn test_get_syntax_length_type() {
-        let Syntax { name, syntax } = get_syntax(CssType::Type("length"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Type("length"));
         assert_eq!(name, "<length>");
         assert_eq!(syntax, "");
     }
     #[test]
     fn test_get_syntax_color_type() {
-        let Syntax { name, syntax } = get_syntax_internal(CssType::Type("color_value"), true);
+        let SyntaxLine { name, syntax, .. } =
+            get_syntax_internal(CssType::Type("color_value"), true);
         assert_eq!(name, "<color>");
         assert_eq!(syntax, "<color-base> | currentColor | <system-color>");
     }
     #[test]
     fn test_get_syntax_minmax_function() {
-        let Syntax { name, syntax } = get_syntax(CssType::Function("minmax"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Function("minmax"));
         assert_eq!(name, "<minmax()>");
         assert_eq!(syntax, "minmax(min, max)");
     }
     #[test]
     fn test_get_syntax_sin_function() {
-        let Syntax { name, syntax } = get_syntax(CssType::Function("sin"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Function("sin"));
         assert_eq!(name, "<sin()>");
         assert_eq!(syntax, "sin( <calc-sum> )");
     }
     #[test]
     fn test_get_syntax_media_at_rule() {
-        let Syntax { name, syntax } = get_syntax(CssType::AtRule("@media"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::AtRule("@media"));
         assert_eq!(name, "@media");
         assert_eq!(syntax, "@media <media-query-list> { <rule-list> }");
     }
     #[test]
     fn test_get_syntax_padding_property() {
-        let Syntax { name, syntax } = get_syntax(CssType::Property("padding"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Property("padding"));
         assert_eq!(name, "padding");
         assert_eq!(syntax, "<'padding-top'>{1,4}");
     }
     #[test]
     fn test_get_syntax_gradient_type() {
-        let Syntax { name, syntax } = get_syntax_internal(CssType::Type("gradient"), true);
+        let SyntaxLine { name, syntax, .. } = get_syntax_internal(CssType::Type("gradient"), true);
         assert_eq!(name, "<gradient>");
         assert_eq!(syntax, "<linear-gradient()> | <repeating-linear-gradient()> | <radial-gradient()> | <repeating-radial-gradient()>");
     }
@@ -865,7 +964,9 @@ mod test {
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
         };
-        let Syntax { name: _, syntax } = get_syntax_internal(CssType::Type("color_value"), true);
+        let SyntaxLine {
+            name: _, syntax, ..
+        } = get_syntax_internal(CssType::Type("color_value"), true);
         if let Node::Group(group) = parse(&syntax)? {
             let rendered = renderer.render_terms(&group.terms, group.combinator)?;
             assert_eq!(rendered, "  <a href=\"/en-US/docs/Web/CSS/color-base\"><span class=\"token property\">&lt;color-base&gt;</span></a>    <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>    <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>  <br/>");
@@ -877,12 +978,13 @@ mod test {
 
     #[test]
     fn test_render_node() -> Result<(), SyntaxError> {
-        let expected = "<pre class=\"notranslate\"><span class=\"token property\" id=\"padding\">padding = </span><br/>  <a href=\"/en-US/docs/Web/CSS/padding-top\"><span class=\"token property\">&lt;&#x27;padding-top&#x27;&gt;</span></a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a>  <br/><br/><span class=\"token property\" id=\"&lt;padding-top&gt;\">&lt;padding-top&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/><br/></pre>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"padding\">padding = </span><br/>  <a href=\"/en-US/docs/Web/CSS/padding-top\"><span class=\"token property\">&lt;&#x27;padding-top&#x27;&gt;</span></a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a>  <br/><br/><span class=\"token property\" id=\"&lt;padding-top&gt;\">&lt;padding-top&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/><br/></pre><footer><a href=\"https://drafts.csswg.org/css-box-4/\">CSS Box Model Module Level 4</a>, <a href=\"https://drafts.csswg.org/css-values-4/\">CSS Values and Units Module Level 4</a></footer>";
         let result = write_formal_syntax(
             CssType::Property("padding"),
             "en-US",
             "/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
             &TOOLTIPS,
+            None,
         )?;
         assert_eq!(result, expected);
         Ok(())
@@ -890,12 +992,13 @@ mod test {
 
     #[test]
     fn test_render_function() -> Result<(), SyntaxError> {
-        let expected = "<pre class=\"notranslate\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/><br/></pre>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/><br/></pre><footer><a href=\"https://drafts.fxtf.org/filter-effects-1/\">Filter Effects Module Level 1</a></footer>";
         let result = write_formal_syntax(
             CssType::Function("hue-rotate"),
             "en-US",
             "/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
             &TOOLTIPS,
+            None,
         )?;
         assert_eq!(result, expected);
         Ok(())

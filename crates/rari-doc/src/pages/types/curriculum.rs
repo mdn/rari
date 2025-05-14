@@ -105,12 +105,12 @@ pub struct CurriculumMeta {
 }
 
 #[derive(Debug, Clone)]
-pub struct CurriculumPage {
+pub struct Curriculum {
     pub meta: CurriculumBuildMeta,
     raw_content: String,
 }
 
-impl CurriculumPage {
+impl Curriculum {
     pub fn page_from_url(url: &str) -> Option<Page> {
         let _ = curriculum_root()?;
         curriculum_files()
@@ -137,14 +137,14 @@ impl CurriculumPage {
             path = path.join("0-README.md");
         }
         let path = fs::canonicalize(path)?;
-        CurriculumPage::page_from_file_path(&path).ok_or(DocError::PageNotFound(
+        Curriculum::page_from_file_path(&path).ok_or(DocError::PageNotFound(
             path.to_string_lossy().to_string(),
             PageCategory::Curriculum,
         ))
     }
 }
 
-impl PageReader<Page> for CurriculumPage {
+impl PageReader<Page> for Curriculum {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let full_path = path.into();
         let raw = read_to_string(&full_path)?;
@@ -182,7 +182,7 @@ impl PageReader<Page> for CurriculumPage {
             path,
             group: None,
         };
-        let page = Page::Curriculum(Arc::new(CurriculumPage { meta, raw_content }));
+        let page = Page::Curriculum(Arc::new(Curriculum { meta, raw_content }));
         Ok(page)
     }
 }
@@ -195,7 +195,7 @@ fn curriculum_file_to_slug(file: &Path) -> String {
     SLUG_RE.replace_all(&file.to_string_lossy(), "").to_string()
 }
 
-impl PageLike for CurriculumPage {
+impl PageLike for Curriculum {
     fn url(&self) -> &str {
         &self.meta.url
     }

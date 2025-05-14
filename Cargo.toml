@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.1.30"
+version = "0.1.36"
 edition = "2021"
 license = "MPL-2.0"
 authors = [
@@ -9,7 +9,7 @@ authors = [
 ]
 homepage = "https://github.com/mdn/rari"
 repository = "https://github.com/mdn/rari"
-rust-version = "1.81"
+rust-version = "1.86"
 
 [[bin]]
 path = "crates/rari-cli/main.rs"
@@ -69,7 +69,7 @@ rari-sitemap = { path = "crates/rari-sitemap" }
 
 tracing = "0.1"
 tracing-subscriber = "0.3"
-thiserror = "1"
+thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 chrono = { version = "0.4", features = ["serde"] }
@@ -95,7 +95,7 @@ console = "0.15"
 sha2 = "0.10"
 dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"
-schemars = { version = "0.8", features = ["chrono"] }
+schemars = { version = "0.8", features = ["chrono", "url"] }
 pretty_yaml = "0.5"
 yaml_parser = "0.2"
 const_format = "0.2"
@@ -137,6 +137,8 @@ clap = { version = "4.5.1", features = ["derive"] }
 clap-verbosity-flag = { version = "3", features = ["tracing"] }
 tabwriter = "1"
 axum = "0.8"
+tower-http = { version = "0.6", features = ["fs"] }
+tower = "0.5"
 dotenvy = "0.15"
 
 [lints.clippy]

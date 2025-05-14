@@ -8,6 +8,7 @@ use rari_utils::concat_strs;
 use scraper::node::{self};
 use scraper::{ElementRef, Html, Node, Selector};
 
+use super::ids::uniquify_id;
 use crate::error::DocError;
 /// Inserts an attribute to a specified HTML node.
 ///
@@ -134,14 +135,14 @@ pub fn wrap_children_with_link(html: &mut Html, node_id: NodeId, href: String) {
 /// # Arguments
 ///
 /// * `html` - A mutable reference to the `Html` structure, representing the HTML
-///            document to be processed.
+///   document to be processed.
 ///
 /// # Returns
 ///
 /// * `Result<(), DocError>` - Returns `Ok(())` if all operations succeed, otherwise
 ///   returns a `DocError` if an error is encountered.
 pub fn insert_self_links_for_dts(html: &mut Html) -> Result<(), DocError> {
-    let selector = Selector::parse("dt:not(:has(> a)").unwrap();
+    let selector = Selector::parse("dt:not(:has(a)").unwrap();
     let subs = html.select(&selector).map(|el| el.id()).collect::<Vec<_>>();
     for el_id in subs {
         wrap_children_with_link_to_id(html, el_id);
@@ -156,7 +157,7 @@ pub fn insert_self_links_for_dts(html: &mut Html) -> Result<(), DocError> {
 /// # Arguments
 ///
 /// * `html` - A mutable reference to the `Html` structure, representing the HTML
-///            document to be modified.
+///   document to be modified.
 ///
 /// # Returns
 ///
@@ -228,28 +229,8 @@ pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
                 } else {
                     el.text().collect::<String>()
                 };
-                let mut id = anchorize(&text);
-                if ids.contains(id.as_ref()) {
-                    let (prefix, mut count) = if let Some((prefix, counter)) = id.rsplit_once('_') {
-                        if counter.chars().all(|c| c.is_ascii_digit()) {
-                            let count = counter.parse::<i64>().unwrap_or_default() + 1;
-                            (prefix, count)
-                        } else {
-                            (id.as_ref(), 2)
-                        }
-                    } else {
-                        (id.as_ref(), 2)
-                    };
-                    let mut new_id = format!("{prefix}_{count}");
-                    while ids.contains(new_id.as_str()) && count < 666 {
-                        count += 1;
-                        new_id = format!("{prefix}_{count}");
-                    }
-                    id = Cow::Owned(new_id);
-                }
-                let id_ = id.to_string();
-                ids.insert(Cow::Owned(id.into_owned()));
-                (el.id(), id_)
+                let id = uniquify_id(&mut ids, anchorize(&text));
+                (el.id(), id.to_string())
             })
             .collect::<Vec<_>>();
     for (el_id, id) in subs {

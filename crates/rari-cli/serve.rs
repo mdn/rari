@@ -1,7 +1,8 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicI64, AtomicU64};
 
 use axum::body::Body;
 use axum::extract::{Path, Query, Request};
@@ -12,9 +13,10 @@ use axum::{Json, Router};
 use rari_doc::cached_readers::wiki_histories;
 use rari_doc::contributors::contributors_txt;
 use rari_doc::error::DocError;
-use rari_doc::issues::{to_display_issues, IN_MEMORY};
+use rari_doc::issues::{to_display_issues, IN_MEMORY, ISSUE_COUNTER_F};
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
+use rari_doc::pages::templates::DocPage;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_tools::error::ToolError;
@@ -24,9 +26,21 @@ use rari_types::locale::Locale;
 use rari_types::Popularities;
 use rari_utils::io::read_to_string;
 use serde::Serialize;
+use tower::ServiceExt;
+use tower_http::services::ServeFile;
 use tracing::{error, span, Level};
 
 static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+tokio::task_local! {
+    static SERVER_ISSUE_COUNTER: AtomicI64;
+}
+
+pub(crate) fn get_issue_counter_f() -> i64 {
+    SERVER_ISSUE_COUNTER
+        .try_with(|sic| sic.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+        .unwrap_or(-1)
+}
 
 #[derive(Debug, Serialize)]
 struct SearchItem {
@@ -42,9 +56,13 @@ async fn handler(req: Request) -> Response<Body> {
     }
 }
 
-async fn fix_issues(
-    Query(params): Query<HashMap<String, String>>,
-) -> Result<impl IntoResponse, AppError> {
+async fn wrapped_handler(req: Request) -> Response<Body> {
+    SERVER_ISSUE_COUNTER
+        .scope(AtomicI64::new(0), async move { handler(req).await })
+        .await
+}
+
+fn fix_issues(params: HashMap<String, String>) -> Result<impl IntoResponse, AppError> {
     if let Some(url) = params.get("url") {
         tracing::info!("🔧 fixing {url}");
         let page = Page::from_url_with_fallback(url)?;
@@ -55,7 +73,15 @@ async fn fix_issues(
     }
 }
 
-async fn get_json_handler(req: Request) -> Result<Json<BuiltPage>, AppError> {
+async fn wrapped_fix_issues(
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, AppError> {
+    SERVER_ISSUE_COUNTER
+        .scope(AtomicI64::new(0), async move { fix_issues(params) })
+        .await
+}
+
+async fn get_json_handler(req: Request) -> Result<Response, AppError> {
     let url = req.uri().path();
     let req_id = REQ_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let span = span!(Level::WARN, "serve", req = req_id);
@@ -63,26 +89,42 @@ async fn get_json_handler(req: Request) -> Result<Json<BuiltPage>, AppError> {
     let span = span!(Level::ERROR, "url", "{}", url);
     let _enter1 = span.enter();
     let url = url.strip_suffix("/index.json").unwrap_or(url);
-    let page = Page::from_url_with_fallback(url)?;
-    let file = page.full_path().to_string_lossy();
-    let span = span!(
-        Level::ERROR,
-        "page",
-        locale = page.locale().as_url_str(),
-        slug = page.slug(),
-        file = file.as_ref()
-    );
-    let _enter2 = span.enter();
-    let mut json = page.build()?;
-    tracing::info!("{url}");
-    if let BuiltPage::Doc(json_doc) = &mut json {
-        let m = IN_MEMORY.get_events();
-        let (_, req_issues) = m
-            .remove(page.full_path().to_string_lossy().as_ref())
-            .unwrap_or_default();
-        json_doc.doc.flaws = Some(to_display_issues(req_issues, &page));
+    match Page::from_url_with_fallback(url) {
+        Ok(page) => {
+            let file = page.full_path().to_string_lossy();
+            let span = span!(
+                Level::ERROR,
+                "page",
+                locale = page.locale().as_url_str(),
+                slug = page.slug(),
+                file = file.as_ref()
+            );
+            let _enter2 = span.enter();
+            let mut json = page.build()?;
+            tracing::info!("{url}");
+            if let BuiltPage::Doc(json_doc) = &mut json {
+                let DocPage::Doc(json_doc) = json_doc.deref_mut();
+                let m = IN_MEMORY.get_events();
+                let (_, req_issues) = m
+                    .remove(page.full_path().to_string_lossy().as_ref())
+                    .unwrap_or_default();
+                json_doc.doc.flaws = Some(to_display_issues(req_issues, &page));
+            }
+            Ok(Json(json).into_response())
+        }
+        Err(e @ (DocError::DocNotFound(..) | DocError::PageNotFound(..))) => {
+            if let Some((doc_url, file_name)) = url.rsplit_once('/') {
+                let page = Page::from_url_with_fallback(doc_url)?;
+                let path = page.full_path().with_file_name(file_name);
+                return Ok(ServeFile::new(path).oneshot(req).await.into_response());
+            }
+            Err(e.into())
+        }
+        Err(e) => {
+            tracing::warn!("{e:?}");
+            Err(e.into())
+        }
     }
-    Ok(Json(json))
 }
 
 async fn get_contributors_handler(req: Request) -> impl IntoResponse {
@@ -105,6 +147,7 @@ fn get_contributors(url: &str) -> Result<String, AppError> {
     let page = Page::from_url_with_fallback(url)?;
     let json = page.build()?;
     let github_file_url = if let BuiltPage::Doc(ref doc) = json {
+        let DocPage::Doc(doc) = doc.deref();
         &doc.doc.source.github_url
     } else {
         ""
@@ -176,7 +219,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response<Body> {
         match self.0 {
             ToolError::DocError(
-                DocError::RariIoError(_) | DocError::IOError(_) | DocError::PageNotFound(_, _),
+                DocError::RariIoError(_) | DocError::IOError(_) | DocError::PageNotFound(..),
             ) => (StatusCode::NOT_FOUND, "").into_response(),
 
             _ => (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response(),
@@ -194,15 +237,16 @@ where
 }
 
 pub fn serve() -> Result<(), anyhow::Error> {
+    ISSUE_COUNTER_F.get_or_init(|| get_issue_counter_f)();
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap()
         .block_on(async {
             let app = Router::new()
-                .route("/_document/fixfixableflaws", put(fix_issues))
+                .route("/_document/fixfixableflaws", put(wrapped_fix_issues))
                 .route("/{locale}/search-index.json", get(get_search_index_handler))
-                .fallback(handler);
+                .fallback(wrapped_handler);
 
             let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();
             axum::serve(listener, app).await.unwrap();
