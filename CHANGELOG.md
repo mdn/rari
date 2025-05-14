@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.37](https://github.com/mdn/rari/compare/v0.1.36...v0.1.37) (2025-05-14)
+
+
+### Bug Fixes
+
+* **baseline:** fix per key calculation ([#212](https://github.com/mdn/rari/issues/212)) ([c714f43](https://github.com/mdn/rari/commit/c714f43a4eb93aab74a18f87f74c69fa58719c7c))
+* **html:** escape titles ([d220c4f](https://github.com/mdn/rari/commit/d220c4fc1c0695145bf418801db5d8e1482b1cbf))
+* **macro:** update redirected URLs in the CSSInfo macro ([#211](https://github.com/mdn/rari/issues/211)) ([921e512](https://github.com/mdn/rari/commit/921e5124284a62300d1a82632e08cc3ea078785d))
+* **md:** render DD in order ([#207](https://github.com/mdn/rari/issues/207)) ([28d5aae](https://github.com/mdn/rari/commit/28d5aae65fa27a8d68cd7fac0a0bfea315637020))
+
 ## [0.1.36](https://github.com/mdn/rari/compare/v0.1.35...v0.1.36) (2025-04-30)
 
 
