@@ -21,7 +21,7 @@ pub fn glossarydisambiguation() -> Result<String, DocError> {
             r#"<dt><a href=""#,
             page.url(),
             r#"">"#,
-            page.title(),
+            &html_escape::encode_safe(page.title()),
             r#"</a></dt><dd>"#,
             strip_paragraph_unchecked(summary.as_str()),
             r#"</dd>"#,

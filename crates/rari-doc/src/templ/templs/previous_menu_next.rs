@@ -107,7 +107,7 @@ fn generate_link(
         r#"/docs/"#,
         slug,
         r#""><span class="button-wrap">"#,
-        title,
+        &html_escape::encode_safe(title),
         r#"</span></a></li>"#,
     ]);
     Ok(())
