@@ -448,6 +448,7 @@ mod test {
 
         let _de_redirects = RedirectFixtures::new(&[], Locale::De);
         let _fr_redirects = RedirectFixtures::new(&[], Locale::Fr);
+        let _it_redirects = RedirectFixtures::new(&[], Locale::It);
         let _ja_redirects = RedirectFixtures::new(&[], Locale::Ja);
         let _ko_redirects = RedirectFixtures::new(&[], Locale::Ko);
         let _ptbr_redirects = RedirectFixtures::new(&[], Locale::PtBr);
@@ -503,6 +504,7 @@ mod test {
 
         let _de_redirects = RedirectFixtures::new(&[], Locale::De);
         let _fr_redirects = RedirectFixtures::new(&[], Locale::Fr);
+        let _it_redirects = RedirectFixtures::new(&[], Locale::It);
         let _ja_redirects = RedirectFixtures::new(&[], Locale::Ja);
         let _ko_redirects = RedirectFixtures::new(&[], Locale::Ko);
         let _ptbr_redirects = RedirectFixtures::new(&[], Locale::PtBr);
@@ -581,6 +583,7 @@ mod test {
 
         let _de_redirects = RedirectFixtures::new(&[], Locale::De);
         let _fr_redirects = RedirectFixtures::new(&[], Locale::Fr);
+        let _it_redirects = RedirectFixtures::new(&[], Locale::It);
         let _ja_redirects = RedirectFixtures::new(&[], Locale::Ja);
         let _ko_redirects = RedirectFixtures::new(&[], Locale::Ko);
         let _ptbr_redirects = RedirectFixtures::new(&[], Locale::PtBr);
