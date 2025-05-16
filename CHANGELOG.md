@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.38](https://github.com/mdn/rari/compare/v0.1.37...v0.1.38) (2025-05-16)
+
+
+### Features
+
+* **serve:** serve blog assets ([e583414](https://github.com/mdn/rari/commit/e58341471cafca30a94f5bc509a6e3ea2fa4bd91))
+
+
+### Bug Fixes
+
+* **rust:** bump workspace version ([aa052e1](https://github.com/mdn/rari/commit/aa052e14ba8ec3001277960dbf5c24329d9a25a8))
+
 ## [0.1.37](https://github.com/mdn/rari/compare/v0.1.36...v0.1.37) (2025-05-14)
 
 
