@@ -53,7 +53,7 @@ authors = [
   "Florian Dieminger <me@fiji-flo.de>",
   "The MDN Engineering Team <mdn-dev@mozilla.com>",
 ]
-rust-version = "1.81"
+rust-version = "1.86"
 
 [workspace.dependencies]
 rari-doc = { path = "crates/rari-doc" }
