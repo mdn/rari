@@ -58,6 +58,8 @@ unescaper = "0.1"
 
 
 css-syntax = { path = "../css-syntax", features = ["rari"] }
+tree-sitter-mdn = "0.1"
+tree-sitter = "0.23"
 
 [dev-dependencies]
 rari-types = { path = "../rari-types", features = ["testing"] }

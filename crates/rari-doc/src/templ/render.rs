@@ -5,7 +5,7 @@ use rari_types::globals::deny_warnings;
 use rari_types::{AnyArg, RariEnv};
 use tracing::{span, warn, Level};
 
-use super::parser::{parse, Token};
+use super::parser::{parse, parse_ts, Token};
 use super::templs::invoke;
 use crate::error::DocError;
 
@@ -57,7 +57,7 @@ pub(crate) fn render_for_summary(input: &str) -> Result<String, DocError> {
 }
 
 pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Rendered, DocError> {
-    let tokens = parse(input)?;
+    let tokens = parse_ts(input)?;
     let mut templs = vec![];
     let mut sidebars = vec![];
     let mut out = String::with_capacity(input.len());
