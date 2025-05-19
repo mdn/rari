@@ -11,7 +11,7 @@ use std::iter::once;
 use std::ops::DerefMut;
 use std::path::PathBuf;
 
-use chrono::{NaiveDate, NaiveDateTime, Utc};
+use chrono::{NaiveDateTime, Utc};
 use itertools::Itertools;
 use rari_types::globals::{
     base_url, blog_root, build_out_root, contributor_spotlight_root, curriculum_root,
@@ -36,6 +36,7 @@ use crate::pages::templates::DocPage;
 use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
 use crate::rss::create_rss;
+use crate::utils::filter_unpublished_blog_post;
 
 #[derive(Clone, Debug, Default)]
 pub struct SitemapMeta<'a> {
@@ -278,7 +279,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     let sorted_posts: Vec<_> = blog_files()
         .posts
         .values()
-        .filter(|post| filter_unpublished(post, &now))
+        .filter(|post| filter_unpublished_blog_post(post, &now))
         .filter_map(|page| {
             if let Page::BlogPost(post) = page {
                 Some(post)
@@ -294,7 +295,7 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
     blog_files()
         .posts
         .values()
-        .filter(|post| filter_unpublished(post, &now))
+        .filter(|post| filter_unpublished_blog_post(post, &now))
         .chain(once(&SPA::from_url("/en-US/blog/").unwrap()))
         .map(|page| {
             build_single_page(page).map(|_| SitemapMeta {
@@ -304,15 +305,6 @@ pub fn build_blog_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
             })
         })
         .collect()
-}
-
-fn filter_unpublished(post: &&Page, now: &NaiveDate) -> bool {
-    settings().blog_unpublished
-        || if let Page::BlogPost(post) = post {
-            post.meta.published && &post.meta.date <= now
-        } else {
-            false
-        }
 }
 
 /// Builds generic pages and returns their URLs.
