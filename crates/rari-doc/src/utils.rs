@@ -13,18 +13,18 @@ use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use std::sync::OnceLock;
 
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use icu_collator::{Collator, CollatorOptions, Strength};
 use icu_locid::locale;
 use rari_types::error::EnvError;
-use rari_types::globals::{blog_root, content_root, content_translated_root};
+use rari_types::globals::{blog_root, content_root, content_translated_root, settings};
 use rari_types::locale::{Locale, LocaleError};
 use serde::de::{self, value, SeqAccess, Visitor};
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::DocError;
-use crate::pages::page::PageCategory;
+use crate::pages::page::{Page, PageCategory};
 
 const FM_START_DELIM: &str = "---\n";
 const FM_START_DELIM_LEN: usize = FM_START_DELIM.len();
@@ -387,4 +387,13 @@ pub fn trim_before<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
 
 pub fn is_default<T: PartialEq + Default>(value: &T) -> bool {
     value == &T::default()
+}
+
+pub fn filter_unpublished_blog_post(post: &&Page, now: &NaiveDate) -> bool {
+    settings().blog_unpublished
+        || if let Page::BlogPost(post) = post {
+            post.meta.published && &post.meta.date <= now
+        } else {
+            false
+        }
 }

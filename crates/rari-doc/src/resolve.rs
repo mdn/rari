@@ -125,6 +125,21 @@ pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, UrlError> {
     let (page_category, slug) = match tail.as_slice() {
         ["docs", tail] => (PageCategory::Doc, *tail),
         ["blog"] | ["blog", ""] if locale == Default::default() => (PageCategory::SPA, "blog"),
+        ["blog", page]
+            if locale == Default::default()
+                && page
+                    .strip_suffix("/")
+                    .unwrap_or(page)
+                    .parse::<usize>()
+                    .is_ok() =>
+        {
+            let slug = url[..url.find('#').unwrap_or(url.len())]
+                .splitn(3, '/')
+                .last()
+                .unwrap();
+            let slug = slug.strip_suffix('/').unwrap_or(slug);
+            (PageCategory::SPA, slug)
+        }
         ["blog", tail] if locale == Default::default() => (PageCategory::BlogPost, *tail),
         ["curriculum", tail] if locale == Default::default() => (PageCategory::Curriculum, *tail),
         ["community", tail] if locale == Default::default() && tail.starts_with("spotlight") => {

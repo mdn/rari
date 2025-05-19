@@ -75,6 +75,7 @@ pub struct Settings {
     pub json_live_samples: bool,
     pub blog_unpublished: bool,
     pub deps: Deps,
+    pub blog_pagination: bool,
 }
 
 impl Settings {

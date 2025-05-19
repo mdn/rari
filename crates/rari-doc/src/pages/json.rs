@@ -18,6 +18,7 @@ use super::templates::{
 };
 use super::types::contributors::Usernames;
 use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
+use crate::cached_readers::PaginationData;
 use crate::html::code::Code;
 use crate::issues::DisplayIssues;
 use crate::pages::types::blog::BlogMeta;
@@ -391,6 +392,7 @@ pub struct JsonDocPage {
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct BlogIndex {
     pub posts: Vec<BlogMeta>,
+    pub pagination: PaginationData,
 }
 
 /// Represents a curriculum document in the system.

@@ -35,6 +35,7 @@ use rari_types::globals::{
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
@@ -753,10 +754,17 @@ pub struct BasicSPA {
     pub no_indexing: bool,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PaginationData {
+    pub current_page: usize,
+    pub num_pages: usize,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SPAData {
-    BlogIndex,
+    BlogIndex(PaginationData),
     HomePage,
     NotFound,
     #[serde(untagged)]
