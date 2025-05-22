@@ -46,7 +46,7 @@ pub fn css_ref_list() -> Result<String, DocError> {
     out.push_str(r#"<div class="index">"#);
     for (letter, items) in index {
         out.push_str("<h3>");
-        out.push(letter);
+        out.push_str(&html_escape::encode_safe(letter.encode_utf8(&mut [0; 4])));
         out.push_str("</h3><ul>");
         for (url, label) in items
             .into_iter()

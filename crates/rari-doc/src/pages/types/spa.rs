@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
+use chrono::Utc;
 use constcat::concat;
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::globals::content_translated_root;
+use rari_types::globals::{content_translated_root, settings};
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::concat_strs;
@@ -13,7 +15,9 @@ use rari_utils::concat_strs;
 use super::spa_homepage::{
     featured_articles, featured_contributor, latest_news, recent_contributions,
 };
-use crate::cached_readers::{blog_files, generic_content_config, BasicSPA, BuildSPA, SPAData};
+use crate::cached_readers::{
+    blog_files, generic_content_config, BasicSPA, BuildSPA, PaginationData, SPAData,
+};
 use crate::error::DocError;
 use crate::helpers::title::page_title;
 use crate::pages::json::{
@@ -23,6 +27,7 @@ use crate::pages::json::{
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::templates::{BlogPage, HomePage, SpaBuildTemplate, SpaPage};
 use crate::pages::types::blog::BlogMeta;
+use crate::utils::filter_unpublished_blog_post;
 
 #[derive(Debug, Clone)]
 pub struct SPA {
@@ -99,8 +104,8 @@ impl SPA {
 
     pub fn as_built_doc(&self) -> Result<BuiltPage, DocError> {
         match &self.data {
-            SPAData::BlogIndex => Ok(BuiltPage::BlogPost(Box::new(BlogPage::BlogIndex(
-                JsonBlogPostPage {
+            SPAData::BlogIndex(pagination) => Ok(BuiltPage::BlogPost(Box::new(
+                BlogPage::BlogIndex(JsonBlogPostPage {
                     doc: JsonBlogPostDoc {
                         title: self.title().to_string(),
                         mdn_url: self.url().to_owned(),
@@ -117,17 +122,20 @@ impl SPA {
                             .sorted_meta
                             .iter()
                             .rev()
+                            .skip(*POSTS_PER_PAGE * (pagination.current_page - 1))
+                            .take(*POSTS_PER_PAGE)
                             .map(BlogMeta::from)
                             .map(|mut m| {
                                 m.links = Default::default();
                                 m
                             })
                             .collect(),
+                        pagination: *pagination,
                     }),
                     page_title: self.title().to_owned(),
                     ..Default::default()
-                },
-            )))),
+                }),
+            ))),
             SPAData::BasicSPA(basic_spa) => {
                 Ok(BuiltPage::SPA(Box::new(SpaPage::from_page_and_template(
                     JsonSpaPage {
@@ -270,11 +278,63 @@ const OBSERVATORY_TITLE_FULL: &str = "HTTP Observatory | MDN";
 const OBSERVATORY_DESCRIPTION: &str =
 "Test your site’s HTTP headers, including CSP and HSTS, to find security problems and get actionable recommendations to make your website more secure. Test other websites to see how you compare.";
 
+static POSTS_PER_PAGE: LazyLock<usize> = LazyLock::new(|| {
+    if settings().blog_pagination {
+        10
+    } else {
+        usize::MAX
+    }
+});
+
+fn blog_indices() -> Vec<(String, BuildSPA)> {
+    let now = Utc::now().date_naive();
+    let num_posts = blog_files()
+        .posts
+        .values()
+        .filter(|post| filter_unpublished_blog_post(post, &now))
+        .count();
+    let pages = num_posts / *POSTS_PER_PAGE;
+    iter::once((
+        "blog".to_string(),
+        BuildSPA {
+            slug: Cow::Borrowed("blog"),
+            page_title: Cow::Borrowed("MDN Blog"),
+            trailing_slash: true,
+            en_us_only: true,
+            data: SPAData::BlogIndex(PaginationData {
+                current_page: 1,
+                num_pages: pages,
+            }),
+            template: SpaBuildTemplate::SpaUnknown,
+            ..Default::default()
+        },
+    ))
+    .chain((2..=pages).map(|page| {
+        (
+            format!("blog/{page}"),
+            BuildSPA {
+                slug: Cow::Owned(format!("blog/{page}")),
+                page_title: Cow::Borrowed("MDN Blog"),
+                trailing_slash: true,
+                en_us_only: true,
+                data: SPAData::BlogIndex(PaginationData {
+                    current_page: page,
+                    num_pages: pages,
+                }),
+                template: SpaBuildTemplate::SpaUnknown,
+                ..Default::default()
+            },
+        )
+    }))
+    .collect()
+}
+
 static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
     generic_content_config()
         .spas
         .clone()
         .into_iter()
+        .chain(blog_indices())
         .chain(
             [
                 (
@@ -296,18 +356,6 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                         en_us_only: true,
                         data: SPAData::NotFound,
                         template: SpaBuildTemplate::SpaNotFound,
-                        ..Default::default()
-                    },
-                ),
-                (
-                    "blog",
-                    BuildSPA {
-                        slug: Cow::Borrowed("blog"),
-                        page_title: Cow::Borrowed("MDN Blog"),
-                        trailing_slash: true,
-                        en_us_only: true,
-                        data: SPAData::BlogIndex,
-                        template: SpaBuildTemplate::SpaUnknown,
                         ..Default::default()
                     },
                 ),

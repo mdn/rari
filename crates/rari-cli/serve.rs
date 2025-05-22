@@ -15,13 +15,14 @@ use rari_doc::contributors::contributors_txt;
 use rari_doc::error::DocError;
 use rari_doc::issues::{to_display_issues, IN_MEMORY, ISSUE_COUNTER_F};
 use rari_doc::pages::json::BuiltPage;
-use rari_doc::pages::page::{Page, PageBuilder, PageLike};
+use rari_doc::pages::page::{Page, PageBuilder, PageCategory, PageLike};
 use rari_doc::pages::templates::DocPage;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
+use rari_doc::resolve::{url_meta_from, UrlMeta};
 use rari_tools::error::ToolError;
 use rari_tools::fix::issues::fix_page;
-use rari_types::globals::{self, content_root, content_translated_root};
+use rari_types::globals::{self, blog_root, content_root, content_translated_root};
 use rari_types::locale::Locale;
 use rari_types::Popularities;
 use rari_utils::io::read_to_string;
@@ -31,6 +32,10 @@ use tower_http::services::ServeFile;
 use tracing::{error, span, Level};
 
 static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+static ASSET_EXTENSION: &[&str] = &[
+    "gif", "jpeg", "jpg", "mp3", "mp4", "ogg", "png", "svg", "webm", "webp", "woff2",
+];
 
 tokio::task_local! {
     static SERVER_ISSUE_COUNTER: AtomicI64;
@@ -49,8 +54,16 @@ struct SearchItem {
 }
 
 async fn handler(req: Request) -> Response<Body> {
-    if req.uri().path().ends_with("/contributors.txt") {
+    let path = req.uri().path();
+    if path.ends_with("/contributors.txt") {
         get_contributors_handler(req).await.into_response()
+    } else if ASSET_EXTENSION.contains(
+        &path
+            .rsplit_once('.')
+            .map(|(_, ext)| ext)
+            .unwrap_or_default(),
+    ) {
+        get_file_handler(req).await.into_response()
     } else {
         get_json_handler(req).await.into_response()
     }
@@ -79,6 +92,46 @@ async fn wrapped_fix_issues(
     SERVER_ISSUE_COUNTER
         .scope(AtomicI64::new(0), async move { fix_issues(params) })
         .await
+}
+
+async fn get_file_handler(req: Request) -> Result<Response, AppError> {
+    let url = req.uri().path();
+    tracing::info!("(asset) {}", url);
+    let UrlMeta {
+        page_category,
+        slug,
+        ..
+    } = url_meta_from(url)?;
+
+    // Blog author avatars are special.
+    if matches!(page_category, PageCategory::BlogPost) && slug.starts_with("author/") {
+        if let Some(blog_root_parent) = blog_root() {
+            let path = blog_root_parent
+                .join("authors")
+                .join(slug.strip_prefix("author/").unwrap());
+            return Ok(ServeFile::new(path).oneshot(req).await.into_response());
+        }
+    }
+
+    if let Some(last_slash) = url.rfind('/') {
+        let doc_url = &url[..(if matches!(
+            page_category,
+            PageCategory::BlogPost | PageCategory::Curriculum
+        ) {
+            // Add trailing slash for paths that require it.
+            last_slash + 1
+        } else {
+            last_slash
+        })];
+
+        let file_name = &url[last_slash + 1..];
+        let page = Page::from_url_with_fallback(doc_url)?;
+        let path = page.full_path().with_file_name(file_name);
+
+        return Ok(ServeFile::new(path).oneshot(req).await.into_response());
+    }
+
+    Ok((StatusCode::BAD_REQUEST).into_response())
 }
 
 async fn get_json_handler(req: Request) -> Result<Response, AppError> {

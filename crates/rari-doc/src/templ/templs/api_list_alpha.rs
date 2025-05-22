@@ -27,7 +27,9 @@ pub fn api_list_alpha() -> Result<String, DocError> {
             current_letter = first_letter;
             if let Some(current_letter) = current_letter {
                 out.push_str("<h3>");
-                out.push(current_letter);
+                out.push_str(&html_escape::encode_safe(
+                    current_letter.encode_utf8(&mut [0; 4]),
+                ));
                 out.push_str("</h3><ul>");
             }
         }

@@ -16,7 +16,7 @@ pub fn subpages_with_summaries() -> Result<String, DocError> {
             r#"<dt class="landingPageList"><a href=""#,
             page.url(),
             r#"">"#,
-            page.title(),
+            &html_escape::encode_safe(page.title()),
             r#"</a></dt><dd class="landingPageList"><p>"#,
             strip_paragraph_unchecked(get_hacky_summary_md(&page)?.as_str()),
             r#"</p></dd>"#,

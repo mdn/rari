@@ -329,7 +329,7 @@ pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
 pub fn css_initial(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinitial", locale)?;
     RariApi::link(
-        "Web/CSS/CSS_cascade/Value_processing#initial_value",
+        "/Web/CSS/CSS_cascade/Value_processing#initial_value",
         locale,
         Some(copy),
         false,

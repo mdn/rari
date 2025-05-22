@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.38](https://github.com/mdn/rari/compare/v0.1.37...v0.1.38) (2025-05-19)
+
+
+### Features
+
+* **blog:** add pagination support ([#217](https://github.com/mdn/rari/issues/217)) ([beb4f44](https://github.com/mdn/rari/commit/beb4f4402cef9deacd64b6c960f0e12543300817))
+* **serve:** serve blog assets ([e583414](https://github.com/mdn/rari/commit/e58341471cafca30a94f5bc509a6e3ea2fa4bd91))
+
+
+### Bug Fixes
+
+* **css_info:** fix bad "initial value" link ([71dfa1c](https://github.com/mdn/rari/commit/71dfa1cc57aa56508c7becbe5528fbbab9c956a5))
+* **macro:** fix bad "initial value" link ([#214](https://github.com/mdn/rari/issues/214)) ([71dfa1c](https://github.com/mdn/rari/commit/71dfa1cc57aa56508c7becbe5528fbbab9c956a5))
+* **rust:** bump workspace version ([aa052e1](https://github.com/mdn/rari/commit/aa052e14ba8ec3001277960dbf5c24329d9a25a8))
+
+## [0.1.37](https://github.com/mdn/rari/compare/v0.1.36...v0.1.37) (2025-05-14)
+
+
+### Bug Fixes
+
+* **baseline:** fix per key calculation ([#212](https://github.com/mdn/rari/issues/212)) ([c714f43](https://github.com/mdn/rari/commit/c714f43a4eb93aab74a18f87f74c69fa58719c7c))
+* **html:** escape titles ([d220c4f](https://github.com/mdn/rari/commit/d220c4fc1c0695145bf418801db5d8e1482b1cbf))
+* **macro:** update redirected URLs in the CSSInfo macro ([#211](https://github.com/mdn/rari/issues/211)) ([921e512](https://github.com/mdn/rari/commit/921e5124284a62300d1a82632e08cc3ea078785d))
+* **md:** render DD in order ([#207](https://github.com/mdn/rari/issues/207)) ([28d5aae](https://github.com/mdn/rari/commit/28d5aae65fa27a8d68cd7fac0a0bfea315637020))
+
 ## [0.1.36](https://github.com/mdn/rari/compare/v0.1.35...v0.1.36) (2025-04-30)
 
 

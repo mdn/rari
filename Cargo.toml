@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.1.36"
+version = "0.1.38"
 edition = "2021"
 license = "MPL-2.0"
 authors = [
@@ -54,7 +54,7 @@ authors = [
   "Florian Dieminger <me@fiji-flo.de>",
   "The MDN Engineering Team <mdn-dev@mozilla.com>",
 ]
-rust-version = "1.81"
+rust-version = "1.86"
 
 [workspace.dependencies]
 rari-doc = { path = "crates/rari-doc" }
