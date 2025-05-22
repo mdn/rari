@@ -18,7 +18,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
 
-tree-sitter-mdn = { git = "https://github.com/fiji-flo/tree-sitter-mdn" }
+tree-sitter-mdn = "0.1"
 tree-sitter-md = { version = "0.3", features = ["parser"] }
 lsp-textdocument = "0.3"
 tower-lsp = "0.20.0"
