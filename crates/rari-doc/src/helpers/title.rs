@@ -27,7 +27,7 @@ pub fn page_title(doc: &impl PageLike, with_suffix: bool) -> Result<String, DocE
         if root_url != doc.url() {
             let root_doc = Page::from_url_with_fallback(root_url)?;
             out.push_str(" - ");
-            out.push_str(root_doc.title());
+            out.push_str(root_doc.short_title().unwrap_or(root_doc.title()));
         }
     }
     if with_suffix {
