@@ -10,7 +10,7 @@ use crate::utils::dedup_whitespace;
 
 #[allow(clippy::too_many_arguments)]
 #[rari_f(register = "crate::Templ")]
-pub fn embed_live_sample(
+pub fn embedlivesample(
     id: Option<String>,
     width: Option<AnyArg>,
     height: Option<AnyArg>,

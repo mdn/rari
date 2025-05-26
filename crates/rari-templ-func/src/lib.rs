@@ -6,20 +6,36 @@ use quote::{format_ident, quote, ToTokens};
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, parse_quote, Lit};
 
-fn pascal_case(s: &str) -> String {
-    let mut pascal = String::new();
-    let mut capitalize = true;
-    for ch in s.chars() {
-        if ch == '_' {
-            capitalize = true;
-        } else if capitalize {
-            pascal.push(ch.to_ascii_uppercase());
-            capitalize = false;
+fn poor_ts_fn_outline_conversion(outline: &str) -> Option<String> {
+    let outline = outline.replace("\n", " ");
+    let outline = outline.strip_prefix("fn ")?;
+    let args_start = outline.find('(')?;
+    let args_end = outline.find(")")?;
+
+    let mut out = String::with_capacity(outline.len());
+    out.push_str(&outline[..args_start]);
+    out.push('(');
+    let mut first = true;
+    for arg in outline[args_start + 1..args_end].split(",") {
+        if arg.is_empty() {
+            break;
+        }
+        if first {
+            first = false;
         } else {
-            pascal.push(ch);
+            out.push_str(", ");
+        }
+        let arg = arg.trim();
+        let colon = arg.find(" : ")?;
+        let typ = &arg[colon + 3..];
+        if let Some(optional_type) = typ.strip_prefix("Option < ") {
+            out.extend([&arg[..colon], "?: ", optional_type.strip_suffix(" >")?]);
+        } else {
+            out.push_str(arg);
         }
     }
-    pascal
+    out.push(')');
+    Some(out)
 }
 
 fn is_option(path: &syn::TypePath) -> bool {
@@ -102,7 +118,9 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
     let doc = quote! {
         pub static #doc_static_ident: &str = #doc_string;
     };
-    let original_sig = &function.sig.to_token_stream().to_string();
+    let original_sig = function.sig.to_token_stream().to_string();
+    let original_sig = &poor_ts_fn_outline_conversion(&function.sig.to_token_stream().to_string())
+        .unwrap_or(original_sig);
     let outline = quote! {
         pub static #outline_static_ident: &str = #original_sig;
     };
@@ -157,11 +175,6 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
         .inputs
         .insert(0, parse_quote!(env: &::rari_types::RariEnv));
 
-    let f_struct = format_ident!("{}", pascal_case(&name));
-    let r_type = match function.sig.output {
-        syn::ReturnType::Default => parse_quote!(()),
-        syn::ReturnType::Type(_, ref t) => t.clone(),
-    };
     let dup_ident = dup.sig.ident.clone();
     let is_sidebar: Lit = if attr_args.sidebar {
         parse_quote!(true)
@@ -191,24 +204,16 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
         #[allow(dead_code)]
         #function
         #dup
-
-        pub struct #f_struct {}
-
-        impl ::rari_types::templ::RariF for #f_struct {
-            type R = #r_type;
-
-            fn function() -> ::rari_types::templ::RariFn<Self::R> {
-                #dup_ident
-            }
-            fn doc() -> &'static str {
-                #doc_static_ident
-            }
-            fn outline() -> &'static str {
-                #outline_static_ident
-            }
-            fn is_sidebar() -> bool {
-                #is_sidebar
-            }
-        }
     ))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_ts_conversion() {
+        let outline = "fn\nhttpheader(status : AnyArg, display : Option < String > , anchor : Option <\nString > , no_code : Option < AnyArg > ,) -> Result < String, DocError >";
+        println!("{:?}", poor_ts_fn_outline_conversion(outline));
+    }
 }

@@ -5,28 +5,38 @@ use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
 #[rari_f(register = "crate::Templ")]
-pub fn experimental() -> Result<String, DocError> {
+pub fn experimental_inline() -> Result<String, DocError> {
     let mut out = String::new();
     write_experimental(&mut out, env.locale)?;
     Ok(out)
 }
 
 #[rari_f(register = "crate::Templ")]
-pub fn non_standard() -> Result<String, DocError> {
+pub fn experimentalbadge() -> Result<String, DocError> {
+    experimental_inline(env)
+}
+
+#[rari_f(register = "crate::Templ")]
+pub fn non_standard_inline() -> Result<String, DocError> {
     let mut out = String::new();
     write_non_standard(&mut out, env.locale)?;
     Ok(out)
 }
 
 #[rari_f(register = "crate::Templ")]
-pub fn deprecated() -> Result<String, DocError> {
+pub fn non_standardbage() -> Result<String, DocError> {
+    non_standard_inline(env)
+}
+
+#[rari_f(register = "crate::Templ")]
+pub fn deprecated_inline() -> Result<String, DocError> {
     let mut out = String::new();
     write_deprecated(&mut out, env.locale)?;
     Ok(out)
 }
 
 #[rari_f(register = "crate::Templ")]
-pub fn optional() -> Result<String, DocError> {
+pub fn optional_inline() -> Result<String, DocError> {
     let str = l10n_json_data("Template", "optional", env.locale)?;
     Ok(format!(
         r#"<span class="badge inline optional">{str}</span>"#

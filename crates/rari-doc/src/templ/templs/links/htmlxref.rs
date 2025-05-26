@@ -5,7 +5,7 @@ use crate::error::DocError;
 use crate::templ::api::RariApi;
 
 #[rari_f(register = "crate::Templ")]
-pub fn htmlxref(
+pub fn htmlelement(
     element_name: String,
     display: Option<String>,
     anchor: Option<String>,

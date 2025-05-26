@@ -9,7 +9,7 @@ use crate::helpers::subpages::write_li_with_badges;
 use crate::pages::types::doc::Doc;
 
 #[rari_f(register = "crate::Templ")]
-pub fn api_list_specs() -> Result<String, DocError> {
+pub fn listgroups() -> Result<String, DocError> {
     let group_data = json_data_group();
 
     let mut out_by_letter = BTreeMap::new();

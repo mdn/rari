@@ -6,7 +6,7 @@ use rari_types::AnyArg;
 use crate::error::DocError;
 
 #[rari_f(register = "crate::Templ")]
-pub fn embed_jsfiddle(
+pub fn jsfiddleembed(
     url: String,
     options: Option<String>,
     height: Option<AnyArg>,

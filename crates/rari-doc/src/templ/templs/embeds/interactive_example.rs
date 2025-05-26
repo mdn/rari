@@ -14,7 +14,7 @@ use crate::templ::api::RariApi;
 ///
 ///  Example call {{InteractiveExample("JavaScript Demo: Array.from()", "taller")}}
 #[rari_f(register = "crate::Templ")]
-pub fn interactive_example(name: String, height: Option<String>) -> Result<String, DocError> {
+pub fn interactiveexample(name: String, height: Option<String>) -> Result<String, DocError> {
     let title = l10n_json_data("Template", "interactive_example_cta", env.locale)?;
     let id = RariApi::anchorize(title);
 

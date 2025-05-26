@@ -5,7 +5,7 @@ use crate::error::DocError;
 use crate::templ::api::RariApi;
 
 #[rari_f(register = "crate::Templ")]
-pub fn live_sample_link(id: String, display: String) -> Result<String, DocError> {
+pub fn livesamplelink(id: String, display: String) -> Result<String, DocError> {
     let id = RariApi::anchorize(&id);
     Ok(concat_strs!(
         r##"<a href="#livesample_fullscreen="##,

@@ -6,7 +6,7 @@ use rari_types::AnyArg;
 use crate::error::DocError;
 
 #[rari_f(register = "crate::Templ")]
-pub fn embed_gh_live_sample(
+pub fn embedghlivesample(
     path: String,
     width: Option<AnyArg>,
     height: Option<AnyArg>,

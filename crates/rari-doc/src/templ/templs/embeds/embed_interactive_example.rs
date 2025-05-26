@@ -12,7 +12,7 @@ use crate::templ::api::RariApi;
 ///
 ///  Example call {{EmbedInteractiveExample("pages/css/animation.html", "taller")}}
 #[rari_f(register = "crate::Templ")]
-pub fn embed_interactive_example(path: String, height: Option<String>) -> Result<String, DocError> {
+pub fn embedinteractiveexample(path: String, height: Option<String>) -> Result<String, DocError> {
     let title = l10n_json_data("Template", "interactive_example_cta", env.locale)?;
     let url = format!("{}/{path}", RariApi::interactive_examples_base_url());
     let height_class = match height.as_deref() {

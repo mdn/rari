@@ -10,7 +10,7 @@ pub fn apiref(group: Option<String>) -> Result<String, DocError> {
 }
 
 #[rari_f(register = "crate::Templ", sidebar)]
-pub fn default_api_sidebar(group: String) -> Result<String, DocError> {
+pub fn defaultapisidebar(group: String) -> Result<String, DocError> {
     default_api_sidebar::sidebar(&group, env.locale)?.render("default_api", env.locale)
 }
 

@@ -6,7 +6,7 @@ use crate::helpers::subpages::{self, ListSubPagesContext, SubPagesSorter};
 
 /// List sub pages
 #[rari_f(register = "crate::Templ")]
-pub fn list_sub_pages(
+pub fn listsubpages(
     url: Option<String>,
     depth: Option<AnyArg>,
     reverse: Option<AnyArg>,

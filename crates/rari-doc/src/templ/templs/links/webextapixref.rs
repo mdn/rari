@@ -7,7 +7,7 @@ use crate::error::DocError;
 use crate::templ::api::RariApi;
 
 #[rari_f(register = "crate::Templ")]
-pub fn webextapixref(
+pub fn webextapiref(
     api: String,
     display: Option<String>,
     anchor: Option<String>,

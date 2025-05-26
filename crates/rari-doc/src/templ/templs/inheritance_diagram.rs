@@ -8,7 +8,7 @@ use crate::error::DocError;
 use crate::helpers::api_inheritance::inheritance;
 
 #[rari_f(register = "crate::Templ")]
-pub fn inheritance_diagram(interface: Option<String>) -> Result<String, DocError> {
+pub fn inheritancediagram(interface: Option<String>) -> Result<String, DocError> {
     let main_if = interface
         .as_deref()
         .or_else(|| {

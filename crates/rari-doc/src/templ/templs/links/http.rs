@@ -6,7 +6,7 @@ use crate::error::DocError;
 use crate::templ::api::RariApi;
 
 #[rari_f(register = "crate::Templ")]
-pub fn http_status(
+pub fn httpstatus(
     status: AnyArg,
     display: Option<String>,
     anchor: Option<String>,
@@ -21,7 +21,7 @@ pub fn http_status(
 }
 
 #[rari_f(register = "crate::Templ")]
-pub fn http_header(
+pub fn httpheader(
     status: AnyArg,
     display: Option<String>,
     anchor: Option<String>,
@@ -36,7 +36,7 @@ pub fn http_header(
 }
 
 #[rari_f(register = "crate::Templ")]
-pub fn http_method(
+pub fn httpmethod(
     status: AnyArg,
     display: Option<String>,
     anchor: Option<String>,

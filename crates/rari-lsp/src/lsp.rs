@@ -211,7 +211,13 @@ impl LanguageServer for Backend {
 
             match keyword {
                 Some(keyword) => {
-                    if let Some(t) = self.kw_docs.get(&keyword.as_str()) {
+                    if let Some(t) = self.kw_docs.get(
+                        keyword
+                            .as_str()
+                            .to_ascii_lowercase()
+                            .replace("-", "_")
+                            .as_str(),
+                    ) {
                         let hover_contents = HoverContents::Markup(MarkupContent {
                             kind: MarkupKind::Markdown,
                             value: t.outline.to_string(),
@@ -295,6 +301,7 @@ impl LanguageServer for Backend {
                 params.text_document_position.position.line as usize,
                 params.text_document_position.position.character as usize,
             ) {
+                let keyword = keyword.to_ascii_lowercase().replace("-", "_");
                 let items = TEMPL_MAP
                     .iter()
                     .filter(|t| t.name.starts_with(&keyword))

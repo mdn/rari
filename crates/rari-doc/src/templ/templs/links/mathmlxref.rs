@@ -5,7 +5,7 @@ use crate::error::DocError;
 use crate::templ::api::RariApi;
 
 #[rari_f(register = "crate::Templ")]
-pub fn mathmlxref(element_name: String) -> Result<String, DocError> {
+pub fn mathmlelement(element_name: String) -> Result<String, DocError> {
     let element_name = element_name.to_lowercase();
     let display = concat_strs!("&lt;", element_name.as_str(), "&gt;");
     let title = concat_strs!("<", element_name.as_str(), ">");
