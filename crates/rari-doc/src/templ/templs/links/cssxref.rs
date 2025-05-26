@@ -6,7 +6,7 @@ use crate::error::DocError;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn cssxref(
     name: String,
     display: Option<String>,

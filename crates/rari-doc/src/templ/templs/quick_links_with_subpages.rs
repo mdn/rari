@@ -6,7 +6,7 @@ use crate::error::DocError;
 use crate::templ::legacy::fix_broken_legacy_url;
 
 /// List sub pages
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn quick_links_with_subpages(url: Option<String>) -> Result<String, DocError> {
     let url = url.map(|s| fix_broken_legacy_url(&s, env.locale).to_string());
     list_sub_pages(

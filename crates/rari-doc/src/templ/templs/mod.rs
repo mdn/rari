@@ -28,12 +28,26 @@ pub mod web_ext_examples;
 pub mod webext_all_examples;
 pub mod xsltref;
 
+use std::sync::LazyLock;
+
 use rari_types::globals::deny_warnings;
 use rari_types::{Arg, RariEnv};
 use tracing::error;
 
 use crate::error::DocError;
 use crate::utils::TEMPL_RECORDER;
+
+#[derive(Debug)]
+pub struct Templ {
+    pub name: &'static str,
+    pub outline: &'static str,
+    pub doc: &'static str,
+}
+
+inventory::collect!(Templ);
+
+pub static TEMPL_MAP: LazyLock<Vec<&'static Templ>> =
+    LazyLock::new(|| inventory::iter::<Templ>().collect());
 
 pub fn invoke(
     env: &RariEnv,
@@ -189,4 +203,14 @@ pub fn invoke(
         } //
     };
     f(env, args).map(|s| (s, is_sidebar))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_kw() {
+        println!("{:?}", *TEMPL_MAP);
+    }
 }

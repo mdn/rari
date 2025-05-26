@@ -1,3 +1,5 @@
+use tower_lsp_server::{LspService, Server};
+
 mod keywords;
 mod lsp;
 mod parser;
@@ -11,10 +13,8 @@ pub fn run() -> Result<(), anyhow::Error> {
         .block_on(async {
             let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
 
-            let (service, socket) = tower_lsp::LspService::build(lsp::Backend::new).finish();
-            tower_lsp::Server::new(stdin, stdout, socket)
-                .serve(service)
-                .await;
+            let (service, socket) = LspService::build(lsp::Backend::new).finish();
+            Server::new(stdin, stdout, socket).serve(service).await;
         });
     Ok(())
 }

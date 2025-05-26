@@ -57,3 +57,5 @@ pub mod templ;
 pub mod translations;
 pub mod utils;
 pub mod walker;
+
+pub use templ::templs::Templ;

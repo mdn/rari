@@ -1,13 +1,8 @@
-use rari_doc::templ::templs::{embeds::embed_live_sample, links::cssxref};
+use rari_doc::templ::templs::TEMPL_MAP;
+use rari_doc::Templ;
 
-pub(crate) type KeywordDocsMap = std::collections::HashMap<&'static str, &'static str>;
+pub(crate) type KeywordDocsMap = std::collections::HashMap<&'static str, &'static Templ>;
 
 pub(crate) fn load_kw_docs() -> KeywordDocsMap {
-    let mut map = KeywordDocsMap::new();
-    map.insert("cssxref", cssxref::OUTLINE_FOR_CSSXREF);
-    map.insert(
-        "embedlivesample",
-        embed_live_sample::OUTLINE_FOR_EMBED_LIVE_SAMPLE,
-    );
-    map
+    TEMPL_MAP.iter().map(|t| (t.name, *t)).collect()
 }

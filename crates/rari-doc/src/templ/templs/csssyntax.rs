@@ -23,7 +23,7 @@ static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     (LinkedToken::DoubleAmpersand, "Double ampersand: all of the entities must be present, in any order".to_string())].into_iter().collect()
 });
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
     let page_type = env.page_type;
     let mut slug_rev_iter = env.slug.rsplitn(3, '/');
@@ -70,7 +70,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
     )?)
 }
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
     let sources_prefix = l10n_json_data("Template", "sources_prefix", env.locale)?;
     Ok(write_formal_syntax_from_syntax(

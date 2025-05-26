@@ -1,22 +1,31 @@
 use std::sync::Arc;
 
+use dashmap::mapref::one::{Ref, RefMut};
+use dashmap::DashMap;
+use lsp_textdocument::FullTextDocument;
 use rari_doc::find::doc_pages_from_slugish;
 use rari_doc::issues::{DIssue, DisplayIssue};
 use rari_doc::pages::page::{Page, PageLike};
 use rari_doc::pages::types::doc::doc_from_raw;
+use rari_doc::templ::templs::TEMPL_MAP;
 use rari_tools::fix::issues::get_fixable_issues;
-use tower_lsp::lsp_types::{
+use tower_lsp_server::lsp_types::{
     CodeAction, CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability,
-    CodeActionResponse, CompletionOptions, Diagnostic, DiagnosticSeverity,
-    DidSaveTextDocumentParams, DocumentChanges, HoverProviderCapability, InitializeParams,
-    InitializeResult, OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range,
-    ServerCapabilities, ServerInfo, TextDocumentEdit, TextDocumentSyncCapability, TextEdit, Url,
-    WorkspaceEdit,
+    CodeActionResponse, CompletionItem, CompletionItemKind, CompletionList, CompletionOptions,
+    CompletionParams, CompletionResponse, Diagnostic, DiagnosticSeverity,
+    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
+    DocumentChanges, Documentation, Hover, HoverContents, HoverParams, HoverProviderCapability,
+    InitializeParams, InitializeResult, InitializedParams, MarkupContent, MarkupKind, MessageType,
+    OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range, ServerCapabilities,
+    ServerInfo, TextDocumentContentChangeEvent, TextDocumentEdit, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextEdit, Uri, WorkspaceEdit,
 };
-use tree_sitter_md::MarkdownParser;
+use tower_lsp_server::{jsonrpc, LanguageServer, UriExt};
+use tree_sitter::Tree;
+use tree_sitter_md::{MarkdownParser, MarkdownTree};
 
 fn text_doc_change_to_tree_sitter_edit(
-    change: &tower_lsp::lsp_types::TextDocumentContentChangeEvent,
+    change: &TextDocumentContentChangeEvent,
     doc: &lsp_textdocument::FullTextDocument,
 ) -> Result<tree_sitter::InputEdit, &'static str> {
     let range = change.range.as_ref().ok_or("Invalid edit range")?;
@@ -48,40 +57,60 @@ fn text_doc_change_to_tree_sitter_edit(
     })
 }
 
+pub(crate) struct Document {
+    pub full: FullTextDocument,
+    pub tree: Option<Tree>,
+    pub md_tree: Option<MarkdownTree>,
+}
+
+pub(crate) struct Documents {
+    documents: DashMap<Uri, Document>,
+}
+
+impl Documents {
+    pub fn new() -> Self {
+        Self {
+            documents: DashMap::new(),
+        }
+    }
+
+    pub fn open(&self, uri: Uri, doc: Document) {
+        self.documents.insert(uri, doc);
+    }
+
+    pub fn get_mut(&self, uri: &Uri) -> Option<RefMut<Uri, Document>> {
+        self.documents.get_mut(uri)
+    }
+
+    pub fn get(&self, uri: &Uri) -> Option<Ref<Uri, Document>> {
+        self.documents.get(uri)
+    }
+}
+
 pub(crate) struct Backend {
-    client: tower_lsp::Client,
-    curr_doc_uri: std::sync::Arc<tokio::sync::Mutex<Option<Url>>>,
+    client: tower_lsp_server::Client,
+    docs: Documents,
     parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter::Parser>>,
     md_parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter_md::MarkdownParser>>,
-    curr_doc: std::sync::Arc<tokio::sync::Mutex<Option<lsp_textdocument::FullTextDocument>>>,
-    tree: std::sync::Arc<tokio::sync::Mutex<Option<tree_sitter::Tree>>>,
-    md_tree: std::sync::Arc<tokio::sync::Mutex<Option<tree_sitter_md::MarkdownTree>>>,
     kw_docs: crate::keywords::KeywordDocsMap,
 }
 
 impl Backend {
-    pub(crate) fn new(client: tower_lsp::Client) -> Self {
+    pub(crate) fn new(client: tower_lsp_server::Client) -> Self {
         Self {
             client,
+            docs: Documents::new(),
             parser: std::sync::Arc::new(
                 tokio::sync::Mutex::new(crate::parser::initialise_parser()),
             ),
-            curr_doc_uri: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             md_parser: std::sync::Arc::new(tokio::sync::Mutex::new(MarkdownParser::default())),
-            curr_doc: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
-            tree: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
-            md_tree: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             kw_docs: crate::keywords::load_kw_docs(),
         }
     }
 }
 
-#[tower_lsp::async_trait]
-impl tower_lsp::LanguageServer for Backend {
-    async fn initialize(
-        &self,
-        _: InitializeParams,
-    ) -> tower_lsp::jsonrpc::Result<InitializeResult> {
+impl LanguageServer for Backend {
+    async fn initialize(&self, _: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
                 name: String::from("mdn-lsp"),
@@ -89,7 +118,7 @@ impl tower_lsp::LanguageServer for Backend {
             }),
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    tower_lsp::lsp_types::TextDocumentSyncKind::INCREMENTAL,
+                    TextDocumentSyncKind::INCREMENTAL,
                 )),
                 code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
@@ -110,55 +139,53 @@ impl tower_lsp::LanguageServer for Backend {
         })
     }
 
-    async fn initialized(&self, _: tower_lsp::lsp_types::InitializedParams) {
+    async fn initialized(&self, _: InitializedParams) {
         self.client
-            .log_message(tower_lsp::lsp_types::MessageType::INFO, "initialized!")
+            .log_message(MessageType::INFO, "initialized!")
             .await;
     }
 
-    async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
+    async fn shutdown(&self) -> jsonrpc::Result<()> {
         Ok(())
     }
 
-    async fn did_open(&self, params: tower_lsp::lsp_types::DidOpenTextDocumentParams) {
-        let mut curr_doc = self.curr_doc.lock().await;
-        let mut curr_doc_path = self.curr_doc_uri.lock().await;
-        let mut tree = self.tree.lock().await;
+    async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let mut parser = self.parser.lock().await;
-        let mut md_tree = self.md_tree.lock().await;
         let mut md_parser = self.md_parser.lock().await;
 
-        *curr_doc = Some(lsp_textdocument::FullTextDocument::new(
-            params.text_document.language_id.clone(),
-            params.text_document.version,
-            params.text_document.text.clone(),
-        ));
-        *curr_doc_path = Some(params.text_document.uri.clone());
-        *tree = parser.parse(&params.text_document.text, None);
-        *md_tree = md_parser.parse(params.text_document.text.as_bytes(), None);
+        let doc = Document {
+            full: lsp_textdocument::FullTextDocument::new(
+                params.text_document.language_id.clone(),
+                params.text_document.version,
+                params.text_document.text.clone(),
+            ),
+            tree: parser.parse(&params.text_document.text, None),
+            md_tree: md_parser.parse(params.text_document.text.as_bytes(), None),
+        };
+
+        self.docs.open(params.text_document.uri, doc)
     }
 
-    async fn did_change(&self, params: tower_lsp::lsp_types::DidChangeTextDocumentParams) {
-        let mut curr_doc = self.curr_doc.lock().await;
-        let mut tree = self.tree.lock().await;
-        let mut md_tree = self.md_tree.lock().await;
+    async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        let mut curr_doc = self.docs.get_mut(&params.text_document.uri);
 
-        if let Some(ref mut doc) = *curr_doc {
-            doc.update(&params.content_changes, params.text_document.version);
+        if let Some(ref mut doc) = curr_doc {
+            doc.full
+                .update(&params.content_changes, params.text_document.version);
             for change in params.content_changes.iter() {
-                match text_doc_change_to_tree_sitter_edit(change, doc) {
+                match text_doc_change_to_tree_sitter_edit(change, &doc.full) {
                     Ok(edit) => {
-                        if let Some(ref mut curr_tree) = *tree {
+                        if let Some(ref mut curr_tree) = doc.tree {
                             curr_tree.edit(&edit);
                         }
-                        if let Some(ref mut curr_md_tree) = *md_tree {
+                        if let Some(ref mut curr_md_tree) = doc.md_tree {
                             curr_md_tree.edit(&edit);
                         }
                     }
                     Err(err) => {
                         self.client
                             .log_message(
-                                tower_lsp::lsp_types::MessageType::ERROR,
+                                MessageType::ERROR,
                                 format!("Bad edit info, failed to edit tree: {}", err),
                             )
                             .await;
@@ -168,170 +195,140 @@ impl tower_lsp::LanguageServer for Backend {
         }
     }
 
-    async fn hover(
-        &self,
-        params: tower_lsp::lsp_types::HoverParams,
-    ) -> tower_lsp::jsonrpc::Result<Option<tower_lsp::lsp_types::Hover>> {
-        let curr_doc = self.curr_doc.lock().await;
-        let mut tree = self.tree.lock().await;
+    async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
+        let mut curr_doc = self
+            .docs
+            .get_mut(&params.text_document_position_params.text_document.uri);
         let mut parser = self.parser.lock().await;
 
-        let doc = match &*curr_doc {
-            Some(doc) => doc,
-            _ => return Ok(None),
-        };
+        if let Some(ref mut doc) = curr_doc {
+            let keyword = crate::position::retrieve_keyword_at_position(
+                doc,
+                &mut parser,
+                params.text_document_position_params.position.line as usize,
+                params.text_document_position_params.position.character as usize,
+            );
 
-        let keyword = crate::position::retrieve_keyword_at_position(
-            doc.get_content(None),
-            &mut parser,
-            &mut tree,
-            params.text_document_position_params.position.line as usize,
-            params.text_document_position_params.position.character as usize,
-        );
-
-        match keyword {
-            Some(keyword) => {
-                if let Some(doc_content) = self.kw_docs.get(&keyword.as_str()) {
-                    let hover_contents = tower_lsp::lsp_types::HoverContents::Markup(
-                        tower_lsp::lsp_types::MarkupContent {
-                            kind: tower_lsp::lsp_types::MarkupKind::Markdown,
-                            value: doc_content.to_string(),
-                        },
-                    );
-                    let hover = tower_lsp::lsp_types::Hover {
-                        contents: hover_contents,
-                        range: None,
-                    };
-                    Ok(Some(hover))
-                } else {
-                    self.client
-                        .log_message(
-                            tower_lsp::lsp_types::MessageType::WARNING,
-                            format!("Documentation for keyword '{}' not found.", keyword),
-                        )
-                        .await;
-                    Ok(None)
+            match keyword {
+                Some(keyword) => {
+                    if let Some(t) = self.kw_docs.get(&keyword.as_str()) {
+                        let hover_contents = HoverContents::Markup(MarkupContent {
+                            kind: MarkupKind::Markdown,
+                            value: t.outline.to_string(),
+                        });
+                        let hover = Hover {
+                            contents: hover_contents,
+                            range: None,
+                        };
+                        Ok(Some(hover))
+                    } else {
+                        self.client
+                            .log_message(
+                                MessageType::WARNING,
+                                format!("Documentation for keyword '{}' not found.", keyword),
+                            )
+                            .await;
+                        Ok(None)
+                    }
                 }
+                _ => Ok(None),
             }
-            _ => Ok(None),
+        } else {
+            Ok(None)
         }
     }
 
     async fn completion(
         &self,
-        params: tower_lsp::lsp_types::CompletionParams,
-    ) -> tower_lsp::jsonrpc::Result<Option<tower_lsp::lsp_types::CompletionResponse>> {
+        params: CompletionParams,
+    ) -> jsonrpc::Result<Option<CompletionResponse>> {
         self.client
-            .log_message(
-                tower_lsp::lsp_types::MessageType::INFO,
-                "Checking completion...",
-            )
+            .log_message(MessageType::INFO, "Checking completion...")
             .await;
-        let curr_doc = self.curr_doc.lock().await;
+        let mut curr_doc = self
+            .docs
+            .get_mut(&params.text_document_position.text_document.uri);
 
-        let doc = match &*curr_doc {
-            Some(doc) => doc,
-            _ => return Ok(None),
-        };
+        if let Some(ref mut doc) = curr_doc {
+            self.client
+                .log_message(MessageType::INFO, "Checking completion. Got doc ..")
+                .await;
 
-        self.client
-            .log_message(
-                tower_lsp::lsp_types::MessageType::INFO,
-                "Checking completion. Got doc ..",
-            )
-            .await;
+            let mut md_parser = self.md_parser.lock().await;
 
-        let md = doc.get_content(None);
-        let mut md_tree = self.md_tree.lock().await;
-        let mut md_parser = self.md_parser.lock().await;
-
-        let element = crate::position::retrieve_element_at_position(
-            md,
-            &mut md_parser,
-            &mut md_tree,
-            params.text_document_position.position.line as usize,
-            params.text_document_position.position.character as usize,
-        );
-        self.client
-            .log_message(
-                tower_lsp::lsp_types::MessageType::INFO,
-                format!("Checking completion. Got element {element:?}"),
-            )
-            .await;
-        if let Some(crate::position::Element::Link { link }) = element {
+            let element = crate::position::retrieve_element_at_position(
+                doc,
+                &mut md_parser,
+                params.text_document_position.position.line as usize,
+                params.text_document_position.position.character as usize,
+            );
             self.client
                 .log_message(
-                    tower_lsp::lsp_types::MessageType::INFO,
-                    format!("Checking completion for {link}"),
+                    MessageType::INFO,
+                    format!("Checking completion. Got element {element:?}"),
                 )
                 .await;
-            let items = doc_pages_from_slugish(&link, rari_types::locale::Locale::EnUs)
-                .unwrap()
-                .into_iter()
-                .map(|item| tower_lsp::lsp_types::CompletionItem {
-                    label: item.url().to_string(),
-                    kind: Some(tower_lsp::lsp_types::CompletionItemKind::TEXT),
-                    ..tower_lsp::lsp_types::CompletionItem::default()
-                })
-                .collect();
+            if let Some(crate::position::Element::Link { link }) = element {
+                self.client
+                    .log_message(MessageType::INFO, format!("Checking completion for {link}"))
+                    .await;
+                let items = doc_pages_from_slugish(&link, rari_types::locale::Locale::EnUs)
+                    .unwrap()
+                    .into_iter()
+                    .map(|item| CompletionItem {
+                        label: item.url().to_string(),
+                        kind: Some(CompletionItemKind::TEXT),
+                        ..CompletionItem::default()
+                    })
+                    .collect();
 
-            return Ok(Some(tower_lsp::lsp_types::CompletionResponse::List(
-                tower_lsp::lsp_types::CompletionList {
+                return Ok(Some(CompletionResponse::List(CompletionList {
                     is_incomplete: true,
                     items,
-                },
-            )));
-        }
+                })));
+            }
 
-        let mut tree = self.tree.lock().await;
-        let mut parser = self.parser.lock().await;
-        if let Some(keyword) = crate::position::retrieve_keyword_at_position(
-            doc.get_content(None),
-            &mut parser,
-            &mut tree,
-            params.text_document_position.position.line as usize,
-            params.text_document_position.position.character as usize,
-        ) {
-            let documentation =
-                self.kw_docs
-                    .get(keyword.as_str())
-                    .map(|doc| tower_lsp::lsp_types::MarkupContent {
-                        kind: tower_lsp::lsp_types::MarkupKind::Markdown,
-                        value: doc.to_string(),
-                    });
+            let mut parser = self.parser.lock().await;
+            if let Some(keyword) = crate::position::retrieve_keyword_at_position(
+                doc,
+                &mut parser,
+                params.text_document_position.position.line as usize,
+                params.text_document_position.position.character as usize,
+            ) {
+                let items = TEMPL_MAP
+                    .iter()
+                    .filter(|t| t.name.starts_with(&keyword))
+                    .map(|t| CompletionItem {
+                        label: t.name.to_string(),
+                        kind: Some(CompletionItemKind::KEYWORD),
+                        detail: Some(t.outline.to_string()),
+                        documentation: Some(Documentation::MarkupContent(MarkupContent {
+                            kind: MarkupKind::Markdown,
+                            value: t.doc.to_string(),
+                        })),
+                        ..CompletionItem::default()
+                    })
+                    .collect();
 
-            let item = tower_lsp::lsp_types::CompletionItem {
-                label: "cssxref".to_string(),
-                kind: Some(tower_lsp::lsp_types::CompletionItemKind::KEYWORD),
-                documentation: documentation
-                    .map(tower_lsp::lsp_types::Documentation::MarkupContent),
-                ..tower_lsp::lsp_types::CompletionItem::default()
-            };
-            let items = vec![item];
-
-            return Ok(Some(tower_lsp::lsp_types::CompletionResponse::List(
-                tower_lsp::lsp_types::CompletionList {
+                return Ok(Some(CompletionResponse::List(CompletionList {
                     is_incomplete: true,
                     items,
-                },
-            )));
+                })));
+            }
         }
 
         Ok(None)
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let issues = self.update_issues().await;
+        let issues = self.update_issues(&params.text_document.uri).await;
         let issues = if let Some(issues) = issues.as_deref() {
             issues
         } else {
             return;
         };
         self.client
-            .log_message(
-                tower_lsp::lsp_types::MessageType::INFO,
-                format!("Issues: {issues:?}"),
-            )
+            .log_message(MessageType::INFO, format!("Issues: {issues:?}"))
             .await;
         let diagnostics = issues
             .iter()
@@ -347,10 +344,7 @@ impl tower_lsp::LanguageServer for Backend {
             })
             .collect::<Vec<_>>();
         self.client
-            .log_message(
-                tower_lsp::lsp_types::MessageType::INFO,
-                format!("Diagnostics: {diagnostics:?}"),
-            )
+            .log_message(MessageType::INFO, format!("Diagnostics: {diagnostics:?}"))
             .await;
         self.client
             .publish_diagnostics(params.text_document.uri.clone(), diagnostics, None)
@@ -360,46 +354,43 @@ impl tower_lsp::LanguageServer for Backend {
     async fn code_action(
         &self,
         params: CodeActionParams,
-    ) -> tower_lsp::jsonrpc::Result<Option<CodeActionResponse>> {
-        let curr_doc = self.curr_doc.lock().await;
-        let curr_doc_uri = self.curr_doc_uri.lock().await;
-        if let Some((Some(issue), range)) = params.context.diagnostics.first().map(|d| {
-            (
-                d.data
-                    .clone()
-                    .and_then(|data| serde_json::from_value::<DIssue>(data).ok()),
-                d.range,
-            )
-        }) {
-            let (doc, uri) = match (&*curr_doc, &*curr_doc_uri) {
-                (Some(doc), Some(uri)) => (doc, uri.clone()),
-                _ => {
-                    return Ok(None);
-                }
-            };
-            let new_text = doc.get_content(Some(range)).replace(
-                issue.content().unwrap_or("<__never_ever__>"),
-                issue
-                    .display_issue()
-                    .suggestion
-                    .as_deref()
-                    .unwrap_or("<__invalid_suggestion__>"),
-            );
-            Ok(Some(vec![CodeActionOrCommand::CodeAction(CodeAction {
-                title: "fix issue".to_string(),
-                edit: Some(WorkspaceEdit {
-                    changes: None,
-                    document_changes: Some(DocumentChanges::Edits(vec![TextDocumentEdit {
-                        edits: vec![OneOf::Left(TextEdit { range, new_text })],
-                        text_document: OptionalVersionedTextDocumentIdentifier {
-                            uri,
-                            version: None,
-                        },
-                    }])),
-                    change_annotations: None,
-                }),
-                ..Default::default()
-            })]))
+    ) -> jsonrpc::Result<Option<CodeActionResponse>> {
+        let curr_doc = self.docs.get(&params.text_document.uri);
+        if let Some(ref doc) = curr_doc {
+            if let Some((Some(issue), range)) = params.context.diagnostics.first().map(|d| {
+                (
+                    d.data
+                        .clone()
+                        .and_then(|data| serde_json::from_value::<DIssue>(data).ok()),
+                    d.range,
+                )
+            }) {
+                let new_text = doc.full.get_content(Some(range)).replace(
+                    issue.content().unwrap_or("<__never_ever__>"),
+                    issue
+                        .display_issue()
+                        .suggestion
+                        .as_deref()
+                        .unwrap_or("<__invalid_suggestion__>"),
+                );
+                Ok(Some(vec![CodeActionOrCommand::CodeAction(CodeAction {
+                    title: "fix issue".to_string(),
+                    edit: Some(WorkspaceEdit {
+                        changes: None,
+                        document_changes: Some(DocumentChanges::Edits(vec![TextDocumentEdit {
+                            edits: vec![OneOf::Left(TextEdit { range, new_text })],
+                            text_document: OptionalVersionedTextDocumentIdentifier {
+                                uri: params.text_document.uri,
+                                version: None,
+                            },
+                        }])),
+                        change_annotations: None,
+                    }),
+                    ..Default::default()
+                })]))
+            } else {
+                Ok(None)
+            }
         } else {
             Ok(None)
         }
@@ -407,43 +398,32 @@ impl tower_lsp::LanguageServer for Backend {
 }
 
 impl Backend {
-    async fn update_issues(&self) -> Option<Vec<DIssue>> {
-        let curr_doc = self.curr_doc.lock().await;
-        let curr_doc_uri = self.curr_doc_uri.lock().await;
+    async fn update_issues(&self, uri: &Uri) -> Option<Vec<DIssue>> {
+        if let (Some(ref doc), Some(path)) = (self.docs.get(uri), uri.to_file_path()) {
+            let page = match doc_from_raw(doc.full.get_content(None).to_string(), path) {
+                Ok(doc) => Page::Doc(Arc::new(doc)),
+                Err(e) => {
+                    self.client
+                        .log_message(MessageType::ERROR, format!("{e}"))
+                        .await;
+                    return None;
+                }
+            };
 
-        let (doc, path) = match (
-            &*curr_doc,
-            curr_doc_uri
-                .as_ref()
-                .and_then(|uri| uri.to_file_path().ok()),
-        ) {
-            (Some(doc), Some(path)) => (doc, path),
-            _ => {
-                return None;
-            }
-        };
+            let issues = match get_fixable_issues(&page) {
+                Ok(issues) => issues,
+                Err(e) => {
+                    self.client
+                        .log_message(MessageType::ERROR, format!("{e}"))
+                        .await;
+                    return None;
+                }
+            };
 
-        let page = match doc_from_raw(doc.get_content(None).to_string(), path) {
-            Ok(doc) => Page::Doc(Arc::new(doc)),
-            Err(e) => {
-                self.client
-                    .log_message(tower_lsp::lsp_types::MessageType::ERROR, format!("{e}"))
-                    .await;
-                return None;
-            }
-        };
-
-        let issues = match get_fixable_issues(&page) {
-            Ok(issues) => issues,
-            Err(e) => {
-                self.client
-                    .log_message(tower_lsp::lsp_types::MessageType::ERROR, format!("{e}"))
-                    .await;
-                return None;
-            }
-        };
-
-        Some(issues)
+            Some(issues)
+        } else {
+            None
+        }
     }
 }
 

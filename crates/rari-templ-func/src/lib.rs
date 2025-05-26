@@ -29,7 +29,12 @@ fn is_option(path: &syn::TypePath) -> bool {
 /// This will automatically inject an argument `env` providing a
 /// [RariEnv] reference.
 #[proc_macro_attribute]
-pub fn rari_f(_: TokenStream, input: TokenStream) -> TokenStream {
+pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let inventory_type = if attr.is_empty() {
+        None
+    } else {
+        Some(parse_macro_input!(attr as syn::TypePath))
+    };
     // Parse the input as a function.
     let mut function = parse_macro_input!(input as syn::ItemFn);
 
@@ -55,13 +60,9 @@ pub fn rari_f(_: TokenStream, input: TokenStream) -> TokenStream {
         })
         .collect();
     let doc_string = doc_comments.join("\n");
-
-    let doc_static_ident =
-        format_ident!("DOC_FOR_{}", function.sig.ident.to_string().to_uppercase());
-    let outline_static_ident = format_ident!(
-        "OUTLINE_FOR_{}",
-        function.sig.ident.to_string().to_uppercase()
-    );
+    let name = function.sig.ident.to_string();
+    let doc_static_ident = format_ident!("DOC_FOR_{}", name.to_uppercase());
+    let outline_static_ident = format_ident!("OUTLINE_FOR_{}", name.to_uppercase());
 
     let doc = quote! {
         pub static #doc_static_ident: &str = #doc_string;
@@ -116,6 +117,16 @@ pub fn rari_f(_: TokenStream, input: TokenStream) -> TokenStream {
         }
     };
 
+    let collect = if let Some(inventory_type) = inventory_type {
+        quote! {
+            inventory::submit! {
+                #inventory_type { name: #name, outline: #outline_static_ident, doc: #doc_static_ident }
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     function
         .sig
         .inputs
@@ -123,6 +134,7 @@ pub fn rari_f(_: TokenStream, input: TokenStream) -> TokenStream {
     proc_macro::TokenStream::from(quote!(
         #doc
         #outline
+        #collect
         #[allow(dead_code)]
         #function
         #dup

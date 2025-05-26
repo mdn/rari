@@ -4,7 +4,7 @@ use rari_utils::concat_strs;
 use crate::error::DocError;
 use crate::templ::api::RariApi;
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn mathmlxref(element_name: String) -> Result<String, DocError> {
     let element_name = element_name.to_lowercase();
     let display = concat_strs!("&lt;", element_name.as_str(), "&gt;");

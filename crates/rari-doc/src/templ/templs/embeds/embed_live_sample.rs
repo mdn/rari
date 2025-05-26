@@ -9,7 +9,7 @@ use crate::templ::api::RariApi;
 use crate::utils::dedup_whitespace;
 
 #[allow(clippy::too_many_arguments)]
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn embed_live_sample(
     id: Option<String>,
     width: Option<AnyArg>,

@@ -3,7 +3,7 @@ use rari_templ_func::rari_f;
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn js_property_attributes(
     writable: i64,
     enumerable: i64,

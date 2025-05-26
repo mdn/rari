@@ -4,7 +4,7 @@ use rari_utils::concat_strs;
 
 use crate::error::DocError;
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn xsltref() -> Result<String, DocError> {
     Ok(concat_strs!(
         r#"<div style="background:#f5f5f5; margin: 5px 0;">"#,

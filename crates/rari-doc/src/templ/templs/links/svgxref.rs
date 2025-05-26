@@ -5,7 +5,7 @@ use rari_types::AnyArg;
 use crate::error::DocError;
 use crate::templ::api::RariApi;
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn svgxref(element_name: String, _: Option<AnyArg>) -> Result<String, DocError> {
     svgxref_internal(&element_name, env.locale)
 }

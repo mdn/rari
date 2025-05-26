@@ -4,7 +4,7 @@ use rari_types::AnyArg;
 use crate::error::DocError;
 use crate::templ::api::RariApi;
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn jsxref(
     api_name: String,
     display: Option<String>,

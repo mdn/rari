@@ -1,19 +1,21 @@
 use std::sync::LazyLock;
 
+use crate::lsp::Document;
+
 #[derive(Clone, Debug)]
 pub enum Element {
     Link { link: String },
 }
 
 pub(crate) fn retrieve_element_at_position(
-    document_content: &str,
+    doc: &mut Document,
     parser: &mut tree_sitter_md::MarkdownParser,
-    syntax_tree: &mut Option<tree_sitter_md::MarkdownTree>,
     cursor_line: usize,
     cursor_character: usize,
 ) -> Option<Element> {
-    *syntax_tree = parser.parse(document_content.as_bytes(), syntax_tree.as_ref());
-    let tree = syntax_tree.as_ref()?;
+    let document_content = doc.full.get_content(None);
+    doc.md_tree = parser.parse(document_content.as_bytes(), doc.md_tree.as_ref());
+    let tree = doc.md_tree.as_ref()?;
 
     let mut query_cursor = tree.walk();
     while query_cursor
@@ -42,14 +44,14 @@ pub(crate) fn retrieve_element_at_position(
 }
 
 pub(crate) fn retrieve_keyword_at_position(
-    document_content: &str,
+    doc: &mut Document,
     parser: &mut tree_sitter::Parser,
-    syntax_tree: &mut Option<tree_sitter::Tree>,
     cursor_line: usize,
     cursor_character: usize,
 ) -> Option<String> {
-    *syntax_tree = parser.parse(document_content, syntax_tree.as_ref());
-    let tree = syntax_tree.as_ref()?;
+    let document_content = doc.full.get_content(None);
+    doc.tree = parser.parse(document_content, doc.tree.as_ref());
+    let tree = doc.tree.as_ref()?;
 
     let mut query_cursor = tree_sitter::QueryCursor::new();
     let document_bytes = document_content.as_bytes();

@@ -11,7 +11,7 @@ use crate::templ::api::RariApi;
 ///  $1 - Optional custom height class to set on iframe element
 ///
 ///  Example call {{EmbedInteractiveExample("pages/css/animation.html", "taller")}}
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn embed_interactive_example(path: String, height: Option<String>) -> Result<String, DocError> {
     let title = l10n_json_data("Template", "interactive_example_cta", env.locale)?;
     let url = format!("{}/{path}", RariApi::interactive_examples_base_url());

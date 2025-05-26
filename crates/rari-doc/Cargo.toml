@@ -30,6 +30,7 @@ serde_yaml_ng.workspace = true
 yaml_parser.workspace = true
 schemars.workspace = true
 strum.workspace = true
+inventory.workspace = true
 
 yaml-rust = "0.4"
 percent-encoding = "2"

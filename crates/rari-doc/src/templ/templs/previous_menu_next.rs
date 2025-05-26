@@ -7,7 +7,7 @@ use crate::helpers::l10n::l10n_json_data;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn previous_next_menu(
     prev: Option<String>,
     next: Option<String>,
@@ -16,27 +16,27 @@ pub fn previous_next_menu(
     previous_next_menu_internal(prev, next, menu, env.locale)
 }
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn previous_next(prev: Option<String>, next: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(prev, next, None, env.locale)
 }
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn previous_menu(prev: Option<String>, menu: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(prev, None, menu, env.locale)
 }
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn previous(prev: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(prev, None, None, env.locale)
 }
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn next_menu(next: Option<String>, menu: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(None, next, menu, env.locale)
 }
 
-#[rari_f]
+#[rari_f(crate::Templ)]
 pub fn next(next: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(None, next, None, env.locale)
 }
