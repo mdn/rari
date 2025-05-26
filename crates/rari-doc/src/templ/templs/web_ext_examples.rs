@@ -5,7 +5,7 @@ use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 use crate::helpers::web_ext_examples::{WebExtExample, WEB_EXT_EXAMPLES_DATA};
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn web_ext_examples(heading: Option<String>) -> Result<String, DocError> {
     let mut split = env.slug.rsplitn(3, '/');
     let leaf = split.next();

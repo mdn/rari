@@ -2,7 +2,7 @@ use rari_templ_func::rari_f;
 
 use crate::error::DocError;
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn specification() -> Result<String, DocError> {
     let queries = env.browser_compat.join(",");
     let specs = env.spec_urls.join(",");

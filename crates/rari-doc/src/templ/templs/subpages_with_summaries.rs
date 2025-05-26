@@ -5,7 +5,7 @@ use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::helpers::summary_hack::{get_hacky_summary_md, strip_paragraph_unchecked};
 use crate::pages::page::PageLike;
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn subpages_with_summaries() -> Result<String, DocError> {
     let mut out = String::new();
     let sub_pages = get_sub_pages(env.url, Some(1), SubPagesSorter::Title)?;

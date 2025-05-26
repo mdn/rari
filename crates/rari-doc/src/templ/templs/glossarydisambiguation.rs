@@ -5,7 +5,7 @@ use crate::helpers::subpages::get_sub_pages;
 use crate::helpers::summary_hack::{get_hacky_summary_md, strip_paragraph_unchecked};
 use crate::pages::page::PageLike;
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn glossarydisambiguation() -> Result<String, DocError> {
     let mut out = String::new();
     let pages = get_sub_pages(

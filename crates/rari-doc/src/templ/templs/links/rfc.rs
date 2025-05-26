@@ -4,7 +4,7 @@ use rari_types::AnyArg;
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn rfc(
     number: AnyArg,
     content: Option<String>,

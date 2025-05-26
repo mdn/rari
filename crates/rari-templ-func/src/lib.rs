@@ -1,8 +1,26 @@
 extern crate proc_macro;
+use darling::ast::NestedMeta;
+use darling::FromMeta;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, parse_quote, Lit};
+
+fn pascal_case(s: &str) -> String {
+    let mut pascal = String::new();
+    let mut capitalize = true;
+    for ch in s.chars() {
+        if ch == '_' {
+            capitalize = true;
+        } else if capitalize {
+            pascal.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            pascal.push(ch);
+        }
+    }
+    pascal
+}
 
 fn is_option(path: &syn::TypePath) -> bool {
     let idents_of_path = path.path.segments.iter().fold(String::new(), |mut acc, v| {
@@ -13,6 +31,15 @@ fn is_option(path: &syn::TypePath) -> bool {
     vec!["Option:", "std:option:Option:", "core:option:Option:"]
         .into_iter()
         .any(|s| idents_of_path == *s)
+}
+
+#[derive(Debug, Default, FromMeta)]
+#[darling(default)]
+struct RariFargs {
+    #[darling(default)]
+    register: Option<syn::TypePath>,
+    #[darling(default)]
+    sidebar: bool,
 }
 
 /// Define rari templ functions.
@@ -30,11 +57,19 @@ fn is_option(path: &syn::TypePath) -> bool {
 /// [RariEnv] reference.
 #[proc_macro_attribute]
 pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
-    let inventory_type = if attr.is_empty() {
-        None
-    } else {
-        Some(parse_macro_input!(attr as syn::TypePath))
+    let attr_args = match NestedMeta::parse_meta_list(attr.into()) {
+        Ok(v) => v,
+        Err(e) => {
+            return TokenStream::from(darling::Error::from(e).write_errors());
+        }
     };
+    let attr_args = match RariFargs::from_list(&attr_args) {
+        Ok(v) => v,
+        Err(e) => {
+            return TokenStream::from(e.write_errors());
+        }
+    };
+    //let attr_args = RariFargs::default();
     // Parse the input as a function.
     let mut function = parse_macro_input!(input as syn::ItemFn);
 
@@ -117,20 +152,38 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
         }
     };
 
-    let collect = if let Some(inventory_type) = inventory_type {
+    function
+        .sig
+        .inputs
+        .insert(0, parse_quote!(env: &::rari_types::RariEnv));
+
+    let f_struct = format_ident!("{}", pascal_case(&name));
+    let r_type = match function.sig.output {
+        syn::ReturnType::Default => parse_quote!(()),
+        syn::ReturnType::Type(_, ref t) => t.clone(),
+    };
+    let dup_ident = dup.sig.ident.clone();
+    let is_sidebar: Lit = if attr_args.sidebar {
+        parse_quote!(true)
+    } else {
+        parse_quote!(false)
+    };
+    let collect = if let Some(inventory_type) = attr_args.register {
         quote! {
             inventory::submit! {
-                #inventory_type { name: #name, outline: #outline_static_ident, doc: #doc_static_ident }
+                #inventory_type {
+                    name: #name,
+                    outline: #outline_static_ident,
+                    doc: #doc_static_ident,
+                    function: #dup_ident,
+                    is_sidebar: #is_sidebar,
+                }
             }
         }
     } else {
         quote! {}
     };
 
-    function
-        .sig
-        .inputs
-        .insert(0, parse_quote!(env: &::rari_types::RariEnv));
     proc_macro::TokenStream::from(quote!(
         #doc
         #outline
@@ -138,5 +191,24 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
         #[allow(dead_code)]
         #function
         #dup
+
+        pub struct #f_struct {}
+
+        impl ::rari_types::templ::RariF for #f_struct {
+            type R = #r_type;
+
+            fn function() -> ::rari_types::templ::RariFn<Self::R> {
+                #dup_ident
+            }
+            fn doc() -> &'static str {
+                #doc_static_ident
+            }
+            fn outline() -> &'static str {
+                #outline_static_ident
+            }
+            fn is_sidebar() -> bool {
+                #is_sidebar
+            }
+        }
     ))
 }

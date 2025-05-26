@@ -31,6 +31,7 @@ pub mod xsltref;
 use std::sync::LazyLock;
 
 use rari_types::globals::deny_warnings;
+use rari_types::templ::RariFn;
 use rari_types::{Arg, RariEnv};
 use tracing::error;
 
@@ -42,6 +43,8 @@ pub struct Templ {
     pub name: &'static str,
     pub outline: &'static str,
     pub doc: &'static str,
+    pub function: RariFn<Result<String, DocError>>,
+    pub is_sidebar: bool,
 }
 
 inventory::collect!(Templ);

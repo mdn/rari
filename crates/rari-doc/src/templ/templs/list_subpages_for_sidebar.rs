@@ -8,7 +8,7 @@ use crate::pages::page::{Page, PageLike};
 use crate::utils::{trim_after, trim_before};
 
 /// List sub pages for sidebar
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn list_subpages_for_sidebar(
     url: String,
     no_code: Option<AnyArg>,

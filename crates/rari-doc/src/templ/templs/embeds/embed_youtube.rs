@@ -5,7 +5,7 @@ use rari_utils::concat_strs;
 
 use crate::error::DocError;
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn embed_youtube(video_id: String, title: Option<String>) -> Result<String, DocError> {
     let title = title
         .as_deref()

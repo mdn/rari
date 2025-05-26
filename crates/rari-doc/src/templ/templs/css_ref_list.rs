@@ -11,7 +11,7 @@ use crate::helpers::subpages::get_sub_pages;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn css_ref_list() -> Result<String, DocError> {
     let mut index = BTreeMap::<char, HashMap<&str, &str>>::new();
 

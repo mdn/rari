@@ -13,6 +13,7 @@ pub mod fm_types;
 pub mod globals;
 pub mod locale;
 pub mod settings;
+pub mod templ;
 
 #[derive(Clone, Debug, Error)]
 pub enum ArgError {

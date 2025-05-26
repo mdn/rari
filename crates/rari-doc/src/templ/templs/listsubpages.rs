@@ -5,7 +5,7 @@ use crate::error::DocError;
 use crate::helpers::subpages::{self, ListSubPagesContext, SubPagesSorter};
 
 /// List sub pages
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn list_sub_pages(
     url: Option<String>,
     depth: Option<AnyArg>,

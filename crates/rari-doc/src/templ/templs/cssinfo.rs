@@ -8,7 +8,7 @@ use crate::helpers::css_info::{
     css_info_properties, mdn_data_files, write_computed_output, write_missing,
 };
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn cssinfo() -> Result<String, DocError> {
     let name = env
         .slug

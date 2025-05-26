@@ -2789,6 +2789,7 @@ name = "rari-templ-func"
 version = "0.1.38"
 dependencies = [
  "anyhow",
+ "darling",
  "quote",
  "rari-types",
  "syn 2.0.101",

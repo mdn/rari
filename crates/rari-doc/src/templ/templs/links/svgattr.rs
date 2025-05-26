@@ -3,7 +3,7 @@ use rari_templ_func::rari_f;
 use crate::error::DocError;
 use crate::templ::api::RariApi;
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn svgattr(name: String) -> Result<String, DocError> {
     let url = format!(
         "/{}/docs/Web/SVG/Reference/Attribute/{}",

@@ -4,28 +4,28 @@ use rari_types::locale::Locale;
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn experimental() -> Result<String, DocError> {
     let mut out = String::new();
     write_experimental(&mut out, env.locale)?;
     Ok(out)
 }
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn non_standard() -> Result<String, DocError> {
     let mut out = String::new();
     write_non_standard(&mut out, env.locale)?;
     Ok(out)
 }
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn deprecated() -> Result<String, DocError> {
     let mut out = String::new();
     write_deprecated(&mut out, env.locale)?;
     Ok(out)
 }
 
-#[rari_f(crate::Templ)]
+#[rari_f(register = "crate::Templ")]
 pub fn optional() -> Result<String, DocError> {
     let str = l10n_json_data("Template", "optional", env.locale)?;
     Ok(format!(
