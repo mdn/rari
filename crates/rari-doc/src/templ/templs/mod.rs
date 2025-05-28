@@ -43,6 +43,7 @@ use crate::utils::TEMPL_RECORDER;
 pub struct Templ {
     pub name: &'static str,
     pub outline: &'static str,
+    pub complete: &'static str,
     pub doc: &'static str,
     pub function: RariFn<Result<String, DocError>>,
     pub is_sidebar: bool,

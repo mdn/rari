@@ -3,10 +3,11 @@ use darling::ast::NestedMeta;
 use darling::FromMeta;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote, ToTokens};
+use std::fmt::Write;
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, parse_quote, Lit};
 
-fn poor_ts_fn_outline_conversion(outline: &str) -> Option<String> {
+fn poor_ts_fn_outline_conversion(outline: &str, complete: bool) -> Option<String> {
     let outline = outline.replace("\n", " ");
     let outline = outline.strip_prefix("fn ")?;
     let args_start = outline.find('(')?;
@@ -16,7 +17,7 @@ fn poor_ts_fn_outline_conversion(outline: &str) -> Option<String> {
     out.push_str(&outline[..args_start]);
     out.push('(');
     let mut first = true;
-    for arg in outline[args_start + 1..args_end].split(",") {
+    for (i, arg) in outline[args_start + 1..args_end].split(",").enumerate() {
         if arg.is_empty() {
             break;
         }
@@ -28,10 +29,12 @@ fn poor_ts_fn_outline_conversion(outline: &str) -> Option<String> {
         let arg = arg.trim();
         let colon = arg.find(" : ")?;
         let typ = &arg[colon + 3..];
-        if let Some(optional_type) = typ.strip_prefix("Option < ") {
+        if complete {
+            write!(&mut out, "${{{}:{}}}", i + 1, &arg[..colon]).unwrap();
+        } else if let Some(optional_type) = typ.strip_prefix("Option < ") {
             out.extend([&arg[..colon], "?: ", optional_type.strip_suffix(" >")?]);
         } else {
-            out.push_str(arg);
+            out.extend([&arg[..colon], ": ", &arg[colon + 3..]]);
         }
     }
     out.push(')');
@@ -112,18 +115,11 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
         .collect();
     let doc_string = doc_comments.join("\n");
     let name = function.sig.ident.to_string();
-    let doc_static_ident = format_ident!("DOC_FOR_{}", name.to_uppercase());
-    let outline_static_ident = format_ident!("OUTLINE_FOR_{}", name.to_uppercase());
 
-    let doc = quote! {
-        pub static #doc_static_ident: &str = #doc_string;
-    };
-    let original_sig = function.sig.to_token_stream().to_string();
-    let original_sig = &poor_ts_fn_outline_conversion(&function.sig.to_token_stream().to_string())
-        .unwrap_or(original_sig);
-    let outline = quote! {
-        pub static #outline_static_ident: &str = #original_sig;
-    };
+    let outline_string = function.sig.to_token_stream().to_string();
+    let outline =
+        &poor_ts_fn_outline_conversion(&outline_string, false).unwrap_or(outline_string.clone());
+    let complete = &poor_ts_fn_outline_conversion(&outline_string, true).unwrap_or(name.clone());
 
     let mut dup = function.clone();
     dup.sig.ident = format_ident!("{}_{}", dup.sig.ident, "any");
@@ -186,8 +182,9 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
             inventory::submit! {
                 #inventory_type {
                     name: #name,
-                    outline: #outline_static_ident,
-                    doc: #doc_static_ident,
+                    outline: #outline,
+                    complete: #complete,
+                    doc: #doc_string,
                     function: #dup_ident,
                     is_sidebar: #is_sidebar,
                 }
@@ -198,8 +195,6 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     proc_macro::TokenStream::from(quote!(
-        #doc
-        #outline
         #collect
         #[allow(dead_code)]
         #function
@@ -214,6 +209,7 @@ mod test {
     #[test]
     fn test_ts_conversion() {
         let outline = "fn\nhttpheader(status : AnyArg, display : Option < String > , anchor : Option <\nString > , no_code : Option < AnyArg > ,) -> Result < String, DocError >";
-        println!("{:?}", poor_ts_fn_outline_conversion(outline));
+        println!("{:?}", poor_ts_fn_outline_conversion(outline, true));
+        println!("{:?}", poor_ts_fn_outline_conversion(outline, false));
     }
 }

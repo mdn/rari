@@ -15,10 +15,10 @@ use tower_lsp_server::lsp_types::{
     CompletionParams, CompletionResponse, Diagnostic, DiagnosticSeverity,
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
     DocumentChanges, Documentation, Hover, HoverContents, HoverParams, HoverProviderCapability,
-    InitializeParams, InitializeResult, InitializedParams, MarkupContent, MarkupKind, MessageType,
-    OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range, ServerCapabilities,
-    ServerInfo, TextDocumentContentChangeEvent, TextDocumentEdit, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextEdit, Uri, WorkspaceEdit,
+    InitializeParams, InitializeResult, InitializedParams, InsertTextFormat, MarkupContent,
+    MarkupKind, MessageType, OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range,
+    ServerCapabilities, ServerInfo, TextDocumentContentChangeEvent, TextDocumentEdit,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri, WorkspaceEdit,
 };
 use tower_lsp_server::{jsonrpc, LanguageServer, UriExt};
 use tree_sitter::Tree;
@@ -307,12 +307,14 @@ impl LanguageServer for Backend {
                     .filter(|t| t.name.starts_with(&keyword))
                     .map(|t| CompletionItem {
                         label: t.name.to_string(),
-                        kind: Some(CompletionItemKind::KEYWORD),
+                        kind: Some(CompletionItemKind::FUNCTION),
                         detail: Some(t.outline.to_string()),
                         documentation: Some(Documentation::MarkupContent(MarkupContent {
                             kind: MarkupKind::Markdown,
                             value: t.doc.to_string(),
                         })),
+                        insert_text: Some(t.complete.to_string()),
+                        insert_text_format: Some(InsertTextFormat::SNIPPET),
                         ..CompletionItem::default()
                     })
                     .collect();
