@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.39](https://github.com/mdn/rari/compare/v0.1.38...v0.1.39) (2025-05-29)
+
+
+### Features
+
+* **parser:** move to tree-sitter-mdn ([#219](https://github.com/mdn/rari/issues/219)) ([444c6b4](https://github.com/mdn/rari/commit/444c6b442b028345f8e0009a1c2790235aaf08fe))
+
 ## [0.1.38](https://github.com/mdn/rari/compare/v0.1.37...v0.1.38) (2025-05-19)
 
 
