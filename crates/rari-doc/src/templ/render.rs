@@ -89,7 +89,8 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                     Err(e) => {
                         warn!("{e}",);
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
-                        templs.push(e.to_string());
+                        //templs.push(format!("___ERROR in ({ident}): {e}___"));
+                        templs.push(e.to_string())
                     }
                 };
             }
