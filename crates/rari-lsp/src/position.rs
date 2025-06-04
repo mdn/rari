@@ -1,10 +1,16 @@
 use std::sync::LazyLock;
 
+use tower_lsp_server::lsp_types::Position;
+
 use crate::lsp::Document;
 
 #[derive(Clone, Debug)]
 pub enum Element {
-    Link { link: String },
+    Link {
+        link: String,
+        start: Position,
+        end: Position,
+    },
 }
 
 pub(crate) fn retrieve_element_at_position(
@@ -33,12 +39,25 @@ pub(crate) fn retrieve_element_at_position(
         }
     }
     match node.grammar_name() {
-        "link_destination" => node
-            .utf8_text(document_content.as_bytes())
-            .ok()
-            .map(|text| Element::Link {
-                link: text.to_string(),
-            }),
+        "link_destination" => {
+            let start_position = node.start_position();
+            let start = Position {
+                line: start_position.row as u32,
+                character: start_position.column as u32,
+            };
+            let end_position = node.end_position();
+            let end = Position {
+                line: end_position.row as u32,
+                character: end_position.column as u32,
+            };
+            node.utf8_text(document_content.as_bytes())
+                .ok()
+                .map(|text| Element::Link {
+                    link: text.to_string(),
+                    start,
+                    end,
+                })
+        }
         _ => None,
     }
 }

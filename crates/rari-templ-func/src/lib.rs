@@ -7,7 +7,13 @@ use std::fmt::Write;
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, parse_quote, Lit};
 
-fn poor_ts_fn_outline_conversion(outline: &str, complete: bool) -> Option<String> {
+enum Complete {
+    None,
+    Snippet,
+    Plain,
+}
+
+fn poor_ts_fn_outline_conversion(outline: &str, complete: Complete) -> Option<String> {
     let outline = outline.replace("\n", " ");
     let outline = outline.strip_prefix("fn ")?;
     let args_start = outline.find('(')?;
@@ -29,12 +35,16 @@ fn poor_ts_fn_outline_conversion(outline: &str, complete: bool) -> Option<String
         let arg = arg.trim();
         let colon = arg.find(" : ")?;
         let typ = &arg[colon + 3..];
-        if complete {
-            write!(&mut out, "${{{}:{}}}", i + 1, &arg[..colon]).unwrap();
-        } else if let Some(optional_type) = typ.strip_prefix("Option < ") {
-            out.extend([&arg[..colon], "?: ", optional_type.strip_suffix(" >")?]);
-        } else {
-            out.extend([&arg[..colon], ": ", &arg[colon + 3..]]);
+        match complete {
+            Complete::None => {
+                if let Some(optional_type) = typ.strip_prefix("Option < ") {
+                    out.extend([&arg[..colon], "?: ", optional_type.strip_suffix(" >")?]);
+                } else {
+                    out.extend([&arg[..colon], ": ", &arg[colon + 3..]]);
+                }
+            }
+            Complete::Snippet => write!(&mut out, "${{{}:{}}}", i + 1, &arg[..colon]).unwrap(),
+            Complete::Plain => out.push_str(&arg[..colon]),
         }
     }
     out.push(')');
@@ -117,9 +127,12 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
     let name = function.sig.ident.to_string();
 
     let outline_string = function.sig.to_token_stream().to_string();
-    let outline =
-        &poor_ts_fn_outline_conversion(&outline_string, false).unwrap_or(outline_string.clone());
-    let complete = &poor_ts_fn_outline_conversion(&outline_string, true).unwrap_or(name.clone());
+    let outline = &poor_ts_fn_outline_conversion(&outline_string, Complete::None)
+        .unwrap_or(outline_string.clone());
+    let outline_snippet =
+        &poor_ts_fn_outline_conversion(&outline_string, Complete::Snippet).unwrap_or(name.clone());
+    let outline_plain =
+        &poor_ts_fn_outline_conversion(&outline_string, Complete::Plain).unwrap_or(name.clone());
 
     let mut dup = function.clone();
     dup.sig.ident = format_ident!("{}_{}", dup.sig.ident, "any");
@@ -183,7 +196,8 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
                 #inventory_type {
                     name: #name,
                     outline: #outline,
-                    complete: #complete,
+                    outline_snippet: #outline_snippet,
+                    outline_plain: #outline_plain,
                     doc: #doc_string,
                     function: #dup_ident,
                     is_sidebar: #is_sidebar,
@@ -209,7 +223,17 @@ mod test {
     #[test]
     fn test_ts_conversion() {
         let outline = "fn\nhttpheader(status : AnyArg, display : Option < String > , anchor : Option <\nString > , no_code : Option < AnyArg > ,) -> Result < String, DocError >";
-        println!("{:?}", poor_ts_fn_outline_conversion(outline, true));
-        println!("{:?}", poor_ts_fn_outline_conversion(outline, false));
+        println!(
+            "{:?}",
+            poor_ts_fn_outline_conversion(outline, Complete::Snippet)
+        );
+        println!(
+            "{:?}",
+            poor_ts_fn_outline_conversion(outline, Complete::Plain)
+        );
+        println!(
+            "{:?}",
+            poor_ts_fn_outline_conversion(outline, Complete::None)
+        );
     }
 }

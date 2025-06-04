@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use dashmap::mapref::one::{Ref, RefMut};
@@ -12,7 +13,7 @@ use rari_tools::fix::issues::get_fixable_issues;
 use tower_lsp_server::lsp_types::{
     CodeAction, CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability,
     CodeActionResponse, CompletionItem, CompletionItemKind, CompletionList, CompletionOptions,
-    CompletionParams, CompletionResponse, Diagnostic, DiagnosticSeverity,
+    CompletionParams, CompletionResponse, CompletionTextEdit, Diagnostic, DiagnosticSeverity,
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
     DocumentChanges, Documentation, Hover, HoverContents, HoverParams, HoverProviderCapability,
     InitializeParams, InitializeResult, InitializedParams, InsertTextFormat, MarkupContent,
@@ -93,6 +94,7 @@ pub(crate) struct Backend {
     parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter::Parser>>,
     md_parser: std::sync::Arc<tokio::sync::Mutex<tree_sitter_md::MarkdownParser>>,
     kw_docs: crate::keywords::KeywordDocsMap,
+    use_snippets: AtomicBool,
 }
 
 impl Backend {
@@ -105,12 +107,22 @@ impl Backend {
             ),
             md_parser: std::sync::Arc::new(tokio::sync::Mutex::new(MarkdownParser::default())),
             kw_docs: crate::keywords::load_kw_docs(),
+            use_snippets: AtomicBool::new(false),
         }
     }
 }
 
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+        let use_snippets = params
+            .capabilities
+            .text_document
+            .as_ref()
+            .and_then(|td| td.completion.as_ref())
+            .and_then(|comp| comp.completion_item.as_ref())
+            .and_then(|item| item.snippet_support)
+            .unwrap_or_default();
+        self.use_snippets.store(use_snippets, Ordering::Relaxed);
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
                 name: String::from("mdn-lsp"),
@@ -126,12 +138,7 @@ impl LanguageServer for Backend {
                     resolve_provider: Some(false),
                     work_done_progress_options: Default::default(),
                     all_commit_characters: None,
-                    trigger_characters: Some(vec![
-                        "/".to_string(),
-                        "-".to_string(),
-                        ":".to_string(),
-                        ".".to_string(),
-                    ]),
+                    trigger_characters: Some(vec!["/".to_string()]),
                     ..Default::default()
                 }),
                 ..ServerCapabilities::default()
@@ -274,7 +281,7 @@ impl LanguageServer for Backend {
                     format!("Checking completion. Got element {element:?}"),
                 )
                 .await;
-            if let Some(crate::position::Element::Link { link }) = element {
+            if let Some(crate::position::Element::Link { link, start, end }) = element {
                 self.client
                     .log_message(MessageType::INFO, format!("Checking completion for {link}"))
                     .await;
@@ -284,6 +291,10 @@ impl LanguageServer for Backend {
                     .map(|item| CompletionItem {
                         label: item.url().to_string(),
                         kind: Some(CompletionItemKind::TEXT),
+                        text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                            range: Range { start, end },
+                            new_text: item.url().to_string(),
+                        })),
                         ..CompletionItem::default()
                     })
                     .collect();
@@ -305,17 +316,31 @@ impl LanguageServer for Backend {
                 let items = TEMPL_MAP
                     .iter()
                     .filter(|t| t.name.starts_with(&keyword))
-                    .map(|t| CompletionItem {
-                        label: t.name.to_string(),
-                        kind: Some(CompletionItemKind::FUNCTION),
-                        detail: Some(t.outline.to_string()),
-                        documentation: Some(Documentation::MarkupContent(MarkupContent {
-                            kind: MarkupKind::Markdown,
-                            value: t.doc.to_string(),
-                        })),
-                        insert_text: Some(t.complete.to_string()),
-                        insert_text_format: Some(InsertTextFormat::SNIPPET),
-                        ..CompletionItem::default()
+                    .map(|t| {
+                        let (insert_text, insert_text_format) =
+                            if self.use_snippets.load(Ordering::Relaxed) {
+                                (
+                                    Some(t.outline_snippet.to_string()),
+                                    Some(InsertTextFormat::SNIPPET),
+                                )
+                            } else {
+                                (
+                                    Some(t.outline_plain.to_string()),
+                                    Some(InsertTextFormat::PLAIN_TEXT),
+                                )
+                            };
+                        CompletionItem {
+                            label: t.name.to_string(),
+                            kind: Some(CompletionItemKind::FUNCTION),
+                            detail: Some(t.outline.to_string()),
+                            documentation: Some(Documentation::MarkupContent(MarkupContent {
+                                kind: MarkupKind::Markdown,
+                                value: t.doc.to_string(),
+                            })),
+                            insert_text,
+                            insert_text_format,
+                            ..CompletionItem::default()
+                        }
                     })
                     .collect();
 
