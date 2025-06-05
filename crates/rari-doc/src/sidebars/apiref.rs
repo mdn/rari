@@ -125,13 +125,15 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
         let guides: Vec<Page> = groups
             .guides
             .iter()
-            .map(|slug| Doc::page_from_slug(slug.replace("/docs/", "").as_str(), locale, true))
-            .collect::<Result<_, _>>()?;
+            .filter_map(|slug| slug.strip_prefix("/docs/"))
+            .filter_map(|slug| Doc::page_from_slug(slug, locale, true).ok())
+            .collect();
         let tutorial: Vec<Page> = groups
             .tutorial
             .iter()
-            .map(|slug| Doc::page_from_slug(slug.replace("/docs/", "").as_str(), locale, true))
-            .collect::<Result<_, _>>()?;
+            .filter_map(|slug| slug.strip_prefix("/docs/"))
+            .filter_map(|slug| Doc::page_from_slug(slug, locale, true).ok())
+            .collect();
         build_sublist(&mut entries, &guides, guides_label);
         build_sublist(&mut entries, &tutorial, tutorial_label);
     }
