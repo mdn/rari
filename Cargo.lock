@@ -2760,7 +2760,7 @@ dependencies = [
  "html-escape",
  "html5ever",
  "icu_collator",
- "icu_locale",
+ "icu_locale_core",
  "ignore",
  "imagesize",
  "indexmap",

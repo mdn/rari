@@ -17,7 +17,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use icu_collator::options::{CollatorOptions, Strength};
 use icu_collator::preferences::CollationNumericOrdering;
 use icu_collator::{Collator, CollatorBorrowed, CollatorPreferences};
-use icu_locale::locale;
+use icu_locale_core::locale;
 use rari_types::error::EnvError;
 use rari_types::globals::{blog_root, content_root, content_translated_root, settings};
 use rari_types::locale::{Locale, LocaleError};
@@ -355,7 +355,7 @@ mod text {
 
 thread_local! {
     pub static COLLATOR: CollatorBorrowed<'static> =  {
-        let mut prefs: CollatorPreferences  = locale!("en-US").into();
+        let mut prefs = CollatorPreferences::from(locale!("en-US"));
         prefs.numeric_ordering = Some(CollationNumericOrdering::True);
         let mut options = CollatorOptions::default();
         options.strength = Some(Strength::Primary);
