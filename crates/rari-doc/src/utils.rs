@@ -14,8 +14,10 @@ use std::sync::mpsc::Sender;
 use std::sync::OnceLock;
 
 use chrono::{NaiveDate, NaiveDateTime};
-use icu_collator::{Collator, CollatorOptions, Strength};
-use icu_locid::locale;
+use icu_collator::options::{CollatorOptions, Strength};
+use icu_collator::preferences::CollationNumericOrdering;
+use icu_collator::{Collator, CollatorBorrowed, CollatorPreferences};
+use icu_locale::locale;
 use rari_types::error::EnvError;
 use rari_types::globals::{blog_root, content_root, content_translated_root, settings};
 use rari_types::locale::{Locale, LocaleError};
@@ -352,11 +354,12 @@ mod text {
 }
 
 thread_local! {
-    pub static COLLATOR: Collator =  {
-        let locale = locale!("en-US").into();
-        let mut options = CollatorOptions::new();
+    pub static COLLATOR: CollatorBorrowed<'static> =  {
+        let mut prefs: CollatorPreferences  = locale!("en-US").into();
+        prefs.numeric_ordering = Some(CollationNumericOrdering::True);
+        let mut options = CollatorOptions::default();
         options.strength = Some(Strength::Primary);
-        Collator::try_new(&locale, options).unwrap()
+        Collator::try_new(prefs, options).unwrap()
     };
 }
 

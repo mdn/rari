@@ -59,9 +59,6 @@ pub enum SubPagesSorter {
     Title,
     ShortTitle,
     Slug,
-    TitleNatural,
-    ShortTitleNatural,
-    SlugNatural,
     TitleAPI,
 }
 
@@ -71,9 +68,6 @@ impl SubPagesSorter {
             SubPagesSorter::Title => title_sorter,
             SubPagesSorter::ShortTitle => short_title_sorter,
             SubPagesSorter::Slug => slug_sorter,
-            SubPagesSorter::TitleNatural => title_natural_sorter,
-            SubPagesSorter::ShortTitleNatural => short_title_natural_sorter,
-            SubPagesSorter::SlugNatural => slug_natural_sorter,
             SubPagesSorter::TitleAPI => title_api_sorter,
         }
     }
