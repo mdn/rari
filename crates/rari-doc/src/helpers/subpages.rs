@@ -38,30 +38,12 @@ fn slug_sorter(a: &Page, b: &Page) -> Ordering {
     COLLATOR.with(|c| c.compare(a.slug(), b.slug()))
 }
 
-fn title_natural_sorter(a: &Page, b: &Page) -> Ordering {
-    natural_compare_with_floats(a.title(), b.title())
-}
-
-fn short_title_natural_sorter(a: &Page, b: &Page) -> Ordering {
-    natural_compare_with_floats(
-        a.short_title().unwrap_or(a.title()),
-        b.short_title().unwrap_or(b.title()),
-    )
-}
-
-fn slug_natural_sorter(a: &Page, b: &Page) -> Ordering {
-    natural_compare_with_floats(a.slug(), b.slug())
-}
-
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SubPagesSorter {
     #[default]
     Title,
     ShortTitle,
     Slug,
-    TitleNatural,
-    ShortTitleNatural,
-    SlugNatural,
     TitleAPI,
 }
 
@@ -71,9 +53,6 @@ impl SubPagesSorter {
             SubPagesSorter::Title => title_sorter,
             SubPagesSorter::ShortTitle => short_title_sorter,
             SubPagesSorter::Slug => slug_sorter,
-            SubPagesSorter::TitleNatural => title_natural_sorter,
-            SubPagesSorter::ShortTitleNatural => short_title_natural_sorter,
-            SubPagesSorter::SlugNatural => slug_natural_sorter,
             SubPagesSorter::TitleAPI => title_api_sorter,
         }
     }
@@ -356,55 +335,4 @@ fn read_sub_folders_internal(
         .filter(|f| f.file_type().map(|ft| ft.is_file()).unwrap_or(false))
         .map(|f| f.into_path())
         .collect())
-}
-
-fn split_into_parts(s: &str) -> Vec<(bool, &str)> {
-    let mut parts = Vec::new();
-    let mut start = 0;
-    let mut end = 0;
-    let mut in_number = false;
-
-    for (i, c) in s.char_indices() {
-        if c.is_ascii_digit() || c == '.' {
-            if !in_number {
-                if start != end {
-                    parts.push((false, &s[start..end]));
-                    start = end
-                }
-                in_number = true;
-            }
-        } else if in_number {
-            if start != end {
-                parts.push((true, &s[start..end]));
-                start = end
-            }
-            in_number = false;
-        }
-        end = i + c.len_utf8()
-    }
-
-    if start != end {
-        parts.push((in_number, &s[start..end]));
-    }
-
-    parts
-}
-
-fn natural_compare_with_floats(a: &str, b: &str) -> Ordering {
-    let parts_a = split_into_parts(a);
-    let parts_b = split_into_parts(b);
-
-    for (part_a, part_b) in parts_a.iter().zip(parts_b.iter()) {
-        let order = if part_a.0 && part_b.0 {
-            let num_a: f64 = part_a.1.parse().unwrap_or(f64::NEG_INFINITY);
-            let num_b: f64 = part_b.1.parse().unwrap_or(f64::INFINITY);
-            num_a.partial_cmp(&num_b).unwrap()
-        } else {
-            part_a.1.cmp(part_b.1)
-        };
-        if order != Ordering::Equal {
-            return order;
-        }
-    }
-    parts_a.len().cmp(&parts_b.len())
 }

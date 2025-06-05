@@ -28,7 +28,7 @@ pub fn listsubpages(
             &mut out,
             url,
             env.locale,
-            Some(SubPagesSorter::TitleNatural),
+            Some(SubPagesSorter::Title),
             &[],
             false,
         )?;
@@ -39,7 +39,7 @@ pub fn listsubpages(
             env.locale,
             Some(depth),
             ListSubPagesContext {
-                sorter: Some(SubPagesSorter::TitleNatural),
+                sorter: Some(SubPagesSorter::Title),
                 page_types: &[],
                 code: false,
                 include_parent: false,
