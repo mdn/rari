@@ -28,6 +28,8 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
         Cow::Borrowed(l10n_json_data("Common", "Related_pages_wo_group", locale)?)
     };
     let events_label = l10n_json_data("Common", "Events", locale)?;
+    let guides_label = l10n_json_data("Common", "Guides", locale)?;
+    let tutorial_label = l10n_json_data("Common", "Tutorial", locale)?;
 
     let main_if = slug
         .strip_prefix("Web/API/")
@@ -118,6 +120,23 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
 
     build_interface_list(&mut entries, &inherited, inheritance_label);
     build_interface_list(&mut entries, &related, &related_label);
+
+    if let Some(groups) = web_api_groups {
+        let guides: Vec<Page> = groups
+            .guides
+            .iter()
+            .filter_map(|slug| slug.strip_prefix("/docs/"))
+            .filter_map(|slug| Doc::page_from_slug(slug, locale, true).ok())
+            .collect();
+        let tutorial: Vec<Page> = groups
+            .tutorial
+            .iter()
+            .filter_map(|slug| slug.strip_prefix("/docs/"))
+            .filter_map(|slug| Doc::page_from_slug(slug, locale, true).ok())
+            .collect();
+        build_sublist(&mut entries, &guides, guides_label);
+        build_sublist(&mut entries, &tutorial, tutorial_label);
+    }
 
     Ok(MetaSidebar {
         entries,
