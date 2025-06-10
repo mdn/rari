@@ -479,20 +479,13 @@ fn main() -> Result<(), Error> {
             serve::serve()?
         }
         Commands::Lsp => {
-            #[cfg(feature = "lsp")]
-            {
-                let mut settings = Settings::new()?;
-                settings.cache_content = true;
-                settings.data_issues = true;
-                settings.blog_unpublished = true;
-                let _ = SETTINGS.set(settings);
-                read_and_cache_doc_pages()?;
-                rari_lsp::run()?
-            }
-            #[cfg(not(feature = "lsp"))]
-            {
-                info!("lsp is not yet officially available. Build rari with --features lsp")
-            }
+            let mut settings = Settings::new()?;
+            settings.cache_content = true;
+            settings.data_issues = true;
+            settings.blog_unpublished = true;
+            let _ = SETTINGS.set(settings);
+            read_and_cache_doc_pages()?;
+            rari_lsp::run()?
         }
         Commands::GitHistory => {
             info!("Gathering history 📜");
