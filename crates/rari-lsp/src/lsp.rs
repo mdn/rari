@@ -16,10 +16,11 @@ use tower_lsp_server::lsp_types::{
     CompletionParams, CompletionResponse, CompletionTextEdit, Diagnostic, DiagnosticSeverity,
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
     DocumentChanges, Documentation, Hover, HoverContents, HoverParams, HoverProviderCapability,
-    InitializeParams, InitializeResult, InitializedParams, InsertTextFormat, MarkupContent,
-    MarkupKind, MessageType, OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range,
-    ServerCapabilities, ServerInfo, TextDocumentContentChangeEvent, TextDocumentEdit,
-    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri, WorkspaceEdit,
+    InitializeParams, InitializeResult, InitializedParams, InsertTextFormat, LanguageString,
+    MarkedString, MarkupContent, MarkupKind, MessageType, OneOf,
+    OptionalVersionedTextDocumentIdentifier, Position, Range, ServerCapabilities, ServerInfo,
+    TextDocumentContentChangeEvent, TextDocumentEdit, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextEdit, Uri, WorkspaceEdit,
 };
 use tower_lsp_server::{jsonrpc, LanguageServer, UriExt};
 use tree_sitter::Tree;
@@ -225,10 +226,13 @@ impl LanguageServer for Backend {
                             .replace("-", "_")
                             .as_str(),
                     ) {
-                        let hover_contents = HoverContents::Markup(MarkupContent {
-                            kind: MarkupKind::Markdown,
-                            value: t.outline.to_string(),
-                        });
+                        let hover_contents = HoverContents::Array(vec![
+                            MarkedString::LanguageString(LanguageString {
+                                language: "TypeScript".to_string(),
+                                value: t.outline.to_string(),
+                            }),
+                            MarkedString::String(t.doc.to_string()),
+                        ]);
                         let hover = Hover {
                             contents: hover_contents,
                             range: None,
