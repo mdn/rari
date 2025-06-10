@@ -109,6 +109,7 @@ pub enum PageType {
     XsltAxis,
     XsltFunction,
     FirefoxReleaseNotes,
+    FirefoxReleaseNotesActive,
 
     // Synthetic
     BlogPost,

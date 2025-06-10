@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.39](https://github.com/mdn/rari/compare/v0.1.38...v0.1.39) (2025-06-05)
+
+
+### Features
+
+* **parser:** move to tree-sitter-mdn ([#219](https://github.com/mdn/rari/issues/219)) ([444c6b4](https://github.com/mdn/rari/commit/444c6b442b028345f8e0009a1c2790235aaf08fe))
+
+
+### Bug Fixes
+
+* **release-please:** configure changelog sections ([f1c12e1](https://github.com/mdn/rari/commit/f1c12e18960dfcec811826e27e340debb7b17ac6))
+
+
+### Enhancements
+
+* **rari-doc:** use root short-title in pageTitle ([#220](https://github.com/mdn/rari/issues/220)) ([a98b0d2](https://github.com/mdn/rari/commit/a98b0d2b67c0d1c40d9b19a83fc210dbbeaf8a6d))
+* **sidebar:** make natural sort the default ([#225](https://github.com/mdn/rari/issues/225)) ([31154b8](https://github.com/mdn/rari/commit/31154b8b4f0ef38c25b24534974cb1f027f698e5))
+* **sidebars:** add guides/tutorials to APIRef ([#224](https://github.com/mdn/rari/issues/224)) ([3bd6e0f](https://github.com/mdn/rari/commit/3bd6e0f9a555a05c75e2898afb21ff8a4b7025f7))
+
+
+### Miscellaneous
+
+* **page-types:** add `firefox-release-notes-active` page type ([185ea22](https://github.com/mdn/rari/commit/185ea222502a65eaefee2aafc9d8a85fc36a48f8))
+
 ## [0.1.38](https://github.com/mdn/rari/compare/v0.1.37...v0.1.38) (2025-05-19)
 
 
