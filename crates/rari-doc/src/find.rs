@@ -22,7 +22,7 @@ pub fn doc_pages_from_slugish(slugish: &str, locale: Locale) -> Result<Vec<Page>
                         None
                     }
                 })
-                .take(10)
+                .take(100)
                 .cloned()
                 .collect())
         },
