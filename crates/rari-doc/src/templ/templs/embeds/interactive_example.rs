@@ -6,13 +6,27 @@ use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 use crate::templ::api::RariApi;
 
-/// Adds an <interactive-example> element to the content
-///
-/// Parameters:
-///  $0 - Name of interactive example
-///  $1 - Optional custom height class to set on interactive-example element
-///
-///  Example call {{InteractiveExample("JavaScript Demo: Array.from()", "taller")}}
+/// Creates an interactive example element for hands-on code demonstrations.
+/// 
+/// This macro generates an `<interactive-example>` custom element that provides
+/// interactive code examples for learning web technologies. It creates a localized
+/// section heading and embeds the interactive component with optional height customization.
+/// 
+/// # Arguments
+/// * `name` - Descriptive name of the interactive example (displayed in heading)
+/// * `height` - Optional height class for the interactive element ("shorter", "taller", etc.)
+/// 
+/// # Examples
+/// * `{{InteractiveExample("JavaScript Demo: Array.from()")}}` -> basic interactive example
+/// * `{{InteractiveExample("CSS Flexbox Layout", "taller")}}` -> with custom height
+/// * `{{InteractiveExample("Web API: Fetch", "shorter")}}` -> with shorter height
+/// 
+/// # Special handling
+/// - Generates localized "Try it" section heading with proper anchor ID
+/// - HTML-escapes the example name for security and proper display
+/// - Creates accessible heading structure for screen readers
+/// - Supports custom height classes for different types of content
+/// - Uses semantic HTML with proper heading hierarchy
 #[rari_f(register = "crate::Templ")]
 pub fn interactiveexample(name: String, height: Option<String>) -> Result<String, DocError> {
     let title = l10n_json_data("Template", "interactive_example_cta", env.locale)?;
