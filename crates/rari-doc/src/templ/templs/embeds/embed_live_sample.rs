@@ -9,27 +9,27 @@ use crate::templ::api::RariApi;
 use crate::utils::dedup_whitespace;
 
 /// Embeds a live code sample from the current page in an iframe.
-/// 
-/// This macro creates an interactive iframe that displays the result of HTML, CSS, 
+///
+/// This macro creates an interactive iframe that displays the result of HTML, CSS,
 /// and JavaScript code blocks found in the current page. The code blocks are identified
 /// by their heading ID and combined to create a runnable example.
-/// 
+///
 /// # Arguments
 /// * `id` - Optional ID of the heading that contains the code blocks to embed
 /// * `width` - Optional width for the iframe (in pixels or CSS units)
 /// * `height` - Optional height for the iframe (minimum 60px enforced)
 /// * `_deprecated_3` - Deprecated parameter (no longer used)
-/// * `_deprecated_4` - Deprecated parameter (no longer used) 
+/// * `_deprecated_4` - Deprecated parameter (no longer used)
 /// * `_deprecated_5` - Deprecated parameter (no longer used)
 /// * `allowed_features` - Optional iframe `allow` attribute for feature policy
 /// * `sandbox` - Optional additional sandbox restrictions ("allow-modals", "allow-forms", "allow-popups")
-/// 
+///
 /// # Examples
 /// * `{{EmbedLiveSample("Basic_example")}}` -> embeds code under "Basic example" heading
 /// * `{{EmbedLiveSample("Demo", "100%", "300")}}` -> with custom width and height
 /// * `{{EmbedLiveSample("Interactive", "", "400", "", "", "", "camera; microphone")}}` -> with feature policy
 /// * `{{EmbedLiveSample("Form_demo", "", "", "", "", "", "", "allow-forms")}}` -> with sandbox permissions
-/// 
+///
 /// # Special handling
 /// - Converts heading ID to anchor format for iframe targeting
 /// - Enforces minimum height of 60px for usability

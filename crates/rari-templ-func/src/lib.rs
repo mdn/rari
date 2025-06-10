@@ -1,9 +1,10 @@
 extern crate proc_macro;
+use std::fmt::Write;
+
 use darling::ast::NestedMeta;
 use darling::FromMeta;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote, ToTokens};
-use std::fmt::Write;
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, parse_quote, Lit};
 

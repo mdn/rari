@@ -6,19 +6,19 @@ use rari_utils::concat_strs;
 use crate::error::DocError;
 
 /// Embeds a YouTube video in an iframe with privacy-enhanced mode.
-/// 
+///
 /// This macro creates a responsive YouTube iframe embed using the privacy-enhanced
 /// youtube-nocookie.com domain, which provides better privacy protection by not
 /// setting tracking cookies until the user interacts with the video.
-/// 
+///
 /// # Arguments
 /// * `video_id` - YouTube video ID (the part after "v=" in YouTube URLs)
 /// * `title` - Optional descriptive title for accessibility (defaults to "YouTube video")
-/// 
+///
 /// # Examples
 /// * `{{EmbedYouTube("dQw4w9WgXcQ")}}` -> embeds video with default title
 /// * `{{EmbedYouTube("dQw4w9WgXcQ", "Rick Astley - Never Gonna Give You Up")}}` -> with custom title
-/// 
+///
 /// # Special handling
 /// - Uses youtube-nocookie.com for enhanced privacy protection
 /// - Sets standard video dimensions (560x315) for optimal display

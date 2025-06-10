@@ -6,17 +6,17 @@ use crate::error::DocError;
 use crate::templ::api::RariApi;
 
 /// Creates a link to an HTTP status code reference page on MDN.
-/// 
+///
 /// This macro generates links to HTTP response status code documentation.
 /// It formats the link with the status code number and applies code formatting
 /// by default unless disabled.
-/// 
+///
 /// # Arguments
 /// * `status` - The HTTP status code (e.g., 200, 404, 500)
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `no_code` - Optional flag to disable code formatting (default: false)
-/// 
+///
 /// # Examples
 /// * `{{HTTPStatus("404")}}` -> links to 404 Not Found status
 /// * `{{HTTPStatus("200", "OK")}}` -> custom display text
@@ -38,17 +38,17 @@ pub fn httpstatus(
 }
 
 /// Creates a link to an HTTP header reference page on MDN.
-/// 
+///
 /// This macro generates links to HTTP header documentation. It formats
 /// the link with the header name and applies code formatting by default
 /// unless disabled.
-/// 
+///
 /// # Arguments
 /// * `status` - The HTTP header name (e.g., "Content-Type", "Authorization")
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `no_code` - Optional flag to disable code formatting (default: false)
-/// 
+///
 /// # Examples
 /// * `{{HTTPHeader("Content-Type")}}` -> links to Content-Type header
 /// * `{{HTTPHeader("Authorization", "Auth header")}}` -> custom display text
@@ -70,17 +70,17 @@ pub fn httpheader(
 }
 
 /// Creates a link to an HTTP request method reference page on MDN.
-/// 
+///
 /// This macro generates links to HTTP request method documentation.
 /// It formats the link with the method name and applies code formatting
 /// by default unless disabled.
-/// 
+///
 /// # Arguments
 /// * `status` - The HTTP method name (e.g., "GET", "POST", "PUT", "DELETE")
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `no_code` - Optional flag to disable code formatting (default: false)
-/// 
+///
 /// # Examples
 /// * `{{HTTPMethod("POST")}}` -> links to POST method
 /// * `{{HTTPMethod("GET", "GET request")}}` -> custom display text
@@ -102,11 +102,11 @@ pub fn httpmethod(
 }
 
 /// Internal helper function for HTTP-related link generation.
-/// 
+///
 /// This function handles the common logic for creating HTTP reference links
 /// including status codes, headers, and methods. It processes anchors,
 /// display text formatting, and code styling.
-/// 
+///
 /// # Arguments
 /// * `url` - The base URL for the HTTP reference page
 /// * `status` - The HTTP feature identifier (status code, header name, method)
