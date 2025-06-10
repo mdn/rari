@@ -6,6 +6,28 @@ use crate::error::DocError;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
+/// Creates a link to a CSS reference page on MDN.
+///
+/// This macro generates links to CSS properties, functions, data types, selectors,
+/// and other CSS reference documentation. It automatically formats the display text
+/// based on the CSS feature type and handles various CSS naming conventions.
+///
+/// # Arguments
+/// * `name` - The CSS feature name (property, function, data type, etc.)
+/// * `display` - Optional custom display text for the link
+/// * `anchor` - Optional anchor/fragment to append to the URL
+///
+/// # Examples
+/// * `{{CSSxRef("color")}}` -> links to CSS color property
+/// * `{{CSSxRef("background-color", "background color")}}` -> custom display text
+/// * `{{CSSxRef("calc()", "", "#syntax")}}` -> links to calc() function with anchor
+/// * `{{CSSxRef("<color>")}}` -> links to color data type
+///
+/// # Special handling
+/// - Functions automatically get `()` appended if not present
+/// - Data types get wrapped in `<>` brackets if not present
+/// - Handles HTML entity encoding (`&lt;` and `&gt;`)
+/// - Maps special cases like `<color>` to `color_value`
 #[rari_f(register = "crate::Templ")]
 pub fn cssxref(
     name: String,
@@ -22,9 +44,11 @@ pub fn cssxref_internal(
     anchor: Option<&str>,
     locale: Locale,
 ) -> Result<String, DocError> {
-    let maybe_display_name = display_name
-        .or_else(|| name.rsplit_once('/').map(|(_, s)| s))
-        .unwrap_or(name);
+    let maybe_display_name = html_escape::encode_text(
+        display_name
+            .or_else(|| name.rsplit_once('/').map(|(_, s)| s))
+            .unwrap_or(name),
+    );
     let mut slug = name
         .strip_prefix("&lt;")
         .unwrap_or(name.strip_prefix('<').unwrap_or(name));
@@ -34,10 +58,10 @@ pub fn cssxref_internal(
     slug = slug.strip_suffix("()").unwrap_or(slug);
 
     let slug = match name {
-        "&lt;color&gt;" => "color_value",
-        "&lt;flex&gt;" => "flex_value",
-        "&lt;overflow&gt;" => "overflow_value",
-        "&lt;position&gt;" => "position_value",
+        "color&gt;" | "<color>" => "color_value",
+        "&lt;flex&gt;" | "<flex>" => "flex_value",
+        "&lt;overflow&gt;" | "<overflow>" => "overflow_value",
+        "&lt;position&gt;" | "<position>" => "position_value",
         ":host()" => ":host_function",
         "fit-content()" => "fit_content_function",
         _ => slug,

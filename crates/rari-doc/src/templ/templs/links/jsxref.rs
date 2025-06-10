@@ -4,6 +4,33 @@ use rari_types::AnyArg;
 use crate::error::DocError;
 use crate::templ::api::RariApi;
 
+/// Creates a link to a JavaScript reference page on MDN.
+/// 
+/// This macro generates links to JavaScript language features including objects,
+/// methods, properties, statements, operators, and other JavaScript reference
+/// documentation. It intelligently routes to either the main JavaScript Reference
+/// or the Global Objects section based on the API name.
+/// 
+/// # Arguments
+/// * `api_name` - The JavaScript feature name (object, method, property, etc.)
+/// * `display` - Optional custom display text for the link
+/// * `anchor` - Optional anchor/fragment to append to the URL
+/// * `no_code` - Optional flag to disable code formatting (default: false)
+/// 
+/// # Examples
+/// * `{{JSxRef("Array")}}` -> links to Array global object
+/// * `{{JSxRef("Array.prototype.map")}}` -> links to Array map method
+/// * `{{JSxRef("Promise", "Promises")}}` -> custom display text
+/// * `{{JSxRef("if...else")}}` -> links to if...else statement
+/// * `{{JSxRef("typeof", "", "", true)}}` -> disables code formatting
+/// 
+/// # Special handling
+/// - Removes `()` from method names for URL generation
+/// - Converts `.prototype.` notation to `/` for URL paths
+/// - Tries main JavaScript Reference first, then Global Objects
+/// - Handles special cases like `try...catch` statements
+/// - Falls back to URI component decoding if no page found
+/// - Formats links with `<code>` tags unless `no_code` is true
 #[rari_f(register = "crate::Templ")]
 pub fn jsxref(
     api_name: String,
