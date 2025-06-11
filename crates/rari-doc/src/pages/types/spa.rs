@@ -412,6 +412,24 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                     },
                 ),
                 (
+                    "advertising",
+                    BuildSPA {
+                        slug: Cow::Borrowed("advertising"),
+                        page_title: Cow::Borrowed("Advertise with us"),
+                        template: SpaBuildTemplate::SpaAdvertise,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "plus",
+                    BuildSPA {
+                        slug: Cow::Borrowed("plus"),
+                        page_title: Cow::Borrowed(MDN_PLUS_TITLE),
+                        template: SpaBuildTemplate::SpaPlusLanding,
+                        ..Default::default()
+                    },
+                ),
+                (
                     "plus/ai-help",
                     BuildSPA {
                         slug: Cow::Borrowed("plus/ai-help"),
