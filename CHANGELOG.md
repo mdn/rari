@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.40](https://github.com/mdn/rari/compare/v0.1.39...v0.1.40) (2025-06-12)
+
+
+### Features
+
+* **lsp:** add an experimental language server to rari ([#230](https://github.com/mdn/rari/issues/230)) ([219962a](https://github.com/mdn/rari/commit/219962a1137ed1b1e9606c182c3f294481a4730e))
+
+
+### Bug Fixes
+
+* **css-syntax:** trim trailing line breaks ([#231](https://github.com/mdn/rari/issues/231)) ([553e614](https://github.com/mdn/rari/commit/553e6141f0aa7847c11cd931c5cb3127725c3a46))
+
 ## [0.1.39](https://github.com/mdn/rari/compare/v0.1.38...v0.1.39) (2025-06-05)
 
 
