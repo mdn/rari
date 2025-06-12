@@ -6,7 +6,7 @@ use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 use crate::templ::api::RariApi;
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn svginfo() -> Result<String, DocError> {
     let name = env
         .slug

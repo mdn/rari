@@ -5,12 +5,12 @@ use crate::error::DocError;
 use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::pages::page::{Page, PageLike};
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn compat() -> Result<String, DocError> {
     Ok(compat_internal(env.browser_compat))
 }
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn webextallcompattables() -> Result<String, DocError> {
     let mut out = String::new();
     let sub_pages = get_sub_pages(

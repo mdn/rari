@@ -6,7 +6,7 @@ use tracing::warn;
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn deprecated_header(version: Option<AnyArg>) -> Result<String, DocError> {
     if version.is_some() {
         warn!("Do not use deprecated header with parameter!")
@@ -23,8 +23,8 @@ pub fn deprecated_header(version: Option<AnyArg>) -> Result<String, DocError> {
     ))
 }
 
-#[rari_f]
-pub fn available_in_workers(typ: Option<String>) -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn availableinworkers(typ: Option<String>) -> Result<String, DocError> {
     let default_typ = "available_in_worker__default";
     let typ = typ
         .map(|s| s.to_lowercase())
@@ -43,8 +43,8 @@ pub fn available_in_workers(typ: Option<String>) -> Result<String, DocError> {
     ))
 }
 
-#[rari_f]
-pub fn see_compat_table() -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn seecompattable() -> Result<String, DocError> {
     let title = l10n_json_data("Template", "experimental_badge_abbreviation", env.locale)?;
     let copy = l10n_json_data("Template", "see_compat_table_copy", env.locale)?;
 
@@ -57,8 +57,8 @@ pub fn see_compat_table() -> Result<String, DocError> {
     ))
 }
 
-#[rari_f]
-pub fn secure_context_header() -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn securecontext_header() -> Result<String, DocError> {
     let title = l10n_json_data("Template", "secure_context_label", env.locale)?;
     let copy = l10n_json_data("Template", "secure_context_header_copy", env.locale)?;
 
@@ -71,7 +71,7 @@ pub fn secure_context_header() -> Result<String, DocError> {
     ))
 }
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn non_standard_header() -> Result<String, DocError> {
     let title = l10n_json_data("Template", "non_standard_badge_abbreviation", env.locale)?;
     let copy = l10n_json_data("Template", "non_standard_header_copy", env.locale)?;

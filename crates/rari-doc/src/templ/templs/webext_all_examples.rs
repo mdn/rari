@@ -4,8 +4,8 @@ use crate::error::DocError;
 use crate::helpers::web_ext_examples::web_ext_examples_json;
 use crate::templ::api::RariApi;
 
-#[rari_f]
-pub fn web_ext_all_examples() -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn webextallexamples() -> Result<String, DocError> {
     let mut out = String::new();
 
     let all_examples = web_ext_examples_json();

@@ -72,7 +72,17 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                 let name = ident.to_ascii_lowercase();
                 let line = i64::try_from(mac.pos.0 + offset).unwrap_or(-1);
                 let col = i64::try_from(mac.pos.1).unwrap_or(-1);
-                let span = span!(Level::ERROR, "templ", templ = name, line = line, col = col);
+                let end_col = i64::try_from(mac.pos.1 + input[mac.start..mac.end].chars().count())
+                    .unwrap_or(-1);
+                let span = span!(
+                    Level::ERROR,
+                    "templ",
+                    templ = name,
+                    line = line,
+                    col = col,
+                    end_line = line,
+                    end_col = end_col
+                );
                 let _enter = span.enter();
                 match invoke(env, &name, mac.args) {
                     Ok((rendered, is_sidebar)) => {

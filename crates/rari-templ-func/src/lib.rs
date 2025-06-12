@@ -1,8 +1,56 @@
 extern crate proc_macro;
+use std::fmt::Write;
+
+use darling::ast::NestedMeta;
+use darling::FromMeta;
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::punctuated::Punctuated;
-use syn::{parse_macro_input, parse_quote};
+use syn::{parse_macro_input, parse_quote, Lit};
+
+enum Complete {
+    None,
+    Snippet,
+    Plain,
+}
+
+fn poor_ts_fn_outline_conversion(outline: &str, complete: Complete) -> Option<String> {
+    let outline = outline.replace("\n", " ");
+    let outline = outline.strip_prefix("fn ")?;
+    let args_start = outline.find('(')?;
+    let args_end = outline.find(")")?;
+
+    let mut out = String::with_capacity(outline.len());
+    out.push_str(&outline[..args_start]);
+    out.push('(');
+    let mut first = true;
+    for (i, arg) in outline[args_start + 1..args_end].split(",").enumerate() {
+        if arg.is_empty() {
+            break;
+        }
+        if first {
+            first = false;
+        } else {
+            out.push_str(", ");
+        }
+        let arg = arg.trim();
+        let colon = arg.find(" : ")?;
+        let typ = &arg[colon + 3..];
+        match complete {
+            Complete::None => {
+                if let Some(optional_type) = typ.strip_prefix("Option < ") {
+                    out.extend([&arg[..colon], "?: ", optional_type.strip_suffix(" >")?]);
+                } else {
+                    out.extend([&arg[..colon], ": ", &arg[colon + 3..]]);
+                }
+            }
+            Complete::Snippet => write!(&mut out, "${{{}:{}}}", i + 1, &arg[..colon]).unwrap(),
+            Complete::Plain => out.push_str(&arg[..colon]),
+        }
+    }
+    out.push(')');
+    Some(out)
+}
 
 fn is_option(path: &syn::TypePath) -> bool {
     let idents_of_path = path.path.segments.iter().fold(String::new(), |mut acc, v| {
@@ -13,6 +61,15 @@ fn is_option(path: &syn::TypePath) -> bool {
     vec!["Option:", "std:option:Option:", "core:option:Option:"]
         .into_iter()
         .any(|s| idents_of_path == *s)
+}
+
+#[derive(Debug, Default, FromMeta)]
+#[darling(default)]
+struct RariFargs {
+    #[darling(default)]
+    register: Option<syn::TypePath>,
+    #[darling(default)]
+    sidebar: bool,
 }
 
 /// Define rari templ functions.
@@ -29,8 +86,54 @@ fn is_option(path: &syn::TypePath) -> bool {
 /// This will automatically inject an argument `env` providing a
 /// [RariEnv] reference.
 #[proc_macro_attribute]
-pub fn rari_f(_: TokenStream, input: TokenStream) -> TokenStream {
+pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let attr_args = match NestedMeta::parse_meta_list(attr.into()) {
+        Ok(v) => v,
+        Err(e) => {
+            return TokenStream::from(darling::Error::from(e).write_errors());
+        }
+    };
+    let attr_args = match RariFargs::from_list(&attr_args) {
+        Ok(v) => v,
+        Err(e) => {
+            return TokenStream::from(e.write_errors());
+        }
+    };
+    //let attr_args = RariFargs::default();
+    // Parse the input as a function.
     let mut function = parse_macro_input!(input as syn::ItemFn);
+
+    // Extract doc comments from attributes.
+    let doc_comments: Vec<String> = function
+        .attrs
+        .iter()
+        .filter(|attr| matches!(attr.style, syn::AttrStyle::Outer))
+        .filter_map(|attr| {
+            if let syn::Meta::NameValue(meta) = &attr.meta {
+                if let syn::Expr::Lit(lit) = &meta.value {
+                    if let Lit::Str(value) = &lit.lit {
+                        Some(value.value())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+    let doc_string = doc_comments.join("\n");
+    let name = function.sig.ident.to_string();
+
+    let outline_string = function.sig.to_token_stream().to_string();
+    let outline = &poor_ts_fn_outline_conversion(&outline_string, Complete::None)
+        .unwrap_or(outline_string.clone());
+    let outline_snippet =
+        &poor_ts_fn_outline_conversion(&outline_string, Complete::Snippet).unwrap_or(name.clone());
+    let outline_plain =
+        &poor_ts_fn_outline_conversion(&outline_string, Complete::Plain).unwrap_or(name.clone());
 
     let mut dup = function.clone();
     dup.sig.ident = format_ident!("{}_{}", dup.sig.ident, "any");
@@ -81,9 +184,57 @@ pub fn rari_f(_: TokenStream, input: TokenStream) -> TokenStream {
         .sig
         .inputs
         .insert(0, parse_quote!(env: &::rari_types::RariEnv));
+
+    let dup_ident = dup.sig.ident.clone();
+    let is_sidebar: Lit = if attr_args.sidebar {
+        parse_quote!(true)
+    } else {
+        parse_quote!(false)
+    };
+    let collect = if let Some(inventory_type) = attr_args.register {
+        quote! {
+            inventory::submit! {
+                #inventory_type {
+                    name: #name,
+                    outline: #outline,
+                    outline_snippet: #outline_snippet,
+                    outline_plain: #outline_plain,
+                    doc: #doc_string,
+                    function: #dup_ident,
+                    is_sidebar: #is_sidebar,
+                }
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     proc_macro::TokenStream::from(quote!(
+        #collect
         #[allow(dead_code)]
         #function
         #dup
     ))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_ts_conversion() {
+        let outline = "fn\nhttpheader(status : AnyArg, display : Option < String > , anchor : Option <\nString > , no_code : Option < AnyArg > ,) -> Result < String, DocError >";
+        println!(
+            "{:?}",
+            poor_ts_fn_outline_conversion(outline, Complete::Snippet)
+        );
+        println!(
+            "{:?}",
+            poor_ts_fn_outline_conversion(outline, Complete::Plain)
+        );
+        println!(
+            "{:?}",
+            poor_ts_fn_outline_conversion(outline, Complete::None)
+        );
+    }
 }

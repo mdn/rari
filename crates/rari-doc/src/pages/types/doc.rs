@@ -289,10 +289,9 @@ impl PageLike for Doc {
     }
 }
 
-fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
-    let full_path = path.into();
+pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, DocError> {
+    let full_path = full_path.into();
     let (locale, _) = locale_and_typ_from_path(&full_path)?;
-    let raw = read_to_string(&full_path)?;
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     let FrontMatter {
@@ -355,6 +354,12 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
         raw,
         content_start,
     })
+}
+
+fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
+    let full_path = path.into();
+    let raw = read_to_string(&full_path)?;
+    doc_from_raw(raw, full_path)
 }
 
 fn write_doc(doc: &Doc) -> Result<(), DocError> {

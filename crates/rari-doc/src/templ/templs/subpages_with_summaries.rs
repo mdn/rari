@@ -5,8 +5,8 @@ use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::helpers::summary_hack::{get_hacky_summary_md, strip_paragraph_unchecked};
 use crate::pages::page::PageLike;
 
-#[rari_f]
-pub fn subpages_with_summaries() -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn subpageswithsummaries() -> Result<String, DocError> {
     let mut out = String::new();
     let sub_pages = get_sub_pages(env.url, Some(1), SubPagesSorter::Title)?;
 
@@ -24,4 +24,9 @@ pub fn subpages_with_summaries() -> Result<String, DocError> {
     }
     out.push_str("</dl>");
     Ok(out)
+}
+
+#[rari_f(register = "crate::Templ")]
+pub fn landingpagelistsubpages() -> Result<String, DocError> {
+    subpageswithsummaries(env)
 }

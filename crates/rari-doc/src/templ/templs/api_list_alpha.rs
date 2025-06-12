@@ -6,8 +6,8 @@ use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
-#[rari_f]
-pub fn api_list_alpha() -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn apilistalpha() -> Result<String, DocError> {
     let mut out = String::new();
     let pages = get_sub_pages("/en-US/docs/Web/API", Some(1), SubPagesSorter::Title)?;
 

@@ -9,7 +9,7 @@ use crate::html::links::{render_link_via_page, LinkFlags};
 
 const OLD_VERSIONS: &[&str] = &["3.6", "3.5", "3", "2", "1.5"];
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn firefox_for_developers() -> Result<String, DocError> {
     let locale = env.locale;
     let slug = env.slug;

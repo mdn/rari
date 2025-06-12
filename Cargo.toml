@@ -38,6 +38,7 @@ members = [
   "crates/rari-md",
   "crates/rari-doc",
   "crates/rari-linter",
+  "crates/rari-lsp",
   "crates/rari-sitemap",
   "crates/rari-tools",
   "crates/css-syntax",
@@ -65,6 +66,7 @@ rari-md = { path = "crates/rari-md" }
 rari-data = { path = "crates/rari-data" }
 rari-templ-func = { path = "crates/rari-templ-func" }
 rari-sitemap = { path = "crates/rari-sitemap" }
+rari-lsp = { path = "crates/rari-lsp" }
 
 tracing = "0.1"
 tracing-subscriber = "0.3"
@@ -101,6 +103,13 @@ const_format = "0.2"
 dialoguer = "0.11"
 semver = { version = "1", features = ["serde"] }
 strum = { version = "0.27", features = ["derive"] }
+tokio = "1"
+inventory = "0.3"
+tree-sitter-mdn = "0.1"
+tree-sitter = "0.23"
+
+[features]
+default = []
 
 [dependencies]
 rari-doc.workspace = true
@@ -109,6 +118,8 @@ rari-deps.workspace = true
 rari-types.workspace = true
 rari-utils.workspace = true
 rari-sitemap.workspace = true
+rari-lsp.workspace = true
+
 
 serde.workspace = true
 serde_json.workspace = true
@@ -118,6 +129,7 @@ anyhow.workspace = true
 dashmap.workspace = true
 schemars.workspace = true
 dialoguer.workspace = true
+tokio.workspace = true
 
 self_update = { version = "0.42", default-features = false, features = [
   "rustls",
@@ -130,7 +142,6 @@ tabwriter = "1"
 axum = "0.8"
 tower-http = { version = "0.6", features = ["fs"] }
 tower = "0.5"
-tokio = "1"
 dotenvy = "0.15"
 
 [lints.clippy]
