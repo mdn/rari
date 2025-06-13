@@ -116,6 +116,8 @@ pub enum DocError {
     SlugFolderMismatch(String, String, String),
     #[error("Fatal error reading docs")]
     DocsReadError,
+    #[error("No RariEnv for Page")]
+    NoRariEnv,
 }
 
 /// Represents various errors that can occur while processing URLs.
