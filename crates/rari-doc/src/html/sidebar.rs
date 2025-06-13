@@ -644,10 +644,14 @@ impl SidebarMetaEntry {
                 let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));
                 if self.code {
                     out.push_str("<code>");
+                } else {
+                    out.push_str("<span>");
                 }
                 out.push_str(title.unwrap_or_default());
                 if self.code {
                     out.push_str("</code>");
+                } else {
+                    out.push_str("</span>");
                 }
             }
             SidebarMetaEntryContent::Page(page) => {

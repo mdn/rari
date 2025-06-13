@@ -268,9 +268,9 @@ pub fn list_sub_pages_flattened_grouped_internal(
     for (prefix, group) in grouped {
         let keep_group = group.len() > 2;
         if keep_group {
-            out.push_str("<li class=\"toggle\"><details><summary>");
+            out.push_str("<li class=\"toggle\"><details><summary><span>");
             out.push_str(&html_escape::encode_safe(prefix));
-            out.push_str("-*</summary><ol>");
+            out.push_str("-*</span></summary><ol>");
         }
         for sub_page in group {
             write_li_with_badges(out, sub_page, locale, code, true)?;
