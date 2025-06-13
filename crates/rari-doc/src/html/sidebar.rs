@@ -593,9 +593,6 @@ impl SidebarMetaEntry {
         if self.section {
             out.push_str(" class=\"section\"");
         }
-        if self.details.is_set() || !matches!(self.children, MetaChildren::None) {
-            out.push_str(" class=\"toggle\"");
-        }
         if self.details.is_set() {
             out.push_str("><details");
             if self.details.is_open() {
