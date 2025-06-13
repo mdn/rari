@@ -18,7 +18,7 @@ use crate::pages::json::{
 };
 use crate::pages::page::{Page, PageLike};
 
-pub fn latest_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
+pub fn latest_news(urls: &[String]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
     urls.iter()
         .filter_map(|url| match Page::from_url_with_fallback(url) {
             Ok(Page::BlogPost(post)) => Some(Ok(HomePageLatestNewsItem {
@@ -30,6 +30,7 @@ pub fn latest_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocErro
                     url: concat_strs!("/", Locale::default().as_url_str(), "/blog/"),
                 },
                 published_at: post.meta.date,
+                summary: post.meta.description.clone(),
             })),
             Err(DocError::PageNotFound(url, category)) => {
                 tracing::warn!("page not found {url} ({category:?})");
@@ -45,7 +46,7 @@ pub fn latest_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocErro
 }
 
 pub fn featured_articles(
-    urls: &[&str],
+    urls: &[String],
     locale: Locale,
 ) -> Result<Vec<HomePageFeaturedArticle>, DocError> {
     urls.iter()
