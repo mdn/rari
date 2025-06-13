@@ -58,6 +58,10 @@ pub static TEMPL_MAP: LazyLock<Vec<&'static Templ>> =
 pub static TEMPL_MAPPING: LazyLock<HashMap<&'static str, &'static Templ>> =
     LazyLock::new(|| inventory::iter::<Templ>().map(|t| (t.name, t)).collect());
 
+pub fn exists(name: &str) -> bool {
+    TEMPL_MAPPING.contains_key(name)
+}
+
 pub fn invoke(
     env: &RariEnv,
     name: &str,

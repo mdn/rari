@@ -38,6 +38,7 @@ use crate::pages::types::curriculum::{
 };
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
+use crate::pages::types::utils::FmTempl;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
 use crate::translations::get_other_translations_for;
@@ -292,7 +293,11 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             summary,
             popularity,
             no_indexing,
-            sidebar_macro: doc.meta.sidebar.first().cloned(),
+            sidebar_macro: doc
+                .meta
+                .sidebar
+                .first()
+                .map(|s| FmTempl::name(s).to_string()),
             source: Source {
                 folder,
                 filename,
