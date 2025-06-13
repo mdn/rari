@@ -761,11 +761,18 @@ pub struct PaginationData {
     pub num_pages: usize,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct HomePageData {
+    pub featured_articles: Vec<String>,
+    pub latest_news: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SPAData {
     BlogIndex(PaginationData),
-    HomePage,
+    HomePage(HomePageData),
     NotFound,
     #[serde(untagged)]
     BasicSPA(BasicSPA),

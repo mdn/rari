@@ -798,6 +798,7 @@ pub struct HomePageLatestNewsItem {
     pub author: Option<String>,
     pub source: NameUrl,
     pub published_at: NaiveDate,
+    pub summary: String,
 }
 
 /// Represents a recent contribution item on the home page.

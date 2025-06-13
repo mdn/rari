@@ -36,7 +36,7 @@ pub struct SPA {
     pub url: String,
     pub locale: Locale,
     pub page_type: PageType,
-    pub data: SPAData,
+    pub data: &'static SPAData,
     pub base_slug: Cow<'static, str>,
     pub page_description: Option<&'static str>,
     pub template: SpaBuildTemplate,
@@ -70,7 +70,7 @@ impl SPA {
                     ),
                     locale,
                     page_type: PageType::SPA,
-                    data: build_spa.data,
+                    data: &build_spa.data,
                     base_slug: Cow::Owned(concat_strs!("/", locale.as_url_str(), "/")),
                     page_description: build_spa.page_description.as_deref(),
                     template: build_spa.template,
@@ -162,29 +162,19 @@ impl SPA {
                 },
                 self.template,
             )))),
-            SPAData::HomePage => Ok(BuiltPage::Home(Box::new(HomePage::Homepage(
+            SPAData::HomePage(home_page_data) => Ok(BuiltPage::Home(Box::new(HomePage::Homepage(
                 JsonHomePage {
                     url: concat_strs!("/", self.locale().as_url_str(), "/", self.slug),
                     page_title: self.page_title,
                     hy_data: JsonHomePageSPAHyData {
                         page_description: self.page_description,
                         featured_articles: featured_articles(
-                            &[
-                                "/en-US/blog/javascript-temporal-is-coming/",
-                                "/en-US/docs/Web/CSS/CSS_anchor_positioning",
-                                "/en-US/docs/Web/API/View_Transition_API/Using",
-                                "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal",
-                            ],
+                            &home_page_data.featured_articles,
                             self.locale,
                         )?,
                         featured_contributor: featured_contributor(self.locale)?,
                         latest_news: ItemContainer {
-                            items: latest_news(&[
-                                "/en-US/blog/mdn-2024-content-projects/",
-                                "/en-US/blog/curriculum-learn-web-development/",
-                                "/en-US/blog/new-community-page/",
-                                "/en-US/blog/javascript-intl-segmenter-i18n/",
-                            ])?,
+                            items: latest_news(&home_page_data.latest_news)?,
                         },
                         recent_contributions: ItemContainer {
                             items: recent_contributions()?,
@@ -337,17 +327,6 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
         .chain(blog_indices())
         .chain(
             [
-                (
-                    "",
-                    BuildSPA {
-                        slug: Cow::Borrowed(""),
-                        page_title: Cow::Borrowed("MDN Web Docs"),
-                        trailing_slash: true,
-                        data: SPAData::HomePage,
-                        template: SpaBuildTemplate::SpaHomepage,
-                        ..Default::default()
-                    },
-                ),
                 (
                     "404",
                     BuildSPA {
