@@ -30,7 +30,7 @@ use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Spli
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
-use crate::pages::json::JsonContributorSpotlightPage;
+use crate::pages::json::{CommonJsonData, JsonContributorSpotlightPage};
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::curriculum::{
     build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
@@ -368,6 +368,9 @@ fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
                 },
                 url: page.meta.url.clone(),
                 id: page.meta.page.clone(),
+                common: CommonJsonData {
+                    description: page.meta.description.clone(),
+                },
             },
             page.meta.template,
         ),
@@ -440,6 +443,9 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
             url: cs.meta.url.clone(),
             page_title: cs.meta.title.clone(),
             hy_data: contributor_spotlight_data,
+            common: CommonJsonData {
+                description: cs.meta.description.clone(),
+            },
         }),
     )))
 }
