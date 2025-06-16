@@ -596,6 +596,7 @@ pub struct ContributorSpotlightHyData {
 /// * `url` - A `String` that holds the URL of the contributor spotlight page.
 /// * `page_title` - A `String` that holds the title of the contributor spotlight page. Serialized as `pageTitle`.
 /// * `hy_data` - A `ContributorSpotlightHyData` that holds the data related to the contributor. Serialized as `hyData`.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[schemars(rename = "ContributorSpotlightPage")]
 pub struct JsonContributorSpotlightPage {
@@ -604,6 +605,8 @@ pub struct JsonContributorSpotlightPage {
     pub page_title: String,
     #[serde(rename = "hyData")]
     pub hy_data: ContributorSpotlightHyData,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
 }
 
 /// Represents the different JSON artifacts of built pages.
@@ -923,6 +926,7 @@ pub struct JsonGenericHyData {
 /// * `page_title` - A `String` that holds the title of the generic page.
 /// * `url` - A `String` that holds the URL of the generic page.
 /// * `id` - A `String` that holds the unique identifier for the generic page.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "GenericPage")]
@@ -931,4 +935,13 @@ pub struct JsonGenericPage {
     pub page_title: String,
     pub url: String,
     pub id: String,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
+}
+
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+#[schemars(rename = "GenericPage")]
+pub struct CommonJsonData {
+    pub description: Option<String>,
 }

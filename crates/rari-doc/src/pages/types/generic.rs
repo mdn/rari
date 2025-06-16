@@ -25,6 +25,7 @@ pub enum Template {
 pub struct GenericFrontmatter {
     pub title: String,
     pub template: Option<Template>,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +39,7 @@ pub struct GenericMeta {
     pub title_suffix: Option<String>,
     pub page: String,
     pub template: Template,
+    pub description: Option<String>,
 }
 
 impl GenericMeta {
@@ -68,6 +70,7 @@ impl GenericMeta {
             title_suffix,
             page,
             template: fm.template.unwrap_or_default(),
+            description: fm.description,
         })
     }
 }

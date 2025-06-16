@@ -29,6 +29,7 @@ pub struct ContributorFrontMatter {
     pub img_alt: String,
     pub usernames: Usernames,
     pub quote: String,
+    pub description: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -42,6 +43,7 @@ pub struct ContributorMeta {
     pub img_alt: String,
     pub usernames: Usernames,
     pub quote: String,
+    pub description: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -59,6 +61,7 @@ pub struct ContributorBuildMeta {
     pub quote: String,
     pub path: PathBuf,
     pub full_path: PathBuf,
+    pub description: Option<String>,
 }
 
 impl From<&ContributorBuildMeta> for ContributorMeta {
@@ -73,6 +76,7 @@ impl From<&ContributorBuildMeta> for ContributorMeta {
             img_alt,
             usernames,
             quote,
+            description,
             ..
         } = value;
         ContributorMeta {
@@ -85,6 +89,7 @@ impl From<&ContributorBuildMeta> for ContributorMeta {
             img_alt: img_alt.clone(),
             usernames: usernames.clone(),
             quote: quote.clone(),
+            description: description.clone(),
         }
     }
 }
@@ -108,6 +113,7 @@ impl ContributorBuildMeta {
             img_alt,
             usernames,
             quote,
+            description,
         } = fm;
         let slug = concat_strs!("spotlight/", folder_name.as_str());
         Ok(Self {
@@ -128,6 +134,7 @@ impl ContributorBuildMeta {
             quote,
             full_path,
             path,
+            description,
         })
     }
 }
