@@ -238,7 +238,7 @@ impl PageLike for ContributorSpotlight {
     }
 
     fn trailing_slash(&self) -> bool {
-        true
+        false
     }
 
     fn fm_offset(&self) -> usize {

@@ -19,10 +19,11 @@ use crate::cached_readers::{
     blog_files, generic_content_config, BasicSPA, BuildSPA, PaginationData, SPAData,
 };
 use crate::error::DocError;
+use crate::helpers::parents::parents;
 use crate::helpers::title::page_title;
 use crate::pages::json::{
-    BlogIndex, BuiltPage, ItemContainer, JsonBlogPostDoc, JsonBlogPostPage, JsonHomePage,
-    JsonHomePageSPAHyData, JsonSpaPage,
+    BlogIndex, BuiltPage, CommonJsonData, ItemContainer, JsonBlogPostDoc, JsonBlogPostPage,
+    JsonHomePage, JsonHomePageSPAHyData, JsonSpaPage,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::templates::{BlogPage, HomePage, SpaBuildTemplate, SpaPage};
@@ -133,6 +134,10 @@ impl SPA {
                         pagination: *pagination,
                     }),
                     page_title: self.title().to_owned(),
+                    common: CommonJsonData {
+                        parents: parents(self),
+                        ..Default::default()
+                    },
                     ..Default::default()
                 }),
             ))),
@@ -146,6 +151,10 @@ impl SPA {
                         no_indexing: basic_spa.no_indexing,
                         page_not_found: false,
                         url: concat_strs!(self.base_slug.as_ref(), self.slug),
+                        common: CommonJsonData {
+                            parents: parents(self),
+                            ..Default::default()
+                        },
                     },
                     self.template,
                 ))))
@@ -159,6 +168,10 @@ impl SPA {
                     no_indexing: true,
                     page_not_found: true,
                     url: concat_strs!(self.base_slug.as_ref(), self.slug),
+                    common: CommonJsonData {
+                        parents: parents(self),
+                        ..Default::default()
+                    },
                 },
                 self.template,
             )))),
@@ -179,6 +192,10 @@ impl SPA {
                         recent_contributions: ItemContainer {
                             items: recent_contributions()?,
                         },
+                    },
+                    common: CommonJsonData {
+                        parents: parents(self),
+                        ..Default::default()
                     },
                 },
             )))),
