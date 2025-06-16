@@ -1,6 +1,6 @@
 [package]
 name = "css-syntax-types"
-version = "0.1.40"
+version = "0.1.41"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true

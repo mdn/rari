@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.41](https://github.com/mdn/rari/compare/v0.1.40...v0.1.41) (2025-06-16)
+
+
+### Features
+
+* **client:** add GitHub token support for API requests ([#239](https://github.com/mdn/rari/issues/239)) ([c44bd1e](https://github.com/mdn/rari/commit/c44bd1eb15209a33d7e8b115fe6fd7b47d46038a))
+* **homepage:** use data from generic content ([#238](https://github.com/mdn/rari/issues/238)) ([2e7b94e](https://github.com/mdn/rari/commit/2e7b94e8edaf4b4a7cb77575150da25f262374c6))
+* **sidebar:** support args in fm sidebar ([#237](https://github.com/mdn/rari/issues/237)) ([82b80b0](https://github.com/mdn/rari/commit/82b80b07c462d047648c2c36a242caa8163d5ba5))
+
+
+### Enhancements
+
+* **sidebar:** wrap unlinked summary text in span ([#235](https://github.com/mdn/rari/issues/235)) ([a804805](https://github.com/mdn/rari/commit/a8048052176d499952c6fc7a5948f0fca890f4ec))
+
+
+### Miscellaneous
+
+* **sidebar:** remove unused toggle class ([#234](https://github.com/mdn/rari/issues/234)) ([6e79039](https://github.com/mdn/rari/commit/6e79039c0ebef43a088eb9d2ff037db6e2d1ac8f))
+
 ## [0.1.40](https://github.com/mdn/rari/compare/v0.1.39...v0.1.40) (2025-06-12)
 
 
