@@ -583,7 +583,22 @@ pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
     fn gather() -> GenericContentConfig {
         read_generic_content_config().unwrap_or_else(|e| {
             warn!(ignore = true, "{e}");
-            Default::default()
+            GenericContentConfig {
+                spas: vec![(
+                    "".to_string(),
+                    BuildSPA {
+                        slug: Cow::Borrowed(""),
+                        page_title: Cow::Borrowed("MDN Web Docs"),
+                        trailing_slash: true,
+                        data: SPAData::HomePage(Default::default()),
+                        template: SpaBuildTemplate::SpaHomepage,
+                        ..Default::default()
+                    },
+                )]
+                .into_iter()
+                .collect(),
+                ..Default::default()
+            }
         })
     }
     if cache_content() {
@@ -761,7 +776,7 @@ pub struct PaginationData {
     pub num_pages: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HomePageData {
     pub featured_articles: Vec<String>,
