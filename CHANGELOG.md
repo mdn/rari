@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.42](https://github.com/mdn/rari/compare/v0.1.41...v0.1.42) (2025-06-17)
+
+
+### Features
+
+* **json:** add fm description to generic and contributor ([#242](https://github.com/mdn/rari/issues/242)) ([b608389](https://github.com/mdn/rari/commit/b60838996ef9b2b39c825997c21be7539d0077e9))
+* **json:** add parents to more pages ([#243](https://github.com/mdn/rari/issues/243)) ([5453fe9](https://github.com/mdn/rari/commit/5453fe91b498e2880648618e5597e369e778ff8f))
+
+
+### Bug Fixes
+
+* **homepage:** fallback for no generic content set ([#245](https://github.com/mdn/rari/issues/245)) ([7766a9c](https://github.com/mdn/rari/commit/7766a9c75bb50db2affd1691b849bdfeb7fd618f))
+
 ## [0.1.41](https://github.com/mdn/rari/compare/v0.1.40...v0.1.41) (2025-06-16)
 
 
