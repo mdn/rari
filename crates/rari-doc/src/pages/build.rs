@@ -352,6 +352,7 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
 
 fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
+    let parents = parents(page);
     let PageContent { body, toc, .. } = built?;
     Ok(BuiltPage::GenericPage(Box::new(
         GenericPage::from_page_and_template(
@@ -370,6 +371,7 @@ fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
                 id: page.meta.page.clone(),
                 common: CommonJsonData {
                     description: page.meta.description.clone(),
+                    parents,
                 },
             },
             page.meta.template,
@@ -438,6 +440,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
         usernames: cs.meta.usernames.clone(),
         quote: cs.meta.quote.clone(),
     };
+    let parents = parents(cs);
     Ok(BuiltPage::ContributorSpotlight(Box::new(
         ContributorSpotlightPage::ContributorSpotlight(JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
@@ -445,6 +448,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
             hy_data: contributor_spotlight_data,
             common: CommonJsonData {
                 description: cs.meta.description.clone(),
+                parents,
             },
         }),
     )))

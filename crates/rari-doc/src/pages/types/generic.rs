@@ -178,7 +178,7 @@ impl PageLike for Generic {
     }
 
     fn title_suffix(&self) -> Option<&str> {
-        Some("MDN Curriculum")
+        self.meta.title_suffix.as_deref()
     }
 
     fn page_type(&self) -> PageType {
@@ -203,12 +203,12 @@ impl PageLike for Generic {
             .url
             .match_indices('/')
             .nth(1)
-            .map(|(i, _)| i)
+            .map(|(i, _)| i + 1)
             .unwrap_or(self.meta.url.len())]
     }
 
     fn trailing_slash(&self) -> bool {
-        true
+        false
     }
 
     fn fm_offset(&self) -> usize {

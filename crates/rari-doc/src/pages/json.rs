@@ -537,6 +537,7 @@ pub struct JsonBlogPostDoc {
 ///   Serialized as `blogMeta` and skipped during serialization if it is `None`.
 /// * `hy_data` - An `Option<BlogIndex>` that holds data related to the blog index, if available.
 ///   Serialized as `hyData` and skipped during serialization if it is `None`.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 #[schemars(rename = "BlogPostPage")]
 pub struct JsonBlogPostPage {
@@ -550,6 +551,8 @@ pub struct JsonBlogPostPage {
     pub blog_meta: Option<BlogMeta>,
     #[serde(rename = "hyData", skip_serializing_if = "Option::is_none")]
     pub hy_data: Option<BlogIndex>,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
 }
 
 /// Represents a contributor spotlight page in the documentation system.
@@ -717,6 +720,7 @@ pub struct UrlNTitle {
 /// * `no_indexing` - A `bool` that indicates whether the page should be excluded from indexing by search engines.
 /// * `page_not_found` - A `bool` that indicates whether the page represents a "Page Not Found" (404) error.
 /// * `url` - A `String` that holds the URL of the page.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "SPAPage")]
@@ -728,6 +732,8 @@ pub struct JsonSpaPage {
     pub no_indexing: bool,
     pub page_not_found: bool,
     pub url: String,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
 }
 
 /// Represents a featured article (usually a blog post or documentation page) on the home page.
@@ -882,6 +888,7 @@ pub struct JsonHomePageSPAHyData {
 ///   including featured articles, contributors, latest news, and recent contributions.
 /// * `page_title` - A `&'static str` that holds the title of the home page.
 /// * `url` - A `String` that holds the URL of the page.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "HomePage")]
@@ -889,6 +896,8 @@ pub struct JsonHomePage {
     pub hy_data: JsonHomePageSPAHyData,
     pub page_title: &'static str,
     pub url: String,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
 }
 
 /// Represents the data for a generic page in the system. Generic pages are used for various purposes,
@@ -939,9 +948,11 @@ pub struct JsonGenericPage {
     pub common: CommonJsonData,
 }
 
-#[derive(Debug, Clone, Serialize, JsonSchema)]
+#[derive(Debug, Clone, Default, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "GenericPage")]
 pub struct CommonJsonData {
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub parents: Vec<Parent>,
 }
