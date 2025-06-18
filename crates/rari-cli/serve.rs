@@ -142,7 +142,7 @@ async fn get_json_handler(req: Request) -> Result<Response, AppError> {
     let span = span!(Level::ERROR, "url", "{}", url);
     let _enter1 = span.enter();
     let url = url.strip_suffix("/index.json").unwrap_or(url);
-    match Page::from_url_with_fallback(url) {
+    match Page::from_url(url) {
         Ok(page) => {
             let file = page.full_path().to_string_lossy();
             let span = span!(
