@@ -682,11 +682,14 @@ impl SidebarMetaEntry {
                     .as_ref()
                     .map(|t| l10n.lookup(t.as_str(), locale))
                     .unwrap_or_default();
-                out.extend([
-                    if self.code { "<code>" } else { "<span>" },
-                    title,
-                    if self.code { "</code>" } else { "</span>" },
-                ]);
+
+                if !title.is_empty() {
+                    out.extend([
+                        if self.code { "<code>" } else { "<span>" },
+                        title,
+                        if self.code { "</code>" } else { "</span>" },
+                    ]);
+                }
             }
             SidebarMetaEntryContent::Page(page) => {
                 render_link_from_page(
