@@ -77,7 +77,7 @@ chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 url = { version = "2", features = ["serde"] }
 itertools = "0.14"
-constcat = "0.5"
+constcat = "0.6"
 anyhow = "1"
 indexmap = { version = "2", features = ["serde"] }
 regress = "0.10"
@@ -96,7 +96,7 @@ console = "0.15"
 sha2 = "0.10"
 dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"
-schemars = { version = "0.8", features = ["chrono", "url"] }
+schemars = { version = "0.9", features = ["chrono04", "url2"] }
 pretty_yaml = "0.5"
 yaml_parser = "0.2"
 const_format = "0.2"
