@@ -12,7 +12,7 @@ use axum::routing::{get, put};
 use axum::{Json, Router};
 use rari_doc::cached_readers::wiki_histories;
 use rari_doc::contributors::contributors_txt;
-use rari_doc::error::DocError;
+use rari_doc::error::{DocError, UrlError};
 use rari_doc::issues::{to_display_issues, IN_MEMORY, ISSUE_COUNTER_F};
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageCategory, PageLike};
@@ -272,7 +272,10 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response<Body> {
         match self.0 {
             ToolError::DocError(
-                DocError::RariIoError(_) | DocError::IOError(_) | DocError::PageNotFound(..),
+                DocError::RariIoError(_)
+                | DocError::IOError(_)
+                | DocError::PageNotFound(..)
+                | DocError::UrlError(UrlError::InvalidUrl),
             ) => (StatusCode::NOT_FOUND, "").into_response(),
 
             _ => (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response(),

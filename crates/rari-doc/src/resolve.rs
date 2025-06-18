@@ -20,7 +20,7 @@ use std::str::FromStr;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
-use crate::error::DocError;
+use crate::error::{DocError, UrlError};
 use crate::pages::page::{PageCategory, PageLike};
 use crate::pages::types::generic::Generic;
 use crate::pages::types::spa::SPA;
@@ -116,7 +116,7 @@ pub struct UrlMeta<'a> {
 /// This function will return an error if:
 /// - The URL does not contain a recognizable locale.
 /// - The URL does not match any known patterns for documentation pages, blog posts, curriculum pages, etc.
-pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, DocError> {
+pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, UrlError> {
     let mut split = url[..url.find('#').unwrap_or(url.len())]
         .splitn(4, '/')
         .skip(1);
@@ -153,10 +153,7 @@ pub fn url_meta_from(url: &str) -> Result<UrlMeta<'_>, DocError> {
             } else if Generic::is_generic(slug, locale) {
                 (PageCategory::GenericPage, slug)
             } else {
-                return Err(DocError::PageNotFound(
-                    url.to_string(),
-                    PageCategory::GenericPage,
-                ));
+                return Err(UrlError::InvalidUrl);
             }
         }
     };
@@ -288,7 +285,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_url_to_path() -> Result<(), DocError> {
+    fn test_url_to_path() -> Result<(), UrlError> {
         let url = "/en-US/docs/Web/HTML";
         let UrlMeta {
             folder_path,
