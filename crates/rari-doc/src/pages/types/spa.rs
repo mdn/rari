@@ -283,6 +283,7 @@ impl PageLike for SPA {
 
 const MDN_PLUS_TITLE: &str = "MDN Plus";
 const OBSERVATORY_TITLE: &str = "HTTP Observatory";
+const OBSERVATORY_REPORT_TITLE: &str = "Report";
 const OBSERVATORY_TITLE_FULL: &str = concat!(OBSERVATORY_TITLE, " | MDN");
 
 const OBSERVATORY_DESCRIPTION: &str =
@@ -389,6 +390,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             "Scan results - ",
                             OBSERVATORY_TITLE_FULL
                         )),
+                        short_title: Some(Cow::Borrowed(OBSERVATORY_REPORT_TITLE)),
                         page_description: Some(Cow::Borrowed(OBSERVATORY_DESCRIPTION)),
                         data: SPAData::BasicSPA(BasicSPA {
                             no_indexing: true,
