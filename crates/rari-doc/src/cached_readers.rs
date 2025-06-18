@@ -804,6 +804,7 @@ impl Default for SPAData {
 pub struct BuildSPA {
     pub slug: Cow<'static, str>,
     pub page_title: Cow<'static, str>,
+    pub short_title: Option<Cow<'static, str>>,
     pub page_description: Option<Cow<'static, str>>,
     pub trailing_slash: bool,
     pub en_us_only: bool,

@@ -33,6 +33,7 @@ use crate::utils::filter_unpublished_blog_post;
 #[derive(Debug, Clone)]
 pub struct SPA {
     pub page_title: &'static str,
+    pub short_title: Option<&'static str>,
     pub slug: &'static str,
     pub url: String,
     pub locale: Locale,
@@ -57,6 +58,7 @@ impl SPA {
             } else {
                 Some(Page::SPA(Arc::new(SPA {
                     page_title: &build_spa.page_title,
+                    short_title: build_spa.short_title.as_deref(),
                     slug: &build_spa.slug,
                     url: concat_strs!(
                         "/",
@@ -223,7 +225,7 @@ impl PageLike for SPA {
     }
 
     fn short_title(&self) -> Option<&str> {
-        None
+        self.short_title
     }
 
     fn locale(&self) -> Locale {
@@ -280,7 +282,8 @@ impl PageLike for SPA {
 }
 
 const MDN_PLUS_TITLE: &str = "MDN Plus";
-const OBSERVATORY_TITLE_FULL: &str = "HTTP Observatory | MDN";
+const OBSERVATORY_TITLE: &str = "HTTP Observatory";
+const OBSERVATORY_TITLE_FULL: &str = concat!(OBSERVATORY_TITLE, " | MDN");
 
 const OBSERVATORY_DESCRIPTION: &str =
 "Test your site’s HTTP headers, including CSP and HSTS, to find security problems and get actionable recommendations to make your website more secure. Test other websites to see how you compare.";
@@ -372,6 +375,7 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                             "HTTP Header Security Test - ",
                             OBSERVATORY_TITLE_FULL
                         )),
+                        short_title: Some(Cow::Borrowed(OBSERVATORY_TITLE)),
                         page_description: Some(Cow::Borrowed(OBSERVATORY_DESCRIPTION)),
                         template: SpaBuildTemplate::SpaObservatoryLanding,
                         ..Default::default()
