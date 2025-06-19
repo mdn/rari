@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.43](https://github.com/mdn/rari/compare/v0.1.42...v0.1.43) (2025-06-19)
+
+
+### Features
+
+* **spas:** support short_title ([d5c48db](https://github.com/mdn/rari/commit/d5c48db5d8cc9c9ddd55723d97ce0f99598c450d))
+
+
+### Bug Fixes
+
+* **serve:** avoid fallback for json ([#251](https://github.com/mdn/rari/issues/251)) ([759cefe](https://github.com/mdn/rari/commit/759cefea69f1dbedb0fa7f022cfa34f74d4abd68))
+* **serve:** return 404 for UrlError::InvalidUrl ([#249](https://github.com/mdn/rari/issues/249)) ([18f54ee](https://github.com/mdn/rari/commit/18f54eec42f316809148324604e47d942c7cdf10))
+* short title for Observatory report page ([#252](https://github.com/mdn/rari/issues/252)) ([b679d74](https://github.com/mdn/rari/commit/b679d74339ab44442e8ad80faa7065da52956db6))
+* **sidebar:** avoid empty span ([#253](https://github.com/mdn/rari/issues/253)) ([ba2e792](https://github.com/mdn/rari/commit/ba2e7928cb000f1303f0cb62f3e0ffaeb12032f0))
+
+
+### Miscellaneous
+
+* **deps:** update major deps ([743c721](https://github.com/mdn/rari/commit/743c7219039100d45ecab9a17a506ff1f07440dd))
+* **deps:** update minor deps ([fdac0e0](https://github.com/mdn/rari/commit/fdac0e0a85a992469f4eaf240168c6b3f3e37db2))
+
 ## [0.1.42](https://github.com/mdn/rari/compare/v0.1.41...v0.1.42) (2025-06-17)
 
 
