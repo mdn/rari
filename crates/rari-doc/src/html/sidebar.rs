@@ -677,17 +677,21 @@ impl SidebarMetaEntry {
                     },
                 )?;
             }
-            SidebarMetaEntryContent::Link { link: None, title } => {
-                let title = title
-                    .as_ref()
-                    .map(|t| l10n.lookup(t.as_str(), locale))
-                    .unwrap_or_default();
+            SidebarMetaEntryContent::Link {
+                link: None,
+                title: Some(title),
+            } => {
+                let title = l10n.lookup(title.as_str(), locale);
                 out.extend([
                     if self.code { "<code>" } else { "<span>" },
                     title,
                     if self.code { "</code>" } else { "</span>" },
                 ]);
             }
+            SidebarMetaEntryContent::Link {
+                link: None,
+                title: None,
+            } => {}
             SidebarMetaEntryContent::Page(page) => {
                 render_link_from_page(
                     out,
