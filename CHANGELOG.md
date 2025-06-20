@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.44](https://github.com/mdn/rari/compare/v0.1.43...v0.1.44) (2025-06-20)
+
+
+### Bug Fixes
+
+* revert "chore(deps): update major deps" ([e69710e](https://github.com/mdn/rari/commit/e69710e3ad6223241d032572664cf73c35dc3aef))
+
 ## [0.1.43](https://github.com/mdn/rari/compare/v0.1.42...v0.1.43) (2025-06-19)
 
 
