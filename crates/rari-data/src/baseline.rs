@@ -7,7 +7,7 @@ use std::path::Path;
 use indexmap::IndexMap;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
-use schemars::Schema;
+use schemars::schema::Schema;
 use schemars::{JsonSchema, SchemaGenerator};
 use serde::de::{self, value, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -282,8 +282,8 @@ pub enum BaselineHighLow {
 
 // Deriving JsonSchema fails to type the false case. So we do it manually.
 impl JsonSchema for BaselineHighLow {
-    fn schema_name() -> Cow<'static, str> {
-        Cow::Borrowed("BaselineHighLow")
+    fn schema_name() -> String {
+        "BaselineHighLow".into()
     }
 
     fn schema_id() -> Cow<'static, str> {
