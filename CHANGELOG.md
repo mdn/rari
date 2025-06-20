@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.45](https://github.com/mdn/rari/compare/v0.1.44...v0.1.45) (2025-06-20)
+
+
+### Features
+
+* **updates:** allow skip updates from env ([#256](https://github.com/mdn/rari/issues/256)) ([c5b03eb](https://github.com/mdn/rari/commit/c5b03eb1277dd49b7c24d757fc8fdd209e847245))
+
 ## [0.1.44](https://github.com/mdn/rari/compare/v0.1.43...v0.1.44) (2025-06-20)
 
 
