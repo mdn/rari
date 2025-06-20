@@ -57,7 +57,7 @@ mod serve;
 #[command(propagate_version = true)]
 struct Cli {
     /// Skip updating dependencies (bcd, webref, ...)
-    #[arg(short, long)]
+    #[arg(short, long, env = "RARI_SKIP_UPDATES")]
     skip_updates: bool,
     #[command(flatten)]
     verbose: Verbosity,
