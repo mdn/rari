@@ -402,9 +402,9 @@ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
 name = "comrak"
-version = "0.38.0"
+version = "0.39.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f690706b5db081dccea6206d7f6d594bb9895599abea9d1a0539f13888781ae8"
+checksum = "d5c834ca54c5a20588b358f34d1533b4b498ddb5fd979cec6b22d0e8867a2449"
 dependencies = [
  "caseless",
  "entities",
@@ -467,9 +467,9 @@ dependencies = [
 
 [[package]]
 name = "constcat"
-version = "0.5.1"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4938185353434999ef52c81753c8cca8955ed38042fc29913db3751916f3b7ab"
+checksum = "136d3e02915a2cea4d74caa8681e2d44b1c3254bdbf17d11d41d587ff858832c"
 
 [[package]]
 name = "core-foundation-sys"
@@ -3766,9 +3766,9 @@ checksum = "121c2a6cda46980bb0fcd1647ffaf6cd3fc79a013de288782836f6df9c48780e"
 
 [[package]]
 name = "tower-lsp-server"
-version = "0.21.1"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fade4c658b63d11b623ddfa80821901e943a2923a010ae4a038661de42bd377"
+checksum = "76cd168c085174eafa7492a519715f2d59436dc28cdfd9d13a5b864246899db9"
 dependencies = [
  "bytes",
  "dashmap",
@@ -3776,6 +3776,7 @@ dependencies = [
  "httparse",
  "lsp-types",
  "memchr",
+ "percent-encoding",
  "serde",
  "serde_json",
  "tokio",
