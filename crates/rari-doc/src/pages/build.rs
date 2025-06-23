@@ -15,7 +15,6 @@ use super::json::{
     Source, SpecificationSection, TocEntry, Translation,
 };
 use super::page::{Page, PageBuilder, PageLike};
-use super::templates::{BlogPage, ContributorSpotlightPage, CurriculumPage, DocPage, GenericPage};
 use super::types::contributors::ContributorSpotlight;
 use super::types::generic::Generic;
 use crate::baseline::get_baseline;
@@ -31,9 +30,13 @@ use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
 use crate::pages::json::{CommonJsonData, JsonContributorSpotlightPage};
+use crate::pages::templates::{
+    BlogRenderer, ContributorSpotlightRenderer, CurriculumRenderer, DocPageRenderer,
+    GenericRenderer,
+};
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::curriculum::{
-    build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
+    self, build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
     prev_next_modules, prev_next_overview, Curriculum, Template,
 };
 use crate::pages::types::doc::Doc;
@@ -273,7 +276,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         Default::default()
     };
 
-    Ok(BuiltPage::Doc(Box::new(DocPage::Doc(JsonDocPage {
+    Ok(BuiltPage::Doc(Box::new(JsonDocPage {
         doc: JsonDoc {
             title: doc.title().to_string(),
             is_markdown: true,
@@ -311,7 +314,8 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             live_samples,
         },
         url: doc.meta.url.clone(),
-    }))))
+        renderer: DocPageRenderer::Doc,
+    })))
 }
 
 fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
@@ -321,62 +325,61 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
         live_samples,
         ..
     } = build_content(post)?;
-    Ok(BuiltPage::BlogPost(Box::new(BlogPage::BlogPost(
-        JsonBlogPostPage {
-            doc: JsonBlogPostDoc {
-                title: post.title().to_string(),
-                mdn_url: post.url().to_owned(),
-                native: post.locale().into(),
-                page_title: page_title(post, true)?,
-                locale: post.locale(),
-                body,
-                toc,
-                summary: Some(post.meta.description.clone()),
-                live_samples,
-                ..Default::default()
-            },
-            url: post.url().to_owned(),
+    Ok(BuiltPage::BlogPost(Box::new(JsonBlogPostPage {
+        doc: JsonBlogPostDoc {
+            title: post.title().to_string(),
+            mdn_url: post.url().to_owned(),
+            native: post.locale().into(),
+            page_title: page_title(post, true)?,
             locale: post.locale(),
-            blog_meta: Some((&post.meta).into()),
-            page_title: page_title(post, false)?,
-            image: Some(format!(
-                "{}{}{}",
-                base_url(),
-                post.url(),
-                post.meta.image.file
-            )),
+            body,
+            toc,
+            summary: Some(post.meta.description.clone()),
+            live_samples,
             ..Default::default()
         },
-    ))))
+        url: post.url().to_owned(),
+        locale: post.locale(),
+        blog_meta: Some((&post.meta).into()),
+        page_title: page_title(post, false)?,
+        image: Some(format!(
+            "{}{}{}",
+            base_url(),
+            post.url(),
+            post.meta.image.file
+        )),
+        renderer: BlogRenderer::BlogPost,
+        ..Default::default()
+    })))
 }
 
 fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
     let parents = parents(page);
     let PageContent { body, toc, .. } = built?;
-    Ok(BuiltPage::GenericPage(Box::new(
-        GenericPage::from_page_and_template(
-            JsonGenericPage {
-                hy_data: JsonGenericHyData {
-                    sections: body,
-                    title: page.meta.title.clone(),
-                    toc,
-                },
-                page_title: if let Some(suffix) = &page.meta.title_suffix {
-                    concat_strs!(page.meta.title.as_str(), " | ", suffix)
-                } else {
-                    page.meta.title.clone()
-                },
-                url: page.meta.url.clone(),
-                id: page.meta.page.clone(),
-                common: CommonJsonData {
-                    description: page.meta.description.clone(),
-                    parents,
-                },
-            },
-            page.meta.template,
-        ),
-    )))
+    Ok(BuiltPage::GenericPage(Box::new(JsonGenericPage {
+        hy_data: JsonGenericHyData {
+            sections: body,
+            title: page.meta.title.clone(),
+            toc,
+        },
+        page_title: if let Some(suffix) = &page.meta.title_suffix {
+            concat_strs!(page.meta.title.as_str(), " | ", suffix)
+        } else {
+            page.meta.title.clone()
+        },
+        url: page.meta.url.clone(),
+        id: page.meta.page.clone(),
+        common: CommonJsonData {
+            description: page.meta.description.clone(),
+            parents,
+        },
+        renderer: match page.meta.template {
+            super::types::generic::Template::GenericDoc => GenericRenderer::GenericDoc,
+            super::types::generic::Template::GenericAbout => GenericRenderer::GenericAbout,
+            super::types::generic::Template::GenericCommunity => GenericRenderer::GenericCommunity,
+        },
+    })))
 }
 
 fn build_spa(spa: &SPA) -> Result<BuiltPage, DocError> {
@@ -398,34 +401,36 @@ fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
         Template::Overview => prev_next_overview(curriculum.slug())?,
         _ => None,
     };
-    Ok(BuiltPage::Curriculum(Box::new(
-        CurriculumPage::from_page_and_template(
-            JsonCurriculumPage {
-                doc: super::json::JsonCurriculumDoc {
-                    title: curriculum.title().to_string(),
-                    locale: curriculum.locale(),
-                    native: curriculum.locale().into(),
-                    mdn_url: curriculum.meta.url.clone(),
-                    parents,
-                    page_title: page_title(curriculum, true)?,
-                    summary: curriculum.meta.summary.clone(),
-                    body,
-                    sidebar,
-                    toc,
-                    group,
-                    modules,
-                    prev_next,
-                    topic: Some(curriculum.meta.topic),
-                    template: curriculum.meta.template,
-                    ..Default::default()
-                },
-                url: curriculum.url().to_owned(),
-                page_title: page_title(curriculum, false)?,
-                locale: curriculum.locale(),
-            },
-            curriculum.meta.template,
-        ),
-    )))
+    Ok(BuiltPage::Curriculum(Box::new(JsonCurriculumPage {
+        doc: super::json::JsonCurriculumDoc {
+            title: curriculum.title().to_string(),
+            locale: curriculum.locale(),
+            native: curriculum.locale().into(),
+            mdn_url: curriculum.meta.url.clone(),
+            parents,
+            page_title: page_title(curriculum, true)?,
+            summary: curriculum.meta.summary.clone(),
+            body,
+            sidebar,
+            toc,
+            group,
+            modules,
+            prev_next,
+            topic: Some(curriculum.meta.topic),
+            template: curriculum.meta.template,
+            ..Default::default()
+        },
+        url: curriculum.url().to_owned(),
+        page_title: page_title(curriculum, false)?,
+        locale: curriculum.locale(),
+        renderer: match curriculum.meta.template {
+            curriculum::Template::Module => CurriculumRenderer::CurriculumModule,
+            curriculum::Template::Overview => CurriculumRenderer::CurriculumOverview,
+            curriculum::Template::Landing => CurriculumRenderer::CurriculumLanding,
+            curriculum::Template::About => CurriculumRenderer::CurriculumAbout,
+            curriculum::Template::Default => CurriculumRenderer::CurriculumDefault,
+        },
+    })))
 }
 
 fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, DocError> {
@@ -442,7 +447,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
     };
     let parents = parents(cs);
     Ok(BuiltPage::ContributorSpotlight(Box::new(
-        ContributorSpotlightPage::ContributorSpotlight(JsonContributorSpotlightPage {
+        JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
             page_title: cs.meta.title.clone(),
             hy_data: contributor_spotlight_data,
@@ -450,7 +455,8 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
                 description: cs.meta.description.clone(),
                 parents,
             },
-        }),
+            renderer: ContributorSpotlightRenderer::ContributorSpotlight,
+        },
     )))
 }
 

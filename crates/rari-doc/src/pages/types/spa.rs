@@ -12,6 +12,8 @@ use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::concat_strs;
 
+use crate::pages::templates::{BlogRenderer, HomeRenderer, SpaRenderer};
+
 use super::spa_homepage::{
     featured_articles, featured_contributor, latest_news, recent_contributions,
 };
@@ -26,7 +28,7 @@ use crate::pages::json::{
     JsonHomePage, JsonHomePageSPAHyData, JsonSpaPage,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
-use crate::pages::templates::{BlogPage, HomePage, SpaBuildTemplate, SpaPage};
+use crate::pages::templates::SpaBuildTemplate;
 use crate::pages::types::blog::BlogMeta;
 use crate::utils::filter_unpublished_blog_post;
 
@@ -107,100 +109,108 @@ impl SPA {
 
     pub fn as_built_doc(&self) -> Result<BuiltPage, DocError> {
         match &self.data {
-            SPAData::BlogIndex(pagination) => Ok(BuiltPage::BlogPost(Box::new(
-                BlogPage::BlogIndex(JsonBlogPostPage {
-                    doc: JsonBlogPostDoc {
-                        title: self.title().to_string(),
-                        mdn_url: self.url().to_owned(),
-                        native: self.locale().into(),
-                        page_title: page_title(self, true)?,
-                        locale: self.locale(),
-                        ..Default::default()
-                    },
-                    url: self.url().to_owned(),
+            SPAData::BlogIndex(pagination) => Ok(BuiltPage::BlogPost(Box::new(JsonBlogPostPage {
+                doc: JsonBlogPostDoc {
+                    title: self.title().to_string(),
+                    mdn_url: self.url().to_owned(),
+                    native: self.locale().into(),
+                    page_title: page_title(self, true)?,
                     locale: self.locale(),
-                    blog_meta: None,
-                    hy_data: Some(BlogIndex {
-                        posts: blog_files()
-                            .sorted_meta
-                            .iter()
-                            .rev()
-                            .skip(*POSTS_PER_PAGE * (pagination.current_page - 1))
-                            .take(*POSTS_PER_PAGE)
-                            .map(BlogMeta::from)
-                            .map(|mut m| {
-                                m.links = Default::default();
-                                m
-                            })
-                            .collect(),
-                        pagination: *pagination,
-                    }),
-                    page_title: self.title().to_owned(),
-                    common: CommonJsonData {
-                        parents: parents(self),
-                        ..Default::default()
-                    },
                     ..Default::default()
+                },
+                url: self.url().to_owned(),
+                locale: self.locale(),
+                blog_meta: None,
+                hy_data: Some(BlogIndex {
+                    posts: blog_files()
+                        .sorted_meta
+                        .iter()
+                        .rev()
+                        .skip(*POSTS_PER_PAGE * (pagination.current_page - 1))
+                        .take(*POSTS_PER_PAGE)
+                        .map(BlogMeta::from)
+                        .map(|mut m| {
+                            m.links = Default::default();
+                            m
+                        })
+                        .collect(),
+                    pagination: *pagination,
                 }),
-            ))),
-            SPAData::BasicSPA(basic_spa) => {
-                Ok(BuiltPage::SPA(Box::new(SpaPage::from_page_and_template(
-                    JsonSpaPage {
-                        slug: self.slug,
-                        page_title: self.page_title,
-                        page_description: self.page_description,
-                        only_follow: basic_spa.only_follow,
-                        no_indexing: basic_spa.no_indexing,
-                        page_not_found: false,
-                        url: concat_strs!(self.base_slug.as_ref(), self.slug),
-                        common: CommonJsonData {
-                            parents: parents(self),
-                            ..Default::default()
-                        },
-                    },
-                    self.template,
-                ))))
-            }
-            SPAData::NotFound => Ok(BuiltPage::SPA(Box::new(SpaPage::from_page_and_template(
-                JsonSpaPage {
-                    slug: self.slug,
-                    page_title: self.page_title,
+                page_title: self.title().to_owned(),
+                common: CommonJsonData {
+                    parents: parents(self),
+                    ..Default::default()
+                },
+                image: None,
+                renderer: BlogRenderer::BlogIndex,
+            }))),
+            SPAData::BasicSPA(basic_spa) => Ok(BuiltPage::SPA(Box::new(JsonSpaPage {
+                slug: self.slug,
+                page_title: self.page_title,
+                page_description: self.page_description,
+                only_follow: basic_spa.only_follow,
+                no_indexing: basic_spa.no_indexing,
+                page_not_found: false,
+                url: concat_strs!(self.base_slug.as_ref(), self.slug),
+                common: CommonJsonData {
+                    parents: parents(self),
+                    ..Default::default()
+                },
+                renderer: match self.template {
+                    SpaBuildTemplate::SpaNotFound => SpaRenderer::SpaNotFound,
+                    SpaBuildTemplate::SpaObservatoryLanding => SpaRenderer::SpaObservatoryLanding,
+                    SpaBuildTemplate::SpaObservatoryAnalyze => SpaRenderer::SpaObservatoryAnalyze,
+                    SpaBuildTemplate::SpaAdvertise => SpaRenderer::SpaAdvertise,
+                    SpaBuildTemplate::SpaPlusLanding => SpaRenderer::SpaPlusLanding,
+                    SpaBuildTemplate::SpaPlusCollections => SpaRenderer::SpaPlusCollections,
+                    SpaBuildTemplate::SpaPlusCollectionsFrequentlyViewed => {
+                        SpaRenderer::SpaPlusCollectionsFrequentlyViewed
+                    }
+                    SpaBuildTemplate::SpaPlusUpdates => SpaRenderer::SpaPlusUpdates,
+                    SpaBuildTemplate::SpaPlusSettings => SpaRenderer::SpaPlusSettings,
+                    SpaBuildTemplate::SpaPlusAiHelp => SpaRenderer::SpaPlusAiHelp,
+                    SpaBuildTemplate::SpaPlay => SpaRenderer::SpaPlay,
+                    SpaBuildTemplate::SpaSearch => SpaRenderer::SpaSearch,
+                    _ => SpaRenderer::SpaUnknown,
+                },
+            }))),
+            SPAData::NotFound => Ok(BuiltPage::SPA(Box::new(JsonSpaPage {
+                slug: self.slug,
+                page_title: self.page_title,
+                page_description: self.page_description,
+                only_follow: false,
+                no_indexing: true,
+                page_not_found: true,
+                url: concat_strs!(self.base_slug.as_ref(), self.slug),
+                common: CommonJsonData {
+                    parents: parents(self),
+                    ..Default::default()
+                },
+                renderer: SpaRenderer::SpaNotFound,
+            }))),
+            SPAData::HomePage(home_page_data) => Ok(BuiltPage::Home(Box::new(JsonHomePage {
+                url: concat_strs!("/", self.locale().as_url_str(), "/", self.slug),
+                page_title: self.page_title,
+                hy_data: JsonHomePageSPAHyData {
                     page_description: self.page_description,
-                    only_follow: false,
-                    no_indexing: true,
-                    page_not_found: true,
-                    url: concat_strs!(self.base_slug.as_ref(), self.slug),
-                    common: CommonJsonData {
-                        parents: parents(self),
-                        ..Default::default()
+                    featured_articles: featured_articles(
+                        &home_page_data.featured_articles,
+                        self.locale,
+                    )?,
+                    featured_contributor: featured_contributor(self.locale)?,
+                    latest_news: ItemContainer {
+                        items: latest_news(&home_page_data.latest_news)?,
+                    },
+                    recent_contributions: ItemContainer {
+                        items: recent_contributions()?,
                     },
                 },
-                self.template,
-            )))),
-            SPAData::HomePage(home_page_data) => Ok(BuiltPage::Home(Box::new(HomePage::Homepage(
-                JsonHomePage {
-                    url: concat_strs!("/", self.locale().as_url_str(), "/", self.slug),
-                    page_title: self.page_title,
-                    hy_data: JsonHomePageSPAHyData {
-                        page_description: self.page_description,
-                        featured_articles: featured_articles(
-                            &home_page_data.featured_articles,
-                            self.locale,
-                        )?,
-                        featured_contributor: featured_contributor(self.locale)?,
-                        latest_news: ItemContainer {
-                            items: latest_news(&home_page_data.latest_news)?,
-                        },
-                        recent_contributions: ItemContainer {
-                            items: recent_contributions()?,
-                        },
-                    },
-                    common: CommonJsonData {
-                        parents: parents(self),
-                        ..Default::default()
-                    },
+                common: CommonJsonData {
+                    parents: parents(self),
+                    ..Default::default()
                 },
-            )))),
+                renderer: HomeRenderer::Homepage,
+            }))),
         }
     }
 }

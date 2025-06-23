@@ -96,7 +96,7 @@ console = "0.15"
 sha2 = "0.10"
 dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"
-schemars = { version = "0.8", features = ["chrono", "url"] }
+schemars = { version = "0.9", features = ["chrono04", "url2"] }
 pretty_yaml = "0.5"
 yaml_parser = "0.2"
 const_format = "0.2"
