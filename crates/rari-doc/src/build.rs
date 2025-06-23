@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::iter::once;
-use std::ops::DerefMut;
 use std::path::PathBuf;
 
 use chrono::{NaiveDateTime, Utc};
@@ -32,7 +31,6 @@ use crate::issues::{to_display_issues, IN_MEMORY};
 use crate::pages::build::copy_additional_files;
 use crate::pages::json::{BuiltPage, JsonDocMetadata};
 use crate::pages::page::{Page, PageBuilder, PageLike};
-use crate::pages::templates::DocPage;
 use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
 use crate::rss::create_rss;
@@ -73,8 +71,7 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     let _enter = span.enter();
     let mut built_page = page.build()?;
     if settings().json_issues {
-        if let BuiltPage::Doc(inner) = &mut built_page {
-            let DocPage::Doc(json_doc) = inner.deref_mut();
+        if let BuiltPage::Doc(json_doc) = &mut built_page {
             let flaws = if let Some(issues) = IN_MEMORY
                 .get_events()
                 .get(page.full_path().to_string_lossy().as_ref())
@@ -105,7 +102,6 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
 pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
     let (built_doc, hash) = build_single_page(page)?;
     if let BuiltPage::Doc(json) = built_doc {
-        let DocPage::Doc(json) = *json;
         let meta = JsonDocMetadata::from_json_doc(json.doc, hash);
 
         let out_path = build_out_root()

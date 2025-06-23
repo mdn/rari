@@ -13,14 +13,15 @@ use rari_types::locale::{Locale, Native};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::templates::{
-    BlogPage, ContributorSpotlightPage, CurriculumPage, DocPage, GenericPage, HomePage, SpaPage,
-};
 use super::types::contributors::Usernames;
 use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
 use crate::cached_readers::PaginationData;
 use crate::html::code::Code;
 use crate::issues::DisplayIssues;
+use crate::pages::templates::{
+    BlogRenderer, ContributorSpotlightRenderer, CurriculumRenderer, DocPageRenderer,
+    GenericRenderer, HomeRenderer, SpaRenderer,
+};
 use crate::pages::types::blog::BlogMeta;
 use crate::specs::Specification;
 use crate::utils::modified_dt;
@@ -379,6 +380,7 @@ pub struct JsonDocMetadata {
 pub struct JsonDocPage {
     pub doc: JsonDoc,
     pub url: String,
+    pub renderer: DocPageRenderer,
 }
 
 /// Represents an index of blog posts in the documentation system.
@@ -471,6 +473,7 @@ pub struct JsonCurriculumPage {
     #[serde(rename = "pageTitle")]
     pub page_title: String,
     pub locale: Locale,
+    pub renderer: CurriculumRenderer,
 }
 
 /// Represents a blog post in the system.
@@ -553,6 +556,7 @@ pub struct JsonBlogPostPage {
     pub hy_data: Option<BlogIndex>,
     #[serde(flatten)]
     pub common: CommonJsonData,
+    pub renderer: BlogRenderer,
 }
 
 /// Represents a contributor spotlight page in the documentation system.
@@ -610,6 +614,7 @@ pub struct JsonContributorSpotlightPage {
     pub hy_data: ContributorSpotlightHyData,
     #[serde(flatten)]
     pub common: CommonJsonData,
+    pub renderer: ContributorSpotlightRenderer,
 }
 
 /// Represents the different JSON artifacts of built pages.
@@ -621,19 +626,19 @@ pub struct JsonContributorSpotlightPage {
 #[serde(untagged)]
 pub enum BuiltPage {
     /// Represents a standard documentation page, backed by a Markdown source.
-    Doc(Box<DocPage>),
+    Doc(Box<JsonDocPage>),
     /// Represents a curriculum page, backed by a Markdown source
-    Curriculum(Box<CurriculumPage>),
+    Curriculum(Box<JsonCurriculumPage>),
     /// Represents a blog post, backed by a Markdown source
-    BlogPost(Box<BlogPage>),
+    BlogPost(Box<JsonBlogPostPage>),
     /// Represents a contributor spotlight page, backed by a Markdown source.
-    ContributorSpotlight(Box<ContributorSpotlightPage>),
+    ContributorSpotlight(Box<JsonContributorSpotlightPage>),
     /// Represents a generic page, i.e Observatory FAQ, About pages, etc.
-    GenericPage(Box<GenericPage>),
+    GenericPage(Box<JsonGenericPage>),
     /// Represents a basic single-page application. i.e. AI Help, Observatory, etc.
-    SPA(Box<SpaPage>),
+    SPA(Box<JsonSpaPage>),
     /// Represents the home page.
-    Home(Box<HomePage>),
+    Home(Box<JsonHomePage>),
 }
 
 /// Represents the previous and next navigation links by slug.
@@ -734,6 +739,7 @@ pub struct JsonSpaPage {
     pub url: String,
     #[serde(flatten)]
     pub common: CommonJsonData,
+    pub renderer: SpaRenderer,
 }
 
 /// Represents a featured article (usually a blog post or documentation page) on the home page.
@@ -898,6 +904,7 @@ pub struct JsonHomePage {
     pub url: String,
     #[serde(flatten)]
     pub common: CommonJsonData,
+    pub renderer: HomeRenderer,
 }
 
 /// Represents the data for a generic page in the system. Generic pages are used for various purposes,
@@ -946,6 +953,7 @@ pub struct JsonGenericPage {
     pub id: String,
     #[serde(flatten)]
     pub common: CommonJsonData,
+    pub renderer: GenericRenderer,
 }
 
 #[derive(Debug, Clone, Default, Serialize, JsonSchema)]

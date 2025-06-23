@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicI64, AtomicU64};
 
@@ -16,7 +15,6 @@ use rari_doc::error::{DocError, UrlError};
 use rari_doc::issues::{to_display_issues, IN_MEMORY, ISSUE_COUNTER_F};
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageCategory, PageLike};
-use rari_doc::pages::templates::DocPage;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::resolve::{url_meta_from, UrlMeta};
@@ -156,7 +154,6 @@ async fn get_json_handler(req: Request) -> Result<Response, AppError> {
             let mut json = page.build()?;
             tracing::info!("{url}");
             if let BuiltPage::Doc(json_doc) = &mut json {
-                let DocPage::Doc(json_doc) = json_doc.deref_mut();
                 let m = IN_MEMORY.get_events();
                 let (_, req_issues) = m
                     .remove(page.full_path().to_string_lossy().as_ref())
@@ -200,7 +197,6 @@ fn get_contributors(url: &str) -> Result<String, AppError> {
     let page = Page::from_url_with_fallback(url)?;
     let json = page.build()?;
     let github_file_url = if let BuiltPage::Doc(ref doc) = json {
-        let DocPage::Doc(doc) = doc.deref();
         &doc.doc.source.github_url
     } else {
         ""
