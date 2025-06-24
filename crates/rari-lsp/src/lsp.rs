@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -10,6 +11,7 @@ use rari_doc::pages::page::{Page, PageLike};
 use rari_doc::pages::types::doc::doc_from_raw;
 use rari_doc::templ::templs::TEMPL_MAP;
 use rari_tools::fix::issues::get_fixable_issues;
+use rari_types::locale::Locale;
 use tower_lsp_server::lsp_types::{
     CodeAction, CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability,
     CodeActionResponse, CompletionItem, CompletionItemKind, CompletionList, CompletionOptions,
@@ -289,7 +291,12 @@ impl LanguageServer for Backend {
                 self.client
                     .log_message(MessageType::INFO, format!("Checking completion for {link}"))
                     .await;
-                let items = doc_pages_from_slugish(&link, rari_types::locale::Locale::EnUs)
+                let (locale, link) = link
+                    .trim_start_matches('/')
+                    .split_once('/')
+                    .and_then(|(l, link)| (Locale::from_str(l).ok().map(|l| (l, link))))
+                    .unwrap_or((Locale::EnUs, &link));
+                let items = doc_pages_from_slugish(link, locale)
                     .unwrap()
                     .into_iter()
                     .map(|item| CompletionItem {
