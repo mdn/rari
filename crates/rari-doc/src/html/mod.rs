@@ -1,3 +1,4 @@
+pub mod banner;
 pub mod bubble_up;
 pub mod code;
 mod fix_img;

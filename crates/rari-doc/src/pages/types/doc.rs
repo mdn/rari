@@ -81,6 +81,13 @@ pub struct FrontMatter {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub sidebar: Vec<FmTempl>,
+    #[serde(
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub banners: Vec<FmTempl>,
     #[serde(flatten)]
     pub other: HashMap<String, Value>,
 }
@@ -101,6 +108,7 @@ pub struct Meta {
     pub full_path: PathBuf,
     pub path: PathBuf,
     pub url: String,
+    pub banners: Vec<FmTempl>,
 }
 
 #[derive(Debug, Clone)]
@@ -288,6 +296,10 @@ impl PageLike for Doc {
     fn raw_content(&self) -> &str {
         &self.raw
     }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        Some(&self.meta.banners)
+    }
 }
 
 pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, DocError> {
@@ -306,6 +318,7 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
         spec_urls,
         original_slug,
         sidebar,
+        banners,
         ..
     } = serde_yaml_ng::from_str(fm)?;
     let url = build_url(&slug, locale, PageCategory::Doc)?;
@@ -351,6 +364,7 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
             full_path,
             path,
             url,
+            banners,
         },
         raw,
         content_start,

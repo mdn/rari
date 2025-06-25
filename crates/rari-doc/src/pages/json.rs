@@ -23,6 +23,7 @@ use crate::pages::templates::{
     GenericRenderer, HomeRenderer, SpaRenderer,
 };
 use crate::pages::types::blog::BlogMeta;
+use crate::pages::types::utils::FmTempl;
 use crate::specs::Specification;
 use crate::utils::modified_dt;
 
@@ -280,6 +281,8 @@ pub struct JsonDoc {
     pub flaws: Option<DisplayIssues>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub live_samples: Option<Vec<Code>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub banners: Vec<FmTempl>,
 }
 
 impl JsonDocMetadata {

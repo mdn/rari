@@ -9,6 +9,7 @@ use indexmap::IndexMap;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
 use rari_types::locale::{default_locale, Locale};
+use rari_types::templ::TemplType;
 use rari_types::{Arg, Quotes};
 use rari_utils::concat_strs;
 use scraper::{Html, Node, Selector};
@@ -154,11 +155,11 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
         let span = span!(Level::ERROR, "sidebar", sidebar = name,);
         let _enter = span.enter();
         let rendered_sidebar = match invoke(&rari_env, name, args) {
-            Ok((rendered_sidebar, true)) => rendered_sidebar,
-            Ok((_, false)) => {
+            Ok((rendered_sidebar, TemplType::Sidebar)) => rendered_sidebar,
+            Ok((_, typ)) => {
                 let span = span!(Level::ERROR, "sidebar", sidebar = name,);
                 let _enter = span.enter();
-                tracing::warn!("regular macro in sidebar frontmatter");
+                tracing::warn!("{typ} macro in sidebar frontmatter");
                 Default::default()
             }
             Err(e) => {
@@ -174,13 +175,17 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
 }
 
 pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
-    let out = doc
-        .meta
-        .sidebar
-        .iter()
-        .map(|s| build_sidebar(s, doc))
-        .collect::<Result<String, DocError>>()?;
-    Ok(if out.is_empty() { None } else { Some(out) })
+    Ok(if doc.meta.sidebar.is_empty() {
+        None
+    } else {
+        Some(
+            doc.meta
+                .sidebar
+                .iter()
+                .map(|s| build_sidebar(s, doc))
+                .collect::<Result<String, DocError>>()?,
+        )
+    })
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]

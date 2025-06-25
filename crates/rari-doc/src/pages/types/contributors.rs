@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
+use crate::pages::types::utils::FmTempl;
 use crate::utils::split_fm;
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -247,6 +248,10 @@ impl PageLike for ContributorSpotlight {
 
     fn raw_content(&self) -> &str {
         &self.raw
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        None
     }
 }
 

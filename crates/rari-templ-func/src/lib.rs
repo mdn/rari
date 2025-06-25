@@ -69,7 +69,7 @@ struct RariFargs {
     #[darling(default)]
     register: Option<syn::TypePath>,
     #[darling(default)]
-    sidebar: bool,
+    typ: Option<syn::TypePath>,
 }
 
 /// Define rari templ functions.
@@ -186,24 +186,24 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
         .insert(0, parse_quote!(env: &::rari_types::RariEnv));
 
     let dup_ident = dup.sig.ident.clone();
-    let is_sidebar: Lit = if attr_args.sidebar {
-        parse_quote!(true)
-    } else {
-        parse_quote!(false)
-    };
+    let typ = attr_args
+        .typ
+        .map(|typ| quote! { #typ })
+        .unwrap_or(quote! { TemplType::None });
+
     let collect = if let Some(inventory_type) = attr_args.register {
         quote! {
-            inventory::submit! {
-                #inventory_type {
-                    name: #name,
-                    outline: #outline,
-                    outline_snippet: #outline_snippet,
-                    outline_plain: #outline_plain,
-                    doc: #doc_string,
-                    function: #dup_ident,
-                    is_sidebar: #is_sidebar,
+                inventory::submit! {
+                    #inventory_type {
+                        name: #name,
+                        outline: #outline,
+                        outline_snippet: #outline_snippet,
+                        outline_plain: #outline_plain,
+                        doc: #doc_string,
+                        function: #dup_ident,
+                        typ: rari_types::templ::#typ,
+                    }
                 }
-            }
         }
     } else {
         quote! {}

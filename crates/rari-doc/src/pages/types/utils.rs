@@ -1,10 +1,11 @@
 use std::fmt;
 
+use schemars::JsonSchema;
 use serde::de::{self, MapAccess, SeqAccess, Visitor};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub enum FmTempl {
     NoArgs(String),
     WithArgs { name: String, args: Vec<String> },
@@ -38,14 +39,14 @@ impl<'de> Deserialize<'de> for FmTempl {
             where
                 E: de::Error,
             {
-                Ok(FmTempl::NoArgs(s.to_owned()))
+                Ok(FmTempl::NoArgs(s.to_lowercase()))
             }
 
             fn visit_string<E>(self, s: String) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                Ok(FmTempl::NoArgs(s))
+                Ok(FmTempl::NoArgs(s.to_lowercase()))
             }
 
             fn visit_seq<A>(self, mut _seq: A) -> Result<Self::Value, A::Error>
@@ -66,7 +67,7 @@ impl<'de> Deserialize<'de> for FmTempl {
                         return Err(de::Error::custom("map has more than one key"));
                     }
                     Ok(FmTempl::WithArgs {
-                        name: key,
+                        name: key.to_lowercase(),
                         args: val,
                     })
                 } else {

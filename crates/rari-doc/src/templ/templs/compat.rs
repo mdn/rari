@@ -72,7 +72,7 @@ mod test {
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ compat }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, r#""#);
         Ok(())
     }
@@ -89,7 +89,7 @@ If you're able to see this, something went wrong on this page.
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ compat }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, exp);
         Ok(())
     }
@@ -112,7 +112,7 @@ If you're able to see this, something went wrong on this page.
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ compat }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, exp);
         Ok(())
     }

@@ -13,6 +13,7 @@ use rari_types::RariEnv;
 use rari_utils::concat_strs;
 
 use crate::pages::templates::{BlogRenderer, HomeRenderer, SpaRenderer};
+use crate::pages::types::utils::FmTempl;
 
 use super::spa_homepage::{
     featured_articles, featured_contributor, latest_news, recent_contributions,
@@ -288,6 +289,10 @@ impl PageLike for SPA {
 
     fn raw_content(&self) -> &str {
         ""
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        None
     }
 }
 
