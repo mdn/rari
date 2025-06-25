@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.45](https://github.com/mdn/rari/compare/v0.1.44...v0.1.45) (2025-06-25)
+
+
+### Features
+
+* **frontmatter:** support banners ([#260](https://github.com/mdn/rari/issues/260)) ([2a25e22](https://github.com/mdn/rari/commit/2a25e22c69dd23a1abb82169fd60f037da7bf414))
+* **json:** update schemars and inline renderer ([#258](https://github.com/mdn/rari/issues/258)) ([0d2539c](https://github.com/mdn/rari/commit/0d2539c4aea9beb876a72c53a2d91b0daa2bbc59))
+* **lsp:** support other locales in links ([0381de8](https://github.com/mdn/rari/commit/0381de814e6dfd01129d0ade9a1d61a4c44a64ff))
+* **updates:** allow skip updates from env ([#256](https://github.com/mdn/rari/issues/256)) ([c5b03eb](https://github.com/mdn/rari/commit/c5b03eb1277dd49b7c24d757fc8fdd209e847245))
+
+
+### Miscellaneous
+
+* **deps:** bump brace-expansion from 2.0.1 to 2.0.2 in /rari-npm ([#259](https://github.com/mdn/rari/issues/259)) ([2cfb136](https://github.com/mdn/rari/commit/2cfb13653ca99f4ed489ec0c7a4eae2d8c65afeb))
+* **deps:** update major deps ([47b9a5e](https://github.com/mdn/rari/commit/47b9a5e0745014e74855fb005ab60283bdd504f3))
+
 ## [0.1.44](https://github.com/mdn/rari/compare/v0.1.43...v0.1.44) (2025-06-20)
 
 
