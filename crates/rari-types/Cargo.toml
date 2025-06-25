@@ -20,8 +20,11 @@ schemars.workspace = true
 semver.workspace = true
 tracing.workspace = true
 strum.workspace = true
+darling.workspace = true
+quote.workspace = true
 
 serde_variant = "0.1"
 normalize-path = "0.2"
 dirs = "6"
 config = { version = "0.15", default-features = false, features = ["toml"] }
+proc-macro2 = "1"

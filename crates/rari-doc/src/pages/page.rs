@@ -18,6 +18,7 @@ use crate::pages::types::contributors::ContributorSpotlight;
 use crate::pages::types::curriculum::Curriculum;
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
+use crate::pages::types::utils::FmTempl;
 use crate::resolve::{url_meta_from, UrlMeta};
 use crate::utils::locale_and_typ_from_path;
 
@@ -251,6 +252,7 @@ pub trait PageLike {
     fn trailing_slash(&self) -> bool;
     fn fm_offset(&self) -> usize;
     fn raw_content(&self) -> &str;
+    fn banners(&self) -> Option<&[FmTempl]>;
 }
 
 impl<T: PageLike> PageLike for Arc<T> {
@@ -320,6 +322,10 @@ impl<T: PageLike> PageLike for Arc<T> {
 
     fn raw_content(&self) -> &str {
         (**self).raw_content()
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        (**self).banners()
     }
 }
 

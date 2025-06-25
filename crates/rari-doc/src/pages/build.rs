@@ -21,6 +21,7 @@ use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::helpers::parents::parents;
 use crate::helpers::title::{page_title, transform_title};
+use crate::html::banner::build_banner;
 use crate::html::bubble_up::bubble_up_curriculum_page;
 use crate::html::code::{code_blocks, Code};
 use crate::html::modifier::{add_missing_ids, insert_self_links_for_dts, remove_empty_p};
@@ -162,8 +163,18 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     } else {
         (Cow::Borrowed(page.content()), vec![], vec![])
     };
+    let banners = if let Some(banners) = page.banners() {
+        Some(
+            banners
+                .iter()
+                .map(|banner| build_banner(banner, page))
+                .collect::<Result<Vec<String>, DocError>>()?,
+        )
+    } else {
+        None
+    };
     let encoded_html = m2h(&ks_rendered_doc, page.locale())?;
-    let html = decode_ref(&encoded_html, &templs)?;
+    let html = decode_ref(&encoded_html, &templs, banners.as_deref())?;
     let post_processed_html = post_process_html(&html, page, false)?;
 
     let mut fragment = Html::parse_fragment(&post_processed_html);
@@ -312,6 +323,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             page_type: doc.meta.page_type,
             flaws: None,
             live_samples,
+            banners: doc.meta.banners.clone(),
         },
         url: doc.meta.url.clone(),
         renderer: DocPageRenderer::Doc,

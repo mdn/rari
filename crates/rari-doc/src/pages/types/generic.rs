@@ -12,6 +12,7 @@ use serde::Deserialize;
 use crate::cached_readers::{generic_content_config, generic_content_files, GenericPagesConfig};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
+use crate::pages::types::utils::FmTempl;
 use crate::utils::split_fm;
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
@@ -217,6 +218,10 @@ impl PageLike for Generic {
 
     fn raw_content(&self) -> &str {
         &self.raw
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        None
     }
 }
 

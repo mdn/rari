@@ -11,10 +11,10 @@ proc-macro = true
 
 [dependencies]
 rari-types.workspace = true
+darling.workspace = true
+quote.workspace = true
 
 syn = { version = "2", features = ["full"] }
-quote = "1"
-darling = "0.20"
 
 [dev-dependencies]
 anyhow.workspace = true

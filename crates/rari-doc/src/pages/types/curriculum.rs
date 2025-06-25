@@ -16,6 +16,7 @@ use crate::cached_readers::curriculum_files;
 use crate::error::DocError;
 use crate::pages::json::{Parent, PrevNextBySlug, PrevNextByUrl, UrlNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
+use crate::pages::types::utils::FmTempl;
 use crate::utils::{as_null, split_fm};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -262,6 +263,10 @@ impl PageLike for Curriculum {
 
     fn raw_content(&self) -> &str {
         &self.raw_content
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        None
     }
 }
 

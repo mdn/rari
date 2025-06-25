@@ -32,7 +32,7 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use rari_types::globals::deny_warnings;
-use rari_types::templ::RariFn;
+use rari_types::templ::{RariFn, TemplType};
 use rari_types::{Arg, RariEnv};
 use tracing::error;
 
@@ -47,7 +47,7 @@ pub struct Templ {
     pub outline_plain: &'static str,
     pub doc: &'static str,
     pub function: RariFn<Result<String, DocError>>,
-    pub is_sidebar: bool,
+    pub typ: TemplType,
 }
 
 inventory::collect!(Templ);
@@ -66,11 +66,11 @@ pub fn invoke(
     env: &RariEnv,
     name: &str,
     args: Vec<Option<Arg>>,
-) -> Result<(String, bool), DocError> {
+) -> Result<(String, TemplType), DocError> {
     let name = name.replace('-', "_");
     let (f, is_sidebar) = match TEMPL_MAPPING.get(name.as_str()) {
-        Some(t) => (t.function, t.is_sidebar),
-        None if name == "xulelem" => return Ok((Default::default(), false)),
+        Some(t) => (t.function, t.typ),
+        None if name == "xulelem" => return Ok((Default::default(), TemplType::None)),
         None if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
         None => {
             TEMPL_RECORDER.with(|tx| {
@@ -80,7 +80,7 @@ pub fn invoke(
                     }
                 }
             });
-            return Ok((format!("<s>unsupported templ: {name}</s>"), false));
+            return Ok((format!("<s>unsupported templ: {name}</s>"), TemplType::None));
         } //
     };
     f(env, args).map(|s| (s, is_sidebar))

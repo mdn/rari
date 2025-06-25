@@ -2662,9 +2662,12 @@ version = "0.1.44"
 dependencies = [
  "chrono",
  "config",
+ "darling",
  "dirs",
  "indexmap",
  "normalize-path",
+ "proc-macro2",
+ "quote",
  "schemars",
  "semver",
  "serde",
