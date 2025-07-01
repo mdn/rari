@@ -4,16 +4,12 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
-use chrono::Utc;
 use constcat::concat;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::{content_translated_root, settings};
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::concat_strs;
-
-use crate::pages::templates::{BlogRenderer, HomeRenderer, SpaRenderer};
-use crate::pages::types::utils::FmTempl;
 
 use super::spa_homepage::{
     featured_articles, featured_contributor, latest_news, recent_contributions,
@@ -29,9 +25,9 @@ use crate::pages::json::{
     JsonHomePage, JsonHomePageSPAHyData, JsonSpaPage, Parent,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
-use crate::pages::templates::SpaBuildTemplate;
+use crate::pages::templates::{BlogRenderer, HomeRenderer, SpaBuildTemplate, SpaRenderer};
 use crate::pages::types::blog::BlogMeta;
-use crate::utils::filter_unpublished_blog_post;
+use crate::pages::types::utils::FmTempl;
 
 #[derive(Debug, Clone)]
 pub struct SPA {
@@ -321,12 +317,7 @@ static POSTS_PER_PAGE: LazyLock<usize> = LazyLock::new(|| {
 });
 
 fn blog_indices() -> Vec<(String, BuildSPA)> {
-    let now = Utc::now().date_naive();
-    let num_posts = blog_files()
-        .posts
-        .values()
-        .filter(|post| filter_unpublished_blog_post(post, &now))
-        .count();
+    let num_posts = blog_files().posts.values().count();
     let pages = num_posts / *POSTS_PER_PAGE;
     iter::once((
         "blog".to_string(),
