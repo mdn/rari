@@ -347,10 +347,7 @@ fn namespace_subpages(namespace: &str) -> Vec<Cow<'_, str>> {
     once(Cow::Borrowed(namespace))
         .chain(
             get_sub_pages(
-                &format!(
-                    "/en-US/docs/Web/JavaScript/Reference/Global_Objects/{}",
-                    namespace
-                ),
+                &format!("/en-US/docs/Web/JavaScript/Reference/Global_Objects/{namespace}"),
                 Some(1),
                 Default::default(),
             )

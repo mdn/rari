@@ -189,7 +189,7 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use IntI::*;
         match self {
-            Finite(x) => write!(f, "{}", x),
+            Finite(x) => write!(f, "{x}"),
             Infinity => write!(f, "∞"),
             NegativeInfinity => write!(f, "-∞"),
         }

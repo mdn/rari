@@ -388,9 +388,7 @@ fn fix_redirects_internal(
         // Parse the locale string into a Locale enum
         let locale = Locale::from_str(locale_str).map_err(|_| {
             ToolError::InvalidLocale(Cow::Owned(format!(
-                "Cannot detect a valid locale for '{}'. Search for a '{}\t{}' pair in all _redirects.txt files to locate the problem.",
-                from, from, to
-            )))
+                "Cannot detect a valid locale for '{from}'. Search for a '{from}\t{to}' pair in all _redirects.txt files to locate the problem.")))
         })?;
         if to.starts_with('/') {
             let (bare_url, hash) = to.split_once('#').map(|(u, h)| (u, Some(h))).unwrap_or((&to, None));
@@ -563,31 +561,26 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
     let url = url.to_lowercase();
     if !url.starts_with('/') {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL must start with a '/' but was '{}' for locale '{}'.",
-            url, locale
+            "From-URL must start with a '/' but was '{url}' for locale '{locale}'."
         )));
     }
 
     let parts: Vec<&str> = url.split('/').collect();
     if parts.len() < 4 {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL '{}' does not have enough parts for locale validation for locale '{}'.",
-            url, locale
-        )));
+            "From-URL '{url}' does not have enough parts for locale validation for locale '{locale}'."        )));
     }
 
     let from_locale = parts[1];
     if from_locale != locale.as_url_str().to_lowercase() {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL has locale '{}' which does not match expected locale '{}'. URL: '{}'",
-            from_locale, locale, url
+            "From-URL has locale '{from_locale}' which does not match expected locale '{locale}'. URL: '{url}'"
         )));
     }
 
     if parts[2] != "docs" {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL '{}' must contain '/docs/' (locale: '{}').",
-            url, locale
+            "From-URL '{url}' must contain '/docs/' (locale: '{locale}')."
         )));
     }
 
@@ -642,7 +635,7 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
         // Internal URL, perform validations
         check_url_invalid_symbols(url).map_err(|e: ToolError| match e {
             ToolError::InvalidRedirectToURL(msg) => {
-                ToolError::InvalidRedirectToURL(format!("Locale: '{}': {}", locale, msg))
+                ToolError::InvalidRedirectToURL(format!("Locale: '{locale}': {msg}"))
             }
             _ => e,
         })?;
@@ -675,8 +668,7 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
         }
     } else {
         return Err(ToolError::InvalidRedirectToURL(format!(
-            "To-URL '{}' has to be external (https://) or start with '/' for locale '{}'.",
-            url, locale
+            "To-URL '{url}' has to be external (https://) or start with '/' for locale '{locale}'."
         )));
     }
 
@@ -1058,8 +1050,7 @@ mod tests {
         for pair in &pairs {
             assert!(
                 proper_redirects.contains(&pair),
-                "Proper redirects should contain {:?}",
-                pair
+                "Proper redirects should contain {pair:?}"
             );
         }
     }

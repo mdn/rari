@@ -158,8 +158,7 @@ fn do_remove(
     let subpages = get_sub_pages(doc.url(), None, Default::default())?;
     if !recursive && !subpages.is_empty() && redirect.is_some() {
         return Err(ToolError::HasSubpagesError(Cow::Owned(format!(
-            "{0}, unable to remove and redirect a document with children",
-            slug
+            "{slug}, unable to remove and redirect a document with children"
         ))));
     }
 

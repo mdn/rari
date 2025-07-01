@@ -84,8 +84,8 @@ pub fn img_size(
                 };
 
                 (
-                    final_width.map(|w| format!("{:.0}", w)),
-                    final_height.map(|h| format!("{:.0}", h)),
+                    final_width.map(|w| format!("{w:.0}")),
+                    final_height.map(|h| format!("{h:.0}")),
                 )
             }
             Err(e) => {
