@@ -196,7 +196,7 @@ impl LanguageServer for Backend {
                         self.client
                             .log_message(
                                 MessageType::ERROR,
-                                format!("Bad edit info, failed to edit tree: {}", err),
+                                format!("Bad edit info, failed to edit tree: {err}"),
                             )
                             .await;
                     }
@@ -244,7 +244,7 @@ impl LanguageServer for Backend {
                         self.client
                             .log_message(
                                 MessageType::WARNING,
-                                format!("Documentation for keyword '{}' not found.", keyword),
+                                format!("Documentation for keyword '{keyword}' not found."),
                             )
                             .await;
                         Ok(None)

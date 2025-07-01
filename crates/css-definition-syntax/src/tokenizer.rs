@@ -73,7 +73,7 @@ impl Tokenizer {
     }
 
     pub fn error(&self, message: &str) {
-        eprintln!("Tokenizer error: {}", message);
-        panic!("Tokenizer error: {}", message);
+        eprintln!("Tokenizer error: {message}");
+        panic!("Tokenizer error: {message}");
     }
 }

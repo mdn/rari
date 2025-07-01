@@ -92,7 +92,7 @@ create_formatter!(CustomFormatter<RariContext>, {
                             );
                         }
                     } else {
-                        code_attr = format!("language-{}", lang_str);
+                        code_attr = format!("language-{lang_str}");
                         code_attributes.insert(String::from("class"), code_attr);
 
                         if context.options.render.full_info_string && !info_str.is_empty() {
@@ -164,7 +164,7 @@ create_formatter!(CustomFormatter<RariContext>, {
                     write!(context, " data-update-id")?;
                 } else {
                     let id = anchorize(&raw_id);
-                    write!(context, " id=\"{}\"", id)?;
+                    write!(context, " id=\"{id}\"")?;
                 };
             }
             render_sourcepos(context, node)?;

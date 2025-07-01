@@ -75,9 +75,9 @@ impl Display for AnyArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.value {
             Arg::String(s, _) => f.write_str(s),
-            Arg::Int(n) => f.write_fmt(format_args!("{}", n)),
-            Arg::Float(n) => f.write_fmt(format_args!("{}", n)),
-            Arg::Bool(b) => f.write_fmt(format_args!("{}", b)),
+            Arg::Int(n) => f.write_fmt(format_args!("{n}")),
+            Arg::Float(n) => f.write_fmt(format_args!("{n}")),
+            Arg::Bool(b) => f.write_fmt(format_args!("{b}")),
         }
     }
 }
