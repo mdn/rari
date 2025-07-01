@@ -60,11 +60,11 @@ pub fn domxref(
     if let Some(anchor) = anchor {
         if !anchor.starts_with('#') {
             url.push('#');
-            display_with_fallback = Cow::Owned(format!("{}.{}", display_with_fallback, anchor));
+            display_with_fallback = Cow::Owned(format!("{display_with_fallback}.{anchor}"));
         }
         url.push_str(&anchor);
         if let Some(anchor) = anchor.strip_prefix('#') {
-            display_with_fallback = Cow::Owned(format!("{}.{}", display_with_fallback, anchor));
+            display_with_fallback = Cow::Owned(format!("{display_with_fallback}.{anchor}"));
         }
     }
 

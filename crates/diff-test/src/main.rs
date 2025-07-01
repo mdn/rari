@@ -434,10 +434,7 @@ fn main() -> Result<(), anyhow::Error> {
                         if arg.inline {
                             println!("{}", diff_words(left, right));
                         }
-                        Some((k.clone(), format!(
-                    r#"<li><span>{k}</span><div class="a">{}</div><div class="b">{}</div></li>"#,
-                    left, right
-                )))
+                        Some((k.clone(), format!(r#"<li><span>{k}</span><div class="a">{left}</div><div class="b">{right}</div></li>"#)))
                     }
                 }
                 ).collect::<Vec<_>>();
@@ -490,7 +487,7 @@ fn main() -> Result<(), anyhow::Error> {
                                 return Some(format!(
                                     "{}\n",
                                     diff.into_keys()
-                                        .map(|jsonpath| format!("{};{}", k, jsonpath))
+                                        .map(|jsonpath| format!("{k};{jsonpath}"))
                                         .collect::<Vec<_>>()
                                         .join("\n")
                                 ));

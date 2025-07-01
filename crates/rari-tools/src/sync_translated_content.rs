@@ -31,8 +31,7 @@ pub fn sync_translated_content(
         tracing::info!(
             "{}",
             green.apply_to(format!(
-                "Syncing translated content for locales: {:?}.\nFixing cross-locale redirects.",
-                locales
+                "Syncing translated content for locales: {locales:?}.\nFixing cross-locale redirects."
             )),
         );
     }
@@ -124,7 +123,7 @@ pub fn sync_translated_content(
         for (locale, result) in &res {
             tracing::info!(
                 "{}",
-                green.apply_to(bold.apply_to(format!("Results for locale {}", locale)))
+                green.apply_to(bold.apply_to(format!("Results for locale {locale}")))
             );
             tracing::info!(
                 "  {}",
@@ -273,7 +272,7 @@ fn sync_translated_document(
             resolved_slug = concat_strs!("conflicting/", &resolved_slug).into();
             if md_exists(&resolved_slug, doc.locale())? {
                 let hash = Sha256::digest(doc.slug().as_bytes());
-                let digest = format!("{:x}", hash);
+                let digest = format!("{hash:x}");
                 resolved_slug = concat_strs!(&resolved_slug, "_", &digest).into();
             }
 

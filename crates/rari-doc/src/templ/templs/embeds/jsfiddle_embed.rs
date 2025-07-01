@@ -36,7 +36,7 @@ pub fn jsfiddleembed(
     let mut out = String::new();
     out.push_str(r#"<p><iframe allowfullscreen="allowfullscreen" width="756" "#);
     if let Some(height) = height {
-        write!(&mut out, r#"height="{}" "#, height)?;
+        write!(&mut out, r#"height="{height}" "#)?;
     }
     out.extend([
         r#"src=""#,

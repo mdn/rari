@@ -61,14 +61,14 @@ pub fn embedlivesample(
         r#"" "#
     ]);
     if let Some(width) = width {
-        write!(&mut out, r#"width="{}" "#, width)?;
+        write!(&mut out, r#"width="{width}" "#)?;
     }
     if let Some(height) = height {
         // TODO: fix this
         if height.as_int() < 60 {
             write!(&mut out, r#"height="60" "#)?;
         } else {
-            write!(&mut out, r#"height="{}" "#, height)?;
+            write!(&mut out, r#"height="{height}" "#)?;
         }
     }
     out.extend([
@@ -80,7 +80,7 @@ pub fn embedlivesample(
         r#"" "#,
     ]);
     if let Some(allowed_features) = allowed_features {
-        write!(&mut out, r#"allow="{}" "#, allowed_features)?;
+        write!(&mut out, r#"allow="{allowed_features}" "#)?;
     }
     out.push_str(r#"sandbox=""#);
     if let Some(sandbox) = sandbox {

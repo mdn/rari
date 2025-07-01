@@ -19,9 +19,9 @@ fn generate_multiplier(min: u32, max: u32, comma: bool) -> String {
 
     let number_sign = if comma { "#" } else { "" };
     match (min, max) {
-        (min, max) if min == max => format!("{}{{{}}}", number_sign, min),
-        (min, 0) => format!("{}{{{},}}", number_sign, min),
-        (min, max) => format!("{}{{{},{}}}", number_sign, min, max),
+        (min, max) if min == max => format!("{number_sign}{{{min}}}"),
+        (min, 0) => format!("{number_sign}{{{min},}}"),
+        (min, max) => format!("{number_sign}{{{min},{max}}}"),
     }
 }
 
@@ -70,11 +70,11 @@ fn internal_generate<'a>(
             let terms = internal_generate(&multiplier.term, decorate, force_braces, compact)?;
             let multiplier = generate_multiplier(multiplier.min, multiplier.max, multiplier.comma);
             let decorated = decorate(multiplier, node);
-            format!("{}{}", terms, decorated)
+            format!("{terms}{decorated}")
         }
         Node::BooleanExpr(boolean_expr) => {
             let terms = internal_generate(&boolean_expr.term, decorate, force_braces, compact)?;
-            format!("<boolean-expr[{}]>", terms)
+            format!("<boolean-expr[{terms}]>")
         }
         Node::Token(token) => token.value.to_string(),
         Node::Property(property) => format!("<'{}'>", property.name),
@@ -129,7 +129,7 @@ fn generate_sequence<'a>(
             "[ "
         };
         let end = if compact { "]" } else { " ]" };
-        Ok(format!("{}{}{}", start, result, end))
+        Ok(format!("{start}{result}{end}"))
     } else {
         Ok(result)
     }
@@ -186,7 +186,7 @@ mod tests {
         let result = generate(
             &node,
             GenerateOptions {
-                decorate: &|s, _| format!("!!{}¡¡", s),
+                decorate: &|s, _| format!("!!{s}¡¡"),
                 ..Default::default()
             },
         )

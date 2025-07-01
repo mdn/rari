@@ -39,7 +39,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     let web_api_groups = group.and_then(|group| json_data_group().get(group));
 
     let main_if_pages = get_sub_pages(
-        &format!("/en-US/docs/Web/API/{}", main_if),
+        &format!("/en-US/docs/Web/API/{main_if}"),
         Some(1),
         SubPagesSorter::TitleAPI,
     )?;

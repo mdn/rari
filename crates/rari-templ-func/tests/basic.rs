@@ -5,7 +5,7 @@ use rari_types::{Arg, ArgError, Quotes, RariEnv};
 fn basic() {
     #[rari_f]
     fn something(a: String) -> Result<String, ArgError> {
-        Ok(format!("some {}", a))
+        Ok(format!("some {a}"))
     }
 
     #[rari_f]
