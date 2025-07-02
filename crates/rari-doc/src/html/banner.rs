@@ -1,11 +1,11 @@
-use rari_types::{templ::TemplType, Arg, Quotes};
+use rari_types::templ::TemplType;
+use rari_types::{Arg, Quotes};
 use tracing::{span, Level};
 
-use crate::{
-    error::DocError,
-    pages::{page::PageLike, types::utils::FmTempl},
-    templ::templs::invoke,
-};
+use crate::error::DocError;
+use crate::pages::page::PageLike;
+use crate::pages::types::utils::FmTempl;
+use crate::templ::templs::invoke;
 
 pub fn build_banner<T: PageLike>(banner: &FmTempl, page: &T) -> Result<String, DocError> {
     let rari_env = page.rari_env().ok_or(DocError::NoRariEnv)?;

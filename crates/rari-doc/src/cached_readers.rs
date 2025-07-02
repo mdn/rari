@@ -27,6 +27,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, LazyLock, OnceLock};
 
+use chrono::Utc;
 use dashmap::DashMap;
 use rari_types::globals::{
     blog_root, cache_content, content_root, content_translated_root, contributor_spotlight_root,
@@ -52,7 +53,7 @@ use crate::pages::types::generic::Generic;
 use crate::reader::read_docs_parallel;
 use crate::sidebars::jsref;
 use crate::translations::init_translations_from_static_docs;
-use crate::utils::split_fm;
+use crate::utils::{filter_unpublished_blog_post, split_fm};
 use crate::walker::walk_builder;
 
 pub(crate) static STATIC_DOC_PAGE_FILES: OnceLock<HashMap<(Locale, Cow<'_, str>), Page>> =
@@ -234,9 +235,11 @@ pub fn doc_page_from_static_files(path: &Path) -> Result<Page, DocError> {
 
 fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
     if let Some(blog_root) = blog_root() {
+        let now = Utc::now().date_naive();
         let post_root = blog_root.join("posts");
         Ok(read_docs_parallel::<Page, BlogPost>(&[post_root], None)?
             .into_iter()
+            .filter(|post| filter_unpublished_blog_post(&post, &now))
             .map(|page| (page.url().to_ascii_lowercase(), page))
             .collect())
     } else {
