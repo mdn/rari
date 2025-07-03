@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.46](https://github.com/mdn/rari/compare/v0.1.45...v0.1.46) (2025-07-03)
+
+
+### Bug Fixes
+
+* **blog:** filter unpublished posts immediately ([#264](https://github.com/mdn/rari/issues/264)) ([45b5bf5](https://github.com/mdn/rari/commit/45b5bf5b3ca3852ba47184ff313bf38be739552a))
+* **blog:** return only single parent/breadcrumb item for index ([01caa83](https://github.com/mdn/rari/commit/01caa83d4f4c4a3b48569b2f322b125d6c04202c))
+
+
+### Miscellaneous
+
+* **clippy:** fix complaints about format strings ([b70a321](https://github.com/mdn/rari/commit/b70a32149099349cb9d901109671b3d3130c2b28))
+
 ## [0.1.45](https://github.com/mdn/rari/compare/v0.1.44...v0.1.45) (2025-06-25)
 
 
