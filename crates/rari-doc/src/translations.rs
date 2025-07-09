@@ -68,8 +68,9 @@ pub(crate) fn other_translations<T: PageLike>(doc: &T) -> Vec<Translation> {
 fn get_other_translations_for<T: PageLike>(doc: &T) -> Vec<(Locale, String)> {
     let slug = doc.slug();
     let locale = doc.locale();
+    let (_, url_without_locale) = strip_locale_from_url(doc.url());
 
-    if cache_content() && slug.contains("/docs/") {
+    if cache_content() && url_without_locale.starts_with("/docs/") {
         TRANSLATIONS_BY_SLUG
             .get()
             .and_then(|by_slug| {
@@ -88,14 +89,13 @@ fn get_other_translations_for<T: PageLike>(doc: &T) -> Vec<(Locale, String)> {
             })
             .unwrap_or_default()
     } else {
-        let (_, url) = strip_locale_from_url(doc.url());
         Locale::for_generic_and_spas()
             .iter()
             .filter_map(|l| {
                 if *l == locale {
                     Some((*l, doc.title().to_string()))
                 } else {
-                    let other_url = &format!("/{}{}", *l, url);
+                    let other_url = &format!("/{}{}", *l, url_without_locale);
                     Page::from_url(other_url)
                         .ok()
                         .map(|d| (*l, d.title().to_string()))
