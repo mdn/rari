@@ -46,21 +46,26 @@ pub(crate) fn init_translations_from_static_docs() {
     TRANSLATIONS_BY_SLUG.set(all).unwrap();
 }
 
-/// Retrieves translations for a specific slug, _excluding_ the specified locale.
-///
-/// This function looks up translations for the given slug in the global `TRANSLATIONS_BY_SLUG` cache.
-/// It filters out the translation for the specified locale and returns a vector of tuples containing
-/// the locale and the corresponding title for each translation.
+/// Determines all available translations for a specific page.
 ///
 /// # Arguments
 ///
-/// * `slug` - A string slice that holds the slug of the documentation page.
-/// * `locale` - A `Locale` that specifies the locale to be excluded from the results.
+/// * `doc` - The page for which the translations should be determined.
 ///
 /// # Returns
 ///
-/// * `Vec<(Locale, String)>` - Returns a vector of tuples, where each tuple contains a `Locale` and a `String`
-///   representing the title of the translation. If no translations are found, an empty vector is returned.
+/// * `Vec<Translation>` - The vector of translations (including the current locale).
+pub(crate) fn other_translations<T: PageLike>(doc: &T) -> Vec<Translation> {
+    get_other_translations_for(doc.slug(), doc.locale())
+        .into_iter()
+        .map(|(locale, title)| Translation {
+            native: locale.into(),
+            locale,
+            title,
+        })
+        .collect()
+}
+
 pub(crate) fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Locale, String)> {
     if cache_content() && slug.contains("/docs/") {
         TRANSLATIONS_BY_SLUG
@@ -93,15 +98,4 @@ pub(crate) fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Loc
             })
             .collect()
     }
-}
-
-pub(crate) fn other_translations<T: PageLike>(doc: &T) -> Vec<Translation> {
-    get_other_translations_for(doc.slug(), doc.locale())
-        .into_iter()
-        .map(|(locale, title)| Translation {
-            native: locale.into(),
-            locale,
-            title,
-        })
-        .collect()
 }
