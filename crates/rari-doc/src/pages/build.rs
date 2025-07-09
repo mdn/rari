@@ -376,7 +376,6 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
 fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
     let parents: Vec<super::json::Parent> = parents(page);
-    let other_translations = other_translations(page);
     let PageContent { body, toc, .. } = built?;
     Ok(BuiltPage::GenericPage(Box::new(JsonGenericPage {
         hy_data: JsonGenericHyData {
@@ -394,7 +393,7 @@ fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
         common: CommonJsonData {
             description: page.meta.description.clone(),
             parents,
-            other_translations,
+            other_translations: other_translations(page),
         },
         renderer: match page.meta.template {
             super::types::generic::Template::GenericDoc => GenericRenderer::GenericDoc,
@@ -468,7 +467,6 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
         quote: cs.meta.quote.clone(),
     };
     let parents = parents(cs);
-    let other_translations = other_translations(cs);
     Ok(BuiltPage::ContributorSpotlight(Box::new(
         JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
@@ -477,7 +475,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
             common: CommonJsonData {
                 description: cs.meta.description.clone(),
                 parents,
-                other_translations,
+                other_translations: other_translations(cs),
             },
             renderer: ContributorSpotlightRenderer::ContributorSpotlight,
         },
