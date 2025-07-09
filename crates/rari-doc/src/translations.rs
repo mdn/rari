@@ -10,6 +10,7 @@ use rari_types::globals::cache_content;
 use rari_types::locale::Locale;
 
 use crate::cached_readers::{STATIC_DOC_PAGE_FILES, STATIC_DOC_PAGE_TRANSLATED_FILES};
+use crate::pages::json::Translation;
 use crate::pages::page::PageLike;
 use crate::pages::types::doc::Doc;
 
@@ -88,4 +89,15 @@ pub(crate) fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Loc
             })
             .collect()
     }
+}
+
+pub(crate) fn other_translations<T: PageLike>(doc: &T) -> Vec<Translation> {
+    get_other_translations_for(doc.slug(), doc.locale())
+        .into_iter()
+        .map(|(locale, title)| Translation {
+            native: locale.into(),
+            locale,
+            title,
+        })
+        .collect()
 }

@@ -12,7 +12,7 @@ use scraper::Html;
 use super::json::{
     BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
     JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, Prose, Section,
-    Source, SpecificationSection, TocEntry, Translation,
+    Source, SpecificationSection, TocEntry,
 };
 use super::page::{Page, PageBuilder, PageLike};
 use super::types::contributors::ContributorSpotlight;
@@ -45,7 +45,7 @@ use crate::pages::types::spa::SPA;
 use crate::pages::types::utils::FmTempl;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
-use crate::translations::get_other_translations_for;
+use crate::translations::other_translations;
 
 impl From<BuildSection<'_>> for Section {
     fn from(value: BuildSection) -> Self {
@@ -270,14 +270,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         history.map(|entry| entry.hash.as_str()).unwrap_or_default()
     );
     let popularity = popularities().popularities.get(doc.url()).cloned();
-    let other_translations = get_other_translations_for(doc.slug(), doc.locale())
-        .into_iter()
-        .map(|(locale, title)| Translation {
-            native: locale.into(),
-            locale,
-            title,
-        })
-        .collect();
+    let other_translations = other_translations(doc);
 
     let no_indexing =
         doc.meta.slug == "MDN/Kitchensink" || doc.is_orphaned() || doc.is_conflicting();
