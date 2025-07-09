@@ -270,14 +270,20 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         history.map(|entry| entry.hash.as_str()).unwrap_or_default()
     );
     let popularity = popularities().popularities.get(doc.url()).cloned();
-    let other_translations = other_translations(doc);
-
     let no_indexing =
         doc.meta.slug == "MDN/Kitchensink" || doc.is_orphaned() || doc.is_conflicting();
-    let parents = if !doc.is_conflicting() && !doc.is_orphaned() {
-        parents(doc)
+
+    let (parents, other_translations) = if !doc.is_conflicting() && !doc.is_orphaned() {
+        (parents(doc), other_translations(doc))
     } else {
-        Default::default()
+        (
+            Default::default(),
+            vec![Translation {
+                native: doc.locale().into(),
+                locale: doc.locale(),
+                title: doc.title().to_string(),
+            }],
+        )
     };
 
     Ok(BuiltPage::Doc(Box::new(JsonDocPage {
