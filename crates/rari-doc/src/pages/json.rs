@@ -960,10 +960,11 @@ pub struct JsonGenericPage {
 }
 
 #[derive(Debug, Clone, Default, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
 #[schemars(rename = "GenericPage")]
 pub struct CommonJsonData {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub parents: Vec<Parent>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub other_translations: Vec<Translation>,
 }

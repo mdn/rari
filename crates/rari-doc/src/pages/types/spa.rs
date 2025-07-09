@@ -22,12 +22,13 @@ use crate::helpers::parents::parents;
 use crate::helpers::title::page_title;
 use crate::pages::json::{
     BlogIndex, BuiltPage, CommonJsonData, ItemContainer, JsonBlogPostDoc, JsonBlogPostPage,
-    JsonHomePage, JsonHomePageSPAHyData, JsonSpaPage, Parent,
+    JsonHomePage, JsonHomePageSPAHyData, JsonSpaPage, Parent, Translation,
 };
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::templates::{BlogRenderer, HomeRenderer, SpaBuildTemplate, SpaRenderer};
 use crate::pages::types::blog::BlogMeta;
 use crate::pages::types::utils::FmTempl;
+use crate::translations::other_translations;
 
 #[derive(Debug, Clone)]
 pub struct SPA {
@@ -144,6 +145,11 @@ impl SPA {
                         uri: "/en-US/blog/".to_string(),
                         title: self.title().to_owned(),
                     }],
+                    other_translations: vec![Translation {
+                        native: self.locale().into(),
+                        locale: self.locale(),
+                        title: self.title().to_string(),
+                    }],
                     ..Default::default()
                 },
                 image: None,
@@ -159,6 +165,7 @@ impl SPA {
                 url: concat_strs!(self.base_slug.as_ref(), self.slug),
                 common: CommonJsonData {
                     parents: parents(self),
+                    other_translations: other_translations(self),
                     ..Default::default()
                 },
                 renderer: match self.template {
@@ -189,6 +196,7 @@ impl SPA {
                 url: concat_strs!(self.base_slug.as_ref(), self.slug),
                 common: CommonJsonData {
                     parents: parents(self),
+                    other_translations: other_translations(self),
                     ..Default::default()
                 },
                 renderer: SpaRenderer::SpaNotFound,
@@ -212,6 +220,7 @@ impl SPA {
                 },
                 common: CommonJsonData {
                     parents: parents(self),
+                    other_translations: other_translations(self),
                     ..Default::default()
                 },
                 renderer: HomeRenderer::Homepage,

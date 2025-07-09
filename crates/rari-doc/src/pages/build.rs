@@ -30,7 +30,7 @@ use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Spli
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
-use crate::pages::json::{CommonJsonData, JsonContributorSpotlightPage};
+use crate::pages::json::{CommonJsonData, JsonContributorSpotlightPage, Translation};
 use crate::pages::templates::{
     BlogRenderer, ContributorSpotlightRenderer, CurriculumRenderer, DocPageRenderer,
     GenericRenderer,
@@ -347,16 +347,21 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
         locale: post.locale(),
         blog_meta: Some((&post.meta).into()),
         page_title: page_title(post, false)?,
-        common: CommonJsonData {
-            parents: parents(post),
-            ..Default::default()
-        },
         image: Some(format!(
             "{}{}{}",
             base_url(),
             post.url(),
             post.meta.image.file
         )),
+        common: CommonJsonData {
+            parents: parents(post),
+            other_translations: vec![Translation {
+                native: post.locale().into(),
+                locale: post.locale(),
+                title: post.title().to_string(),
+            }],
+            ..Default::default()
+        },
         renderer: BlogRenderer::BlogPost,
         ..Default::default()
     })))
@@ -364,7 +369,8 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
 
 fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
-    let parents = parents(page);
+    let parents: Vec<super::json::Parent> = parents(page);
+    let other_translations = other_translations(page);
     let PageContent { body, toc, .. } = built?;
     Ok(BuiltPage::GenericPage(Box::new(JsonGenericPage {
         hy_data: JsonGenericHyData {
@@ -382,6 +388,7 @@ fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
         common: CommonJsonData {
             description: page.meta.description.clone(),
             parents,
+            other_translations,
         },
         renderer: match page.meta.template {
             super::types::generic::Template::GenericDoc => GenericRenderer::GenericDoc,
@@ -455,6 +462,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
         quote: cs.meta.quote.clone(),
     };
     let parents = parents(cs);
+    let other_translations = other_translations(cs);
     Ok(BuiltPage::ContributorSpotlight(Box::new(
         JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
@@ -463,6 +471,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
             common: CommonJsonData {
                 description: cs.meta.description.clone(),
                 parents,
+                other_translations,
             },
             renderer: ContributorSpotlightRenderer::ContributorSpotlight,
         },
