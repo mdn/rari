@@ -354,6 +354,10 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
         locale: post.locale(),
         blog_meta: Some((&post.meta).into()),
         page_title: page_title(post, false)?,
+        common: CommonJsonData {
+            parents: parents(post),
+            ..Default::default()
+        },
         image: Some(format!(
             "{}{}{}",
             base_url(),
