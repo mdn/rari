@@ -11,9 +11,8 @@ use rari_types::locale::Locale;
 
 use crate::cached_readers::{STATIC_DOC_PAGE_FILES, STATIC_DOC_PAGE_TRANSLATED_FILES};
 use crate::pages::json::Translation;
-use crate::pages::page::PageLike;
-use crate::pages::types::doc::Doc;
-use crate::pages::types::spa::SPA;
+use crate::pages::page::{Page, PageLike};
+use crate::resolve::strip_locale_from_url;
 
 pub type TranslationsOf<'a> = BTreeMap<Locale, &'a str>;
 
@@ -89,15 +88,13 @@ fn get_other_translations_for<T: PageLike>(doc: &T) -> Vec<(Locale, String)> {
             })
             .unwrap_or_default()
     } else {
+        let (_, url) = strip_locale_from_url(doc.url());
         Locale::for_generic_and_spas()
             .iter()
             .filter_map(|l| {
-                if slug.contains("/docs/") {
-                    Doc::page_from_slug(slug, *l, false).ok()
-                } else {
-                    SPA::from_slug(slug, *l)
-                }
-                .map(|d| (*l, d.title().to_string()))
+                Page::from_url(&format!("/{}{}", *l, url))
+                    .ok()
+                    .map(|d| (*l, d.title().to_string()))
             })
             .collect()
     }
