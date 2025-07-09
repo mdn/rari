@@ -375,7 +375,6 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
 
 fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
-    let parents: Vec<super::json::Parent> = parents(page);
     let PageContent { body, toc, .. } = built?;
     Ok(BuiltPage::GenericPage(Box::new(JsonGenericPage {
         hy_data: JsonGenericHyData {
@@ -392,7 +391,7 @@ fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
         id: page.meta.page.clone(),
         common: CommonJsonData {
             description: page.meta.description.clone(),
-            parents,
+            parents: parents(page),
             other_translations: other_translations(page),
         },
         renderer: match page.meta.template {
@@ -410,8 +409,7 @@ fn build_spa(spa: &SPA) -> Result<BuiltPage, DocError> {
 fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
     let PageContent { body, toc, .. } = build_content(curriculum)?;
     let sidebar = build_sidebar().ok();
-    let parents = parents(curriculum);
-    let group = curriculum_group(&parents);
+    let group = curriculum_group(&parents(curriculum));
     let modules = match curriculum.meta.template {
         Template::Overview => build_overview_modules(curriculum.slug())?,
         Template::Landing => build_landing_modules()?,
@@ -428,7 +426,7 @@ fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
             locale: curriculum.locale(),
             native: curriculum.locale().into(),
             mdn_url: curriculum.meta.url.clone(),
-            parents,
+            parents: parents(curriculum),
             page_title: page_title(curriculum, true)?,
             summary: curriculum.meta.summary.clone(),
             body,
@@ -466,7 +464,6 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
         usernames: cs.meta.usernames.clone(),
         quote: cs.meta.quote.clone(),
     };
-    let parents = parents(cs);
     Ok(BuiltPage::ContributorSpotlight(Box::new(
         JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
@@ -474,7 +471,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
             hy_data: contributor_spotlight_data,
             common: CommonJsonData {
                 description: cs.meta.description.clone(),
-                parents,
+                parents: parents(cs),
                 other_translations: other_translations(cs),
             },
             renderer: ContributorSpotlightRenderer::ContributorSpotlight,
