@@ -66,7 +66,7 @@ pub(crate) fn other_translations<T: PageLike>(doc: &T) -> Vec<Translation> {
         .collect()
 }
 
-pub(crate) fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Locale, String)> {
+fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Locale, String)> {
     if cache_content() && slug.contains("/docs/") {
         TRANSLATIONS_BY_SLUG
             .get()
