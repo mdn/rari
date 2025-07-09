@@ -13,6 +13,7 @@ use crate::cached_readers::{STATIC_DOC_PAGE_FILES, STATIC_DOC_PAGE_TRANSLATED_FI
 use crate::pages::json::Translation;
 use crate::pages::page::PageLike;
 use crate::pages::types::doc::Doc;
+use crate::pages::types::spa::SPA;
 
 pub type TranslationsOf<'a> = BTreeMap<Locale, &'a str>;
 
@@ -61,7 +62,7 @@ pub(crate) fn init_translations_from_static_docs() {
 /// * `Vec<(Locale, String)>` - Returns a vector of tuples, where each tuple contains a `Locale` and a `String`
 ///   representing the title of the translation. If no translations are found, an empty vector is returned.
 pub(crate) fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Locale, String)> {
-    if cache_content() {
+    if cache_content() && slug.contains("/docs/") {
         TRANSLATIONS_BY_SLUG
             .get()
             .and_then(|by_slug| {
@@ -83,9 +84,12 @@ pub(crate) fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Loc
         Locale::for_generic_and_spas()
             .iter()
             .filter_map(|l| {
-                Doc::page_from_slug(slug, *l, false)
-                    .ok()
-                    .map(|d| (*l, d.title().to_string()))
+                if slug.contains("/docs/") {
+                    Doc::page_from_slug(slug, *l, false).ok()
+                } else {
+                    SPA::from_slug(slug, *l)
+                }
+                .map(|d| (*l, d.title().to_string()))
             })
             .collect()
     }
