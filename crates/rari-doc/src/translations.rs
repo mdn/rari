@@ -92,9 +92,14 @@ fn get_other_translations_for<T: PageLike>(doc: &T) -> Vec<(Locale, String)> {
         Locale::for_generic_and_spas()
             .iter()
             .filter_map(|l| {
-                Page::from_url(&format!("/{}{}", *l, url))
-                    .ok()
-                    .map(|d| (*l, d.title().to_string()))
+                if *l == locale {
+                    Some((*l, doc.title().to_string()))
+                } else {
+                    let other_url = &format!("/{}{}", *l, url);
+                    Page::from_url(other_url)
+                        .ok()
+                        .map(|d| (*l, d.title().to_string()))
+                }
             })
             .collect()
     }
