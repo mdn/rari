@@ -56,7 +56,7 @@ pub(crate) fn init_translations_from_static_docs() {
 ///
 /// * `Vec<Translation>` - The vector of translations (including the current locale).
 pub(crate) fn other_translations<T: PageLike>(doc: &T) -> Vec<Translation> {
-    get_other_translations_for(doc.slug(), doc.locale())
+    get_other_translations_for(doc)
         .into_iter()
         .map(|(locale, title)| Translation {
             native: locale.into(),
@@ -66,7 +66,10 @@ pub(crate) fn other_translations<T: PageLike>(doc: &T) -> Vec<Translation> {
         .collect()
 }
 
-fn get_other_translations_for(slug: &str, locale: Locale) -> Vec<(Locale, String)> {
+fn get_other_translations_for<T: PageLike>(doc: &T) -> Vec<(Locale, String)> {
+    let slug = doc.slug();
+    let locale = doc.locale();
+
     if cache_content() && slug.contains("/docs/") {
         TRANSLATIONS_BY_SLUG
             .get()
