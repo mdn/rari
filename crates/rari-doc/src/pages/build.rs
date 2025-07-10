@@ -379,6 +379,7 @@ fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
             title: page.meta.title.clone(),
             toc,
         },
+        short_title: page.meta.short_title.clone(),
         page_title: if let Some(suffix) = &page.meta.title_suffix {
             concat_strs!(page.meta.title.as_str(), " | ", suffix)
         } else {

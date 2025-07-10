@@ -951,6 +951,7 @@ pub struct JsonGenericHyData {
 #[schemars(rename = "GenericPage")]
 pub struct JsonGenericPage {
     pub hy_data: JsonGenericHyData,
+    pub short_title: Option<String>,
     pub page_title: String,
     pub url: String,
     pub id: String,

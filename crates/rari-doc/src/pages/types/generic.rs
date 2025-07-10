@@ -25,6 +25,8 @@ pub enum Template {
 #[derive(Debug, Clone, Deserialize)]
 pub struct GenericFrontmatter {
     pub title: String,
+    #[serde(rename = "short-title", skip_serializing_if = "Option::is_none")]
+    pub short_title: Option<String>,
     pub template: Option<Template>,
     pub description: Option<String>,
 }
@@ -32,6 +34,7 @@ pub struct GenericFrontmatter {
 #[derive(Debug, Clone)]
 pub struct GenericMeta {
     pub title: String,
+    pub short_title: Option<String>,
     pub locale: Locale,
     pub slug: String,
     pub url: String,
@@ -63,6 +66,7 @@ impl GenericMeta {
         );
         Ok(GenericMeta {
             title: fm.title,
+            short_title: fm.short_title,
             locale,
             slug,
             url,
@@ -159,7 +163,7 @@ impl PageLike for Generic {
     }
 
     fn short_title(&self) -> Option<&str> {
-        None
+        self.meta.short_title.as_deref()
     }
 
     fn locale(&self) -> Locale {
