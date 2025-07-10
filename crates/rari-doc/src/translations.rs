@@ -12,7 +12,6 @@ use rari_types::locale::Locale;
 use crate::cached_readers::{STATIC_DOC_PAGE_FILES, STATIC_DOC_PAGE_TRANSLATED_FILES};
 use crate::pages::json::Translation;
 use crate::pages::page::{Page, PageLike};
-use crate::resolve::strip_locale_from_url;
 
 pub type TranslationsOf<'a> = BTreeMap<Locale, &'a str>;
 
@@ -68,9 +67,9 @@ pub(crate) fn other_translations<T: PageLike>(doc: &T) -> Vec<Translation> {
 fn get_other_translations_for<T: PageLike>(doc: &T) -> Vec<(Locale, String)> {
     let slug = doc.slug();
     let locale = doc.locale();
-    let (_, url_without_locale) = strip_locale_from_url(doc.url());
+    let url = doc.url();
 
-    if cache_content() && url_without_locale.starts_with("/docs/") {
+    if cache_content() && url.contains("/docs/") {
         TRANSLATIONS_BY_SLUG
             .get()
             .and_then(|by_slug| {
@@ -95,8 +94,7 @@ fn get_other_translations_for<T: PageLike>(doc: &T) -> Vec<(Locale, String)> {
                 if *l == locale {
                     Some((*l, doc.title().to_string()))
                 } else {
-                    let other_url = &format!("/{}{}", *l, url_without_locale);
-                    Page::from_url(other_url)
+                    Page::internal_from_url(url, Some(*l), false)
                         .ok()
                         .map(|d| (*l, d.title().to_string()))
                 }
