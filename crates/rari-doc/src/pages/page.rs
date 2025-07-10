@@ -111,36 +111,39 @@ impl Page {
         let locale = locale.unwrap_or(locale_from_url);
         match page_category {
             PageCategory::SPA => {
-                if !(locale != Locale::EnUs && slug.starts_with("blog")) {
+                if locale != Locale::EnUs && slug.starts_with("blog") {
+                    // Blog is en-US only.
+                    Err(DocError::PageNotFound(url.to_string(), PageCategory::SPA))
+                } else {
                     SPA::from_slug(slug, locale)
                         .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA))
-                } else {
-                    Err(DocError::PageNotFound(url.to_string(), PageCategory::SPA))
                 }
             }
             PageCategory::Doc => Doc::page_from_slug_path(&folder_path, locale, fallback)
                 .map_err(|_| DocError::PageNotFound(url.to_string(), PageCategory::Doc)),
             PageCategory::BlogPost => {
-                if locale == Locale::EnUs {
-                    BlogPost::page_from_url(url).ok_or(DocError::PageNotFound(
+                if locale != Locale::EnUs {
+                    // Blog is en-US only.
+                    Err(DocError::PageNotFound(
                         url.to_string(),
                         PageCategory::BlogPost,
                     ))
                 } else {
-                    Err(DocError::PageNotFound(
+                    BlogPost::page_from_url(url).ok_or(DocError::PageNotFound(
                         url.to_string(),
                         PageCategory::BlogPost,
                     ))
                 }
             }
             PageCategory::Curriculum => {
-                if locale == Locale::EnUs {
-                    Curriculum::page_from_url(url).ok_or(DocError::PageNotFound(
+                if locale != Locale::EnUs {
+                    // Curriculum is en-US only.
+                    Err(DocError::PageNotFound(
                         url.to_string(),
                         PageCategory::Curriculum,
                     ))
                 } else {
-                    Err(DocError::PageNotFound(
+                    Curriculum::page_from_url(url).ok_or(DocError::PageNotFound(
                         url.to_string(),
                         PageCategory::Curriculum,
                     ))
