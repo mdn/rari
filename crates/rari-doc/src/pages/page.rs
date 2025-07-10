@@ -110,15 +110,8 @@ impl Page {
         } = url_meta_from(url)?;
         let locale = locale.unwrap_or(locale_from_url);
         match page_category {
-            PageCategory::SPA => {
-                if locale != Locale::EnUs && slug.starts_with("blog") {
-                    // Blog is en-US only.
-                    Err(DocError::PageNotFound(url.to_string(), PageCategory::SPA))
-                } else {
-                    SPA::from_slug(slug, locale)
-                        .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA))
-                }
-            }
+            PageCategory::SPA => SPA::from_slug(slug, locale)
+                .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA)),
             PageCategory::Doc => Doc::page_from_slug_path(&folder_path, locale, fallback)
                 .map_err(|_| DocError::PageNotFound(url.to_string(), PageCategory::Doc)),
             PageCategory::BlogPost => {
