@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.46](https://github.com/mdn/rari/compare/v0.1.45...v0.1.46) (2025-07-10)
+
+
+### Bug Fixes
+
+* **blog:** add breadcrumbs to posts ([#271](https://github.com/mdn/rari/issues/271)) ([20d040c](https://github.com/mdn/rari/commit/20d040c88e777dec3af59a9f00559244efd79832))
+* **blog:** filter unpublished posts immediately ([#264](https://github.com/mdn/rari/issues/264)) ([45b5bf5](https://github.com/mdn/rari/commit/45b5bf5b3ca3852ba47184ff313bf38be739552a))
+* **blog:** return only single parent/breadcrumb item for index ([01caa83](https://github.com/mdn/rari/commit/01caa83d4f4c4a3b48569b2f322b125d6c04202c))
+
+
+### Enhancements
+
+* **page:** add other_translations to non-Doc pages ([#272](https://github.com/mdn/rari/issues/272)) ([9ae3a11](https://github.com/mdn/rari/commit/9ae3a11d6e2a1f73ef274bbf5ab0b60f242971d2))
+* **pages:** support short-title for generic ([#274](https://github.com/mdn/rari/issues/274)) ([9627c9b](https://github.com/mdn/rari/commit/9627c9b6acb13b4666f7cf2ec4936320ff6100c3))
+* **sidebars:** add `<wbr>` to long code elements ([#270](https://github.com/mdn/rari/issues/270)) ([8c5d8fc](https://github.com/mdn/rari/commit/8c5d8fc41876f6538f658a48b99ba7513ebe1d00))
+* **spa:** refine {page,short}_title ([#269](https://github.com/mdn/rari/issues/269)) ([5a4b046](https://github.com/mdn/rari/commit/5a4b046297f1d6461dded4ebf1afb578c8eae907))
+
+
+### Miscellaneous
+
+* **clippy:** fix complaints about format strings ([b70a321](https://github.com/mdn/rari/commit/b70a32149099349cb9d901109671b3d3130c2b28))
+
 ## [0.1.45](https://github.com/mdn/rari/compare/v0.1.44...v0.1.45) (2025-06-25)
 
 
