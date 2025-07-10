@@ -383,11 +383,13 @@ fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
             toc,
         },
         short_title: page.meta.short_title.clone(),
-        page_title: concat_strs!(
-            page.meta.title.as_str(),
-            " | ",
-            &page.meta.title_suffix.as_deref().unwrap_or("MDN")
-        ),
+        page_title: match page.meta.title_suffix.as_deref() {
+            Some(suffix) => concat_strs!(page.meta.title.as_str(), " | ", suffix),
+            None if !page.meta.title.contains("MDN") => {
+                concat_strs!(page.meta.title.as_str(), " | MDN")
+            }
+            _ => page.meta.title.clone(),
+        },
         url: page.meta.url.clone(),
         id: page.meta.page.clone(),
         common: CommonJsonData {
