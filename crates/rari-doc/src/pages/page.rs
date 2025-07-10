@@ -114,10 +114,24 @@ impl Page {
                 .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA)),
             PageCategory::Doc => Doc::page_from_slug_path(&folder_path, locale, fallback)
                 .map_err(|_| DocError::PageNotFound(url.to_string(), PageCategory::Doc)),
+            PageCategory::BlogPost if locale != Locale::EnUs => {
+                // Blog is en-US only.
+                Err(DocError::PageNotFound(
+                    url.to_string(),
+                    PageCategory::BlogPost,
+                ))
+            }
             PageCategory::BlogPost => BlogPost::page_from_url(url).ok_or(DocError::PageNotFound(
                 url.to_string(),
                 PageCategory::BlogPost,
             )),
+            PageCategory::Curriculum if locale != Locale::EnUs => {
+                // Curriculum is en-US only.
+                Err(DocError::PageNotFound(
+                    url.to_string(),
+                    PageCategory::Curriculum,
+                ))
+            }
             PageCategory::Curriculum => Curriculum::page_from_url(url).ok_or(
                 DocError::PageNotFound(url.to_string(), PageCategory::Curriculum),
             ),

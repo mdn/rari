@@ -12,7 +12,7 @@ use scraper::Html;
 use super::json::{
     BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
     JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, Prose, Section,
-    Source, SpecificationSection, TocEntry, Translation,
+    Source, SpecificationSection, TocEntry,
 };
 use super::page::{Page, PageBuilder, PageLike};
 use super::types::contributors::ContributorSpotlight;
@@ -30,7 +30,7 @@ use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Spli
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
-use crate::pages::json::{CommonJsonData, JsonContributorSpotlightPage};
+use crate::pages::json::{CommonJsonData, JsonContributorSpotlightPage, Translation};
 use crate::pages::templates::{
     BlogRenderer, ContributorSpotlightRenderer, CurriculumRenderer, DocPageRenderer,
     GenericRenderer,
@@ -45,7 +45,7 @@ use crate::pages::types::spa::SPA;
 use crate::pages::types::utils::FmTempl;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
-use crate::translations::get_other_translations_for;
+use crate::translations::other_translations;
 
 impl From<BuildSection<'_>> for Section {
     fn from(value: BuildSection) -> Self {
@@ -270,21 +270,20 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         history.map(|entry| entry.hash.as_str()).unwrap_or_default()
     );
     let popularity = popularities().popularities.get(doc.url()).cloned();
-    let other_translations = get_other_translations_for(doc.slug(), doc.locale())
-        .into_iter()
-        .map(|(locale, title)| Translation {
-            native: locale.into(),
-            locale,
-            title,
-        })
-        .collect();
-
     let no_indexing =
         doc.meta.slug == "MDN/Kitchensink" || doc.is_orphaned() || doc.is_conflicting();
-    let parents = if !doc.is_conflicting() && !doc.is_orphaned() {
-        parents(doc)
+
+    let (parents, other_translations) = if !doc.is_conflicting() && !doc.is_orphaned() {
+        (parents(doc), other_translations(doc))
     } else {
-        Default::default()
+        (
+            Default::default(),
+            vec![Translation {
+                native: doc.locale().into(),
+                locale: doc.locale(),
+                title: doc.title().to_string(),
+            }],
+        )
     };
 
     Ok(BuiltPage::Doc(Box::new(JsonDocPage {
@@ -354,16 +353,21 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
         locale: post.locale(),
         blog_meta: Some((&post.meta).into()),
         page_title: page_title(post, false)?,
-        common: CommonJsonData {
-            parents: parents(post),
-            ..Default::default()
-        },
         image: Some(format!(
             "{}{}{}",
             base_url(),
             post.url(),
             post.meta.image.file
         )),
+        common: CommonJsonData {
+            parents: parents(post),
+            other_translations: vec![Translation {
+                native: post.locale().into(),
+                locale: post.locale(),
+                title: post.title().to_string(),
+            }],
+            ..Default::default()
+        },
         renderer: BlogRenderer::BlogPost,
         ..Default::default()
     })))
@@ -371,7 +375,6 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
 
 fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
-    let parents = parents(page);
     let PageContent { body, toc, .. } = built?;
     Ok(BuiltPage::GenericPage(Box::new(JsonGenericPage {
         hy_data: JsonGenericHyData {
@@ -389,7 +392,8 @@ fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
         id: page.meta.page.clone(),
         common: CommonJsonData {
             description: page.meta.description.clone(),
-            parents,
+            parents: parents(page),
+            other_translations: other_translations(page),
         },
         renderer: match page.meta.template {
             super::types::generic::Template::GenericDoc => GenericRenderer::GenericDoc,
@@ -406,8 +410,7 @@ fn build_spa(spa: &SPA) -> Result<BuiltPage, DocError> {
 fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
     let PageContent { body, toc, .. } = build_content(curriculum)?;
     let sidebar = build_sidebar().ok();
-    let parents = parents(curriculum);
-    let group = curriculum_group(&parents);
+    let group = curriculum_group(&parents(curriculum));
     let modules = match curriculum.meta.template {
         Template::Overview => build_overview_modules(curriculum.slug())?,
         Template::Landing => build_landing_modules()?,
@@ -424,7 +427,7 @@ fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
             locale: curriculum.locale(),
             native: curriculum.locale().into(),
             mdn_url: curriculum.meta.url.clone(),
-            parents,
+            parents: parents(curriculum),
             page_title: page_title(curriculum, true)?,
             summary: curriculum.meta.summary.clone(),
             body,
@@ -462,7 +465,6 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
         usernames: cs.meta.usernames.clone(),
         quote: cs.meta.quote.clone(),
     };
-    let parents = parents(cs);
     Ok(BuiltPage::ContributorSpotlight(Box::new(
         JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
@@ -470,7 +472,8 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
             hy_data: contributor_spotlight_data,
             common: CommonJsonData {
                 description: cs.meta.description.clone(),
-                parents,
+                parents: parents(cs),
+                other_translations: other_translations(cs),
             },
             renderer: ContributorSpotlightRenderer::ContributorSpotlight,
         },
