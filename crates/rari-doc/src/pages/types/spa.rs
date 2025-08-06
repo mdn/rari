@@ -377,7 +377,6 @@ static BASIC_SPAS: LazyLock<HashMap<String, BuildSPA>> = LazyLock::new(|| {
                         slug: Cow::Borrowed("404"),
                         page_title: Cow::Borrowed("Page not found | MDN"),
                         short_title: Some(Cow::Borrowed("Page not found")),
-                        en_us_only: true,
                         data: SPAData::NotFound,
                         template: SpaBuildTemplate::SpaNotFound,
                         ..Default::default()
