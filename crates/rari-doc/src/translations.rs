@@ -76,13 +76,7 @@ fn get_other_translations_for<T: PageLike>(doc: &T) -> Vec<(Locale, String)> {
                 by_slug.get(slug).map(|translations| {
                     translations
                         .iter()
-                        .filter_map(|(t_locale, title)| {
-                            if *t_locale != locale {
-                                Some((*t_locale, title.to_string()))
-                            } else {
-                                None
-                            }
-                        })
+                        .map(|(t_locale, title)| (*t_locale, title.to_string()))
                         .collect()
                 })
             })
