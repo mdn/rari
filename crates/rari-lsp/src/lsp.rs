@@ -82,11 +82,11 @@ impl Documents {
         self.documents.insert(uri, doc);
     }
 
-    pub fn get_mut(&self, uri: &Uri) -> Option<RefMut<Uri, Document>> {
+    pub fn get_mut(&self, uri: &Uri) -> Option<RefMut<'_, Uri, Document>> {
         self.documents.get_mut(uri)
     }
 
-    pub fn get(&self, uri: &Uri) -> Option<Ref<Uri, Document>> {
+    pub fn get(&self, uri: &Uri) -> Option<Ref<'_, Uri, Document>> {
         self.documents.get(uri)
     }
 }
