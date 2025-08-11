@@ -115,7 +115,7 @@ impl WebFeatures {
 
     // Compute status according to:
     // https://github.com/mdn/yari/issues/11546#issuecomment-2531611136
-    pub fn baseline_by_bcd_key(&self, bcd_key: &str) -> Option<Baseline> {
+    pub fn baseline_by_bcd_key(&self, bcd_key: &str) -> Option<Baseline<'_>> {
         let bcd_key_spaced = &spaced(bcd_key);
         if let Some(feature) = self.feature_data_by_key(bcd_key_spaced) {
             if let Some(status) = feature.status.as_ref() {
