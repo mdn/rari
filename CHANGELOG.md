@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.47](https://github.com/mdn/rari/compare/v0.1.46...v0.1.47) (2025-08-07)
+
+
+### Bug Fixes
+
+* **404:** build for every locale ([#281](https://github.com/mdn/rari/issues/281)) ([2a99d06](https://github.com/mdn/rari/commit/2a99d0650506b106f72e63964fefc05c960da42a))
+* **translations:** include current locale when doing build ([#280](https://github.com/mdn/rari/issues/280)) ([4be95c8](https://github.com/mdn/rari/commit/4be95c81af810a835716f9b3729794de885ec479))
+
 ## [0.1.46](https://github.com/mdn/rari/compare/v0.1.45...v0.1.46) (2025-07-10)
 
 
