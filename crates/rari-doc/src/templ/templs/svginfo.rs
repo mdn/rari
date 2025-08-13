@@ -45,7 +45,8 @@ pub fn svginfo() -> Result<String, DocError> {
                     let anchor = to_snake_case(element);
                     let url = format!("/{}/docs/Web/SVG/Element#{anchor}", env.locale.as_url_str());
                     let display = l10n_json_data("SVG", element, env.locale).unwrap_or(element);
-                    let link = RariApi::link(&url, env.locale, Some(display), false, None, false)?;
+                    let link =
+                        RariApi::link(&url, Some(env.locale), Some(display), false, None, false)?;
                     element_groups.push(link);
                 }
                 Ok::<_, DocError>((element_groups, elements))

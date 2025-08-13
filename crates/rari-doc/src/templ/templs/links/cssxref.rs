@@ -91,5 +91,5 @@ pub fn cssxref_internal(
     } else {
         encoded_maybe_display_name.to_string()
     };
-    RariApi::link(&url, locale, Some(&display_name), true, None, false)
+    RariApi::link(&url, Some(locale), Some(&display_name), true, None, false)
 }

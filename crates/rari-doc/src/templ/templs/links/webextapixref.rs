@@ -56,7 +56,7 @@ pub fn webextapiref(
 
     RariApi::link(
         &url,
-        env.locale,
+        Some(env.locale),
         Some(display.as_ref()),
         !no_code.map(|nc| nc.as_bool()).unwrap_or_default(),
         None,

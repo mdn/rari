@@ -72,5 +72,5 @@ pub fn jsxref(
     }
 
     let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
-    RariApi::link(&url, env.locale, Some(display), code, None, false)
+    RariApi::link(&url, Some(env.locale), Some(display), code, None, false)
 }

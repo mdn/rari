@@ -12,7 +12,7 @@ pub fn glossary(term_name: String, display_name: Option<String>) -> Result<Strin
     );
     RariApi::link(
         &url,
-        env.locale,
+        Some(env.locale),
         Some(&display_name.unwrap_or(term_name)),
         false,
         None,

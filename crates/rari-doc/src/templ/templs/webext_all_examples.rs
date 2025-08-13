@@ -31,7 +31,7 @@ pub fn webextallexamples() -> Result<String, DocError> {
                 env.locale.as_url_str(),
                 &api.replace(' ', "_").replace("()", "").replace('.', "/"),
             );
-            let link = RariApi::link(&url, env.locale, None, true, None, false)?;
+            let link = RariApi::link(&url, Some(env.locale), None, true, None, false)?;
             out.push_str(&link);
             out.push_str("<br/>")
         }

@@ -14,7 +14,7 @@ use crate::templ::api::RariApi;
 /// # Arguments
 /// * `element_name` - The MathML element name (will be converted to lowercase)
 ///
-/// # Examples  
+/// # Examples
 /// * `{{MathMLElement("math")}}` -> links to `<math>` element with code formatting
 /// * `{{MathMLElement("mrow")}}` -> links to `<mrow>` element
 /// * `{{MathMLElement("mi")}}` -> links to `<mi>` element for identifiers
@@ -38,5 +38,12 @@ pub fn mathmlelement(element_name: String) -> Result<String, DocError> {
         element_name.as_str()
     );
 
-    RariApi::link(&url, env.locale, Some(&display), true, Some(&title), false)
+    RariApi::link(
+        &url,
+        Some(env.locale),
+        Some(&display),
+        true,
+        Some(&title),
+        false,
+    )
 }

@@ -56,7 +56,7 @@ pub fn css_ref_list() -> Result<String, DocError> {
                 "<li>",
                 &RariApi::link(
                     &concat_strs!("/", url),
-                    env.locale,
+                    Some(env.locale),
                     Some(&html_escape::encode_text(&label)),
                     true,
                     None,

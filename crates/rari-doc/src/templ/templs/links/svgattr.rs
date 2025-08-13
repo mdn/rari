@@ -12,7 +12,7 @@ use crate::templ::api::RariApi;
 /// # Arguments
 /// * `name` - The SVG attribute name (e.g., "fill", "stroke", "viewBox")
 ///
-/// # Examples  
+/// # Examples
 /// * `{{SVGAttr("fill")}}` -> links to fill attribute with code formatting
 /// * `{{SVGAttr("stroke-width")}}` -> links to stroke-width attribute
 /// * `{{SVGAttr("viewBox")}}` -> links to viewBox attribute
@@ -29,5 +29,5 @@ pub fn svgattr(name: String) -> Result<String, DocError> {
         name,
     );
 
-    RariApi::link(&url, env.locale, Some(&name), true, None, false)
+    RariApi::link(&url, Some(env.locale), Some(&name), true, None, false)
 }
