@@ -1,5 +1,6 @@
 use rari_templ_func::rari_f;
 use rari_types::fm_types::PageType;
+use rari_utils::concat_strs;
 
 use crate::error::DocError;
 use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
@@ -33,10 +34,13 @@ pub fn apilistalpha() -> Result<String, DocError> {
                 out.push_str("</h3><ul>");
             }
         }
+
+        let url = concat_strs!("/", env.locale.as_url_str(), "/docs/", page.slug());
+
         out.extend([
             "<li>",
             &RariApi::link(
-                page.url(),
+                &url,
                 env.locale,
                 None,
                 true,
