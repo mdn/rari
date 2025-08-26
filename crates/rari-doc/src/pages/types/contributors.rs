@@ -51,6 +51,7 @@ pub struct ContributorMeta {
 pub struct ContributorBuildMeta {
     pub locale: Locale,
     pub slug: String,
+    pub short_title: String,
     pub title: String,
     pub url: String,
     pub contributor_name: String,
@@ -120,6 +121,7 @@ impl ContributorBuildMeta {
         Ok(Self {
             url: concat_strs!("/", locale.as_url_str(), "/community/", slug.as_str()),
             locale,
+            short_title: concat_strs!("Contributor Spotlight: ", contributor_name.as_str()),
             title: concat_strs!(
                 "Contributor, Spotlight - ",
                 contributor_name.as_str(),
@@ -186,7 +188,7 @@ impl PageLike for ContributorSpotlight {
     }
 
     fn short_title(&self) -> Option<&str> {
-        None
+        Some(&self.meta.short_title)
     }
 
     fn locale(&self) -> Locale {
