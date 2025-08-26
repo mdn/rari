@@ -122,11 +122,7 @@ impl ContributorBuildMeta {
             url: concat_strs!("/", locale.as_url_str(), "/community/", slug.as_str()),
             locale,
             short_title: concat_strs!("Contributor Spotlight: ", contributor_name.as_str()),
-            title: concat_strs!(
-                "Contributor, Spotlight - ",
-                contributor_name.as_str(),
-                " | MDN"
-            ),
+            title: concat_strs!(contributor_name.as_str(), " - Contributor Spotlight | MDN"),
             slug,
             contributor_name,
             folder_name,
