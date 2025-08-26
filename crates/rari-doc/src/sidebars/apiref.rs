@@ -107,16 +107,27 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
         ..Default::default()
     });
 
-    build_sublist(&mut entries, &constructors, constructor_label);
-    build_sublist(&mut entries, &static_properties, static_properties_label);
+    build_sublist(&mut entries, &constructors, constructor_label, true);
+    build_sublist(
+        &mut entries,
+        &static_properties,
+        static_properties_label,
+        true,
+    );
     build_sublist(
         &mut entries,
         &instance_properties,
         instance_properties_label,
+        true,
     );
-    build_sublist(&mut entries, &static_methods, static_methods_label);
-    build_sublist(&mut entries, &instance_methods, instance_methods_label);
-    build_sublist(&mut entries, &events, events_label);
+    build_sublist(&mut entries, &static_methods, static_methods_label, true);
+    build_sublist(
+        &mut entries,
+        &instance_methods,
+        instance_methods_label,
+        true,
+    );
+    build_sublist(&mut entries, &events, events_label, true);
 
     build_interface_list(&mut entries, &inherited, inheritance_label);
     build_interface_list(&mut entries, &related, &related_label);
@@ -134,8 +145,8 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
             .filter_map(|slug| slug.strip_prefix("/docs/"))
             .filter_map(|slug| Doc::page_from_slug(slug, locale, true).ok())
             .collect();
-        build_sublist(&mut entries, &guides, guides_label);
-        build_sublist(&mut entries, &tutorial, tutorial_label);
+        build_sublist(&mut entries, &guides, guides_label, false);
+        build_sublist(&mut entries, &tutorial, tutorial_label, false);
     }
 
     Ok(MetaSidebar {
@@ -144,7 +155,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     })
 }
 
-fn build_sublist(entries: &mut Vec<SidebarMetaEntry>, sub_pages: &[Page], label: &str) {
+fn build_sublist(entries: &mut Vec<SidebarMetaEntry>, sub_pages: &[Page], label: &str, code: bool) {
     if !sub_pages.is_empty() {
         entries.push(SidebarMetaEntry {
             details: Details::Open,
@@ -156,7 +167,7 @@ fn build_sublist(entries: &mut Vec<SidebarMetaEntry>, sub_pages: &[Page], label:
                 sub_pages
                     .iter()
                     .map(|page| SidebarMetaEntry {
-                        code: true,
+                        code,
                         content: SidebarMetaEntryContent::Link {
                             title: Some(api_page_title(page).to_string()),
                             link: page
