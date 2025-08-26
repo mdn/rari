@@ -468,6 +468,7 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
     Ok(BuiltPage::ContributorSpotlight(Box::new(
         JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
+            short_title: cs.meta.short_title.clone(),
             page_title: cs.meta.title.clone(),
             hy_data: contributor_spotlight_data,
             common: CommonJsonData {

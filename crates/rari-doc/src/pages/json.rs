@@ -611,6 +611,7 @@ pub struct ContributorSpotlightHyData {
 #[schemars(rename = "ContributorSpotlightPage")]
 pub struct JsonContributorSpotlightPage {
     pub url: String,
+    pub short_title: String,
     #[serde(rename = "pageTitle")]
     pub page_title: String,
     #[serde(rename = "hyData")]
