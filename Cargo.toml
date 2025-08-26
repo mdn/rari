@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.1.48"
+version = "0.1.49"
 edition = "2021"
 license = "MPL-2.0"
 authors = [
