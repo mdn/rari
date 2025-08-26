@@ -97,18 +97,35 @@ impl RariApi {
         &settings().interactive_examples_base_url
     }
 
+    /**
+     * Renders a link to a page. If a locale is provided, it will be used to generate the link.
+     * If no locale is provided, either the locale implicit in the link or the default locale will be used.
+     *
+     * @param link The URL of the page.
+     * @param locale The optional locale of the page.
+     * @param content The content of the link.
+     * @param code Whether the link is for code.
+     * @param title The title of the link.
+     * @param with_badges Whether to include badges.
+     * @return The rendered link.
+     */
     pub fn link(
         link: &str,
-        locale: Locale,
+        locale: Option<Locale>,
         content: Option<&str>,
         code: bool,
         title: Option<&str>,
         with_badges: bool,
     ) -> Result<String, DocError> {
         let mut out = String::new();
+        let (url, locale) = if let Some(locale) = locale {
+            (link.strip_prefix("/en-US/docs").unwrap_or(link), locale)
+        } else {
+            (link, Locale::default())
+        };
         render_link_via_page(
             &mut out,
-            link,
+            url,
             locale,
             content,
             title,

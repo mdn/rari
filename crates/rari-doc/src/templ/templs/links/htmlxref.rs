@@ -50,5 +50,12 @@ pub fn htmlelement(
         url.push_str(&anchor);
     }
 
-    RariApi::link(&url, env.locale, Some(display.as_ref()), code, None, false)
+    RariApi::link(
+        &url,
+        Some(env.locale),
+        Some(display.as_ref()),
+        code,
+        None,
+        false,
+    )
 }

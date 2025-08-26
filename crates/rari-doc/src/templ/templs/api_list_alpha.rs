@@ -37,7 +37,7 @@ pub fn apilistalpha() -> Result<String, DocError> {
             "<li>",
             &RariApi::link(
                 page.url(),
-                env.locale,
+                Some(env.locale),
                 None,
                 true,
                 Some(page.short_title().unwrap_or(page.title())),

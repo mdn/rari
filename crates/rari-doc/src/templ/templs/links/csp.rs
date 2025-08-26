@@ -32,7 +32,7 @@ pub fn csp(directive: String) -> Result<String, DocError> {
     );
     RariApi::link(
         &url,
-        env.locale,
+        Some(env.locale),
         Some(directive.as_ref()),
         true,
         None,

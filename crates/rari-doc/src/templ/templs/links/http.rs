@@ -129,5 +129,12 @@ fn http(
         display.push_str(&anchor);
     }
     let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
-    RariApi::link(&url, locale, Some(display.as_ref()), code, None, false)
+    RariApi::link(
+        &url,
+        Some(locale),
+        Some(display.as_ref()),
+        code,
+        None,
+        false,
+    )
 }
