@@ -17,12 +17,25 @@ struct VersionEntry {
 
 type Releases = Vec<VersionEntry>;
 
-fn get_version(repo: &str, version_req: &VersionReq) -> Result<(Version, String), DepsError> {
-    let releases = get(format!(
-        "https://api.github.com/repos/{repo}/releases?per_page=10"
-    ))?;
+#[derive(Deserialize, Debug)]
+struct GithubError {
+    message: String,
+}
 
-    let releases: Releases = serde_json::from_value(releases.json()?)?;
+fn get_version(repo: &str, version_req: &VersionReq) -> Result<(Version, String), DepsError> {
+    let url = format!("https://api.github.com/repos/{repo}/releases?per_page=10");
+    let resp = get(&url)?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let err: Result<GithubError, _> = resp.json();
+        return Err(match err {
+            Ok(e) => DepsError::UpstreamError(format!("GitHub error: {} ({url})", e.message)),
+            Err(_) => DepsError::UpstreamError(format!("GitHub HTTP {}", status)),
+        });
+    }
+
+    let releases: Releases = serde_json::from_value(resp.json()?)?;
     if let Some(version) = releases.iter().find_map(|k| {
         let version = k
             .tag_name
