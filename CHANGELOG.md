@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.49](https://github.com/mdn/rari/compare/v0.1.48...v0.1.49) (2025-09-01)
+
+
+### Bug Fixes
+
+* **contributors:** add short_title to spotlight pages ([#297](https://github.com/mdn/rari/issues/297)) ([264c670](https://github.com/mdn/rari/commit/264c67012e1694cb2e10fae4a5309d16c7b24d02))
+* **sidebar:** guides links were wrapped in code element ([#293](https://github.com/mdn/rari/issues/293)) ([6935c7b](https://github.com/mdn/rari/commit/6935c7b766dfd50fedaf07d78312fc9db9ef26b6))
+
+
+### Miscellaneous
+
+* **api:** apply locale passed to RariApi::link + make optional ([#287](https://github.com/mdn/rari/issues/287)) ([6c24ea1](https://github.com/mdn/rari/commit/6c24ea12cec78447b3704e3f7612ab9b9269b128))
+* **deps:** bump slab from 0.4.10 to 0.4.11 ([#295](https://github.com/mdn/rari/issues/295)) ([eba3173](https://github.com/mdn/rari/commit/eba31735854093ebed17d2e79d0f45f2142a68c9))
+* **github:** add CODEOWNERS ([#299](https://github.com/mdn/rari/issues/299)) ([f80229c](https://github.com/mdn/rari/commit/f80229c84e5f434427c11f7a58cd86a837ab07b0))
+
 ## [0.1.48](https://github.com/mdn/rari/compare/v0.1.47...v0.1.48) (2025-08-11)
 
 
