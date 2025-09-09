@@ -7,8 +7,9 @@ use std::sync::Arc;
 use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_md::m2h;
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::locale::Locale;
+use rari_types::locale::{default_locale, Locale};
 use rari_types::RariEnv;
+use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
 use serde_yaml_ng::Value;
@@ -18,6 +19,7 @@ use validator::Validate;
 use crate::cached_readers::{doc_page_from_static_files, CACHED_DOC_PAGE_FILES};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
+use crate::pages::types::utils::FmTempl;
 use crate::resolve::{build_url, url_to_folder_path};
 use crate::utils::{
     locale_and_typ_from_path, root_for_locale, serialize_t_or_vec, split_fm, t_or_vec,
@@ -35,6 +37,10 @@ use crate::utils::{
  ]
 */
 
+fn is_page_type_none(page_type: &PageType) -> bool {
+    matches!(page_type, PageType::None)
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug, Default, Validate)]
 #[serde(default)]
 pub struct FrontMatter {
@@ -46,14 +52,9 @@ pub struct FrontMatter {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     pub slug: String,
-    #[serde(rename = "page-type")]
+    #[serde(rename = "page-type", skip_serializing_if = "is_page_type_none")]
     pub page_type: PageType,
-    #[serde(
-        deserialize_with = "t_or_vec",
-        serialize_with = "serialize_t_or_vec",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub status: Vec<FeatureStatus>,
     #[serde(
         rename = "browser-compat",
@@ -79,7 +80,14 @@ pub struct FrontMatter {
         default,
         skip_serializing_if = "Vec::is_empty"
     )]
-    pub sidebar: Vec<String>,
+    pub sidebar: Vec<FmTempl>,
+    #[serde(
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub banners: Vec<FmTempl>,
     #[serde(flatten)]
     pub other: HashMap<String, Value>,
 }
@@ -95,11 +103,12 @@ pub struct Meta {
     pub browser_compat: Vec<String>,
     pub spec_urls: Vec<String>,
     pub original_slug: Option<String>,
-    pub sidebar: Vec<String>,
+    pub sidebar: Vec<FmTempl>,
     pub locale: Locale,
     pub full_path: PathBuf,
     pub path: PathBuf,
     pub url: String,
+    pub banners: Vec<FmTempl>,
 }
 
 #[derive(Debug, Clone)]
@@ -112,11 +121,24 @@ pub struct Doc {
 pub type ADoc = Arc<Doc>;
 
 impl Doc {
-    pub fn page_from_slug(slug: &str, locale: Locale) -> Result<Page, DocError> {
-        Doc::page_from_slug_path(&url_to_folder_path(slug), locale)
+    pub fn page_from_slug(slug: &str, locale: Locale, fallback: bool) -> Result<Page, DocError> {
+        Doc::page_from_slug_path(&url_to_folder_path(slug), locale, fallback)
     }
 
-    pub fn page_from_slug_path(path: &Path, locale: Locale) -> Result<Page, DocError> {
+    pub fn page_from_slug_path(
+        path: &Path,
+        locale: Locale,
+        fallback: bool,
+    ) -> Result<Page, DocError> {
+        let doc = Self::page_from_slug_path_internal(path, locale);
+        if doc.is_err() && locale != default_locale() && fallback {
+            Self::page_from_slug_path_internal(path, Default::default())
+        } else {
+            doc
+        }
+    }
+
+    fn page_from_slug_path_internal(path: &Path, locale: Locale) -> Result<Page, DocError> {
         let mut file = root_for_locale(locale)?.to_path_buf();
         file.push(locale.as_folder_str());
         file.push(path);
@@ -144,15 +166,15 @@ impl Doc {
     }
 }
 
-impl PageReader for Doc {
+impl PageReader<Page> for Doc {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
-        if let Some(doc) = doc_page_from_static_files(&path) {
-            return doc;
+        if let Ok(doc) = doc_page_from_static_files(&path) {
+            return Ok(doc);
         }
 
         if let Some(cache) = CACHED_DOC_PAGE_FILES.get() {
-            if let Some(doc) = cache.read()?.get(&path) {
+            if let Some(doc) = cache.get(&path) {
                 return Ok(doc.clone());
             }
         }
@@ -160,7 +182,7 @@ impl PageReader for Doc {
         let mut doc = read_doc(&path)?;
 
         if doc.meta.locale != Default::default() && !doc.is_conflicting() && !doc.is_orphaned() {
-            match Doc::page_from_slug(&doc.meta.slug, Default::default()) {
+            match Doc::page_from_slug(&doc.meta.slug, Default::default(), false) {
                 Ok(Page::Doc(super_doc)) => {
                     doc.copy_meta_from_super(&super_doc);
                 }
@@ -178,9 +200,7 @@ impl PageReader for Doc {
 
         let page = Page::Doc(Arc::new(doc));
         if let Some(cache) = CACHED_DOC_PAGE_FILES.get() {
-            if let Ok(mut cache) = cache.write() {
-                cache.insert(path, page.clone());
-            }
+            cache.insert(path, page.clone());
         }
         Ok(page)
     }
@@ -272,12 +292,19 @@ impl PageLike for Doc {
     fn fm_offset(&self) -> usize {
         self.raw[..self.content_start].lines().count()
     }
+
+    fn raw_content(&self) -> &str {
+        &self.raw
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        Some(&self.meta.banners)
+    }
 }
 
-fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
-    let full_path = path.into();
+pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, DocError> {
+    let full_path = full_path.into();
     let (locale, _) = locale_and_typ_from_path(&full_path)?;
-    let raw = read_to_string(&full_path)?;
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     let FrontMatter {
@@ -291,13 +318,36 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
         spec_urls,
         original_slug,
         sidebar,
+        banners,
         ..
     } = serde_yaml_ng::from_str(fm)?;
     let url = build_url(&slug, locale, PageCategory::Doc)?;
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?
         .to_path_buf();
-
+    let folder_path = path
+        .strip_prefix(locale.as_folder_str())
+        .ok()
+        .and_then(|path| path.parent());
+    let folder_path_from_slug = url_to_folder_path(&slug);
+    if Some(folder_path_from_slug.as_path()) != folder_path {
+        return Err(DocError::SlugFolderMismatch(
+            slug,
+            concat_strs!(
+                locale.as_folder_str(),
+                "/",
+                folder_path
+                    .map(|path| path.to_string_lossy())
+                    .unwrap_or_default()
+                    .as_ref()
+            ),
+            concat_strs!(
+                locale.as_folder_str(),
+                "/",
+                folder_path_from_slug.to_string_lossy().as_ref()
+            ),
+        ));
+    }
     Ok(Doc {
         meta: Meta {
             title,
@@ -314,10 +364,17 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
             full_path,
             path,
             url,
+            banners,
         },
         raw,
         content_start,
     })
+}
+
+fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
+    let full_path = path.into();
+    let raw = read_to_string(&full_path)?;
+    doc_from_raw(raw, full_path)
 }
 
 fn write_doc(doc: &Doc) -> Result<(), DocError> {
@@ -357,7 +414,7 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     buffer.write_all(fm_str.as_bytes())?;
     buffer.write_all(b"---\n")?;
 
-    buffer.write_all(doc.raw[content_start..].as_bytes())?;
+    buffer.write_all(&doc.raw.as_bytes()[content_start..])?;
 
     Ok(())
 }
@@ -368,18 +425,13 @@ fn fm_to_string(fm: &FrontMatter) -> Result<String, DocError> {
         &fm_str,
         &FormatOptions {
             language: LanguageOptions {
-                quotes: pretty_yaml::config::Quotes::PreferDouble,
+                quotes: pretty_yaml::config::Quotes::ForceDouble,
                 indent_block_sequence_in_map: true,
                 ..Default::default()
             },
             ..Default::default()
         },
     )?)
-}
-
-pub fn render_md_to_html(input: &str, locale: Locale) -> Result<String, DocError> {
-    let html = m2h(input, locale)?;
-    Ok(html)
 }
 
 #[cfg(test)]
@@ -399,7 +451,8 @@ mod tests {
         assert_eq!(meta.status.len(), 2);
 
         let fm = r#"
-        status: experimental
+        status:
+          - experimental
       "#;
         let meta = serde_yaml_ng::from_str::<FrontMatter>(fm).unwrap();
         assert_eq!(meta.status.len(), 1);
@@ -411,7 +464,6 @@ mod tests {
             r#"
             title: "007"
             slug: foo
-            page-type: none
             browser-compat:
               - foo
               - bar

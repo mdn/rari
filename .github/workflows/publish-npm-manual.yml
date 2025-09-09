@@ -1,0 +1,38 @@
+name: publish-npm-manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "actually publish"
+        required: true
+        default: false
+        type: boolean
+
+# No GITHUB_TOKEN permissions, as we don't use it.
+permissions: {}
+
+jobs:
+  test-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        uses: actions/checkout@v5
+
+      - name: Checkout
+        uses: actions/setup-node@v4
+        with:
+          registry-url: "https://registry.npmjs.org/"
+          node-version-file: "./rari-npm/package.json"
+
+      - name: Test Publish
+        if: ${{ ! inputs.publish }}
+        working-directory: ./rari-npm
+        run: npm publish --access public --dry-run
+
+      - name: Publish
+        if: ${{ inputs.publish }}
+        working-directory: ./rari-npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

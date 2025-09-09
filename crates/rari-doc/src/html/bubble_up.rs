@@ -1,6 +1,6 @@
 use scraper::{ElementRef, Html, Selector};
 
-use super::modifier::add_attribute;
+use super::modifier::insert_attribute;
 use crate::error::DocError;
 
 pub fn bubble_up_curriculum_page(html: &mut Html) -> Result<(), DocError> {
@@ -45,7 +45,7 @@ pub fn bubble_up_curriculum_page(html: &mut Html) -> Result<(), DocError> {
     //let next_ul = parent.next_siblings().find(|s| s.value().is_element());
 
     for (id, value) in rews {
-        add_attribute(html, id, "class", value);
+        insert_attribute(html, id, "class", value);
     }
 
     Ok(())

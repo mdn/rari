@@ -32,7 +32,7 @@ fn items_from_syntax(syntax: &str) -> Vec<Cow<'_, str>> {
         .collect()
 }
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn css_ref() -> Result<String, DocError> {
     let data = mdn_data_files();
 

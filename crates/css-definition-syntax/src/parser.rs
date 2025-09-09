@@ -126,6 +126,10 @@ pub struct Group {
     pub disallow_empty: bool,
     pub explicit: bool,
 }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BooleanExpr {
+    pub term: Box<Node>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Node {
@@ -142,6 +146,7 @@ pub enum Node {
     Spaces(Spaces),
     AtKeyword(AtKeyword),
     Group(Group),
+    BooleanExpr(BooleanExpr),
 }
 
 impl Node {
@@ -160,6 +165,7 @@ impl Node {
             Node::Spaces(_) => "Spaces",
             Node::AtKeyword(_) => "AtKeyword",
             Node::Group(_) => "Group",
+            Node::BooleanExpr(_) => "BooleanExpr",
         }
     }
 }
@@ -183,7 +189,7 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use IntI::*;
         match self {
-            Finite(x) => write!(f, "{}", x),
+            Finite(x) => write!(f, "{x}"),
             Infinity => write!(f, "∞"),
             NegativeInfinity => write!(f, "-∞"),
         }
@@ -350,7 +356,7 @@ fn maybe_multiplied(tokenizer: &mut Tokenizer, node: Node) -> Result<Node, Synta
         // Represent "+#" as nested multipliers:
         // { ...<multiplier #>,
         //   term: {
-        //     ...<multipler +>,
+        //     ...<multiplier +>,
         //     term: node
         //   }
         // }
@@ -474,6 +480,23 @@ fn read_type_range(tokenizer: &mut Tokenizer) -> Result<Node, SyntaxDefinitionEr
 fn read_type(tokenizer: &mut Tokenizer) -> Result<Node, SyntaxDefinitionError> {
     tokenizer.eat(LESS_THAN_SIGN)?;
     let mut name = scan_word(tokenizer, false)?;
+    if name == "boolean-expr" {
+        tokenizer.eat(LEFT_SQUARE_BRACKET)?;
+        let mut implicit_group = read_implicit_group(tokenizer, Some(RIGHT_SQUARE_BRACKET))?;
+        tokenizer.eat(RIGHT_SQUARE_BRACKET)?;
+        tokenizer.eat(GREATER_THAN_SIGN)?;
+
+        return maybe_multiplied(
+            tokenizer,
+            Node::BooleanExpr(BooleanExpr {
+                term: Box::new(if implicit_group.terms.len() == 1 {
+                    implicit_group.terms.pop().unwrap()
+                } else {
+                    Node::Group(implicit_group)
+                }),
+            }),
+        );
+    }
 
     if tokenizer.char_code() == LEFT_PARENTHESIS && tokenizer.next_char_code() == RIGHT_PARENTHESIS
     {
@@ -575,12 +598,15 @@ fn regroup_terms(
     (terms, combinator)
 }
 
-fn read_implicit_group(tokenizer: &mut Tokenizer) -> Result<Group, SyntaxDefinitionError> {
+fn read_implicit_group(
+    tokenizer: &mut Tokenizer,
+    stop_char: Option<char>,
+) -> Result<Group, SyntaxDefinitionError> {
     let mut prev_token_pos = tokenizer.pos;
     let mut combinators = HashSet::new();
     let mut terms = vec![];
 
-    while let Some(token) = peek(tokenizer)? {
+    while let Some(token) = peek(tokenizer, stop_char)? {
         match (&token, terms.last()) {
             (Node::Spaces(Spaces { value: _ }), _) => continue,
             (
@@ -618,9 +644,12 @@ fn read_implicit_group(tokenizer: &mut Tokenizer) -> Result<Group, SyntaxDefinit
     })
 }
 
-fn read_group(tokenizer: &mut Tokenizer) -> Result<Node, SyntaxDefinitionError> {
+fn read_group(
+    tokenizer: &mut Tokenizer,
+    stop_char: Option<char>,
+) -> Result<Node, SyntaxDefinitionError> {
     tokenizer.eat(LEFT_SQUARE_BRACKET)?;
-    let mut group = read_implicit_group(tokenizer)?;
+    let mut group = read_implicit_group(tokenizer, stop_char)?;
     tokenizer.eat(RIGHT_SQUARE_BRACKET)?;
 
     group.explicit = true;
@@ -633,8 +662,16 @@ fn read_group(tokenizer: &mut Tokenizer) -> Result<Node, SyntaxDefinitionError> 
     Ok(Node::Group(group))
 }
 
-fn peek(tokenizer: &mut Tokenizer) -> Result<Option<Node>, SyntaxDefinitionError> {
+fn peek(
+    tokenizer: &mut Tokenizer,
+    stop_char: Option<char>,
+) -> Result<Option<Node>, SyntaxDefinitionError> {
     let code = tokenizer.char_code();
+    if let Some(stop_char) = stop_char {
+        if code == stop_char {
+            return Ok(None);
+        }
+    }
     if is_name_char(code) {
         return Ok(Some(read_keyword_or_function(tokenizer)?));
     }
@@ -642,7 +679,7 @@ fn peek(tokenizer: &mut Tokenizer) -> Result<Option<Node>, SyntaxDefinitionError
     Ok(match code {
         RIGHT_SQUARE_BRACKET => None,
         LEFT_SQUARE_BRACKET => {
-            let group = read_group(tokenizer)?;
+            let group = read_group(tokenizer, stop_char)?;
             Some(maybe_multiplied(tokenizer, group)?)
         }
         LESS_THAN_SIGN => Some(if tokenizer.next_char_code() == APOSTROPHE {
@@ -710,7 +747,7 @@ fn peek(tokenizer: &mut Tokenizer) -> Result<Option<Node>, SyntaxDefinitionError
 
 pub fn parse(source: &str) -> Result<Node, SyntaxDefinitionError> {
     let mut tokenizer = Tokenizer::new(source);
-    let mut result = read_implicit_group(&mut tokenizer)?;
+    let mut result = read_implicit_group(&mut tokenizer, None)?;
 
     if tokenizer.pos != tokenizer.str.len() {
         return Err(SyntaxDefinitionError::ParseErrorUnexpectedInput);

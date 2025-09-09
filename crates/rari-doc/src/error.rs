@@ -1,5 +1,4 @@
 use std::path::{PathBuf, StripPrefixError};
-use std::sync::PoisonError;
 
 use css_syntax::error::SyntaxError;
 use rari_md::error::MarkdownError;
@@ -11,8 +10,14 @@ use thiserror::Error;
 use crate::helpers::l10n::L10nError;
 use crate::pages::page::PageCategory;
 
+/// Represents various errors that can occur when processing pages.
+///
+/// Each variant corresponds to a specific error type and includes relevant
+/// error messages and associated data.
 #[derive(Debug, Error)]
 pub enum DocError {
+    #[error("Not a Doc")]
+    NotADoc,
     #[error("Cannot parse templ index")]
     TemplIndexParseError(#[from] std::num::ParseIntError),
     #[error("Invalid templ index {0}")]
@@ -21,10 +26,14 @@ pub enum DocError {
     NoParent(PathBuf),
     #[error(transparent)]
     NoSuchPrefix(#[from] StripPrefixError),
-    #[error("No curricm root set")]
+    #[error("No curriculum root set")]
     NoCurriculumRoot,
-    #[error("No generic pages roots set")]
-    NoGenericPagesRoot,
+    #[error("No generic content root set")]
+    NoGenericContentRoot,
+    #[error("No contributor spotlights root set")]
+    NoContributorSpotlightRoot,
+    #[error("No generic content config found")]
+    NoGenericContentConfig,
     #[error("No H1 found")]
     NoH1,
     #[error(transparent)]
@@ -35,8 +44,6 @@ pub enum DocError {
     NotFoundInStaticCache(String),
     #[error("File cache broken")]
     FileCacheBroken,
-    #[error("File cache poisoned")]
-    FileCachePoisoned,
     #[error(transparent)]
     IOError(#[from] std::io::Error),
     #[error("Error parsing frontmatter: {0}")]
@@ -63,8 +70,6 @@ pub enum DocError {
     Utf8Error(#[from] std::string::FromUtf8Error),
     #[error("Link to redirect: {from} -> {to}")]
     RedirectedLink { from: String, to: String },
-    #[error("Sidebar cache poisoned")]
-    SidebarCachePoisoned,
     #[error("Unknown macro: {0}")]
     UnknownMacro(String),
     #[error("CSS Page type required")]
@@ -103,14 +108,19 @@ pub enum DocError {
     RariIoError(#[from] rari_utils::error::RariIoError),
     #[error("Slug required for SidebarEntry")]
     SlugRequiredForSidebarEntry,
+    #[error("Invalid sidebar entry")]
+    InvalidSidebarEntry,
+    #[error(
+        "The document's slug ({0}) doesn't match its disk folder name ({1}): expected path ({2})"
+    )]
+    SlugFolderMismatch(String, String, String),
+    #[error("Fatal error reading docs")]
+    DocsReadError,
+    #[error("No RariEnv for Page")]
+    NoRariEnv,
 }
 
-impl<T> From<PoisonError<T>> for DocError {
-    fn from(_: PoisonError<T>) -> Self {
-        Self::FileCachePoisoned
-    }
-}
-
+/// Represents various errors that can occur while processing URLs.
 #[derive(Debug, Error)]
 pub enum UrlError {
     #[error("invalid url")]
@@ -121,6 +131,7 @@ pub enum UrlError {
     EnvError(#[from] EnvError),
 }
 
+/// Represents various errors that can occur while handling file operations.
 #[derive(Debug, Error)]
 pub enum FileError {
     #[error("not a subpath")]

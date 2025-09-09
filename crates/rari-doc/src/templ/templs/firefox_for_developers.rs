@@ -5,16 +5,19 @@ use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
-use crate::html::links::render_link_via_page;
+use crate::html::links::{render_link_via_page, LinkFlags};
 
 const OLD_VERSIONS: &[&str] = &["3.6", "3.5", "3", "2", "1.5"];
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn firefox_for_developers() -> Result<String, DocError> {
     let locale = env.locale;
     let slug = env.slug;
 
-    let version_str = slug.split('/').last().ok_or_else(|| invalid_slug(slug))?;
+    let version_str = slug
+        .split('/')
+        .next_back()
+        .ok_or_else(|| invalid_slug(slug))?;
 
     // Determine if version_str is a float (for OLD_VERSIONS) or integer
     let mut max_version: i32 = if let Ok(int_version) = version_str.parse::<i32>() {
@@ -74,11 +77,14 @@ fn generate_release_link<T: Display>(
     render_link_via_page(
         out,
         &format!("/Mozilla/Firefox/Releases/{version}"),
-        Some(locale),
+        locale,
         Some(&format!("Firefox {version} {for_developers}")),
-        false,
         None,
-        false,
+        LinkFlags {
+            code: false,
+            with_badges: false,
+            report: false,
+        },
     )?;
     out.push_str("</li>");
     Ok(())

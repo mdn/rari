@@ -1,7 +1,7 @@
 use comrak::nodes::{AstNode, NodeValue};
 
 pub(crate) fn is_dl<'a>(list: &'a AstNode<'a>) -> bool {
-    return list.children().all(|child| {
+    list.children().all(|child| {
         if child.children().count() < 2 {
             return false;
         }
@@ -23,7 +23,7 @@ pub(crate) fn is_dl<'a>(list: &'a AstNode<'a>) -> bool {
             }
             false
         })
-    });
+    })
 }
 
 pub(crate) fn convert_dl<'a>(list: &'a AstNode<'a>) {
@@ -35,7 +35,7 @@ pub(crate) fn convert_dl<'a>(list: &'a AstNode<'a>) {
             continue;
         }
         last_child.detach();
-        for item in last_child.children() {
+        for item in last_child.reverse_children() {
             if let Some(i) = item.first_child() {
                 if !matches!(i.data.borrow().value, NodeValue::Paragraph) {
                     break;

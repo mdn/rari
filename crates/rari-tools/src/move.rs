@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use console::{style, Style};
@@ -19,21 +18,18 @@ use rari_types::locale::Locale;
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
 use crate::redirects::add_redirects;
+use crate::sidebars::update_sidebars;
 use crate::utils::parent_slug;
 use crate::wikihistory::update_wiki_history;
 
 pub fn r#move(
     old_slug: &str,
     new_slug: &str,
-    locale: Option<&str>,
+    locale: Option<Locale>,
     assume_yes: bool,
 ) -> Result<(), ToolError> {
     validate_args(old_slug, new_slug)?;
-    let locale = if let Some(l) = locale {
-        Locale::from_str(l)?
-    } else {
-        Locale::default()
-    };
+    let locale = locale.unwrap_or_default();
 
     // Make a dry run to give some feedback on what would be done
     let green = Style::new().green();
@@ -41,10 +37,10 @@ pub fn r#move(
     let bold = Style::new().bold();
     let changes = do_move(old_slug, new_slug, locale, true)?;
     if changes.is_empty() {
-        println!("{}", style("No changes would be made").green());
+        tracing::info!("{}", style("No changes would be made").green());
         return Ok(());
     } else {
-        println!(
+        tracing::info!(
             "{} {} {} {} {} {}",
             green.apply_to("This will move"),
             bold.apply_to(changes.len()),
@@ -54,7 +50,7 @@ pub fn r#move(
             green.apply_to(new_slug)
         );
         for (old_slug, new_slug) in changes {
-            println!(
+            tracing::info!(
                 "{} -> {}",
                 red.apply_to(&old_slug),
                 green.apply_to(&new_slug)
@@ -70,7 +66,7 @@ pub fn r#move(
             .unwrap_or_default()
     {
         let moved = do_move(old_slug, new_slug, locale, false)?;
-        println!(
+        tracing::info!(
             "{} {} {}",
             green.apply_to("Moved"),
             bold.apply_to(moved.len()),
@@ -90,7 +86,7 @@ fn do_move(
     dry_run: bool,
 ) -> Result<Vec<(String, String)>, ToolError> {
     let old_url = build_url(old_slug, locale, PageCategory::Doc)?;
-    let doc = page::Page::from_url(&old_url)?;
+    let doc = page::Page::from_url_with_fallback(&old_url)?;
     let real_old_slug = doc.slug();
 
     let new_parent_slug = parent_slug(new_slug)?;
@@ -106,6 +102,19 @@ fn do_move(
     // Return early if we move onto ourselves.
     if !is_new_slug {
         return Ok(vec![]);
+    }
+
+    let old_folder_path = slug_to_repo_folder_path(real_old_slug, locale)?;
+    let new_folder_path = slug_to_repo_folder_path(new_slug, locale)?;
+
+    if root_for_locale(locale)?
+        .join(&new_folder_path)
+        .try_exists()?
+    {
+        return Err(ToolError::TargetDirExists(
+            new_folder_path,
+            new_slug.to_string(),
+        ));
     }
 
     let pairs = [doc.clone()]
@@ -134,7 +143,7 @@ fn do_move(
             doc.meta.slug = new_slug.to_string();
             Some(doc.to_owned())
         } else {
-            println!("This does not look like a document");
+            tracing::info!("This does not look like a document");
             None
         }
     });
@@ -149,16 +158,6 @@ fn do_move(
     // Now we use the git command to move the whole parent directory
     // to a new location. This will move all children as well and
     // makes sure that we get a proper "file moved" in the git history.
-
-    let mut old_folder_path = PathBuf::from(locale.as_folder_str());
-    let url = build_url(real_old_slug, locale, PageCategory::Doc)?;
-    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
-    old_folder_path.push(folder_path);
-
-    let mut new_folder_path = PathBuf::from(locale.as_folder_str());
-    let url = build_url(new_slug, locale, PageCategory::Doc)?;
-    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
-    new_folder_path.push(folder_path);
 
     // Make sure the target parent directory exists.
     if let Some(target_parent_path) = new_folder_path.parent() {
@@ -190,6 +189,24 @@ fn do_move(
     // Update Wiki history for entries that have an entry for the old slug.
     update_wiki_history(locale, &pairs)?;
 
+    // Update the sidebars, changing links and paths where necessary.
+    // But only for the default locale. Translated content cannot change
+    // sidebars. Map the pairs from (String, String) to (String, Option<String>)
+    // to match the function signature.
+    if locale == Locale::default() {
+        update_sidebars(
+            &pairs
+                .iter()
+                .map(|(from, to)| {
+                    (
+                        Cow::Borrowed(from.as_str()),
+                        Some(Cow::Borrowed(to.as_str())),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )?;
+    }
+
     // Update the redirect map. Create pairs of URLs from the slug pairs.
     let url_pairs = pairs
         .iter()
@@ -203,6 +220,14 @@ fn do_move(
 
     // finally, return the pairs of old and new slugs
     Ok(pairs)
+}
+
+fn slug_to_repo_folder_path(slug: &str, locale: Locale) -> Result<PathBuf, ToolError> {
+    let mut new_folder_path = PathBuf::from(locale.as_folder_str());
+    let url = build_url(slug, locale, PageCategory::Doc)?;
+    let UrlMeta { folder_path, .. } = url_meta_from(&url)?;
+    new_folder_path.push(folder_path);
+    Ok(new_folder_path)
 }
 
 fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
@@ -232,7 +257,7 @@ fn validate_args(old_slug: &str, new_slug: &str) -> Result<(), ToolError> {
 // These tests use file system fixtures to simulate content and translated content.
 // The file system is a shared resource, so we force tests to be run serially,
 // to avoid concurrent fixture management issues.
-// Using `file_serial` as a synchonization lock, we should be able to run all tests
+// Using `file_serial` as a synchronization lock, we should be able to run all tests
 // using the same `key` (here: file_fixtures) to be serialized across modules.
 #[cfg(test)]
 use serial_test::file_serial;
@@ -243,8 +268,10 @@ mod test {
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
+    use crate::tests::fixtures::sidebars::SidebarFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
-    use crate::utils::test_utils::{check_file_existence, get_redirects_map};
+    use crate::utils::get_redirects_map;
+    use crate::utils::test_utils::check_file_existence;
 
     fn s(s: &str) -> String {
         s.to_string()
@@ -333,6 +360,7 @@ mod test {
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(&redirects, Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let root_path = root_for_locale(Locale::EnUs).unwrap();
         let should_exist = vec![
@@ -354,7 +382,6 @@ mod test {
             Locale::EnUs,
             false,
         );
-        println!("result: {:?}", result);
         assert!(result.is_ok());
         let result = result.unwrap();
         assert!(result.len() == 3);
@@ -444,6 +471,7 @@ mod test {
         let _docs = DocFixtures::new(&slugs, Locale::PtBr);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::PtBr);
         let _redirects = RedirectFixtures::new(&redirects, Locale::PtBr);
+        let _sidebars = SidebarFixtures::default();
 
         let root_path = root_for_locale(Locale::PtBr).unwrap();
         let should_exist = vec![

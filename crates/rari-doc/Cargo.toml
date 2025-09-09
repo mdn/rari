@@ -1,12 +1,18 @@
 [package]
 name = "rari-doc"
-version = "0.0.13"
+version = "0.1.48"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+rari-utils.workspace = true
+rari-types.workspace = true
+rari-md.workspace = true
+rari-data.workspace = true
+rari-templ-func.workspace = true
+
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -16,42 +22,41 @@ url.workspace = true
 itertools.workspace = true
 constcat.workspace = true
 indexmap.workspace = true
+sha2.workspace = true
+tracing-subscriber.workspace = true
+dashmap.workspace = true
+pretty_yaml.workspace = true
+serde_yaml_ng.workspace = true
+yaml_parser.workspace = true
+schemars.workspace = true
+strum.workspace = true
+inventory.workspace = true
+tree-sitter.workspace = true
+tree-sitter-mdn.workspace = true
 
-serde_yaml_ng = "0.10"
 yaml-rust = "0.4"
-pretty_yaml = "0.5"
-yaml_parser = "0.2"
 percent-encoding = "2"
-pest = "2"
-pest_derive = "2"
-validator = { version = "0.18", features = ["derive"] }
+validator = { version = "0.20", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
-
-scraper = { version = "0.20", features = ["deterministic"] }
+scraper = { version = "0.23", features = ["deterministic"] }
 lol_html = "2"
 html-escape = "0.2"
-html5ever = "0.27"
-ego-tree = "0.6"
+html5ever = "0.29"
+ego-tree = "0.10"
+rss = { version = "2", features = [], default-features = false }
+cssparser = "0.34"
 
+icu_locale_core = "2"
 ignore = "0.4"
 crossbeam-channel = "0.5"
 rayon = "1"
 enum_dispatch = "0.3"
-icu_collator = "1"
-icu_locid = "1"
-strum = { version = "0.26", features = ["derive"] }
-imagesize = "0.13"
+icu_collator = "2"
+imagesize = "0.14"
 svg_metadata = "0.5"
-memoize = "0.4"
-phf_macros = "0.11"
-phf = "0.11"
+memoize = "0.5"
 unescaper = "0.1"
 
-rari-utils.workspace = true
-rari-types.workspace = true
-rari-md.workspace = true
-rari-data.workspace = true
-rari-templ-func.workspace = true
 
 css-syntax = { path = "../css-syntax", features = ["rari"] }
 

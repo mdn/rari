@@ -4,10 +4,10 @@ use rari_md::anchor::anchorize;
 use rari_types::fm_types::FeatureStatus;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
-use tracing::warn;
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike};
+use crate::resolve::locale_from_url;
 use crate::templ::api::RariApi;
 use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 
@@ -25,6 +25,7 @@ pub fn render_internal_link(
     content: &str,
     title: Option<&str>,
     modifier: &LinkModifier,
+    checked: bool,
 ) -> Result<(), DocError> {
     out.push_str("<a href=\"");
     out.push_str(url);
@@ -32,14 +33,21 @@ pub fn render_internal_link(
         out.push('#');
         out.push_str(&anchorize(anchor));
     }
+    out.push('"');
     if let Some(title) = title {
-        out.push_str("\" title=\"");
-        out.push_str(&html_escape::encode_quoted_attribute(title));
+        out.extend([
+            " title=\"",
+            &html_escape::encode_quoted_attribute(title),
+            "\"",
+        ]);
     }
     if modifier.only_en_us {
-        out.push_str("\" class=\"only-in-en-us")
+        out.push_str(" class=\"only-in-en-us\"");
     }
-    out.push_str("\">");
+    if checked {
+        out.push_str(" data-templ-link");
+    }
+    out.push('>');
     if modifier.code {
         out.push_str("<code>");
     }
@@ -75,72 +83,74 @@ pub fn render_link_from_page(
     } else {
         Cow::Borrowed(content)
     };
-    render_internal_link(out, page.url(), None, &content, None, modifier)
+    render_internal_link(out, page.url(), None, &content, None, modifier, true)
+}
+
+#[derive(Clone, Copy)]
+pub struct LinkFlags {
+    pub code: bool,
+    pub with_badges: bool,
+    pub report: bool,
 }
 
 pub fn render_link_via_page(
     out: &mut String,
     link: &str,
-    locale: Option<Locale>,
+    locale: Locale,
     content: Option<&str>,
-    code: bool,
     title: Option<&str>,
-    with_badges: bool,
+    LinkFlags {
+        code,
+        with_badges,
+        report,
+    }: LinkFlags,
 ) -> Result<(), DocError> {
     let mut url = Cow::Borrowed(link);
     if let Some(link) = link.strip_prefix('/') {
-        if let Some(locale) = locale {
-            if !link.starts_with(Locale::default().as_url_str()) {
-                url = Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", link));
-            }
-        };
+        if locale_from_url(&url).is_none() {
+            url = Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", link));
+        }
         let (url, anchor) = url.split_once('#').unwrap_or((&url, ""));
-        match RariApi::get_page(url) {
-            Ok(page) => {
-                let url = page.url();
-                let content = if let Some(content) = content {
-                    Cow::Borrowed(content)
+        if let Ok(page) = if report {
+            RariApi::get_page(url)
+        } else {
+            RariApi::get_page_ignore_case(url)
+        } {
+            let url = page.url();
+            let content = if let Some(content) = content {
+                Cow::Borrowed(content)
+            } else {
+                let content = page.short_title().unwrap_or(page.title());
+                let decoded_content = html_escape::decode_html_entities(content);
+                let encoded_content = html_escape::encode_safe(&decoded_content);
+                if content != encoded_content {
+                    Cow::Owned(encoded_content.into_owned())
                 } else {
-                    let content = page.short_title().unwrap_or(page.title());
-                    let decoded_content = html_escape::decode_html_entities(content);
-                    let encoded_content = html_escape::encode_safe(&decoded_content);
-                    if content != encoded_content {
-                        Cow::Owned(encoded_content.into_owned())
-                    } else {
-                        Cow::Borrowed(content)
-                    }
-                };
-                return render_internal_link(
-                    out,
-                    url,
-                    if anchor.is_empty() {
-                        None
-                    } else {
-                        Some(anchor)
-                    },
-                    &content,
-                    title,
-                    &LinkModifier {
-                        badges: if with_badges { page.status() } else { &[] },
-                        badge_locale: locale.unwrap_or(page.locale()),
-                        code,
-                        only_en_us: page.locale() != locale.unwrap_or_default(),
-                    },
-                );
-            }
-            Err(e) => {
-                if !Page::ignore(url) {
-                    warn!(
-                        source = "invalid-link",
-                        url = url,
-                        "Link via page not found: {e}"
-                    )
+                    Cow::Borrowed(content)
                 }
-            }
+            };
+            return render_internal_link(
+                out,
+                url,
+                if anchor.is_empty() {
+                    None
+                } else {
+                    Some(anchor)
+                },
+                &content,
+                title,
+                &LinkModifier {
+                    badges: if with_badges { page.status() } else { &[] },
+                    badge_locale: locale,
+                    code,
+                    only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
+                },
+                true,
+            );
         }
     }
 
-    out.push_str("<a href=\"");
+    out.push_str("<a data-templ-link href=\"");
     let content = match content {
         Some(content) => {
             let decoded_content = html_escape::decode_html_entities(content);
@@ -151,7 +161,12 @@ pub fn render_link_via_page(
                 Cow::Borrowed(content)
             }
         }
-        None if url.starts_with('/') => Cow::Borrowed(&url[url.rfind('/').unwrap_or(0)..]),
+        None if url.starts_with('/') => {
+            // Fall back to last url path segment.
+            let clean_url = url.strip_suffix("/").unwrap_or(&url);
+            let content = &clean_url[clean_url.rfind('/').map(|i| i + 1).unwrap_or(0)..];
+            Cow::Borrowed(content)
+        }
         _ => html_escape::encode_safe(&url),
     };
     out.push_str(&url);

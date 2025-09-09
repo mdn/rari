@@ -1,25 +1,26 @@
+use std::borrow::Cow;
 use std::cmp::max;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
+use std::fmt::Write;
 use std::fs;
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufWriter, Write as _};
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::{Arc, LazyLock, RwLock};
+use std::sync::LazyLock;
 
 use anyhow::{anyhow, Error};
-use base64::prelude::{Engine as _, BASE64_STANDARD_NO_PAD};
 use clap::{Args, Parser, Subcommand};
 use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
 use itertools::Itertools;
 use jsonpath_lib::Compiled;
+use lol_html::{element, rewrite_str, ElementContentHandlers, RewriteStrSettings, Selector};
 use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use xml::fmt_html;
 
 mod xml;
@@ -33,6 +34,10 @@ fn html(body: &str) -> String {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+        body > ul {{
+            & > li {{
+                list-style: none;
+            }}
         ul {{
             display: flex;
             flex-direction: column;
@@ -66,10 +71,13 @@ fn html(body: &str) -> String {
                 }}
             }}
         }}
+        }}
     </style>
 </head>
 <body>
+<ul>
 {body}
+</ul>
 </body>
 </html>
 "#
@@ -140,6 +148,8 @@ struct BuildArgs {
     #[arg(long)]
     html: bool,
     #[arg(long)]
+    csv: bool,
+    #[arg(long)]
     inline: bool,
     #[arg(long)]
     ignore_html_whitespace: bool,
@@ -172,35 +182,49 @@ fn is_html(s: &str) -> bool {
     s.trim_start().starts_with('<') && s.trim_end().ends_with('>')
 }
 
-const IGNORE: &[&str] = &[
+const IGNORED_KEYS: &[&str] = &[
     "doc.flaws",
-    "blogMeta.readTime",
     "doc.modified",
     "doc.popularity",
     "doc.source.github_url",
     "doc.source.last_commit_url",
-    //"doc.sidebarHTML",
-    "doc.sidebarMacro",
-    "doc.hasMathML",
     "doc.other_translations",
-    "doc.summary",
 ];
+
+static SKIP_GLOB_LIST: LazyLock<Vec<&str>> = LazyLock::new(Vec::new);
+
+static ALLOWLIST: LazyLock<HashSet<(&str, &str)>> = LazyLock::new(|| vec![].into_iter().collect());
 
 static WS_DIFF: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?<x>>)[\n ]+|[\n ]+(?<y></)"#).unwrap());
-static DATA_FLAW_SRC: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#" data-flaw-src="[^"]+""#).unwrap());
 
-static DIFF_MAP: LazyLock<Arc<RwLock<HashMap<String, String>>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
+static EMPTY_P_DIFF: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"<p>[\n ]*</p>"#).unwrap());
+
+/// Run html content through these handlers to clean up the html before minifying and diffing.
+fn pre_diff_element_massaging_handlers<'a>(
+    _args: &BuildArgs,
+) -> Vec<(Cow<'a, Selector>, ElementContentHandlers<'a>)> {
+    let handlers = vec![
+        // remove data-flaw-src attributes
+        element!("*[data-flaw-src]", |el| {
+            el.remove_attribute("data-flaw-src");
+            Ok(())
+        }),
+        element!("*[data-flaw]", |el| {
+            el.remove_attribute("data-flaw");
+            Ok(())
+        }),
+    ];
+    handlers
+}
 
 fn full_diff(
     lhs: &Value,
     rhs: &Value,
+    file: &str,
     path: &[PathIndex],
     diff: &mut BTreeMap<String, String>,
-    fast: bool,
-    sidebars: bool,
+    args: &BuildArgs,
 ) {
     if path.len() == 1 {
         if let PathIndex::Object(s) = &path[0] {
@@ -209,24 +233,54 @@ fn full_diff(
             }
         }
     }
+    let key = make_key(path);
+
+    if SKIP_GLOB_LIST.iter().any(|i| file.starts_with(i)) {
+        return;
+    }
+
+    if ALLOWLIST.contains(&(file, &key)) {
+        return;
+    }
+
     if lhs != rhs {
-        let key = make_key(path);
-        if IGNORE.iter().any(|i| key.starts_with(i)) || key == "doc.sidebarHTML" && !sidebars {
+        if IGNORED_KEYS.iter().any(|i| key.starts_with(i))
+            || key == "doc.sidebarHTML" && !args.sidebars
+        {
             return;
         }
         match (lhs, rhs) {
             (Value::Array(lhs), Value::Array(rhs)) => {
                 let len = max(lhs.len(), rhs.len());
+                let (lhs, rhs) = if key.ends_with("specifications") {
+                    // sort specs by `bcdSpecificationURL` to make the diff more stable
+                    // example docs/web/mathml/global_attributes/index.json
+                    let mut lhs_sorted = lhs.clone();
+                    let mut rhs_sorted = rhs.clone();
+                    lhs_sorted.sort_by_key(|v| {
+                        v.get("bcdSpecificationURL")
+                            .unwrap_or(&Value::Null)
+                            .to_string()
+                    });
+                    rhs_sorted.sort_by_key(|v| {
+                        v.get("bcdSpecificationURL")
+                            .unwrap_or(&Value::Null)
+                            .to_string()
+                    });
+                    (&lhs_sorted.clone(), &lhs_sorted.clone())
+                } else {
+                    (lhs, rhs)
+                };
                 for i in 0..len {
                     let mut path = path.to_vec();
                     path.push(PathIndex::Array(i));
                     full_diff(
                         lhs.get(i).unwrap_or(&Value::Null),
                         rhs.get(i).unwrap_or(&Value::Null),
+                        file,
                         &path,
                         diff,
-                        fast,
-                        sidebars,
+                        args,
                     );
                 }
             }
@@ -239,10 +293,10 @@ fn full_diff(
                     full_diff(
                         lhs.get(key).unwrap_or(&Value::Null),
                         rhs.get(key).unwrap_or(&Value::Null),
+                        file,
                         &path,
                         diff,
-                        fast,
-                        sidebars,
+                        args,
                     );
                 }
             }
@@ -258,29 +312,44 @@ fn full_diff(
                         lhs = lhs.replace("\n  ", "\n");
                         rhs = rhs.replace("\n  ", "\n");
                     }
+                    x if x.starts_with("doc.") && x.ends_with("value.id") => {
+                        lhs = lhs
+                            .trim_end_matches(|c: char| c == '_' || c.is_ascii_digit())
+                            .to_string();
+                        rhs = rhs
+                            .trim_end_matches(|c: char| c == '_' || c.is_ascii_digit())
+                            .to_string();
+                    }
                     _ => {}
                 };
                 if is_html(&lhs) && is_html(&rhs) {
                     let lhs_t = WS_DIFF.replace_all(&lhs, "$x$y");
                     let rhs_t = WS_DIFF.replace_all(&rhs, "$x$y");
-                    let lhs_t = DATA_FLAW_SRC.replace_all(&lhs_t, "");
-                    let rhs_t = DATA_FLAW_SRC.replace_all(&rhs_t, "");
+                    let lhs_t = EMPTY_P_DIFF.replace_all(&lhs_t, "");
+                    let rhs_t = EMPTY_P_DIFF.replace_all(&rhs_t, "");
+                    let lhs_t = rewrite_str(
+                        &lhs_t,
+                        RewriteStrSettings {
+                            element_content_handlers: pre_diff_element_massaging_handlers(args),
+                            ..RewriteStrSettings::new()
+                        },
+                    )
+                    .expect("lolhtml processing failed");
+                    let rhs_t = rewrite_str(
+                        &rhs_t,
+                        RewriteStrSettings {
+                            element_content_handlers: pre_diff_element_massaging_handlers(args),
+                            ..RewriteStrSettings::new()
+                        },
+                    )
+                    .expect("lolhtml processing failed");
                     lhs = fmt_html(&html_minifier::minify(lhs_t).unwrap());
                     rhs = fmt_html(&html_minifier::minify(rhs_t).unwrap());
                 }
                 if lhs != rhs {
-                    let mut diff_hash = Sha256::new();
-                    diff_hash.write_all(lhs.as_bytes()).unwrap();
-                    diff_hash.write_all(rhs.as_bytes()).unwrap();
-                    let diff_hash = BASE64_STANDARD_NO_PAD.encode(&diff_hash.finalize()[..]);
-                    if let Some(hash) = (*DIFF_MAP.read().unwrap()).get(&diff_hash) {
-                        diff.insert(key, format!("See {hash}"));
-                        return;
-                    }
-                    (*DIFF_MAP.write().unwrap()).insert(diff_hash, "somewhere else".into());
                     diff.insert(
                         key,
-                        ansi_to_html::convert(&if fast {
+                        ansi_to_html::convert(&if args.fast {
                             diff_lines(&lhs, &rhs).to_string()
                         } else {
                             diff_words(&lhs, &rhs).to_string()
@@ -316,9 +385,7 @@ fn main() -> Result<(), anyhow::Error> {
             let hits = max(a.len(), b.len());
             let same = AtomicUsize::new(0);
             if arg.html {
-                let mut out = Vec::new();
-                out.push("<ul>".to_string());
-                out.extend(a.par_iter().filter_map(|(k, v)| {
+                let list_items = a.par_iter().filter_map(|(k, v)| {
                     if b.get(k) == Some(v) {
                         same.fetch_add(1, Relaxed);
                         return None;
@@ -328,12 +395,12 @@ fn main() -> Result<(), anyhow::Error> {
                         let left = v;
                         let right = b.get(k).unwrap_or(&Value::Null);
                         let mut diff = BTreeMap::new();
-                        full_diff(left, right, &[], &mut diff, arg.fast, arg.sidebars);
+                        full_diff(left, right, k, &[], &mut diff, arg);
                         if !diff.is_empty() {
-                            return Some(format!(
+                            return Some((k.clone(), format!(
                                 r#"<li><span>{k}</span><div class="r"><pre><code>{}</code></pre></div></li>"#,
                                 serde_json::to_string_pretty(&diff).unwrap_or_default(),
-                            ));
+                            )));
                         } else {
                             same.fetch_add(1, Relaxed);
                         }
@@ -359,32 +426,88 @@ fn main() -> Result<(), anyhow::Error> {
                             .as_ref()
                             .map(|(l, r)| (l.as_str(), r.as_str()))
                             .unwrap_or((left, right));
-                        let broken_link = r#" class="page-not-created" title="This is a link to an unwritten page""#;
-                        let left = left.replace(broken_link, "");
                         if left == right {
                             println!("only broken links differ");
                             same.fetch_add(1, Relaxed);
                             return None;
                         }
                         if arg.inline {
-                            println!("{}", diff_words(&left, right));
+                            println!("{}", diff_words(left, right));
                         }
-                        Some(format!(
-                    r#"<li><span>{k}</span><div class="a">{}</div><div class="b">{}</div></li>"#,
-                    left, right
-                ))
+                        Some((k.clone(), format!(r#"<li><span>{k}</span><div class="a">{left}</div><div class="b">{right}</div></li>"#)))
                     }
                 }
-                ).collect::<Vec<_>>());
-                out.push("</ul>".to_string());
+                ).collect::<Vec<_>>();
+                let out: BTreeMap<String, Vec<_>> =
+                    list_items
+                        .into_iter()
+                        .fold(BTreeMap::new(), |mut acc, (k, li)| {
+                            let p = k.splitn(4, '/').collect::<Vec<_>>();
+                            let cat = match &p[..] {
+                                ["docs", "web", cat, ..] => format!("docs/web/{cat}"),
+                                ["docs", cat, ..] => format!("docs/{cat}"),
+                                [cat, ..] => cat.to_string(),
+                                [] => "".to_string(),
+                            };
+                            acc.entry(cat).or_default().push(li);
+                            acc
+                        });
+
+                let out = out.into_iter().fold(String::new(), |mut acc, (k, v)| {
+                    write!(
+                        acc,
+                        r#"<li><details><summary>[{}] {k}</summary><ul>{}</ul></details></li>"#,
+                        v.len(),
+                        v.into_iter().collect::<String>(),
+                    )
+                    .unwrap();
+                    acc
+                });
+                let file = File::create(&arg.out)?;
+                let mut buffer = BufWriter::new(file);
+
+                buffer.write_all(html(&out).as_bytes())?;
+            }
+            if arg.csv {
+                let mut out = Vec::new();
+                out.push("File;JSON Path\n".to_string());
+                out.extend(
+                    a.par_iter()
+                        .filter_map(|(k, v)| {
+                            if b.get(k) == Some(v) {
+                                same.fetch_add(1, Relaxed);
+                                return None;
+                            }
+
+                            let left = v;
+                            let right = b.get(k).unwrap_or(&Value::Null);
+                            let mut diff = BTreeMap::new();
+                            full_diff(left, right, k, &[], &mut diff, arg);
+                            if !diff.is_empty() {
+                                return Some(format!(
+                                    "{}\n",
+                                    diff.into_keys()
+                                        .map(|jsonpath| format!("{k};{jsonpath}"))
+                                        .collect::<Vec<_>>()
+                                        .join("\n")
+                                ));
+                            } else {
+                                same.fetch_add(1, Relaxed);
+                            }
+                            None
+                        })
+                        .collect::<Vec<_>>(),
+                );
                 let mut file = File::create(&arg.out)?;
-                file.write_all(html(&out.into_iter().collect::<String>()).as_bytes())?;
+
+                file.write_all(out.into_iter().collect::<String>().as_bytes())?;
             }
 
             println!(
-                "Took: {:?} - {}/{hits}",
+                "Took: {:?} - {}/{hits} ok, {} remaining",
                 start.elapsed(),
-                same.load(Relaxed)
+                same.load(Relaxed),
+                hits - same.load(Relaxed)
             );
         }
     }

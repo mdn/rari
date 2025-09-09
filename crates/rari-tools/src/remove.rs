@@ -2,14 +2,13 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use console::Style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 use rari_doc::error::DocError;
 use rari_doc::helpers::subpages::get_sub_pages;
-use rari_doc::pages::page::{self, PageCategory, PageLike};
+use rari_doc::pages::page::{self, Page, PageCategory, PageLike};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::resolve::build_url;
@@ -19,22 +18,19 @@ use rayon::iter::{once, IntoParallelIterator, ParallelIterator};
 
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
-use crate::redirects::add_redirects;
+use crate::redirects::{add_redirects, remove_redirects_by_targets};
+use crate::sidebars::update_sidebars;
 use crate::wikihistory::delete_from_wiki_history;
 
 pub fn remove(
     slug: &str,
-    locale: Option<&str>,
+    locale: Option<Locale>,
     recursive: bool,
     redirect: Option<&str>,
     assume_yes: bool,
 ) -> Result<(), ToolError> {
     validate_args(slug)?;
-    let locale = if let Some(l) = locale {
-        Locale::from_str(l)?
-    } else {
-        Locale::default()
-    };
+    let locale = locale.unwrap_or_default();
 
     let green = Style::new().green();
     let red = Style::new().red();
@@ -42,20 +38,20 @@ pub fn remove(
     let bold = Style::new().bold();
     let changes = do_remove(slug, locale, recursive, redirect, true)?;
     if changes.is_empty() {
-        println!("{}", green.apply_to("No changes would be made"));
+        tracing::info!("{}", green.apply_to("No changes would be made"));
         return Ok(());
     } else {
-        println!(
+        tracing::info!(
             "{} {} {}",
             green.apply_to("This will delete"),
             bold.apply_to(changes.len()),
             green.apply_to("documents:"),
         );
         for slug in changes {
-            println!("{}", red.apply_to(&slug));
+            tracing::info!("{}", red.apply_to(&slug));
         }
         if let Some(redirect) = redirect {
-            println!(
+            tracing::info!(
                 "{} {} to: {}",
                 green.apply_to("Redirecting"),
                 green.apply_to(if recursive {
@@ -66,7 +62,7 @@ pub fn remove(
                 green.apply_to(&redirect),
             );
         } else {
-            println!("{}", yellow.apply_to("Deleting without a redirect. Consider using the --redirect option with a related page instead."));
+            tracing::info!("{}", yellow.apply_to("Deleting without a redirect. Consider using the --redirect option with a related page instead."));
         }
     }
 
@@ -82,23 +78,23 @@ pub fn remove(
             .iter()
             .map(|slug| build_url(slug, locale, PageCategory::Doc))
             .collect::<Result<Vec<_>, DocError>>()?;
-        println!(
+        tracing::info!(
             "{} {} {}",
             green.apply_to("Deleted"),
             bold.apply_to(removed.len()),
             green.apply_to("documents:"),
         );
         for url in &removed_urls {
-            println!("{}", red.apply_to(&url));
+            tracing::info!("{}", red.apply_to(&url));
         }
 
         // Find references to deleted documents and
         // list them for manual review
-        println!("Checking references to deleted documents...");
+        tracing::info!("Checking references to deleted documents...");
         let mut docs_path = PathBuf::from(root_for_locale(locale)?);
         docs_path.push(locale.as_folder_str());
 
-        let docs = read_docs_parallel::<Doc>(&[docs_path], None)?;
+        let docs = read_docs_parallel::<Page, Doc>(&[docs_path], None)?;
 
         let referencing_docs: BTreeSet<String> = docs
             .into_par_iter()
@@ -113,18 +109,18 @@ pub fn remove(
             .collect();
 
         if referencing_docs.is_empty() {
-            println!(
+            tracing::info!(
                 "{}",
                 green.apply_to("No file is referring to the deleted document."),
             );
         } else {
-            println!(
+            tracing::info!(
                 "{} {}",
                 yellow.apply_to(referencing_docs.len()),
                 yellow.apply_to("files are referring to the deleted documents. Please update the following files to remove the links:"),
             );
             for url in &referencing_docs {
-                println!("{}", yellow.apply_to(url));
+                tracing::info!("{}", yellow.apply_to(url));
             }
         }
     }
@@ -138,7 +134,7 @@ fn do_remove(
     redirect: Option<&str>,
     dry_run: bool,
 ) -> Result<Vec<String>, ToolError> {
-    let doc = Doc::page_from_slug(slug, locale)?;
+    let doc = Doc::page_from_slug(slug, locale, false)?;
     let real_slug = doc.slug();
 
     // If we get a redirect value passed in, it is either a slug or a complete url.
@@ -162,8 +158,7 @@ fn do_remove(
     let subpages = get_sub_pages(doc.url(), None, Default::default())?;
     if !recursive && !subpages.is_empty() && redirect.is_some() {
         return Err(ToolError::HasSubpagesError(Cow::Owned(format!(
-            "{0}, unable to remove and redirect a document with children",
-            slug
+            "{slug}, unable to remove and redirect a document with children"
         ))));
     }
 
@@ -226,7 +221,21 @@ fn do_remove(
     // update the wiki history
     delete_from_wiki_history(locale, &slugs_to_remove)?;
 
-    // update the redirects map if needed
+    // Update the sidebars, removing links and paths where necessary.
+    // But only for the default locale. Translated content cannot change
+    // sidebars.
+    if locale == Locale::default() {
+        let pairs = slugs_to_remove
+            .iter()
+            .map(|slug| {
+                let url = build_url(slug, locale, PageCategory::Doc)?;
+                Ok((Cow::Owned(url), None))
+            })
+            .collect::<Result<Vec<_>, ToolError>>()?;
+        update_sidebars(&pairs)?;
+    }
+
+    // update the redirects map
     if let Some(new_target) = redirect_target {
         let pairs = slugs_to_remove
             .iter()
@@ -237,6 +246,12 @@ fn do_remove(
             })
             .collect::<Result<Vec<_>, ToolError>>()?;
         add_redirects(locale, &pairs)?;
+    } else {
+        let targets = slugs_to_remove
+            .iter()
+            .map(|slug| Ok(build_url(slug, locale, PageCategory::Doc)?))
+            .collect::<Result<Vec<_>, ToolError>>()?;
+        remove_redirects_by_targets(locale, &targets)?;
     }
     Ok(slugs_to_remove)
 }
@@ -258,7 +273,7 @@ fn validate_args(slug: &str) -> Result<(), ToolError> {
 // These tests use file system fixtures to simulate content and translated content.
 // The file system is a shared resource, so we force tests to be run serially,
 // to avoid concurrent fixture management issues.
-// Using `file_serial` as a synchonization lock, we run all tests using
+// Using `file_serial` as a synchronization lock, we run all tests using
 // the same `key` (here: file_fixtures) to be serialized across modules.
 #[cfg(test)]
 use serial_test::file_serial;
@@ -269,8 +284,10 @@ mod test {
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
+    use crate::tests::fixtures::sidebars::SidebarFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
-    use crate::utils::test_utils::{check_file_existence, get_redirects_map};
+    use crate::utils::get_redirects_map;
+    use crate::utils::test_utils::check_file_existence;
     use crate::wikihistory::test_get_wiki_history;
 
     #[test]
@@ -379,7 +396,10 @@ mod test {
     fn test_remove_single() {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        // The redirects file is needed to attempt removing the redirects
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
         assert!(result.is_ok());
@@ -394,14 +414,43 @@ mod test {
     }
 
     #[test]
-    fn test_remove_single_with_redirect() {
+    fn test_remove_single_and_redirect() {
+        let slugs = vec!["Web/API/ExampleOne".to_string()];
+        let redirects = vec![(
+            "Web/API/OldExampleOne".to_string(),
+            "Web/API/ExampleOne".to_string(),
+        )];
+        let _docs = DocFixtures::new(&slugs, Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&redirects, Locale::EnUs);
+        let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
+
+        let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
+        assert!(result.is_ok());
+
+        let should_exist = vec![];
+        let should_not_exist = vec!["en-us/web/api/exampleone/index.md"];
+        let root_path = root_for_locale(Locale::EnUs).unwrap();
+        check_file_existence(root_path, &should_exist, &should_not_exist);
+
+        let redirects = get_redirects_map(Locale::EnUs);
+        assert!(!redirects.contains_key("Web/API/OldExampleOne"));
+        assert!(!redirects.contains_key("Web/API/exampleone"));
+
+        let wiki_history = test_get_wiki_history(Locale::EnUs);
+        assert!(!wiki_history.contains_key("Web/API/ExampleOne"));
+    }
+
+    #[test]
+    fn test_remove_single_with_redirect_target() {
         let slugs = vec![
             "Web/API/ExampleOne".to_string(),
             "Web/API/RedirectTarget".to_string(),
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove(
             "Web/API/ExampleOne",
@@ -439,7 +488,8 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, false, None, false);
         assert!(result.is_ok());
@@ -466,7 +516,8 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove("Web/API/ExampleOne", Locale::EnUs, true, None, false);
         assert!(result.is_ok());
@@ -496,7 +547,8 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove(
             "Web/API/ExampleOne",
@@ -542,7 +594,8 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::PtBr);
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::PtBr);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::PtBr);
+        let _redirects = RedirectFixtures::new(&[], Locale::PtBr);
+        let _sidebars = SidebarFixtures::default();
 
         let result = do_remove(
             "Web/API/ExampleOne",

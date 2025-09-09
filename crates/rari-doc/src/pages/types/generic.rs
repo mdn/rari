@@ -2,43 +2,58 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::globals::generic_pages_root;
+use rari_types::globals::generic_content_root;
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::Deserialize;
 
-use crate::cached_readers::generic_pages_files;
+use crate::cached_readers::{generic_content_config, generic_content_files, GenericPagesConfig};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
+use crate::pages::types::utils::FmTempl;
 use crate::utils::split_fm;
 
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
+pub enum Template {
+    #[default]
+    GenericDoc,
+    GenericAbout,
+    GenericCommunity,
+}
 #[derive(Debug, Clone, Deserialize)]
-pub struct GenericPageFrontmatter {
+pub struct GenericFrontmatter {
     pub title: String,
+    #[serde(rename = "short-title", skip_serializing_if = "Option::is_none")]
+    pub short_title: Option<String>,
+    pub template: Option<Template>,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct GenericPageMeta {
+pub struct GenericMeta {
     pub title: String,
+    pub short_title: Option<String>,
     pub locale: Locale,
     pub slug: String,
     pub url: String,
     pub full_path: PathBuf,
     pub path: PathBuf,
-    pub title_suffix: String,
+    pub title_suffix: Option<String>,
     pub page: String,
+    pub template: Template,
+    pub description: Option<String>,
 }
 
-impl GenericPageMeta {
+impl GenericMeta {
     pub fn from_fm(
-        fm: GenericPageFrontmatter,
+        fm: GenericFrontmatter,
         full_path: PathBuf,
         path: PathBuf,
         locale: Locale,
         slug: String,
-        title_suffix: &str,
+        title_suffix: Option<String>,
         page: String,
     ) -> Result<Self, DocError> {
         let url = concat_strs!(
@@ -49,64 +64,65 @@ impl GenericPageMeta {
             "/",
             page.as_str()
         );
-        Ok(GenericPageMeta {
+        Ok(GenericMeta {
             title: fm.title,
+            short_title: fm.short_title,
             locale,
             slug,
             url,
             path,
             full_path,
-            title_suffix: title_suffix.to_string(),
+            title_suffix,
             page,
+            template: fm.template.unwrap_or_default(),
+            description: fm.description,
         })
     }
 }
 
-impl PageReader for GenericPage {
+impl PageReader<Page> for Generic {
     fn read(
         path: impl Into<PathBuf>,
         locale: Option<Locale>,
     ) -> Result<crate::pages::page::Page, DocError> {
         let path = path.into();
-        let root = generic_pages_root().ok_or(DocError::NoGenericPagesRoot)?;
+        let root = generic_content_root().ok_or(DocError::NoGenericContentRoot)?;
         let without_root: &Path = path.strip_prefix(root)?;
-        let (slug_prefix, title_suffix, root) = if without_root.starts_with("plus/") {
-            (Some("plus/docs"), "MDN Plus", root.join("plus"))
-        } else if without_root.starts_with("community/") || without_root == Path::new("community") {
-            (None, "Contribute to MDN", root.join("community"))
-        } else if without_root.starts_with("observatory/") {
-            (
-                Some("observatory/docs"),
-                "HTTP Observatory",
-                root.join("observatory"),
-            )
-        } else {
-            return Err(DocError::PageNotFound(
-                path.to_string_lossy().to_string(),
-                crate::pages::page::PageCategory::GenericPage,
-            ));
-        };
-        read_generic_page(
-            path,
-            locale.unwrap_or_default(),
-            slug_prefix,
-            title_suffix,
-            &root,
-        )
-        .map(|g| Page::GenericPage(Arc::new(g)))
+        if let Some(section) = without_root.iter().next() {
+            let config = generic_content_config();
+            let page_config = config.pages.get(section.to_string_lossy().as_ref());
+            if let Some(GenericPagesConfig {
+                slug_prefix,
+                title_suffix,
+            }) = page_config
+            {
+                return read_generic_page(
+                    &path,
+                    locale.unwrap_or_default(),
+                    slug_prefix.as_deref(),
+                    title_suffix.as_deref(),
+                    &root.join(section),
+                )
+                .map(|g| Page::GenericPage(Arc::new(g)));
+            }
+        }
+        Err(DocError::PageNotFound(
+            path.to_string_lossy().to_string(),
+            crate::pages::page::PageCategory::GenericPage,
+        ))
     }
 }
 #[derive(Debug, Clone)]
-pub struct GenericPage {
-    pub meta: GenericPageMeta,
+pub struct Generic {
+    pub meta: GenericMeta,
     raw: String,
     content_start: usize,
 }
 
-impl GenericPage {
+impl Generic {
     pub fn from_slug(slug: &str, locale: Locale) -> Option<Page> {
         let url = concat_strs!("/", locale.as_url_str(), "/", slug).to_ascii_lowercase();
-        generic_pages_files().get(&url).cloned()
+        generic_content_files().get(&url).cloned()
     }
 
     pub fn as_locale(&self, locale: Locale) -> Self {
@@ -126,11 +142,14 @@ impl GenericPage {
 
     pub fn is_generic(slug: &str, locale: Locale) -> bool {
         let url = concat_strs!("/", locale.as_url_str(), "/", slug).to_ascii_lowercase();
-        generic_pages_files().contains_key(&url)
+        if generic_content_root().is_none() {
+            return false;
+        }
+        generic_content_files().contains_key(&url)
     }
 }
 
-impl PageLike for GenericPage {
+impl PageLike for Generic {
     fn url(&self) -> &str {
         &self.meta.url
     }
@@ -144,11 +163,11 @@ impl PageLike for GenericPage {
     }
 
     fn short_title(&self) -> Option<&str> {
-        None
+        self.meta.short_title.as_deref()
     }
 
     fn locale(&self) -> Locale {
-        Default::default()
+        self.meta.locale
     }
 
     fn content(&self) -> &str {
@@ -164,7 +183,7 @@ impl PageLike for GenericPage {
     }
 
     fn title_suffix(&self) -> Option<&str> {
-        Some("MDN Curriculum")
+        self.meta.title_suffix.as_deref()
     }
 
     fn page_type(&self) -> PageType {
@@ -189,16 +208,24 @@ impl PageLike for GenericPage {
             .url
             .match_indices('/')
             .nth(1)
-            .map(|(i, _)| i)
+            .map(|(i, _)| i + 1)
             .unwrap_or(self.meta.url.len())]
     }
 
     fn trailing_slash(&self) -> bool {
-        true
+        false
     }
 
     fn fm_offset(&self) -> usize {
         self.raw[..self.content_start].lines().count()
+    }
+
+    fn raw_content(&self) -> &str {
+        &self.raw
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        None
     }
 }
 
@@ -206,14 +233,14 @@ fn read_generic_page(
     path: impl Into<PathBuf>,
     locale: Locale,
     slug_prefix: Option<&str>,
-    title_suffix: &str,
+    title_suffix: Option<&str>,
     root: &Path,
-) -> Result<GenericPage, DocError> {
+) -> Result<Generic, DocError> {
     let full_path: PathBuf = path.into();
     let raw = read_to_string(&full_path)?;
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
-    let fm: GenericPageFrontmatter = serde_yaml_ng::from_str(fm)?;
+    let fm: GenericFrontmatter = serde_yaml_ng::from_str(fm)?;
     let path = full_path.strip_prefix(root)?.to_path_buf();
     let page = path.with_extension("");
     let page = page.to_string_lossy();
@@ -223,14 +250,14 @@ fn read_generic_page(
         page.to_string()
     };
 
-    Ok(GenericPage {
-        meta: GenericPageMeta::from_fm(
+    Ok(Generic {
+        meta: GenericMeta::from_fm(
             fm,
             full_path,
             path,
             locale,
             slug.to_string(),
-            title_suffix,
+            title_suffix.map(ToString::to_string),
             page.to_string(),
         )?,
         raw,

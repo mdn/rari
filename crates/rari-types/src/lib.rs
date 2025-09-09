@@ -13,6 +13,7 @@ pub mod fm_types;
 pub mod globals;
 pub mod locale;
 pub mod settings;
+pub mod templ;
 
 #[derive(Clone, Debug, Error)]
 pub enum ArgError {
@@ -47,13 +48,6 @@ pub struct AnyArg {
 }
 
 impl AnyArg {
-    pub fn is_empty(&self) -> bool {
-        if let Arg::String(s, _) = &self.value {
-            s.is_empty()
-        } else {
-            false
-        }
-    }
     pub fn as_int(&self) -> i64 {
         match &self.value {
             Arg::String(s, _) => s
@@ -69,7 +63,7 @@ impl AnyArg {
 
     pub fn as_bool(&self) -> bool {
         match &self.value {
-            Arg::String(s, _) => !s.trim().is_empty(),
+            Arg::String(s, _) => !s.is_empty(),
             Arg::Int(n) => *n != 0,
             Arg::Float(f) => *f != 0f64 && !f.is_nan(),
             Arg::Bool(b) => *b,
@@ -81,9 +75,9 @@ impl Display for AnyArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.value {
             Arg::String(s, _) => f.write_str(s),
-            Arg::Int(n) => f.write_fmt(format_args!("{}", n)),
-            Arg::Float(n) => f.write_fmt(format_args!("{}", n)),
-            Arg::Bool(b) => f.write_fmt(format_args!("{}", b)),
+            Arg::Int(n) => f.write_fmt(format_args!("{n}")),
+            Arg::Float(n) => f.write_fmt(format_args!("{n}")),
+            Arg::Bool(b) => f.write_fmt(format_args!("{b}")),
         }
     }
 }

@@ -1,6 +1,12 @@
 {
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
+  "changelog-sections": [
+    { "type": "feat", "section": "Features", "hidden": false },
+    { "type": "fix", "section": "Bug Fixes", "hidden": false },
+    { "type": "enhance", "section": "Enhancements", "hidden": false },
+    { "type": "chore", "section": "Miscellaneous", "hidden": false }
+  ],
   "include-component-in-tag": false,
   "include-v-in-tag": true,
   "packages": {
@@ -19,6 +25,11 @@
           "type": "json",
           "path": "rari-npm/package-lock.json",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "rari-npm/package-lock.json",
+          "jsonpath": "$.packages[''].version"
         }
       ]
     }

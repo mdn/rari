@@ -18,4 +18,8 @@ pub enum DepsError {
     WebRefMissingTarballError,
     #[error("Invalid github version")]
     InvalidGitHubVersion,
+    #[error("Invalid github version")]
+    VersionNotFound,
+    #[error("Invalid url: {0}")]
+    UrlError(#[from] url::ParseError),
 }

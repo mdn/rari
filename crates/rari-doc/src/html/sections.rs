@@ -22,13 +22,13 @@ pub struct BuildSection<'a> {
     pub id: Option<String>,
 }
 
-pub struct Splitted<'a> {
+pub struct Split<'a> {
     pub sections: Vec<BuildSection<'a>>,
     pub summary: Option<String>,
     pub sidebar: Option<String>,
 }
 
-pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
+pub fn split_sections(html: &Html) -> Result<Split<'_>, DocError> {
     let root_children = html.root_element().children();
     let raw_sections = root_children;
     let summary_selector = Selector::parse("html > p").unwrap();
@@ -107,7 +107,7 @@ pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
                             id,
                         });
                     }
-                    "section" if element.id() == Some("Quick_links") => {
+                    "section" if matches!(element.id(), Some("Quick_links" | "quick_links")) => {
                         if let Some(section) = maybe_section.take() {
                             sections.push(section);
                         }
@@ -147,7 +147,7 @@ pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
                                         section.query = Some(query.into());
                                     } else {
                                         // We have already something in body.
-                                        // Yari does something weird so we do that to:
+                                        // Yari does something weird so we do that too:
                                         // We push compat section and put prose after that 🤷.
 
                                         let heading = section.heading.take();
@@ -178,7 +178,7 @@ pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
                                         section.spec_urls = urls.map(String::from);
                                     } else {
                                         // We have already something in body.
-                                        // Yari does something weird so we do that to:
+                                        // Yari does something weird so we do that too:
                                         // We push compat section and put prose after that 🤷.
 
                                         let heading = section.heading.take();
@@ -203,7 +203,11 @@ pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
                                 let html = ElementRef::wrap(current).unwrap().html();
                                 if let Some(ref mut section) =
                                     maybe_section.as_mut().and_then(|section| {
-                                        if !matches!(section.typ, BuildSectionType::Compat) {
+                                        if !matches!(
+                                            section.typ,
+                                            BuildSectionType::Compat
+                                                | BuildSectionType::Specification
+                                        ) {
                                             Some(section)
                                         } else {
                                             None
@@ -237,7 +241,7 @@ pub fn split_sections(html: &Html) -> Result<Splitted, DocError> {
     if let Some(section) = last.take() {
         sections.push(section);
     }
-    Ok(Splitted {
+    Ok(Split {
         sections,
         summary,
         sidebar,

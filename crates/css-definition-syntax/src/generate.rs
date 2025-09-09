@@ -19,9 +19,9 @@ fn generate_multiplier(min: u32, max: u32, comma: bool) -> String {
 
     let number_sign = if comma { "#" } else { "" };
     match (min, max) {
-        (min, max) if min == max => format!("{}{{{}}}", number_sign, min),
-        (min, 0) => format!("{}{{{},}}", number_sign, min),
-        (min, max) => format!("{}{{{},{}}}", number_sign, min, max),
+        (min, max) if min == max => format!("{number_sign}{{{min}}}"),
+        (min, 0) => format!("{number_sign}{{{min},}}"),
+        (min, max) => format!("{number_sign}{{{min},{max}}}"),
     }
 }
 
@@ -70,7 +70,11 @@ fn internal_generate<'a>(
             let terms = internal_generate(&multiplier.term, decorate, force_braces, compact)?;
             let multiplier = generate_multiplier(multiplier.min, multiplier.max, multiplier.comma);
             let decorated = decorate(multiplier, node);
-            format!("{}{}", terms, decorated)
+            format!("{terms}{decorated}")
+        }
+        Node::BooleanExpr(boolean_expr) => {
+            let terms = internal_generate(&boolean_expr.term, decorate, force_braces, compact)?;
+            format!("<boolean-expr[{terms}]>")
         }
         Node::Token(token) => token.value.to_string(),
         Node::Property(property) => format!("<'{}'>", property.name),
@@ -125,7 +129,7 @@ fn generate_sequence<'a>(
             "[ "
         };
         let end = if compact { "]" } else { " ]" };
-        Ok(format!("{}{}{}", start, result, end))
+        Ok(format!("{start}{result}{end}"))
     } else {
         Ok(result)
     }
@@ -143,7 +147,7 @@ pub struct GenerateOptions<'a> {
     pub decorate: DecorateFn<'a>,
 }
 
-impl<'a> Default for GenerateOptions<'a> {
+impl Default for GenerateOptions<'_> {
     fn default() -> Self {
         Self {
             compact: Default::default(),
@@ -182,7 +186,7 @@ mod tests {
         let result = generate(
             &node,
             GenerateOptions {
-                decorate: &|s, _| format!("!!{}¡¡", s),
+                decorate: &|s, _| format!("!!{s}¡¡"),
                 ..Default::default()
             },
         )
@@ -198,6 +202,11 @@ mod tests {
         let node = parse(input)?;
         let result = generate(&node, Default::default()).unwrap();
         assert_eq!(result, "<calc-product> [ [ '+' | '-' ] <calc-product> ]*");
+
+        let input = "<boolean-expr[a | b]>";
+        let node = parse(input)?;
+        let result = generate(&node, Default::default()).unwrap();
+        assert_eq!(result, "<boolean-expr[a | b]>");
         Ok(())
     }
 }

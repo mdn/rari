@@ -1,25 +1,19 @@
 use comrak::nodes::{AstNode, NodeValue};
-use itertools::Itertools;
 
-use crate::ext::{DELIM_END, DELIM_START};
+use crate::ext::{DELIM_END, DELIM_END_LEN, DELIM_START, DELIM_START_LEN};
 
-fn only_escaped_templ(b: &[u8], start: usize) -> bool {
-    let b = &b[..b
-        .iter()
-        .rev()
-        .find_position(|c| *c != &b'\n')
-        .map(|(i, _)| b.len() - i)
-        .unwrap_or(0)];
-    if b[start..].starts_with(DELIM_START.as_bytes()) {
-        let start = start + DELIM_START.as_bytes().len();
+fn only_escaped_templ(b: &[u8]) -> bool {
+    let b = b.trim_ascii_end().trim_ascii_start();
+    if b.starts_with(DELIM_START.as_bytes()) {
+        let start = DELIM_START_LEN;
         if let Some(end) = b[start..]
-            .windows(DELIM_END.as_bytes().len())
+            .windows(DELIM_END_LEN)
             .position(|window| window == DELIM_END.as_bytes())
         {
-            if start + end + DELIM_END.as_bytes().len() == b.len() {
+            if start + end + DELIM_END_LEN == b.len() {
                 return true;
             } else {
-                return only_escaped_templ(b, start + end + DELIM_END.as_bytes().len());
+                return only_escaped_templ(&b[start + end + DELIM_END_LEN..]);
             }
         }
     }
@@ -27,14 +21,11 @@ fn only_escaped_templ(b: &[u8], start: usize) -> bool {
 }
 
 pub(crate) fn is_escaped_templ_p<'a>(p: &'a AstNode<'a>) -> bool {
-    if p.children().count() == 1 {
-        if let Some(k) = p.first_child() {
-            if let NodeValue::Text(t) = &k.data.borrow().value {
-                return only_escaped_templ(t.as_bytes(), 0);
-            }
-        }
-    }
-    false
+    p.children().all(|child| match &child.data.borrow().value {
+        NodeValue::Text(t) => only_escaped_templ(t.as_bytes()),
+        NodeValue::SoftBreak => true,
+        _ => false,
+    })
 }
 
 pub(crate) fn is_empty_p<'a>(p: &'a AstNode<'a>) -> bool {
@@ -42,7 +33,7 @@ pub(crate) fn is_empty_p<'a>(p: &'a AstNode<'a>) -> bool {
 }
 
 pub(crate) fn fix_p<'a>(p: &'a AstNode<'a>) {
-    if let Some(child) = p.first_child() {
+    for child in p.reverse_children() {
         p.insert_before(child)
     }
     p.detach();
@@ -55,8 +46,14 @@ mod test {
     #[test]
     fn test_only_escaped_templ() {
         let b = "⟬0⟭".as_bytes();
-        assert!(only_escaped_templ(b, 0));
+        assert!(only_escaped_templ(b));
         let b = "⟬0⟭⟬1⟭".as_bytes();
-        assert!(only_escaped_templ(b, 0));
+        assert!(only_escaped_templ(b));
+        let b = "⟬0⟭\n⟬1⟭".as_bytes();
+        assert!(only_escaped_templ(b));
+        let b = "⟬0⟭ ⟬1⟭".as_bytes();
+        assert!(only_escaped_templ(b));
+        let b = "⟬0⟭,⟬1⟭".as_bytes();
+        assert!(!only_escaped_templ(b));
     }
 }

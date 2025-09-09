@@ -1,6 +1,6 @@
 [package]
 name = "css-syntax"
-version = "0.0.13"
+version = "0.1.48"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,17 +13,21 @@ serde_json.workspace = true
 serde.workspace = true
 url.workspace = true
 html-escape.workspace = true
+itertools.workspace = true
 rari-types = { workspace = true, optional = true }
+rari-deps = { workspace = true, optional = true }
 
 css-syntax-types = { path = "../css-syntax-types" }
 css-definition-syntax = { path = "../css-definition-syntax" }
 
 [build-dependencies]
+rari-deps.workspace = true
 anyhow = "1"
 
 [dev-dependencies]
 rari-deps.workspace = true
 
 [features]
+doctest = ["dep:rari-deps"]
 default = []
 rari = ["dep:rari-types"]

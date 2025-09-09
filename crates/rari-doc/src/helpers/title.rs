@@ -4,7 +4,7 @@ use crate::pages::page::{Page, PageLike};
 pub fn transform_title(title: &str) -> &str {
     match title {
         "Web technology for developers" => "References",
-        "Learn web development" => "Guides",
+        "Learn web development" => "Learn",
         "HTML: HyperText Markup Language" => "HTML",
         "CSS: Cascading Style Sheets" => "CSS",
         "Graphics on the Web" => "Graphics",
@@ -25,9 +25,9 @@ pub fn page_title(doc: &impl PageLike, with_suffix: bool) -> Result<String, DocE
 
     if let Some(root_url) = root_doc_url(doc.url()) {
         if root_url != doc.url() {
-            let root_doc = Page::from_url(root_url)?;
+            let root_doc = Page::from_url_with_fallback(root_url)?;
             out.push_str(" - ");
-            out.push_str(root_doc.title());
+            out.push_str(root_doc.short_title().unwrap_or(root_doc.title()));
         }
     }
     if with_suffix {
@@ -40,20 +40,29 @@ pub fn page_title(doc: &impl PageLike, with_suffix: bool) -> Result<String, DocE
 }
 
 pub fn root_doc_url(url: &str) -> Option<&str> {
-    let m = url.match_indices('/').map(|(i, _)| i).collect::<Vec<_>>();
+    let m = url
+        .match_indices('/')
+        .map(|(i, _)| i)
+        .zip(url.split('/').skip(1))
+        .collect::<Vec<_>>();
     if m.len() < 3 {
         return None;
     }
-    if url[m[1]..].starts_with("/blog") || url[m[1]..].starts_with("/curriculum") {
+    if matches!(m[1].1, "blog" | "curriculum") {
         return None;
     }
-    if url[m[1]..].starts_with("/docs/Web/") {
-        return Some(&url[..*m.get(4).unwrap_or(&url.len())]);
+    if m[1].1 == "docs" {
+        if m[2].1 == "Web" {
+            if let Some(base) = m.iter().rfind(|p| matches!(p.1, "Guides" | "Reference")) {
+                return Some(&url[..base.0]);
+            }
+            return Some(&url[..*m.get(4).map(|(i, _)| i).unwrap_or(&url.len())]);
+        }
+        if matches!(m[2].1, "conflicting" | "orphaned") {
+            return None;
+        }
     }
-    if url[m[1]..].starts_with("/docs/conflicting/") || url[m[1]..].starts_with("/docs/orphaned/") {
-        return None;
-    }
-    Some(&url[..*m.get(3).unwrap_or(&url.len())])
+    Some(&url[..*m.get(3).map(|(i, _)| i).unwrap_or(&url.len())])
 }
 
 #[cfg(test)]

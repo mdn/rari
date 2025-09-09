@@ -7,8 +7,8 @@ use crate::helpers::l10n::l10n_json_data;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
-#[rari_f]
-pub fn previous_next_menu(
+#[rari_f(register = "crate::Templ")]
+pub fn previousmenunext(
     prev: Option<String>,
     next: Option<String>,
     menu: Option<String>,
@@ -16,27 +16,27 @@ pub fn previous_next_menu(
     previous_next_menu_internal(prev, next, menu, env.locale)
 }
 
-#[rari_f]
-pub fn previous_next(prev: Option<String>, next: Option<String>) -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn previousnext(prev: Option<String>, next: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(prev, next, None, env.locale)
 }
 
-#[rari_f]
-pub fn previous_menu(prev: Option<String>, menu: Option<String>) -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn previousmenu(prev: Option<String>, menu: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(prev, None, menu, env.locale)
 }
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn previous(prev: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(prev, None, None, env.locale)
 }
 
-#[rari_f]
-pub fn next_menu(next: Option<String>, menu: Option<String>) -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn nextmenu(next: Option<String>, menu: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(None, next, menu, env.locale)
 }
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn next(next: Option<String>) -> Result<String, DocError> {
     previous_next_menu_internal(None, next, None, env.locale)
 }
@@ -58,7 +58,7 @@ fn previous_next_menu_internal(
                 prev.as_str()
             ))?;
             let title = l10n_json_data("Template", "previous", locale)?;
-            generate_link(&mut out, page.slug(), locale, title)?;
+            generate_link(&mut out, page.slug(), locale, title, "prev")?;
         }
     }
     if let Some(menu) = menu {
@@ -73,7 +73,7 @@ fn previous_next_menu_internal(
                 l10n_json_data("Template", "prev_next_menu", locale)?,
                 page.title()
             );
-            generate_link(&mut out, page.slug(), locale, &title)?;
+            generate_link(&mut out, page.slug(), locale, &title, "menu")?;
         }
     }
     if let Some(next) = next {
@@ -85,7 +85,7 @@ fn previous_next_menu_internal(
                 next.as_str()
             ))?;
             let title = l10n_json_data("Template", "next", locale)?;
-            generate_link(&mut out, page.slug(), locale, title)?;
+            generate_link(&mut out, page.slug(), locale, title, "next")?;
         }
     }
     out.push_str("</ul>");
@@ -97,14 +97,17 @@ fn generate_link(
     slug: &str,
     locale: Locale,
     title: &str,
+    class: &str,
 ) -> Result<(), DocError> {
     out.extend([
-        r#"<li><a class="button secondary" href="/"#,
+        r#"<li class="#,
+        class,
+        r#"><a data-templ-link class="button secondary" href="/"#,
         locale.as_url_str(),
         r#"/docs/"#,
         slug,
         r#""><span class="button-wrap">"#,
-        title,
+        &html_escape::encode_safe(title),
         r#"</span></a></li>"#,
     ]);
     Ok(())

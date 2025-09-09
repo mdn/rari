@@ -1,6 +1,6 @@
 [package]
 name = "rari-types"
-version = "0.0.13"
+version = "0.1.48"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -16,10 +16,15 @@ serde.workspace = true
 serde_json.workspace = true
 indexmap.workspace = true
 chrono.workspace = true
-
+schemars.workspace = true
+semver.workspace = true
+tracing.workspace = true
+strum.workspace = true
+darling.workspace = true
+quote.workspace = true
 
 serde_variant = "0.1"
 normalize-path = "0.2"
-strum = { version = "0.26", features = ["derive"] }
-dirs = "5"
-config = { version = "0.14", default-features = false, features = ["toml"] }
+dirs = "6"
+config = { version = "0.15", default-features = false, features = ["toml"] }
+proc-macro2 = "1"

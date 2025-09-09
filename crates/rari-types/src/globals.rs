@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use crate::error::EnvError;
 use crate::locale::Locale;
-use crate::settings::Settings;
+use crate::settings::{Deps, Settings};
 use crate::{HistoryEntry, Popularities};
 
 #[inline(always)]
@@ -21,8 +21,8 @@ pub fn blog_root() -> Option<&'static Path> {
 }
 
 #[inline(always)]
-pub fn generic_pages_root() -> Option<&'static Path> {
-    settings().generic_pages_root.as_deref()
+pub fn generic_content_root() -> Option<&'static Path> {
+    settings().generic_content_root.as_deref()
 }
 #[inline(always)]
 pub fn curriculum_root() -> Option<&'static Path> {
@@ -62,7 +62,10 @@ pub static DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 pub fn data_dir() -> &'static Path {
     DATA_DIR.get_or_init(|| {
-        dirs::data_local_dir()
+        std::env::var_os("DEPS_DATA_DIR")
+            .or_else(|| std::env::var_os("deps_data_dir"))
+            .map(PathBuf::from)
+            .or_else(dirs::data_local_dir)
             .map(|p| p.join("rari"))
             .unwrap_or_default()
     })
@@ -72,6 +75,11 @@ pub static SETTINGS: OnceLock<Settings> = OnceLock::new();
 
 pub fn settings() -> &'static Settings {
     SETTINGS.get_or_init(|| Settings::new().expect("error generating settings"))
+}
+
+pub static DEPS: OnceLock<Deps> = OnceLock::new();
+pub fn deps() -> &'static Deps {
+    DEPS.get_or_init(|| Deps::new().expect("error generating deps"))
 }
 
 #[derive(Debug, Deserialize)]
@@ -88,7 +96,7 @@ pub fn json_spec_data_lookup() -> &'static JsonSpecDataLookup {
         let json_str = fs::read_to_string(content_root().join("jsondata/SpecData.json"))
             .expect("unable to read SpecData.json");
         let data: HashMap<String, JsonSpecData> =
-            serde_json::from_str(&json_str).expect("unabeld to parse SpecData.json");
+            serde_json::from_str(&json_str).expect("unable to parse SpecData.json");
         data.into_iter().map(|(k, v)| (v.url, k)).collect()
     })
 }
@@ -129,7 +137,7 @@ pub fn json_svg_data_lookup() -> &'static JsonSVGDataLookup {
         let json_str = fs::read_to_string(content_root().join("jsondata/SVGData.json"))
             .expect("unable to read SVGData.json");
         let data: SVGDataContainer =
-            serde_json::from_str(&json_str).expect("unabeld to parse SVGData.json");
+            serde_json::from_str(&json_str).expect("unable to parse SVGData.json");
         data.elements
     })
 }

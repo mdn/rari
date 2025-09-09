@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, Output};
 
-/// Run `git` with `args` wiht `root` as current directory.
+/// Run `git` with `args` with `root` as current directory.
 /// For tests this will run the first arg as command, eg.:
 /// Instead of `git mv foo bar` -> `mv foo bar`.
 pub fn exec_git_with_test_fallback(args: &[impl AsRef<OsStr>], root: impl AsRef<Path>) -> Output {

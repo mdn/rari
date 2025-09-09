@@ -1,6 +1,6 @@
 {
   "name": "@mdn/rari",
-  "version": "0.0.13",
+  "version": "0.1.48",
   "description": "npm package for rari",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -11,10 +11,12 @@
   },
   "homepage": "https://github.com/mdn/rari/tree/main/rari-npm",
   "scripts": {
-    "postinstall": "node ./lib/postinstall.js"
+    "postinstall": "node ./lib/postinstall.js",
+    "export-schema": "node ./lib/cli.js export-schema",
+    "generate-types": "node ./lib/generate-types.js"
   },
   "bin": {
-    "rari": "bin/rari"
+    "rari": "lib/cli.js"
   },
   "author": "MDN Devs <mdn-dev@mozilla.com>",
   "license": "MPL-2.0",
@@ -25,6 +27,7 @@
     "extract-zip": "^2.0.1",
     "https-proxy-agent": "^7.0.2",
     "proxy-from-env": "^1.1.0",
-    "tar": "^7.4.3"
+    "tar": "^7.4.3",
+    "json-schema-to-typescript": "^15.0.0"
   }
 }

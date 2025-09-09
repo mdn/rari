@@ -28,6 +28,8 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
         Cow::Borrowed(l10n_json_data("Common", "Related_pages_wo_group", locale)?)
     };
     let events_label = l10n_json_data("Common", "Events", locale)?;
+    let guides_label = l10n_json_data("Common", "Guides", locale)?;
+    let tutorial_label = l10n_json_data("Common", "Tutorial", locale)?;
 
     let main_if = slug
         .strip_prefix("Web/API/")
@@ -37,7 +39,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     let web_api_groups = group.and_then(|group| json_data_group().get(group));
 
     let main_if_pages = get_sub_pages(
-        &format!("/en-US/docs/Web/API/{}", main_if),
+        &format!("/en-US/docs/Web/API/{main_if}"),
         Some(1),
         SubPagesSorter::TitleAPI,
     )?;
@@ -73,6 +75,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
             PageType::WebApiInstanceMethod => &mut instance_methods,
             PageType::WebApiConstructor => &mut constructors,
             PageType::WebApiEvent => &mut events,
+            PageType::WebglExtensionMethod => &mut instance_methods,
             _ => continue,
         };
         v.push(page);
@@ -88,6 +91,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
             content: SidebarMetaEntryContent::Page(Doc::page_from_slug(
                 &format!("Web/API/{}", overview.replace(' ', "_")),
                 locale,
+                true,
             )?),
             ..Default::default()
         });
@@ -98,23 +102,52 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
         content: SidebarMetaEntryContent::Page(Doc::page_from_slug(
             &format!("Web/API/{main_if}"),
             locale,
+            true,
         )?),
         ..Default::default()
     });
 
-    build_sublist(&mut entries, &constructors, constructor_label);
-    build_sublist(&mut entries, &static_properties, static_properties_label);
+    build_sublist(&mut entries, &constructors, constructor_label, true);
+    build_sublist(
+        &mut entries,
+        &static_properties,
+        static_properties_label,
+        true,
+    );
     build_sublist(
         &mut entries,
         &instance_properties,
         instance_properties_label,
+        true,
     );
-    build_sublist(&mut entries, &static_methods, static_methods_label);
-    build_sublist(&mut entries, &instance_methods, instance_methods_label);
-    build_sublist(&mut entries, &events, events_label);
+    build_sublist(&mut entries, &static_methods, static_methods_label, true);
+    build_sublist(
+        &mut entries,
+        &instance_methods,
+        instance_methods_label,
+        true,
+    );
+    build_sublist(&mut entries, &events, events_label, true);
 
     build_interface_list(&mut entries, &inherited, inheritance_label);
     build_interface_list(&mut entries, &related, &related_label);
+
+    if let Some(groups) = web_api_groups {
+        let guides: Vec<Page> = groups
+            .guides
+            .iter()
+            .filter_map(|slug| slug.strip_prefix("/docs/"))
+            .filter_map(|slug| Doc::page_from_slug(slug, locale, true).ok())
+            .collect();
+        let tutorial: Vec<Page> = groups
+            .tutorial
+            .iter()
+            .filter_map(|slug| slug.strip_prefix("/docs/"))
+            .filter_map(|slug| Doc::page_from_slug(slug, locale, true).ok())
+            .collect();
+        build_sublist(&mut entries, &guides, guides_label, false);
+        build_sublist(&mut entries, &tutorial, tutorial_label, false);
+    }
 
     Ok(MetaSidebar {
         entries,
@@ -122,19 +155,19 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
     })
 }
 
-fn build_sublist(entries: &mut Vec<SidebarMetaEntry>, sub_pages: &[Page], label: &str) {
+fn build_sublist(entries: &mut Vec<SidebarMetaEntry>, sub_pages: &[Page], label: &str, code: bool) {
     if !sub_pages.is_empty() {
         entries.push(SidebarMetaEntry {
             details: Details::Open,
             content: SidebarMetaEntryContent::Link {
                 link: None,
-                title: Some(label.to_string()),
+                title: Some(label.strip_suffix("_static").unwrap_or(label).to_string()),
             },
             children: MetaChildren::Children(
                 sub_pages
                     .iter()
                     .map(|page| SidebarMetaEntry {
-                        code: true,
+                        code,
                         content: SidebarMetaEntryContent::Link {
                             title: Some(api_page_title(page).to_string()),
                             link: page
@@ -166,7 +199,12 @@ fn build_interface_list(entries: &mut Vec<SidebarMetaEntry>, interfaces: &[&str]
                     .map(|interface| SidebarMetaEntry {
                         code: true,
                         content: SidebarMetaEntryContent::Link {
-                            title: Some(interface.to_string()),
+                            title: Some(
+                                interface
+                                    .strip_suffix("_static")
+                                    .unwrap_or(interface)
+                                    .to_string(),
+                            ),
                             link: Some(format!(
                                 "/Web/API/{}",
                                 interface.replace("()", "").replace('.', "/")

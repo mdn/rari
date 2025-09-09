@@ -3,33 +3,44 @@ use std::sync::Arc;
 
 use enum_dispatch::enum_dispatch;
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::globals::blog_root;
+use rari_types::globals::{
+    blog_root, contributor_spotlight_root, curriculum_root, generic_content_root,
+};
 use rari_types::locale::Locale;
 use rari_types::RariEnv;
 
-use super::json::BuiltDocy;
+use super::json::BuiltPage;
 use super::types::contributors::contributor_spotlight_from_url;
-use super::types::generic::GenericPage;
+use super::types::generic::Generic;
 use crate::error::DocError;
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::contributors::ContributorSpotlight;
-use crate::pages::types::curriculum::CurriculumPage;
+use crate::pages::types::curriculum::Curriculum;
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
-use crate::resolve::{strip_locale_from_url, url_meta_from, UrlMeta};
+use crate::pages::types::utils::FmTempl;
+use crate::resolve::{url_meta_from, UrlMeta};
 use crate::utils::locale_and_typ_from_path;
 
+/// Represents a page in the documentation system.
+///
+/// The `Page` enum is used to define different types of pages that can be part of the documentation.
+/// It provides methods to create instances from URLs and to check the existence of pages.
 #[derive(Debug, Clone)]
 #[enum_dispatch]
 pub enum Page {
     Doc(Arc<Doc>),
     BlogPost(Arc<BlogPost>),
     SPA(Arc<SPA>),
-    Curriculum(Arc<CurriculumPage>),
+    Curriculum(Arc<Curriculum>),
     ContributorSpotlight(Arc<ContributorSpotlight>),
-    GenericPage(Arc<GenericPage>),
+    GenericPage(Arc<Generic>),
 }
 
+/// Represents the category of a page in the documentation system.
+///
+/// The `PageCategory` enum is used to classify different types of pages within the documentation.
+/// Each variant corresponds to a specific category of pages.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PageCategory {
     Doc,
@@ -41,14 +52,56 @@ pub enum PageCategory {
 }
 
 impl Page {
+    /// Creates an instance of `Page` from the given URL if it exists.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to create the `Page` instance from.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, DocError>` - Returns an instance of `Page` on success, or a `DocError` on failure,
+    ///   usually if the Page's file cannot be found.
     pub fn from_url(url: &str) -> Result<Self, DocError> {
-        Self::from_url_with_other_locale_and_fallback(url, None)
+        Self::internal_from_url(url, None, false)
     }
 
-    pub fn from_url_with_other_locale_and_fallback(
+    /// Creates a `Page` from the given URL with a fallback to the
+    /// default `Locale` if the page cannot be found in the given URL's `Locale`.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to create the instance from.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, DocError>` - Returns an instance of `Self` on success, or a `DocError` on failure.
+    pub fn from_url_with_fallback(url: &str) -> Result<Self, DocError> {
+        Self::internal_from_url(url, None, true)
+    }
+
+    /// Creates a `Page` from the given URL and a specified `Locale`. The page will be searched
+    /// for in the passed-in `Locale`, overriding the URL's `Locale`. If not found, the default `Locale`
+    /// is searched as a fallback.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to create the instance from.
+    /// * `locale` - A `Locale` that specifies the `Locale` the URL is searched in.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, DocError>` - Returns an instance of `Self` on success, or a `DocError` on failure.
+    pub fn from_url_with_locale_and_fallback(url: &str, locale: Locale) -> Result<Self, DocError> {
+        Self::internal_from_url(url, Some(locale), true)
+    }
+
+    pub fn internal_from_url(
         url: &str,
         locale: Option<Locale>,
+        fallback: bool,
     ) -> Result<Self, DocError> {
+        let url = &url[..url.find('#').unwrap_or(url.len())];
         let UrlMeta {
             folder_path,
             slug,
@@ -59,19 +112,27 @@ impl Page {
         match page_category {
             PageCategory::SPA => SPA::from_slug(slug, locale)
                 .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA)),
-            PageCategory::Doc => {
-                let doc = Doc::page_from_slug_path(&folder_path, locale);
-                if doc.is_err() && locale != Default::default() {
-                    Doc::page_from_slug_path(&folder_path, Default::default())
-                } else {
-                    doc
-                }
+            PageCategory::Doc => Doc::page_from_slug_path(&folder_path, locale, fallback)
+                .map_err(|_| DocError::PageNotFound(url.to_string(), PageCategory::Doc)),
+            PageCategory::BlogPost if locale != Locale::EnUs => {
+                // Blog is en-US only.
+                Err(DocError::PageNotFound(
+                    url.to_string(),
+                    PageCategory::BlogPost,
+                ))
             }
             PageCategory::BlogPost => BlogPost::page_from_url(url).ok_or(DocError::PageNotFound(
                 url.to_string(),
                 PageCategory::BlogPost,
             )),
-            PageCategory::Curriculum => CurriculumPage::page_from_url(url).ok_or(
+            PageCategory::Curriculum if locale != Locale::EnUs => {
+                // Curriculum is en-US only.
+                Err(DocError::PageNotFound(
+                    url.to_string(),
+                    PageCategory::Curriculum,
+                ))
+            }
+            PageCategory::Curriculum => Curriculum::page_from_url(url).ok_or(
                 DocError::PageNotFound(url.to_string(), PageCategory::Curriculum),
             ),
             PageCategory::ContributorSpotlight => contributor_spotlight_from_url(url, locale)
@@ -79,13 +140,22 @@ impl Page {
                     url.to_string(),
                     PageCategory::ContributorSpotlight,
                 )),
-            PageCategory::GenericPage => GenericPage::from_slug(slug, locale).ok_or(
+            PageCategory::GenericPage => Generic::from_slug(slug, locale).ok_or(
                 DocError::PageNotFound(url.to_string(), PageCategory::GenericPage),
             ),
         }
     }
 
-    pub fn ignore(url: &str) -> bool {
+    /// Determines if the given URL should be ignored for link-checking.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice that holds the URL to be checked.
+    ///
+    /// # Returns
+    ///
+    /// * `bool` - Returns `true` if the URL gets a free pass on link-checking, otherwise returns `false`.
+    pub fn ignore_link_check(url: &str) -> bool {
         if url == "/discord" {
             return true;
         }
@@ -107,28 +177,62 @@ impl Page {
 
         false
     }
-    pub fn exists(url: &str) -> bool {
-        if url == "/discord" {
-            return true;
-        }
-        if url.starts_with("/users/") {
-            return true;
-        }
-        if url.starts_with("/en-US/blog") && blog_root().is_none() {
-            return true;
-        }
-        if url.starts_with("/en-US/curriculum") {
-            return true;
-        }
-        if strip_locale_from_url(url).1 == "/" {
-            return true;
-        }
 
-        Page::from_url(url).is_ok()
+    /// Checks whether a page exists for the given URL.
+    ///
+    /// # Arguments
+    /// - `url`: A string slice that holds the URL to check.
+    ///
+    /// # Returns
+    /// `true` if the page exists; otherwise, `false`.
+    ///
+    /// # Examples
+    pub fn exists(url: &str) -> bool {
+        if let Ok(meta) = url_meta_from(url) {
+            match meta.page_category {
+                PageCategory::BlogPost if blog_root().is_none() => return true,
+                PageCategory::Curriculum if curriculum_root().is_none() => return true,
+                PageCategory::ContributorSpotlight if contributor_spotlight_root().is_none() => {
+                    return true
+                }
+                PageCategory::GenericPage if generic_content_root().is_none() => return true,
+                _ => {}
+            };
+            Page::from_url(url).is_ok()
+        } else {
+            false
+        }
+    }
+
+    /// Checks whether a page exists for the given URL, with a fallback mechanism.
+    ///
+    /// This function operates similarly to [`Page::exists`], but it uses a en-US fallback
+    /// when determining if a page exists.
+    ///
+    /// # Arguments
+    /// - `url`: A string slice that holds the URL to check.
+    ///
+    /// # Returns
+    /// `true` if the page exists (with or without fallback); otherwise, `false`.
+    pub fn exists_with_fallback(url: &str) -> bool {
+        if let Ok(meta) = url_meta_from(url) {
+            match meta.page_category {
+                PageCategory::BlogPost if blog_root().is_none() => return true,
+                PageCategory::Curriculum if curriculum_root().is_none() => return true,
+                PageCategory::ContributorSpotlight if contributor_spotlight_root().is_none() => {
+                    return true
+                }
+                PageCategory::GenericPage if generic_content_root().is_none() => return true,
+                _ => {}
+            };
+            Page::from_url_with_fallback(url).is_ok()
+        } else {
+            false
+        }
     }
 }
 
-impl PageReader for Page {
+impl PageReader<Page> for Page {
     fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError> {
         let path = path.into();
         let (_, typ) = locale_and_typ_from_path(&path)?;
@@ -136,9 +240,9 @@ impl PageReader for Page {
             PageCategory::Doc => Doc::read(path, locale),
             PageCategory::BlogPost => BlogPost::read(path, locale),
             PageCategory::SPA => SPA::read(path, locale),
-            PageCategory::Curriculum => CurriculumPage::read(path, locale),
+            PageCategory::Curriculum => Curriculum::read(path, locale),
             PageCategory::ContributorSpotlight => ContributorSpotlight::read(path, locale),
-            PageCategory::GenericPage => GenericPage::read(path, locale),
+            PageCategory::GenericPage => Generic::read(path, locale),
         }
     }
 }
@@ -161,6 +265,8 @@ pub trait PageLike {
     fn base_slug(&self) -> &str;
     fn trailing_slash(&self) -> bool;
     fn fm_offset(&self) -> usize;
+    fn raw_content(&self) -> &str;
+    fn banners(&self) -> Option<&[FmTempl]>;
 }
 
 impl<T: PageLike> PageLike for Arc<T> {
@@ -227,16 +333,61 @@ impl<T: PageLike> PageLike for Arc<T> {
     fn fm_offset(&self) -> usize {
         (**self).fm_offset()
     }
+
+    fn raw_content(&self) -> &str {
+        (**self).raw_content()
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        (**self).banners()
+    }
 }
 
-pub trait PageReader {
-    fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<Page, DocError>;
+/// A trait for reading pages in the documentation system.
+///
+/// The `PageReader` trait defines a method for reading pages from a specified path,
+/// optionally considering a locale.
+pub trait PageReader<T> {
+    /// Reads a page from the given path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - An implementation of `Into<PathBuf>` that specifies the path to the page.
+    /// * `locale` - An optional `Locale` that specifies the locale to be considered while reading the page.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Page, DocError>` - Returns a `Page` on success, or a `DocError` on failure.
+    fn read(path: impl Into<PathBuf>, locale: Option<Locale>) -> Result<T, DocError>;
 }
 
+/// A trait for writing pages in the documentation system.
+///
+/// The `PageWriter` trait defines a method for writing the current state of a page
+/// to the file system.
 pub trait PageWriter {
+    /// Writes the current state of the page to the file system.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), DocError>` - Returns `Ok(())` if the write operation is successful,
+    ///   or a `DocError` if an error occurs during the write process.
     fn write(&self) -> Result<(), DocError>;
 }
 
+/// A trait for building pages in the documentation system.
+///
+/// The `PageBuilder` trait defines a method for constructing a page and returning
+/// a `BuiltDocy` (A JSON representation of the build artifact). Implementors of
+/// this trait are responsible for handling the specifics of the build process,
+/// which could involve compiling content, applying templates, and performing
+/// any necessary transformations.
 pub trait PageBuilder {
-    fn build(&self) -> Result<BuiltDocy, DocError>;
+    /// Builds the page and returns the built `BuiltDocy` artifact.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<BuiltDocy, DocError>` - Returns `Ok(BuiltDocy)` if the build process is successful,
+    ///   or a `DocError` if an error occurs during the build process.
+    fn build(&self) -> Result<BuiltPage, DocError>;
 }

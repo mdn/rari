@@ -5,20 +5,28 @@ on:
     workflows: [build-and-upload-binaries]
     types: [completed]
 
+# No GITHUB_TOKEN permissions, as we only use it to increase API limit.
+permissions: {}
+
 jobs:
   on-success:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Setup
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout
-        working-directory: ./rari-npm
         uses: actions/setup-node@v4
         with:
           registry-url: "https://registry.npmjs.org/"
-          node-version-file: "package.json"
+          node-version-file: "./rari-npm/package.json"
+
+      - name: Generate Schema
+        working-directory: ./rari-npm
+        run: npm install && npm run export-schema && npm run generate-types
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish
         working-directory: ./rari-npm

@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fs;
 use std::path::Path;
 
+use rari_md::m2h;
 use rari_types::fm_types::PageType;
 use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
@@ -9,37 +10,44 @@ use rari_utils::concat_strs;
 use scraper::Html;
 
 use super::json::{
-    BuiltDocy, Compat, ContributorSpotlightHyData, HyData, JsonBlogPost, JsonBlogPostDoc,
-    JsonCurriculum, JsonDoADoc, JsonDoc, JsonGenericHyData, JsonGenericPage, Prose, Section,
-    Source, SpecificationSection, TocEntry, Translation,
+    BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
+    JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, Prose, Section,
+    Source, SpecificationSection, TocEntry,
 };
 use super::page::{Page, PageBuilder, PageLike};
 use super::types::contributors::ContributorSpotlight;
-use super::types::generic::GenericPage;
+use super::types::generic::Generic;
 use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::helpers::parents::parents;
 use crate::helpers::title::{page_title, transform_title};
+use crate::html::banner::build_banner;
 use crate::html::bubble_up::bubble_up_curriculum_page;
-use crate::html::modifier::{add_missing_ids, remove_empty_p};
+use crate::html::code::{code_blocks, Code};
+use crate::html::modifier::{add_missing_ids, insert_self_links_for_dts, remove_empty_p};
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
-use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Splitted};
+use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Split};
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
-use crate::pages::json::JsonContributorSpotlight;
+use crate::pages::json::{CommonJsonData, JsonContributorSpotlightPage, Translation};
+use crate::pages::templates::{
+    BlogRenderer, ContributorSpotlightRenderer, CurriculumRenderer, DocPageRenderer,
+    GenericRenderer,
+};
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::curriculum::{
-    build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
-    prev_next_modules, prev_next_overview, CurriculumPage, Template,
+    self, build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
+    prev_next_modules, prev_next_overview, Curriculum, Template,
 };
-use crate::pages::types::doc::{render_md_to_html, Doc};
+use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
+use crate::pages::types::utils::FmTempl;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
-use crate::translations::get_translations_for;
+use crate::translations::other_translations;
 
-impl<'a> From<BuildSection<'a>> for Section {
+impl From<BuildSection<'_>> for Section {
     fn from(value: BuildSection) -> Self {
         match value.typ {
             BuildSectionType::Prose | BuildSectionType::Unknown => Self::Prose(Prose {
@@ -116,7 +124,7 @@ impl<'a> From<BuildSection<'a>> for Section {
     }
 }
 
-impl<'a> BuildSection<'a> {
+impl BuildSection<'_> {
     pub fn make_toc_entry(&self, with_h3: bool) -> Option<TocEntry> {
         let id = self.id.clone();
         let text = self.heading.map(|h| h.inner_html());
@@ -134,6 +142,7 @@ pub struct PageContent {
     toc: Vec<TocEntry>,
     summary: Option<String>,
     sidebar: Option<String>,
+    live_samples: Option<Vec<Code>>,
 }
 
 pub fn make_toc(sections: &[BuildSection], with_h3: bool) -> Vec<TocEntry> {
@@ -154,8 +163,18 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     } else {
         (Cow::Borrowed(page.content()), vec![], vec![])
     };
-    let encoded_html = render_md_to_html(&ks_rendered_doc, page.locale())?;
-    let html = decode_ref(&encoded_html, &templs)?;
+    let banners = if let Some(banners) = page.banners() {
+        Some(
+            banners
+                .iter()
+                .map(|banner| build_banner(banner, page))
+                .collect::<Result<Vec<String>, DocError>>()?,
+        )
+    } else {
+        None
+    };
+    let encoded_html = m2h(&ks_rendered_doc, page.locale())?;
+    let html = decode_ref(&encoded_html, &templs, banners.as_deref())?;
     let post_processed_html = post_process_html(&html, page, false)?;
 
     let mut fragment = Html::parse_fragment(&post_processed_html);
@@ -164,8 +183,10 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     }
     remove_empty_p(&mut fragment)?;
     add_missing_ids(&mut fragment)?;
+    insert_self_links_for_dts(&mut fragment)?;
     expand_details_and_mark_current_for_inline_sidebar(&mut fragment, page.url())?;
-    let Splitted {
+    let live_samples = code_blocks(&mut fragment);
+    let Split {
         sections,
         summary,
         sidebar,
@@ -192,15 +213,17 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
         toc,
         summary,
         sidebar,
+        live_samples,
     })
 }
 
-fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
+fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
     let PageContent {
         body,
         toc,
         summary,
         sidebar,
+        live_samples,
     } = build_content(doc)?;
     let sidebar_html = if sidebar.is_some() {
         sidebar
@@ -221,52 +244,49 @@ fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
         .unwrap_or_default()
         .to_string_lossy()
         .to_string();
-    let history = git_history().get(&doc.meta.path);
+    let history = git_history().get(doc.path());
     let modified = history.map(|entry| entry.modified).unwrap_or_default();
     let short_title = doc
         .short_title()
         .map(String::from)
         .unwrap_or(transform_title(doc.title()).to_string());
 
+    let repo = match doc.locale() {
+        Locale::EnUs => "content",
+        Locale::De => "translated-content-de",
+        _ => "translated-content",
+    };
+
     let github_url = format!(
         "https://github.com/mdn/{}/blob/{}/files/{}",
-        if doc.locale() == Locale::default() {
-            "content"
-        } else {
-            "translated-content"
-        },
+        repo,
         content_branch(),
         doc.meta.path.display()
     );
 
     let last_commit_url = format!(
         "https://github.com/mdn/{}/commit/{}",
-        if doc.locale() == Locale::default() {
-            "content"
-        } else {
-            "translated-content"
-        },
+        repo,
         history.map(|entry| entry.hash.as_str()).unwrap_or_default()
     );
     let popularity = popularities().popularities.get(doc.url()).cloned();
-    let other_translations = get_translations_for(doc.slug(), doc.locale())
-        .into_iter()
-        .map(|(locale, title)| Translation {
-            native: locale.into(),
-            locale,
-            title,
-        })
-        .collect();
-
     let no_indexing =
         doc.meta.slug == "MDN/Kitchensink" || doc.is_orphaned() || doc.is_conflicting();
-    let parents = if !doc.is_conflicting() && !doc.is_orphaned() {
-        parents(doc)
+
+    let (parents, other_translations) = if !doc.is_conflicting() && !doc.is_orphaned() {
+        (parents(doc), other_translations(doc))
     } else {
-        Default::default()
+        (
+            Default::default(),
+            vec![Translation {
+                native: doc.locale().into(),
+                locale: doc.locale(),
+                title: doc.title().to_string(),
+            }],
+        )
     };
 
-    Ok(BuiltDocy::Doc(Box::new(JsonDoADoc {
+    Ok(BuiltPage::Doc(Box::new(JsonDocPage {
         doc: JsonDoc {
             title: doc.title().to_string(),
             is_markdown: true,
@@ -286,7 +306,11 @@ fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
             summary,
             popularity,
             no_indexing,
-            sidebar_macro: doc.meta.sidebar.first().cloned(),
+            sidebar_macro: doc
+                .meta
+                .sidebar
+                .first()
+                .map(|s| FmTempl::name(s).to_string()),
             source: Source {
                 folder,
                 filename,
@@ -296,15 +320,23 @@ fn build_doc(doc: &Doc) -> Result<BuiltDocy, DocError> {
             browser_compat: doc.meta.browser_compat.clone(),
             other_translations,
             page_type: doc.meta.page_type,
+            flaws: None,
+            live_samples,
+            banners: doc.meta.banners.clone(),
         },
         url: doc.meta.url.clone(),
-        ..Default::default()
+        renderer: DocPageRenderer::Doc,
     })))
 }
 
-fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
-    let PageContent { body, toc, .. } = build_content(post)?;
-    Ok(BuiltDocy::BlogPost(Box::new(JsonBlogPost {
+fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
+    let PageContent {
+        body,
+        toc,
+        live_samples,
+        ..
+    } = build_content(post)?;
+    Ok(BuiltPage::BlogPost(Box::new(JsonBlogPostPage {
         doc: JsonBlogPostDoc {
             title: post.title().to_string(),
             mdn_url: post.url().to_owned(),
@@ -314,6 +346,7 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
             body,
             toc,
             summary: Some(post.meta.description.clone()),
+            live_samples,
             ..Default::default()
         },
         url: post.url().to_owned(),
@@ -326,38 +359,58 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltDocy, DocError> {
             post.url(),
             post.meta.image.file
         )),
+        common: CommonJsonData {
+            parents: parents(post),
+            other_translations: vec![Translation {
+                native: post.locale().into(),
+                locale: post.locale(),
+                title: post.title().to_string(),
+            }],
+            ..Default::default()
+        },
+        renderer: BlogRenderer::BlogPost,
         ..Default::default()
     })))
 }
 
-fn build_generic_page(page: &GenericPage) -> Result<BuiltDocy, DocError> {
+fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
     let PageContent { body, toc, .. } = built?;
-    Ok(BuiltDocy::GenericPage(Box::new(JsonGenericPage {
+    Ok(BuiltPage::GenericPage(Box::new(JsonGenericPage {
         hy_data: JsonGenericHyData {
             sections: body,
             title: page.meta.title.clone(),
             toc,
         },
-        page_title: concat_strs!(
-            page.meta.title.as_str(),
-            " | ",
-            page.meta.title_suffix.as_str()
-        ),
+        short_title: page.meta.short_title.clone(),
+        page_title: if let Some(suffix) = &page.meta.title_suffix {
+            concat_strs!(page.meta.title.as_str(), " | ", suffix)
+        } else {
+            page.meta.title.clone()
+        },
         url: page.meta.url.clone(),
         id: page.meta.page.clone(),
+        common: CommonJsonData {
+            description: page.meta.description.clone(),
+            parents: parents(page),
+            other_translations: other_translations(page),
+        },
+        renderer: match page.meta.template {
+            super::types::generic::Template::GenericDoc => GenericRenderer::GenericDoc,
+            super::types::generic::Template::GenericAbout => GenericRenderer::GenericAbout,
+            super::types::generic::Template::GenericCommunity => GenericRenderer::GenericCommunity,
+        },
     })))
 }
 
-fn build_spa(spa: &SPA) -> Result<BuiltDocy, DocError> {
+fn build_spa(spa: &SPA) -> Result<BuiltPage, DocError> {
     spa.as_built_doc()
 }
 
-fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> {
+fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
     let PageContent { body, toc, .. } = build_content(curriculum)?;
     let sidebar = build_sidebar().ok();
-    let parents = parents(curriculum);
-    let group = curriculum_group(&parents);
+    let group = curriculum_group(&parents(curriculum));
     let modules = match curriculum.meta.template {
         Template::Overview => build_overview_modules(curriculum.slug())?,
         Template::Landing => build_landing_modules()?,
@@ -368,14 +421,13 @@ fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> 
         Template::Overview => prev_next_overview(curriculum.slug())?,
         _ => None,
     };
-    Ok(BuiltDocy::Curriculum(Box::new(JsonCurriculum {
+    Ok(BuiltPage::Curriculum(Box::new(JsonCurriculumPage {
         doc: super::json::JsonCurriculumDoc {
             title: curriculum.title().to_string(),
             locale: curriculum.locale(),
             native: curriculum.locale().into(),
             mdn_url: curriculum.meta.url.clone(),
-            template: curriculum.meta.template,
-            parents,
+            parents: parents(curriculum),
             page_title: page_title(curriculum, true)?,
             summary: curriculum.meta.summary.clone(),
             body,
@@ -385,17 +437,25 @@ fn build_curriculum(curriculum: &CurriculumPage) -> Result<BuiltDocy, DocError> 
             modules,
             prev_next,
             topic: Some(curriculum.meta.topic),
+            template: curriculum.meta.template,
             ..Default::default()
         },
         url: curriculum.url().to_owned(),
         page_title: page_title(curriculum, false)?,
         locale: curriculum.locale(),
+        renderer: match curriculum.meta.template {
+            curriculum::Template::Module => CurriculumRenderer::CurriculumModule,
+            curriculum::Template::Overview => CurriculumRenderer::CurriculumOverview,
+            curriculum::Template::Landing => CurriculumRenderer::CurriculumLanding,
+            curriculum::Template::About => CurriculumRenderer::CurriculumAbout,
+            curriculum::Template::Default => CurriculumRenderer::CurriculumDefault,
+        },
     })))
 }
 
-fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDocy, DocError> {
+fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, DocError> {
     let PageContent { body, .. } = build_content(cs)?;
-    let hy_data = ContributorSpotlightHyData {
+    let contributor_spotlight_data = ContributorSpotlightHyData {
         sections: body,
         contributor_name: cs.meta.contributor_name.clone(),
         folder_name: cs.meta.folder_name.clone(),
@@ -405,16 +465,39 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltDocy, D
         usernames: cs.meta.usernames.clone(),
         quote: cs.meta.quote.clone(),
     };
-    Ok(BuiltDocy::ContributorSpotlight(Box::new(
-        JsonContributorSpotlight {
+    Ok(BuiltPage::ContributorSpotlight(Box::new(
+        JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
+            short_title: cs.meta.short_title.clone(),
             page_title: cs.meta.title.clone(),
-            hy_data: HyData::ContributorSpotlight(hy_data),
+            hy_data: contributor_spotlight_data,
+            common: CommonJsonData {
+                description: cs.meta.description.clone(),
+                parents: parents(cs),
+                other_translations: other_translations(cs),
+            },
+            renderer: ContributorSpotlightRenderer::ContributorSpotlight,
         },
     )))
 }
 
-pub fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<(), DocError> {
+/// Copies additional files from one directory to another, excluding a specified file.
+///
+/// This function reads all files from the source directory, filters out the specified file to ignore,
+/// and copies the remaining files to the destination directory. This is useful for copying additional
+/// assets from a source directory to a destination directory, usually excluding the original `index.md`
+/// file.
+///
+/// # Arguments
+///
+/// * `from` - A reference to a `Path` that specifies the source directory.
+/// * `to` - A reference to a `Path` that specifies the destination directory.
+/// * `ignore` - A reference to a `Path` that specifies the file to be ignored during the copy process.
+///
+/// # Returns
+///
+/// * `Result<(), DocError>` - Returns `Ok(())` if all files are copied successfully, or a `DocError` if an error occurs.
+pub(crate) fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<(), DocError> {
     for from in fs::read_dir(from)?
         .filter_map(Result::ok)
         .map(|f| f.path())
@@ -429,7 +512,7 @@ pub fn copy_additional_files(from: &Path, to: &Path, ignore: &Path) -> Result<()
 }
 
 impl PageBuilder for Page {
-    fn build(&self) -> Result<BuiltDocy, DocError> {
+    fn build(&self) -> Result<BuiltPage, DocError> {
         match self {
             Self::Doc(doc) => build_doc(doc),
             Self::BlogPost(post) => build_blog_post(post),

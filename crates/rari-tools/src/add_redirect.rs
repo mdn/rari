@@ -13,7 +13,7 @@ pub fn add_redirect(from_url: &str, to_url: &str) -> Result<(), ToolError> {
     let green = Style::new().green();
     let bold = Style::new().bold();
 
-    println!(
+    tracing::info!(
         "{} {} {} {}",
         green.apply_to("Saved"),
         bold.apply_to(from_url),
@@ -74,7 +74,7 @@ fn validate_args(from_url: &str, to_url: &str) -> Result<(), ToolError> {
 // These tests use file system fixtures to simulate content and translated content.
 // The file system is a shared resource, so we force tests to be run serially,
 // to avoid concurrent fixture management issues.
-// Using `file_serial` as a synchonization lock, we run all tests using
+// Using `file_serial` as a synchronization lock, we run all tests using
 // the same `key` (here: file_fixtures) to be serialized across modules.
 #[cfg(test)]
 use serial_test::file_serial;
@@ -86,7 +86,7 @@ mod test {
     use super::*;
     use crate::tests::fixtures::docs::DocFixtures;
     use crate::tests::fixtures::redirects::RedirectFixtures;
-    use crate::utils::test_utils::get_redirects_map;
+    use crate::utils::get_redirects_map;
 
     #[test]
     fn test_add_redirect() {
@@ -96,7 +96,7 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _redirects = RedirectFixtures::new(
-            &vec![(
+            &[(
                 "docs/Web/API/Something".to_string(),
                 "docs/Web/API/SomethingElse".to_string(),
             )],
@@ -122,7 +122,7 @@ mod test {
     fn test_add_redirect_missing_target() {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
 
         let result = do_add_redirect(
             "/en-US/docs/Web/API/ExampleGone",
@@ -136,8 +136,8 @@ mod test {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let _docs_pt = DocFixtures::new(&slugs, Locale::PtBr);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
-        let _redirects_pt = RedirectFixtures::new(&vec![], Locale::PtBr);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
+        let _redirects_pt = RedirectFixtures::new(&[], Locale::PtBr);
 
         // Locales do not match
         let result = do_add_redirect(
@@ -166,7 +166,7 @@ mod test {
     fn test_add_redirect_external() {
         let slugs = vec!["Web/API/ExampleOne".to_string()];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
-        let _redirects = RedirectFixtures::new(&vec![], Locale::EnUs);
+        let _redirects = RedirectFixtures::new(&[], Locale::EnUs);
 
         let result = do_add_redirect("/en-US/docs/Web/API/ExampleGone", "https://example.com/");
         assert!(result.is_ok());

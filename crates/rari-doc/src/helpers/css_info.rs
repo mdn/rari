@@ -85,7 +85,7 @@ pub fn css_info_properties(
         ));
     }
 
-    out.push(("initial", Cow::Owned(css_inital(locale)?)));
+    out.push(("initial", Cow::Owned(css_initial(locale)?)));
 
     if at_rule.is_none() {
         out.push((
@@ -172,7 +172,7 @@ pub fn write_computed_output(
                                 &[get_css_l10n_for_locale("length", locale)],
                             ));
                         }
-                        return Cow::Borrowed(localized);
+                        Cow::Borrowed(localized)
                     })
                     .join(get_css_l10n_for_locale("listSeparator", locale));
                 out.push_str(&render_and_decode_ref(
@@ -275,13 +275,13 @@ fn add_additional_applies_to<'a>(
             additional_applies_to.push_str(get_css_l10n_for_locale("andInEnumeration", locale));
         }
     }
-    return Cow::Owned(remove_me_replace_placeholder(
+    Cow::Owned(remove_me_replace_placeholder(
         get_css_l10n_for_locale("applyingToMultiple", locale),
         &[output, &additional_applies_to],
-    ));
+    ))
 }
 
-fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
+pub fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
     if let Some(data) = mdn_data_files().css_l10n.get(key) {
         let data = get_for_locale(locale, data);
         if !data.is_null() {
@@ -305,7 +305,7 @@ pub fn get_for_locale(locale: Locale, lookup: &Value) -> &Value {
 pub fn css_computed(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_csscomputed", locale)?;
     RariApi::link(
-        "/Web/CSS/computed_value",
+        "/Web/CSS/CSS_cascade/Value_processing#computed_value",
         Some(locale),
         Some(copy),
         false,
@@ -317,7 +317,7 @@ pub fn css_computed(locale: Locale) -> Result<String, DocError> {
 pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinherited", locale)?;
     RariApi::link(
-        "/Web/CSS/inheritance",
+        "/Web/CSS/CSS_cascade/Inheritance",
         Some(locale),
         Some(copy),
         false,
@@ -326,10 +326,10 @@ pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
     )
 }
 
-pub fn css_inital(locale: Locale) -> Result<String, DocError> {
+pub fn css_initial(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinitial", locale)?;
     RariApi::link(
-        "/Web/CSS/initial_value",
+        "/Web/CSS/CSS_cascade/Value_processing#initial_value",
         Some(locale),
         Some(copy),
         false,
@@ -338,7 +338,7 @@ pub fn css_inital(locale: Locale) -> Result<String, DocError> {
     )
 }
 
-fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
+pub fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
     let missing = l10n_json_data("CSS", "missing", locale)?;
     Ok(write!(out, "<span style=\"color:red;\">{missing}</span>")?)
 }

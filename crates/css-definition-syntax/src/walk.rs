@@ -34,6 +34,9 @@ pub fn walk<T>(
         Node::Multiplier(multiplier) => {
             walk(&multiplier.term, options, context)?;
         }
+        Node::BooleanExpr(boolean_exp) => {
+            walk(&boolean_exp.term, options, context)?;
+        }
         Node::Token(_)
         | Node::Property(_)
         | Node::Type(_)

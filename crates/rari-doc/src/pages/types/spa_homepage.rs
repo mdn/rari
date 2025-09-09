@@ -11,16 +11,16 @@ use regex::Regex;
 use crate::cached_readers::contributor_spotlight_files;
 use crate::error::DocError;
 use crate::helpers::parents::parents;
-use crate::helpers::summary_hack::get_hacky_summary_md;
+use crate::helpers::summary_hack::{get_hacky_summary_md, text_content};
 use crate::pages::json::{
     HomePageFeaturedArticle, HomePageFeaturedContributor, HomePageLatestNewsItem,
     HomePageRecentContribution, NameUrl, Parent,
 };
 use crate::pages::page::{Page, PageLike};
 
-pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
+pub fn latest_news(urls: &[String]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
     urls.iter()
-        .filter_map(|url| match Page::from_url(url) {
+        .filter_map(|url| match Page::from_url_with_fallback(url) {
             Ok(Page::BlogPost(post)) => Some(Ok(HomePageLatestNewsItem {
                 url: post.url().to_string(),
                 title: post.title().to_string(),
@@ -30,7 +30,12 @@ pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocErro
                     url: concat_strs!("/", Locale::default().as_url_str(), "/blog/"),
                 },
                 published_at: post.meta.date,
+                summary: post.meta.description.clone(),
             })),
+            Err(DocError::PageNotFound(url, category)) => {
+                tracing::warn!("page not found {url} ({category:?})");
+                None
+            }
             Err(e) => Some(Err(e)),
             x => {
                 tracing::debug!("{x:?}");
@@ -41,12 +46,12 @@ pub fn lastet_news(urls: &[&str]) -> Result<Vec<HomePageLatestNewsItem>, DocErro
 }
 
 pub fn featured_articles(
-    urls: &[&str],
+    urls: &[String],
     locale: Locale,
 ) -> Result<Vec<HomePageFeaturedArticle>, DocError> {
     urls.iter()
         .filter_map(
-            |url| match Page::from_url_with_other_locale_and_fallback(url, Some(locale)) {
+            |url| match Page::from_url_with_locale_and_fallback(url, locale) {
                 Ok(Page::BlogPost(post)) => Some(Ok(HomePageFeaturedArticle {
                     mdn_url: post.url().to_string(),
                     summary: post.meta.description.clone(),
@@ -58,10 +63,16 @@ pub fn featured_articles(
                 })),
                 Ok(ref page @ Page::Doc(ref doc)) => Some(Ok(HomePageFeaturedArticle {
                     mdn_url: doc.url().to_string(),
-                    summary: get_hacky_summary_md(page).unwrap_or_default(),
+                    summary: get_hacky_summary_md(page)
+                        .map(|summary| text_content(&summary))
+                        .unwrap_or_default(),
                     title: doc.title().to_string(),
                     tag: parents(page).get(1).cloned(),
                 })),
+                Err(DocError::PageNotFound(url, category)) => {
+                    tracing::warn!("page not found {url} ({category:?})");
+                    None
+                }
                 Err(e) => Some(Err(e)),
                 x => {
                     tracing::debug!("{x:?}");
@@ -77,7 +88,7 @@ pub fn recent_contributions() -> Result<Vec<HomePageRecentContribution>, DocErro
     if let Some(translated_root) = content_translated_root() {
         content.extend(recent_contributions_from_git(
             translated_root,
-            "mdn/translated_content",
+            "mdn/translated-content",
         )?);
     };
     content.sort_by(|a, b| a.updated_at.cmp(&b.updated_at));

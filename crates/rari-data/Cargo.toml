@@ -1,6 +1,6 @@
 [package]
 name = "rari-data"
-version = "0.0.13"
+version = "0.1.48"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -14,3 +14,5 @@ serde_json.workspace = true
 url.workspace = true
 chrono.workspace = true
 indexmap.workspace = true
+schemars.workspace = true
+tracing.workspace = true

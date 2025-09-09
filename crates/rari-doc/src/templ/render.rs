@@ -1,7 +1,8 @@
 use std::fmt::Write;
 
-use rari_md::ext::{DELIM_END, DELIM_START};
+use rari_md::ext::{DELIM_END, DELIM_END_LEN, DELIM_START, DELIM_START_LEN};
 use rari_types::globals::deny_warnings;
+use rari_types::templ::TemplType;
 use rari_types::{AnyArg, RariEnv};
 use tracing::{span, warn, Level};
 
@@ -15,7 +16,7 @@ pub struct Rendered {
     pub sidebars: Vec<String>,
 }
 
-pub fn render_for_summary(input: &str) -> Result<String, DocError> {
+pub(crate) fn render_for_summary(input: &str) -> Result<String, DocError> {
     let tokens = parse(input)?;
     let mut out = String::with_capacity(input.len());
     for token in tokens {
@@ -38,7 +39,8 @@ pub fn render_for_summary(input: &str) -> Result<String, DocError> {
                     | "quicklinkswithsubpages" => None,
                     "glossary" => mac
                         .args
-                        .first()
+                        .get(1)
+                        .or(mac.args.first())
                         .and_then(|f| f.clone())
                         .map(|arg| AnyArg::try_from(arg).unwrap().to_string()),
                     _ => mac
@@ -55,7 +57,7 @@ pub fn render_for_summary(input: &str) -> Result<String, DocError> {
     Ok(out)
 }
 
-pub fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Rendered, DocError> {
+pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Rendered, DocError> {
     let tokens = parse(input)?;
     let mut templs = vec![];
     let mut sidebars = vec![];
@@ -69,27 +71,36 @@ pub fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Rendered, Doc
             Token::Macro(mac) => {
                 let ident = &mac.ident;
                 let name = ident.to_ascii_lowercase();
+                let line = i64::try_from(mac.pos.0 + offset).unwrap_or(-1);
+                let col = i64::try_from(mac.pos.1).unwrap_or(-1);
+                let end_col = i64::try_from(mac.pos.1 + input[mac.start..mac.end].chars().count())
+                    .unwrap_or(-1);
                 let span = span!(
                     Level::ERROR,
                     "templ",
                     templ = name,
-                    line = mac.pos.0 + offset,
-                    col = mac.pos.1
+                    line = line,
+                    col = col,
+                    end_line = line,
+                    end_col = end_col
                 );
                 let _enter = span.enter();
                 match invoke(env, &name, mac.args) {
-                    Ok((rendered, is_sidebar)) => {
-                        if is_sidebar {
-                            sidebars.push(rendered)
-                        } else {
-                            encode_ref(templs.len(), &mut out)?;
-                            templs.push(rendered)
-                        }
+                    Ok((rendered, TemplType::Sidebar)) => {
+                        encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
+                        templs.push(String::default());
+                        sidebars.push(rendered);
+                    }
+                    Ok((rendered, _)) => {
+                        encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
+                        templs.push(rendered);
                     }
                     Err(e) if deny_warnings() => return Err(e),
                     Err(e) => {
                         warn!("{e}",);
-                        writeln!(&mut out, "{e}")?;
+                        encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
+                        //templs.push(format!("___ERROR in ({ident}): {e}___"));
+                        templs.push(e.to_string())
                     }
                 };
             }
@@ -102,19 +113,27 @@ pub fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Rendered, Doc
     })
 }
 
-fn encode_ref(index: usize, out: &mut String) -> Result<(), DocError> {
-    Ok(write!(out, "{DELIM_START}{index}{DELIM_END}",)?)
+fn encode_ref(index: usize, out: &mut String, len: usize) -> Result<(), DocError> {
+    let padding = len - DELIM_START_LEN - DELIM_END_LEN;
+    Ok(write!(out, "{DELIM_START}{index:x>padding$}{DELIM_END}",)?)
 }
 
-pub fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
+pub(crate) fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
     let Rendered {
         content, templs, ..
     } = render(env, input, 0)?;
-    decode_ref(&content, &templs)
+    decode_ref(&content, &templs, None)
 }
 
-pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocError> {
+pub(crate) fn decode_ref(
+    input: &str,
+    templs: &[String],
+    prepred: Option<&[String]>,
+) -> Result<String, DocError> {
     let mut decoded = String::with_capacity(input.len());
+    if let Some(prepend) = prepred {
+        decoded.extend(prepend.iter().map(String::as_str));
+    }
     if !input.contains(DELIM_START) {
         return Ok(input.to_string());
     }
@@ -124,9 +143,7 @@ pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocEr
         for (i, sub_frag) in frag.splitn(2, DELIM_END).enumerate() {
             if i == 0 && has_ks {
                 frags.push(sub_frag);
-                //decode_macro(sub_frag, &mut decoded)?;
             } else {
-                //decoded.push_str(strip_escape_residues(sub_frag))
                 frags.push(sub_frag)
             }
         }
@@ -144,7 +161,7 @@ pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocEr
 
     for (i, frag) in frags.iter().enumerate() {
         if i % 2 == 1 {
-            let index = frag.parse::<usize>()?;
+            let index = frag.trim_start_matches("x").parse::<usize>()?;
             if let Some(templ) = templs.get(index) {
                 decoded.push_str(templ);
             } else {
@@ -161,6 +178,15 @@ pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocEr
 fn push_text(out: &mut String, slice: &str) {
     let mut last = 0;
     for (i, _) in slice.match_indices("\\{") {
+        push_text_inner(out, &slice[last..i]);
+        last = i + 1;
+    }
+    push_text_inner(out, &slice[last..]);
+}
+
+fn push_text_inner(out: &mut String, slice: &str) {
+    let mut last = 0;
+    for (i, _) in slice.match_indices("\\}") {
         out.push_str(&slice[last..i]);
         last = i + 1;
     }
@@ -172,6 +198,13 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_push_text() {
+        let mut out = String::new();
+        push_text(&mut out, "foo \\\\{ bar \\\\} \\} 2000");
+        assert_eq!(out, "foo \\{ bar \\} } 2000")
+    }
+
+    #[test]
     fn test_basic() -> Result<(), DocError> {
         let env = RariEnv {
             ..Default::default()
@@ -179,7 +212,7 @@ mod test {
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ echo("doom") }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, r#"doom"#);
         Ok(())
     }
@@ -192,7 +225,7 @@ mod test {
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ echo("\"doom\"") }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, r#""doom""#);
         Ok(())
     }

@@ -8,8 +8,8 @@ use crate::helpers::json_data::json_data_group;
 use crate::helpers::subpages::write_li_with_badges;
 use crate::pages::types::doc::Doc;
 
-#[rari_f]
-pub fn api_list_specs() -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn listgroups() -> Result<String, DocError> {
     let group_data = json_data_group();
 
     let mut out_by_letter = BTreeMap::new();
@@ -20,9 +20,10 @@ pub fn api_list_specs() -> Result<String, DocError> {
             let page = Doc::page_from_slug(
                 &format!("Web/API/{}", overview.replace(' ', "_")),
                 env.locale,
+                true,
             )?;
             let out = out_by_letter.entry(first_letter).or_default();
-            write_li_with_badges(out, &page, env.locale, true)?;
+            write_li_with_badges(out, &page, env.locale, false, true)?;
         }
     }
 

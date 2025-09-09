@@ -9,14 +9,16 @@ use rari_types::locale::Locale;
 use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use regex::Regex;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::cached_readers::curriculum_files;
 use crate::error::DocError;
-use crate::pages::json::{Parent, PrevNextBlog, PrevNextCurriculum, UrlNTitle};
+use crate::pages::json::{Parent, PrevNextBySlug, PrevNextByUrl, UrlNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
+use crate::pages::types::utils::FmTempl;
 use crate::utils::{as_null, split_fm};
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum Template {
     Module,
@@ -28,7 +30,7 @@ pub enum Template {
     Default,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, Default, JsonSchema)]
 pub enum Topic {
     #[serde(rename = "Web Standards & Semantics")]
     WebStandards,
@@ -42,7 +44,7 @@ pub enum Topic {
     None,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CurriculumSidebarEntry {
     pub url: String,
@@ -52,7 +54,7 @@ pub struct CurriculumSidebarEntry {
     pub children: Vec<CurriculumSidebarEntry>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CurriculumIndexEntry {
     pub url: String,
@@ -99,17 +101,17 @@ pub struct CurriculumMeta {
     pub sidebar: Vec<CurriculumIndexEntry>,
     pub modules: Vec<CurriculumIndexEntry>,
     pub parents: Vec<Parent>,
-    pub prev_next: PrevNextBlog,
+    pub prev_next: PrevNextBySlug,
     pub group: Option<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct CurriculumPage {
+pub struct Curriculum {
     pub meta: CurriculumBuildMeta,
     raw_content: String,
 }
 
-impl CurriculumPage {
+impl Curriculum {
     pub fn page_from_url(url: &str) -> Option<Page> {
         let _ = curriculum_root()?;
         curriculum_files()
@@ -123,7 +125,7 @@ impl CurriculumPage {
         curriculum_files().by_path.get(path).cloned()
     }
 
-    pub fn page_from_realitve_file(
+    pub fn page_from_relative_file(
         base_file: &Path,
         relative_file: &str,
     ) -> Result<Page, DocError> {
@@ -136,14 +138,14 @@ impl CurriculumPage {
             path = path.join("0-README.md");
         }
         let path = fs::canonicalize(path)?;
-        CurriculumPage::page_from_file_path(&path).ok_or(DocError::PageNotFound(
+        Curriculum::page_from_file_path(&path).ok_or(DocError::PageNotFound(
             path.to_string_lossy().to_string(),
             PageCategory::Curriculum,
         ))
     }
 }
 
-impl PageReader for CurriculumPage {
+impl PageReader<Page> for Curriculum {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let full_path = path.into();
         let raw = read_to_string(&full_path)?;
@@ -181,7 +183,7 @@ impl PageReader for CurriculumPage {
             path,
             group: None,
         };
-        let page = Page::Curriculum(Arc::new(CurriculumPage { meta, raw_content }));
+        let page = Page::Curriculum(Arc::new(Curriculum { meta, raw_content }));
         Ok(page)
     }
 }
@@ -194,7 +196,7 @@ fn curriculum_file_to_slug(file: &Path) -> String {
     SLUG_RE.replace_all(&file.to_string_lossy(), "").to_string()
 }
 
-impl PageLike for CurriculumPage {
+impl PageLike for Curriculum {
     fn url(&self) -> &str {
         &self.meta.url
     }
@@ -257,6 +259,14 @@ impl PageLike for CurriculumPage {
 
     fn fm_offset(&self) -> usize {
         0
+    }
+
+    fn raw_content(&self) -> &str {
+        &self.raw_content
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        None
     }
 }
 
@@ -329,7 +339,7 @@ pub fn build_overview_modules(slug: &str) -> Result<Vec<CurriculumIndexEntry>, D
         .collect())
 }
 
-pub fn prev_next_modules(slug: &str) -> Result<Option<PrevNextCurriculum>, DocError> {
+pub fn prev_next_modules(slug: &str) -> Result<Option<PrevNextByUrl>, DocError> {
     let index = &curriculum_files().index;
     let i = index
         .iter()
@@ -337,7 +347,7 @@ pub fn prev_next_modules(slug: &str) -> Result<Option<PrevNextCurriculum>, DocEr
     prev_next(index, i)
 }
 
-pub fn prev_next_overview(slug: &str) -> Result<Option<PrevNextCurriculum>, DocError> {
+pub fn prev_next_overview(slug: &str) -> Result<Option<PrevNextByUrl>, DocError> {
     let index: Vec<_> = grouped_index()?
         .into_iter()
         .filter_map(|entry| {
@@ -357,16 +367,16 @@ pub fn prev_next_overview(slug: &str) -> Result<Option<PrevNextCurriculum>, DocE
 pub fn prev_next(
     index: &[CurriculumIndexEntry],
     i: Option<usize>,
-) -> Result<Option<PrevNextCurriculum>, DocError> {
+) -> Result<Option<PrevNextByUrl>, DocError> {
     Ok(i.map(|i| match i {
-        0 => PrevNextCurriculum {
+        0 => PrevNextByUrl {
             prev: None,
             next: index.get(1).map(|entry| UrlNTitle {
                 title: entry.title.clone(),
                 url: entry.url.clone(),
             }),
         },
-        i if i == index.len() => PrevNextCurriculum {
+        i if i == index.len() => PrevNextByUrl {
             prev: index.get(i - 1).map(|entry| UrlNTitle {
                 title: entry.title.clone(),
                 url: entry.url.clone(),
@@ -374,7 +384,7 @@ pub fn prev_next(
             next: None,
         },
 
-        i => PrevNextCurriculum {
+        i => PrevNextByUrl {
             prev: index.get(i - 1).map(|entry| UrlNTitle {
                 title: entry.title.clone(),
                 url: entry.url.clone(),

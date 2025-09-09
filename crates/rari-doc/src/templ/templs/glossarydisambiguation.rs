@@ -2,10 +2,10 @@ use rari_templ_func::rari_f;
 
 use crate::error::DocError;
 use crate::helpers::subpages::get_sub_pages;
-use crate::helpers::summary_hack::{get_hacky_summary_md, strip_paragraph_unckecked};
+use crate::helpers::summary_hack::{get_hacky_summary_md, strip_paragraph_unchecked};
 use crate::pages::page::PageLike;
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn glossarydisambiguation() -> Result<String, DocError> {
     let mut out = String::new();
     let pages = get_sub_pages(
@@ -21,9 +21,9 @@ pub fn glossarydisambiguation() -> Result<String, DocError> {
             r#"<dt><a href=""#,
             page.url(),
             r#"">"#,
-            page.title(),
+            &html_escape::encode_safe(page.title()),
             r#"</a></dt><dd>"#,
-            strip_paragraph_unckecked(summary.as_str()),
+            strip_paragraph_unchecked(summary.as_str()),
             r#"</dd>"#,
         ]);
     }

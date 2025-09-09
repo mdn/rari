@@ -1,3 +1,7 @@
+//! # Redirects Module
+//!
+//! The `redirects` module provides functionality for managing URL redirects.
+//! It includes utilities for reading redirect mappings from files and storing them in a hashmap for efficient lookup.
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs::File;
@@ -12,6 +16,7 @@ use rari_utils::error::RariIoError;
 use tracing::error;
 
 use crate::error::DocError;
+use crate::pages::page::{Page, PageLike};
 
 static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     let mut map = HashMap::new();
@@ -24,6 +29,7 @@ static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
                     error!("Error: reading translated content root: {e}");
                 })
                 .ok()
+                .filter(|dir| dir.path().is_dir())
                 .and_then(|dir| {
                     Locale::from_str(
                         dir.file_name()
@@ -85,17 +91,48 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-pub fn resolve_redirect(url: &str) -> Option<Cow<'_, str>> {
+/// Resolves a given URL to a redirect URL if one exists.
+///
+/// Takes a URL string as input and returns an Option containing either:
+/// - A `Cow<str>` with the redirect URL if a redirect exists
+/// - None if no redirect is found
+///
+/// The function handles hash fragments in URLs and preserves them in the redirect.
+/// It also normalizes URLs and can resolve both explicit redirects from the redirects file
+/// as well as implicit redirects based on page URL normalization.
+pub fn resolve_redirect<'a>(url: impl AsRef<str>) -> Option<Cow<'a, str>> {
+    let url = url.as_ref();
     let hash_index = url.find('#').unwrap_or(url.len());
     let (url_no_hash, hash) = (&url[..hash_index], &url[hash_index..]);
-    match (
-        REDIRECTS
-            .get(&url_no_hash.to_lowercase())
-            .map(|s| s.as_str()),
-        hash,
-    ) {
+    let redirect = match REDIRECTS
+        .get(&url_no_hash.to_lowercase())
+        .map(|s| s.as_str())
+    {
+        Some(redirect) if redirect.starts_with("/") => Some(
+            Page::from_url(redirect)
+                .ok()
+                .and_then(|page| {
+                    if url != page.url() {
+                        Some(Cow::Owned(page.url().to_string()))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(Cow::Borrowed(redirect)),
+        ),
+        Some(redirect) => Some(Cow::Borrowed(redirect)),
+        None if url.starts_with("/") => Page::from_url(url).ok().and_then(|page| {
+            if url != page.url() {
+                Some(Cow::Owned(page.url().to_string()))
+            } else {
+                None
+            }
+        }),
+        None => None,
+    };
+    match (redirect, hash) {
         (None, _) => None,
-        (Some(url), hash) if url.contains('#') || hash.is_empty() => Some(Cow::Borrowed(url)),
+        (Some(url), hash) if url.contains('#') || hash.is_empty() => Some(url),
         (Some(url), hash) => Some(Cow::Owned(format!("{url}{hash}"))),
     }
 }

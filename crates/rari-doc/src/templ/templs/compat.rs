@@ -5,12 +5,12 @@ use crate::error::DocError;
 use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::pages::page::{Page, PageLike};
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn compat() -> Result<String, DocError> {
     Ok(compat_internal(env.browser_compat))
 }
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn webextallcompattables() -> Result<String, DocError> {
     let mut out = String::new();
     let sub_pages = get_sub_pages(
@@ -72,7 +72,7 @@ mod test {
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ compat }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, r#""#);
         Ok(())
     }
@@ -89,7 +89,7 @@ If you're able to see this, something went wrong on this page.
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ compat }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, exp);
         Ok(())
     }
@@ -112,7 +112,7 @@ If you're able to see this, something went wrong on this page.
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ compat }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, exp);
         Ok(())
     }

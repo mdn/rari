@@ -1,6 +1,6 @@
 [package]
 name = "rari-deps"
-version = "0.0.13"
+version = "0.1.48"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -8,12 +8,18 @@ rust-version.workspace = true
 
 [dependencies]
 rari-utils.workspace = true
+rari-types.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
 thiserror.workspace = true
 reqwest.workspace = true
+url.workspace = true
+indexmap.workspace = true
+tracing.workspace = true
+semver.workspace = true
 
 css-syntax-types = { path = "../css-syntax-types" }
 tar = "0.4"
 flate2 = "1"
+csv = "1"

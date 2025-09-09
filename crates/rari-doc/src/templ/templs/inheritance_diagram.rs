@@ -7,14 +7,16 @@ use rari_types::locale::Locale;
 use crate::error::DocError;
 use crate::helpers::api_inheritance::inheritance;
 
-#[rari_f]
-pub fn inheritance_diagram(interface: Option<String>) -> Result<String, DocError> {
-    let main_if = interface.as_deref().unwrap_or(
-        env.slug
-            .strip_prefix("Web/API/")
-            .map(|s| &s[..s.find('/').unwrap_or(s.len())])
-            .ok_or_else(|| DocError::InvalidSlugForX(env.slug.to_string()))?,
-    );
+#[rari_f(register = "crate::Templ")]
+pub fn inheritancediagram(interface: Option<String>) -> Result<String, DocError> {
+    let main_if = interface
+        .as_deref()
+        .or_else(|| {
+            env.slug
+                .strip_prefix("Web/API/")
+                .map(|s| &s[..s.find('/').unwrap_or(s.len())])
+        })
+        .ok_or_else(|| DocError::InvalidSlugForX(env.slug.to_string()))?;
     let inheritance_chain = inheritance(main_if);
 
     if inheritance_chain.is_empty() {
@@ -43,7 +45,7 @@ pub fn inheritance_diagram(interface: Option<String>) -> Result<String, DocError
         };
         let rect_width = calculate_rect_width(interface);
 
-        // Minumum space required to continue the current row
+        // Minimum space required to continue the current row
         let req_space = match i {
             0 => rect_width,
             _ if i == iter_len => rect_width + 47,
