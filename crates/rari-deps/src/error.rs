@@ -22,6 +22,6 @@ pub enum DepsError {
     VersionNotFound,
     #[error("Invalid url: {0}")]
     UrlError(#[from] url::ParseError),
-    #[error("upstream error: {0}")]
-    UpstreamError(String),
+    #[error("GitHub error: {0}")]
+    GithubError(String),
 }
