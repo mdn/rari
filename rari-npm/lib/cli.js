@@ -13,8 +13,8 @@ spawn(rariBin, input, { stdio: "inherit" }).on("exit", (code, signal) => {
     } catch {
       // Reflect signal code in exit code.
       // See: https://nodejs.org/api/os.html#os-constants
-      const signalCode = os.constants?.signals?.[signal];
-      process.exit(signalCode ? 128 + signalCode : 1);
+      const signalCode = os.constants?.signals?.[signal] ?? 0;
+      process.exit(128 + signalCode);
     }
   }
   process.exit(code ?? 0);
