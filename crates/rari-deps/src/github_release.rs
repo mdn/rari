@@ -31,7 +31,7 @@ fn get_version(repo: &str, version_req: &VersionReq) -> Result<(Version, String)
         let err: Result<GithubError, _> = resp.json();
         return Err(match err {
             Ok(e) => DepsError::UpstreamError(format!("GitHub error: {} ({url})", e.message)),
-            Err(_) => DepsError::UpstreamError(format!("GitHub HTTP {}", status)),
+            Err(_) => DepsError::UpstreamError(format!("GitHub HTTP {status} ({url})")),
         });
     }
 
