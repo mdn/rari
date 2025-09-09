@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@webref/css": ">=6.0.0, <7.0.0"
+  }
+}
