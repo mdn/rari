@@ -20,6 +20,8 @@ pub struct Deps {
     pub web_specs: Option<VersionReq>,
     #[serde(alias = "@webref/css")]
     pub webref_css: Option<VersionReq>,
+    #[serde(alias = "browser-specs")]
+    pub browser_specs: Option<VersionReq>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]

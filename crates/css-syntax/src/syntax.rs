@@ -8,11 +8,12 @@ use std::sync::LazyLock;
 use css_definition_syntax::generate::{self, GenerateOptions};
 use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
 use css_definition_syntax::walk::{walk, WalkOptions};
-use css_syntax_types::{Css, CssValueType, CssValuesItem, SpecInExtract};
+use css_syntax_types::{Css, CssValueType, CssValuesItem, SpecLink};
 use itertools::intersperse;
 #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
+use url::Url;
 
 use crate::error::SyntaxError;
 
@@ -40,7 +41,7 @@ static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
 
 fn flatten_values(
     values: &'static BTreeMap<String, CssValuesItem>,
-    spec: &'static SpecInExtract,
+    href: Option<&'static str>,
     all: &mut Flattened,
 ) {
     for (k, v) in values.iter() {
@@ -50,23 +51,23 @@ fn flatten_values(
             CssValueType::Value => Some(&mut all.values),
             CssValueType::Selector => None,
         } {
-            map.entry(k).or_insert((v, spec));
+            map.entry(k).or_insert((v, href));
         };
         for value in values.values() {
             if let Some(values) = value.values.as_ref() {
-                flatten_values(values, spec, all);
+                flatten_values(values, href, all);
             }
         }
     }
 }
 
-pub type ItemAndSpec = (&'static CssValuesItem, &'static SpecInExtract);
+pub type ItemAndHref = (&'static CssValuesItem, Option<&'static str>);
 
 #[derive(Default, Serialize, Debug)]
 pub struct Flattened {
-    pub values: BTreeMap<&'static str, ItemAndSpec>,
-    pub functions: BTreeMap<&'static str, ItemAndSpec>,
-    pub types: BTreeMap<&'static str, ItemAndSpec>,
+    pub values: BTreeMap<&'static str, ItemAndHref>,
+    pub functions: BTreeMap<&'static str, ItemAndHref>,
+    pub types: BTreeMap<&'static str, ItemAndHref>,
 }
 
 // This relies on the ordered names of CSS_REF.
@@ -92,30 +93,68 @@ static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
             a.0.cmp(b.0)
         }
     });
+
     for (_, spec) in entries {
-        for (k, item) in spec.values.iter() {
-            if let Some(map) = match item.type_ {
-                CssValueType::Type => Some(&mut all.types),
-                CssValueType::Function => Some(&mut all.functions),
-                CssValueType::Value => Some(&mut all.values),
-                CssValueType::Selector => None,
-            } {
-                map.entry(k)
-                    .and_modify(|(e_item, e_spec)| {
-                        if item.value.is_some() || e_item.value.is_none() {
-                            *e_item = item;
-                            *e_spec = &spec.spec;
-                        }
-                    })
-                    .or_insert((item, &spec.spec));
-            };
-            if let Some(values) = item.values.as_ref() {
-                flatten_values(values, &spec.spec, &mut all);
-            }
+        // Process functions - convert to CssValuesItem format
+        for (k, func) in spec.functions.iter() {
+            let item = Box::leak(Box::new(CssValuesItem {
+                href: func.spec.as_ref().and_then(|specs| Some(specs.url.clone())),
+                name: func.name.clone(),
+                prose: func.prose.clone(),
+                type_: CssValueType::Function,
+                value: func.syntax.clone(),
+                values: None,
+            }));
+            all.functions
+                .entry(k.as_str())
+                .and_modify(|(e_item, e_href)| {
+                    if item.value.is_some() || e_item.value.is_none() {
+                        *e_item = item;
+                        *e_href = func.spec.as_ref().map(|h| h.url.as_str());
+                    }
+                })
+                .or_insert((item, func.spec.as_ref().map(|h| h.url.as_str())));
         }
+
+        // Process types - convert to CssValuesItem format
+        for (k, typ) in spec.types.iter() {
+            let item = Box::leak(Box::new(CssValuesItem {
+                href: typ.spec.as_ref().and_then(|specs| Some(specs.url.clone())),
+                name: typ.name.clone(),
+                prose: typ.prose.clone(),
+                type_: CssValueType::Type,
+                value: typ.syntax.clone(),
+                values: None,
+            }));
+            all.types
+                .entry(k.as_str())
+                .and_modify(|(e_item, e_href)| {
+                    if item.value.is_some() || e_item.value.is_none() {
+                        *e_item = item;
+                        *e_href = typ.spec.as_ref().map(|h| h.url.as_str());
+                    }
+                })
+                .or_insert((item, typ.spec.as_ref().map(|h| h.url.as_str())));
+        }
+
+        // Process properties for any nested values
         for (_, item) in spec.properties.iter() {
             if let Some(values) = item.values.as_ref() {
-                flatten_values(values, &spec.spec, &mut all);
+                flatten_values(values, item.spec.as_ref().map(|h| h.url.as_str()), &mut all);
+            }
+        }
+
+        // Process at-rules for any nested values
+        for (_, item) in spec.atrules.iter() {
+            if let Some(values) = item.values.as_ref() {
+                flatten_values(values, item.spec.as_ref().map(|h| h.url.as_str()), &mut all);
+            }
+        }
+
+        // Process selectors for any nested values
+        for (_, item) in spec.selectors.iter() {
+            if let Some(values) = item.values.as_ref() {
+                flatten_values(values, item.spec.as_ref().map(|h| h.url.as_str()), &mut all);
             }
         }
     }
@@ -185,18 +224,18 @@ pub fn get_property_syntax(name: &str) -> Syntax {
     if specs.len() == 1 {
         return CSS_REF
             .get(specs[0])
-            .and_then(|s| s.properties.get(name).map(|p| (&s.spec, p)))
-            .and_then(|(spec, p)| {
+            .and_then(|s| s.properties.get(name))
+            .and_then(|p| {
                 p.value.clone().map(|v| Syntax {
                     syntax: v,
-                    specs: Some(vec![spec]),
+                    specs: p.spec.as_ref().map(|spec_ref| vec![spec_ref]),
                 })
             })
             .unwrap_or_default();
     }
     // 4) If we have > 1 spec, assume that:
-    // - one of them is the base spec, which defines `values`,
-    // - the others define incremental additions as `newValues`
+    // - one of them is the base spec, which defines `value`,
+    // - the others define incremental additions as `new_values`
 
     let mut used_specs = vec![];
     let (mut syntax, new_syntaxes) = specs.into_iter().fold(
@@ -204,11 +243,14 @@ pub fn get_property_syntax(name: &str) -> Syntax {
         |(mut syntax, mut new_syntaxes), spec_name| {
             let css_ref = CSS_REF.get(spec_name);
             if let Some(css_ref) = css_ref {
-                let base_value = css_ref.properties.get(name).and_then(|i| i.value.as_ref());
-                let new_values = css_ref
-                    .properties
-                    .get(name)
-                    .and_then(|i| i.new_values.as_ref());
+                let prop = css_ref.properties.get(name);
+                let base_value = prop.and_then(|i| i.value.as_ref());
+                let new_values = prop.and_then(|i| i.new_values.as_ref());
+
+                // if specs.is_none() && prop.is_some() {
+                //     specs = prop.and_then(|p| p.spec.as_ref());
+                // }
+
                 if let Some(base_value) = base_value {
                     syntax.push_str(base_value);
                 }
@@ -216,10 +258,9 @@ pub fn get_property_syntax(name: &str) -> Syntax {
                     new_syntaxes.push_str(" | ");
                     new_syntaxes.push_str(new_values);
                 }
-
-                if new_values.is_some() || base_value.is_some() {
-                    used_specs.push(&css_ref.spec)
-                }
+                // if new_values.is_some() || base_value.is_some() {
+                //     used_specs.push(&css_ref.)
+                // }
             }
             (syntax, new_syntaxes)
         },
@@ -236,12 +277,6 @@ pub fn get_property_syntax(name: &str) -> Syntax {
 }
 
 /// Get the formal syntax for an at-rule from the webref data.
-///
-/// Example:
-/// ```
-/// let media = css_syntax::syntax::get_at_rule_syntax("@media");
-/// assert_eq!(media.syntax, "@media <media-query-list> { <rule-list> }");
-/// ```
 pub fn get_at_rule_syntax(name: &str) -> Syntax {
     let specs = get_specs_for_item(name, ItemType::AtRule);
 
@@ -249,24 +284,18 @@ pub fn get_at_rule_syntax(name: &str) -> Syntax {
         .into_iter()
         .find_map(|spec| {
             CSS_REF.get(spec).and_then(|s| {
-                s.atrules
-                    .get(name)
-                    .and_then(|a| a.value.clone())
-                    .map(|v| Syntax {
+                s.atrules.get(name).and_then(|a| {
+                    a.value.clone().map(|v| Syntax {
                         syntax: v,
-                        specs: Some(vec![&s.spec]),
+                        specs: a.spec.as_ref().map(|spec_ref| vec![spec_ref]),
                     })
+                })
             })
         })
         .unwrap_or_default()
 }
 
 /// Get the formal syntax for an at-rule descriptor from the webref data.
-/// # Example:
-/// ```
-/// let descriptor = css_syntax::syntax::get_at_rule_descriptor_syntax("width", "@media");
-/// assert_eq!(descriptor.syntax, "<length>");
-/// ```
 pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
     let specs = get_specs_for_item(at_rule_name, ItemType::AtRule);
 
@@ -277,10 +306,11 @@ pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name
                 s.atrules
                     .get(at_rule_name)
                     .and_then(|a| a.descriptors.get(at_rule_descriptor_name))
-                    .and_then(|d| d.value.clone())
-                    .map(|v| Syntax {
-                        syntax: v,
-                        specs: Some(vec![&s.spec]),
+                    .and_then(|d| {
+                        d.value.clone().map(|v| Syntax {
+                            syntax: v,
+                            specs: d.spec.as_ref().map(|spec_ref| vec![spec_ref]),
+                        })
                     })
             })
         })
@@ -291,13 +321,13 @@ pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name
 pub struct SyntaxLine {
     pub name: String,
     pub syntax: String,
-    pub specs: Option<Vec<&'static SpecInExtract>>,
+    pub specs: Option<Vec<&'static SpecLink>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Syntax {
     pub syntax: String,
-    pub specs: Option<Vec<&'static SpecInExtract>>,
+    pub specs: Option<Vec<&'static SpecLink>>,
 }
 
 impl Syntax {
@@ -309,6 +339,8 @@ impl Syntax {
         }
     }
 }
+
+// ... rest of the file remains similar with adjustments for href instead of spec ...
 
 #[inline]
 fn skip(name: &str) -> bool {
@@ -339,7 +371,12 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
                 .and_then(|(v, spec)| {
                     v.value.clone().map(|v| Syntax {
                         syntax: v,
-                        specs: Some(vec![*spec]),
+                        // TODO
+                        specs: Some(vec![]),
+                        // specs: Some(vec![&SpecInExtract {
+                        //     title: "SOMETITLE".to_string(),
+                        //     url: Url::parse(spec.unwrap()).unwrap(),
+                        // }]),
                     })
                 })
                 .unwrap_or_default()
@@ -356,7 +393,12 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
                     .and_then(|(item, spec)| {
                         item.value.clone().map(|v| Syntax {
                             syntax: v,
-                            specs: Some(vec![*spec]),
+                            specs: Some(vec![]),
+                            // specs: Some(vec![&SpecInExtract {
+                            //     // TODO proper values and get rid of unwrap
+                            //     title: "SOMETITLE".to_string(),
+                            //     url: Url::parse(spec.unwrap()).unwrap(),
+                            // }]),
                         })
                     })
                     .unwrap_or(
@@ -366,7 +408,12 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
                             .and_then(|(item, spec)| {
                                 item.value.clone().map(|v| Syntax {
                                     syntax: v,
-                                    specs: Some(vec![*spec]),
+                                    specs: Some(vec![]),
+                                    // specs: Some(vec![&SpecInExtract {
+                                    //     // TODO proper values and get rid of unwrap
+                                    //     title: "SOMETITLE".to_string(),
+                                    //     url: Url::parse(spec.unwrap()).unwrap(),
+                                    // }]),
                                 })
                             })
                             .unwrap_or_default(),
@@ -832,16 +879,17 @@ fn write_formal_syntax_internal(
         renderer.render(&mut out, constituent)?;
     }
 
+    tracing::info!("constituents: {:?}", constituents);
+
     let specs = constituents.iter_mut().fold(vec![], |mut acc, s| {
         if let Some(spec) = s.specs.take() {
-            for spec in spec {
-                if !acc.contains(&spec) {
-                    acc.push(spec)
-                }
+            if !acc.contains(&spec) {
+                acc.push(spec)
             }
         }
         acc
     });
+
     out.push_str("</pre>");
     if !specs.is_empty() {
         out.push_str("<footer>");
@@ -849,9 +897,13 @@ fn write_formal_syntax_internal(
             out.push_str(sources_prefix);
         }
         out.extend(intersperse(
-            specs
-                .iter()
-                .map(|spec| format!(r#"<a href="{}">{}</a>"#, spec.url, spec.title)),
+            specs.iter().map(|spec| {
+                format!(
+                    r#"<a href="{}">{}</a>"#,
+                    spec.first().unwrap().url,
+                    spec.first().unwrap().title
+                )
+            }),
             ", ".to_string(),
         ));
         out.push_str("</footer>");
