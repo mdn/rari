@@ -129,7 +129,6 @@ fn transform(
 
 fn process_browser_specs(folder: &Path) -> Result<BTreeMap<String, String>, DepsError> {
     let index_json_path = folder.join("package").join("index.json");
-    tracing::info!("Reading browser specs from {}", index_json_path.display());
     let text = read_to_string(&index_json_path)?;
     let specs: Vec<BrowserSpec> = serde_json::from_str(&text)?;
 

@@ -98,7 +98,10 @@ static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
         // Process functions - convert to CssValuesItem format
         for (k, func) in spec.functions.iter() {
             let item = Box::leak(Box::new(CssValuesItem {
-                href: func.spec.as_ref().and_then(|specs| Some(specs.url.clone())),
+                href: func
+                    .spec_link
+                    .as_ref()
+                    .and_then(|specs| Some(specs.url.clone())),
                 name: func.name.clone(),
                 prose: func.prose.clone(),
                 type_: CssValueType::Function,
@@ -110,16 +113,19 @@ static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
                 .and_modify(|(e_item, e_href)| {
                     if item.value.is_some() || e_item.value.is_none() {
                         *e_item = item;
-                        *e_href = func.spec.as_ref().map(|h| h.url.as_str());
+                        *e_href = func.spec_link.as_ref().map(|h| h.url.as_str());
                     }
                 })
-                .or_insert((item, func.spec.as_ref().map(|h| h.url.as_str())));
+                .or_insert((item, func.spec_link.as_ref().map(|h| h.url.as_str())));
         }
 
         // Process types - convert to CssValuesItem format
         for (k, typ) in spec.types.iter() {
             let item = Box::leak(Box::new(CssValuesItem {
-                href: typ.spec.as_ref().and_then(|specs| Some(specs.url.clone())),
+                href: typ
+                    .spec_link
+                    .as_ref()
+                    .and_then(|specs| Some(specs.url.clone())),
                 name: typ.name.clone(),
                 prose: typ.prose.clone(),
                 type_: CssValueType::Type,
@@ -131,30 +137,42 @@ static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
                 .and_modify(|(e_item, e_href)| {
                     if item.value.is_some() || e_item.value.is_none() {
                         *e_item = item;
-                        *e_href = typ.spec.as_ref().map(|h| h.url.as_str());
+                        *e_href = typ.spec_link.as_ref().map(|h| h.url.as_str());
                     }
                 })
-                .or_insert((item, typ.spec.as_ref().map(|h| h.url.as_str())));
+                .or_insert((item, typ.spec_link.as_ref().map(|h| h.url.as_str())));
         }
 
         // Process properties for any nested values
         for (_, item) in spec.properties.iter() {
             if let Some(values) = item.values.as_ref() {
-                flatten_values(values, item.spec.as_ref().map(|h| h.url.as_str()), &mut all);
+                flatten_values(
+                    values,
+                    item.spec_link.as_ref().map(|h| h.url.as_str()),
+                    &mut all,
+                );
             }
         }
 
         // Process at-rules for any nested values
         for (_, item) in spec.atrules.iter() {
             if let Some(values) = item.values.as_ref() {
-                flatten_values(values, item.spec.as_ref().map(|h| h.url.as_str()), &mut all);
+                flatten_values(
+                    values,
+                    item.spec_link.as_ref().map(|h| h.url.as_str()),
+                    &mut all,
+                );
             }
         }
 
         // Process selectors for any nested values
         for (_, item) in spec.selectors.iter() {
             if let Some(values) = item.values.as_ref() {
-                flatten_values(values, item.spec.as_ref().map(|h| h.url.as_str()), &mut all);
+                flatten_values(
+                    values,
+                    item.spec_link.as_ref().map(|h| h.url.as_str()),
+                    &mut all,
+                );
             }
         }
     }
@@ -228,7 +246,7 @@ pub fn get_property_syntax(name: &str) -> Syntax {
             .and_then(|p| {
                 p.value.clone().map(|v| Syntax {
                     syntax: v,
-                    specs: p.spec.as_ref().map(|spec_ref| vec![spec_ref]),
+                    specs: p.spec_link.as_ref().map(|spec_ref| vec![spec_ref]),
                 })
             })
             .unwrap_or_default();
@@ -287,7 +305,7 @@ pub fn get_at_rule_syntax(name: &str) -> Syntax {
                 s.atrules.get(name).and_then(|a| {
                     a.value.clone().map(|v| Syntax {
                         syntax: v,
-                        specs: a.spec.as_ref().map(|spec_ref| vec![spec_ref]),
+                        specs: a.spec_link.as_ref().map(|spec_ref| vec![spec_ref]),
                     })
                 })
             })
@@ -307,9 +325,9 @@ pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name
                     .get(at_rule_name)
                     .and_then(|a| a.descriptors.get(at_rule_descriptor_name))
                     .and_then(|d| {
-                        d.value.clone().map(|v| Syntax {
+                        d.syntax.clone().map(|v| Syntax {
                             syntax: v,
-                            specs: d.spec.as_ref().map(|spec_ref| vec![spec_ref]),
+                            specs: d.spec_link.as_ref().map(|spec_ref| vec![spec_ref]),
                         })
                     })
             })

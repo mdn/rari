@@ -44,7 +44,8 @@ impl From<&Css> for Css {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Function {
-    pub spec: Option<SpecLink>,
+    #[serde(rename = "specLink", default)]
+    pub spec_link: Option<SpecLink>,
     pub name: String,
     pub prose: Option<String>,
     pub syntax: Option<String>,
@@ -55,7 +56,8 @@ pub struct Function {
 pub struct Type {
     pub name: String,
     pub r#for: Option<Vec<String>>,
-    pub spec: Option<SpecLink>,
+    #[serde(rename = "specLink", default)]
+    pub spec_link: Option<SpecLink>,
     pub prose: Option<String>,
     pub syntax: Option<String>,
     pub extended: Vec<serde_json::Value>,
@@ -65,8 +67,10 @@ pub struct Type {
 pub struct AtRule {
     pub name: String,
     pub prose: Option<String>,
-    pub spec: Option<SpecLink>,
-    pub descriptors: Option<BTreeMap<String, AtruleDescriptor>>,
+    #[serde(rename = "specLink", default)]
+    pub spec_link: Option<SpecLink>,
+    #[serde(default)]
+    pub descriptors: BTreeMap<String, AtruleDescriptor>,
     pub value: Option<String>,
     pub values: Option<CssValues>,
 }
@@ -79,7 +83,8 @@ impl From<&AtRule> for AtRule {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Property {
     pub name: String,
-    pub spec: Option<SpecLink>,
+    #[serde(rename = "specLink", default)]
+    pub spec_link: Option<SpecLink>,
     #[serde(rename = "newValues", default)]
     pub new_values: Option<String>,
     #[serde(rename = "styleDeclaration", default)]
@@ -96,7 +101,8 @@ impl From<&Property> for Property {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Selector {
     pub name: String,
-    pub spec: Option<SpecLink>,
+    #[serde(rename = "specLink", default)]
+    pub spec_link: Option<SpecLink>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prose: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -112,7 +118,7 @@ impl From<&Selector> for Selector {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AtruleDescriptor {
     pub name: String,
-    pub spec: Option<SpecLink>,
+    pub spec_link: Option<SpecLink>,
     pub r#for: String,
     pub initial: Option<String>,
     pub r#type: Option<String>,
