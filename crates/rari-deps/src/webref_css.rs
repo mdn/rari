@@ -45,8 +45,16 @@ fn by_name(values: Vec<Value>) -> BTreeMap<String, Value> {
 fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) {
     match data {
         Value::Object(obj) => {
-            // If this object has an href field, create a specs field
-            if let Some(href_val) = obj.get("href") {
+            // If this object has an href or url field, create a specs field
+
+            let url_field = obj.get("href").or_else(|| obj.get("url"));
+            let field_name = if obj.contains_key("href") {
+                "href"
+            } else {
+                "url"
+            };
+
+            if let Some(href_val) = url_field {
                 if let Some(href_str) = href_val.as_str() {
                     if let Ok(url) = Url::parse(href_str) {
                         let mut url_without_fragment = url.clone();
@@ -57,16 +65,17 @@ fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) 
                             .unwrap_or_else(|| "CSS Specification".to_string());
 
                         let spec = SpecLink { title, url };
-
-                        obj.insert("spec".to_string(), serde_json::to_value(spec).unwrap());
+                        obj.insert("specLink".to_string(), serde_json::to_value(spec).unwrap());
                     }
                 }
-                obj.remove("href");
+                obj.remove(field_name);
             }
 
-            // Recursively process all nested values
-            for value in obj.values_mut() {
-                enrich_with_specs(value, url_to_title);
+            // Recursively process all nested values, but skip spec_link fields to avoid infinite loops
+            for (key, value) in obj.iter_mut() {
+                if key != "specLink" {
+                    enrich_with_specs(value, url_to_title);
+                }
             }
         }
         Value::Array(arr) => {

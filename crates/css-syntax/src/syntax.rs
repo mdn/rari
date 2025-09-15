@@ -1,5 +1,5 @@
 use std::cmp::{max, min, Ordering};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Write;
 #[cfg(any(feature = "rari", test))]
 use std::fs;
@@ -45,27 +45,27 @@ static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
 
 fn flatten_values(
     values: &'static BTreeMap<String, CssValuesItem>,
-    href: Option<&'static str>,
+    spec_link: Option<&'static SpecLink>,
     all: &mut Flattened,
 ) {
     for (k, v) in values.iter() {
-        if let Some(map) = match v.type_ {
+        if let Some(map) = match v.r#type {
             CssValueType::Type => Some(&mut all.types),
             CssValueType::Function => Some(&mut all.functions),
             CssValueType::Value => Some(&mut all.values),
             CssValueType::Selector => None,
         } {
-            map.entry(k).or_insert((v, href));
+            map.entry(k).or_insert((v, spec_link));
         };
         for value in values.values() {
             if let Some(values) = value.values.as_ref() {
-                flatten_values(values, href, all);
+                flatten_values(values, spec_link, all);
             }
         }
     }
 }
 
-pub type ItemAndHref = (&'static CssValuesItem, Option<&'static str>);
+pub type ItemAndHref = (&'static CssValuesItem, Option<&'static SpecLink>);
 
 #[derive(Default, Serialize, Debug)]
 pub struct Flattened {
@@ -102,37 +102,31 @@ static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
         // Process functions - convert to CssValuesItem format
         for (k, func) in spec.functions.iter() {
             let item = Box::leak(Box::new(CssValuesItem {
-                href: func
-                    .spec_link
-                    .as_ref()
-                    .and_then(|specs| Some(specs.url.clone())),
+                spec_link: func.spec_link.clone(),
                 name: func.name.clone(),
                 prose: func.prose.clone(),
-                type_: CssValueType::Function,
+                r#type: CssValueType::Function,
                 value: func.syntax.clone(),
                 values: None,
             }));
             all.functions
                 .entry(k.as_str())
-                .and_modify(|(e_item, e_href)| {
+                .and_modify(|(e_item, e_spec_link)| {
                     if item.value.is_some() || e_item.value.is_none() {
                         *e_item = item;
-                        *e_href = func.spec_link.as_ref().map(|h| h.url.as_str());
+                        *e_spec_link = func.spec_link.as_ref();
                     }
                 })
-                .or_insert((item, func.spec_link.as_ref().map(|h| h.url.as_str())));
+                .or_insert((item, func.spec_link.as_ref()));
         }
 
         // Process types - convert to CssValuesItem format
         for (k, typ) in spec.types.iter() {
             let item = Box::leak(Box::new(CssValuesItem {
-                href: typ
-                    .spec_link
-                    .as_ref()
-                    .and_then(|specs| Some(specs.url.clone())),
+                spec_link: typ.spec_link.clone(),
                 name: typ.name.clone(),
                 prose: typ.prose.clone(),
-                type_: CssValueType::Type,
+                r#type: CssValueType::Type,
                 value: typ.syntax.clone(),
                 values: None,
             }));
@@ -141,42 +135,30 @@ static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
                 .and_modify(|(e_item, e_href)| {
                     if item.value.is_some() || e_item.value.is_none() {
                         *e_item = item;
-                        *e_href = typ.spec_link.as_ref().map(|h| h.url.as_str());
+                        *e_href = typ.spec_link.as_ref();
                     }
                 })
-                .or_insert((item, typ.spec_link.as_ref().map(|h| h.url.as_str())));
+                .or_insert((item, typ.spec_link.as_ref()));
         }
 
         // Process properties for any nested values
         for (_, item) in spec.properties.iter() {
             if let Some(values) = item.values.as_ref() {
-                flatten_values(
-                    values,
-                    item.spec_link.as_ref().map(|h| h.url.as_str()),
-                    &mut all,
-                );
+                flatten_values(values, item.spec_link.as_ref(), &mut all);
             }
         }
 
         // Process at-rules for any nested values
         for (_, item) in spec.atrules.iter() {
             if let Some(values) = item.values.as_ref() {
-                flatten_values(
-                    values,
-                    item.spec_link.as_ref().map(|h| h.url.as_str()),
-                    &mut all,
-                );
+                flatten_values(values, item.spec_link.as_ref(), &mut all);
             }
         }
 
         // Process selectors for any nested values
         for (_, item) in spec.selectors.iter() {
             if let Some(values) = item.values.as_ref() {
-                flatten_values(
-                    values,
-                    item.spec_link.as_ref().map(|h| h.url.as_str()),
-                    &mut all,
-                );
+                flatten_values(values, item.spec_link.as_ref(), &mut all);
             }
         }
     }
@@ -230,6 +212,7 @@ fn get_specs_for_item<'a>(item_name: &str, item_type: ItemType) -> Vec<&'a str> 
 /// assert_eq!(grid_template_rows.syntax, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
 /// ```
 pub fn get_property_syntax(name: &str) -> Syntax {
+    // TODO: Implement this function properly
     // 1) Get all specs which list this property
     let mut specs = get_specs_for_item(name, ItemType::Property);
     // 2) If we have more than one spec, filter out
@@ -331,7 +314,8 @@ pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name
                     .and_then(|d| {
                         d.syntax.clone().map(|v| Syntax {
                             syntax: v,
-                            specs: d.spec_link.as_ref().map(|spec_ref| vec![spec_ref]),
+                            // TODO
+                            specs: None, //spec.map(|s| vec![s]),
                         })
                     })
             })
@@ -372,7 +356,9 @@ fn skip(name: &str) -> bool {
 pub fn get_syntax(typ: CssType) -> SyntaxLine {
     get_syntax_internal(typ, false)
 }
+
 fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
+    println!("2 get_syntax_internal typ: {:?}", typ);
     match typ {
         CssType::ShorthandProperty(name) | CssType::Property(name) => {
             let trimmed = name
@@ -384,7 +370,6 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
         CssType::AtRuleDescriptor(name, at_rule_name) => {
             get_at_rule_descriptor_syntax(name, at_rule_name).to_syntax_line(name)
         }
-
         CssType::Function(name) => {
             let name = format!("{name}()");
             FLATTENED
@@ -393,12 +378,7 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
                 .and_then(|(v, spec)| {
                     v.value.clone().map(|v| Syntax {
                         syntax: v,
-                        // TODO
-                        specs: Some(vec![]),
-                        // specs: Some(vec![&SpecInExtract {
-                        //     title: "SOMETITLE".to_string(),
-                        //     url: Url::parse(spec.unwrap()).unwrap(),
-                        // }]),
+                        specs: spec.map(|s| vec![s]),
                     })
                 })
                 .unwrap_or_default()
@@ -415,12 +395,7 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
                     .and_then(|(item, spec)| {
                         item.value.clone().map(|v| Syntax {
                             syntax: v,
-                            specs: Some(vec![]),
-                            // specs: Some(vec![&SpecInExtract {
-                            //     // TODO proper values and get rid of unwrap
-                            //     title: "SOMETITLE".to_string(),
-                            //     url: Url::parse(spec.unwrap()).unwrap(),
-                            // }]),
+                            specs: spec.map(|s| vec![s]),
                         })
                     })
                     .unwrap_or(
@@ -430,12 +405,7 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
                             .and_then(|(item, spec)| {
                                 item.value.clone().map(|v| Syntax {
                                     syntax: v,
-                                    specs: Some(vec![]),
-                                    // specs: Some(vec![&SpecInExtract {
-                                    //     // TODO proper values and get rid of unwrap
-                                    //     title: "SOMETITLE".to_string(),
-                                    //     url: Url::parse(spec.unwrap()).unwrap(),
-                                    // }]),
+                                    specs: spec.map(|s| vec![s]),
                                 })
                             })
                             .unwrap_or_default(),
@@ -858,7 +828,12 @@ pub fn write_formal_syntax(
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
     sources_prefix: Option<&str>,
 ) -> Result<String, SyntaxError> {
+    println!(
+        "1 write_formal_syntax css={:?} value_definition_url={}",
+        css, value_definition_url
+    );
     let syntax: SyntaxLine = get_syntax_internal(css, true);
+    println!("3 syntax line result: {:?}", syntax);
     if syntax.syntax.is_empty() {
         return Err(SyntaxError::NoSyntaxFound);
     }
@@ -889,6 +864,10 @@ fn write_formal_syntax_internal(
     let mut out = String::new();
     write!(out, r#"<pre class="notranslate css-formal-syntax">"#)?;
     let mut constituents = renderer.get_constituent_syntaxes(syntax)?;
+    // println!(
+    //     "getting constituents for SyntaxLine {} {:#?} {} {:?}",
+    //     syntax.name, syntax.specs, &syntax.syntax, constituents
+    // );
 
     for (i, constituent) in constituents
         .iter()
@@ -918,14 +897,23 @@ fn write_formal_syntax_internal(
         if let Some(sources_prefix) = sources_prefix {
             out.push_str(sources_prefix);
         }
+
+        let mut unique_spec_links = HashSet::new();
+
+        for spec in specs.iter() {
+            if let Some(spec) = spec.first() {
+                let mut url_without_fragment = spec.url.clone();
+                url_without_fragment.set_fragment(None);
+                unique_spec_links.insert(SpecLink {
+                    url: url_without_fragment,
+                    title: spec.title.clone(),
+                });
+            }
+        }
         out.extend(intersperse(
-            specs.iter().map(|spec| {
-                format!(
-                    r#"<a href="{}">{}</a>"#,
-                    spec.first().unwrap().url,
-                    spec.first().unwrap().title
-                )
-            }),
+            unique_spec_links
+                .iter()
+                .map(|spec| format!(r#"<a href="{}">{}</a>"#, spec.url.as_str(), spec.title)),
             ", ".to_string(),
         ));
         out.push_str("</footer>");

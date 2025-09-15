@@ -134,10 +134,10 @@ pub type CssValues = BTreeMap<String, CssValuesItem>;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CssValuesItem {
     pub name: String,
-    pub href: Option<Url>,
+    pub spec_link: Option<SpecLink>,
     pub prose: Option<String>,
     #[serde(rename = "type")]
-    pub type_: CssValueType,
+    pub r#type: CssValueType,
     pub value: Option<String>,
     pub values: Option<CssValues>,
 }
@@ -554,7 +554,7 @@ impl<'de> serde::Deserialize<'de> for Shortname {
             })
     }
 }
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(deny_unknown_fields)]
 pub struct SpecLink {
     pub title: String,
