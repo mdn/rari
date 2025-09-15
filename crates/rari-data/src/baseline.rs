@@ -129,7 +129,13 @@ impl WebFeatures {
                         .iter()
                         .map(|sub_key| {
                             self.feature_data_by_name(&sub_key.feature)
-                                .and_then(|feature| feature.status.as_ref())
+                                .and_then(|feature| {
+                                    feature
+                                        .discouraged
+                                        .is_none()
+                                        .then_some(feature.status.as_ref())
+                                        .flatten()
+                                })
                                 .and_then(|status| status.by_compat_key.as_ref())
                                 .and_then(|by_key| by_key.get(&sub_key.bcd_key))
                                 .and_then(|status_for_key| status_for_key.baseline)
@@ -187,9 +193,6 @@ impl WebFeatures {
 
     fn feature_data_by_name(&self, feature_name: &str) -> Option<&FeatureData> {
         if let Some(feature_data) = self.features.get(feature_name) {
-            if feature_data.discouraged.is_some() {
-                return None;
-            }
             return Some(feature_data);
         }
         None
