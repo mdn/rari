@@ -13,7 +13,6 @@ use itertools::intersperse;
 #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
-use url::Url;
 
 use crate::error::SyntaxError;
 
@@ -22,8 +21,13 @@ static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
     {
         let package_path = std::path::Path::new("package");
         rari_deps::webref_css::update_webref_css(package_path).unwrap();
-        let json_str = fs::read_to_string(package_path.join("@webref/css").join("webref_css.json"))
-            .expect("no data dir");
+        let json_str = fs::read_to_string(
+            package_path
+                .join("@webref")
+                .join("css")
+                .join("webref_css.json"),
+        )
+        .expect("no data dir");
         serde_json::from_str(&json_str).expect("Failed to parse JSON")
     }
     #[cfg(all(not(feature = "rari"), not(any(feature = "doctest", test))))]
