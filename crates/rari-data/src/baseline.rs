@@ -14,6 +14,7 @@ use serde_json::Value;
 use url::Url;
 
 use crate::error::Error;
+use crate::feature_urls::get_mdn_url;
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct Baseline<'a> {
@@ -21,7 +22,16 @@ pub struct Baseline<'a> {
     pub support: &'a SupportStatus,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub asterisk: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub alternatives: Vec<Alternative>,
     pub feature: &'a FeatureData,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+pub struct Alternative {
+    pub name: String,
+    pub description: String,
+    pub mdn_url: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -169,9 +179,37 @@ impl WebFeatures {
                             _ => true,
                         }
                     };
+
+                    let alternatives = match feature.discouraged.clone() {
+                        Some(discouraged) => discouraged
+                            .alternatives
+                            .iter()
+                            .filter_map(|alternative| {
+                                self.feature_data_by_name(alternative).and_then(|feature| {
+                                    match get_mdn_url(alternative) {
+                                        Some(url) => Some(Alternative {
+                                            name: feature.name.clone(),
+                                            description: feature.description.clone(),
+                                            mdn_url: url.to_string(),
+                                        }),
+                                        None => {
+                                            tracing::warn!(
+                                                "Couldn't find url for {} web feature",
+                                                alternative
+                                            );
+                                            None
+                                        }
+                                    }
+                                })
+                            })
+                            .collect(),
+                        _ => Vec::new(),
+                    };
+
                     return Some(Baseline {
                         support: status_for_key,
                         asterisk,
+                        alternatives,
                         feature,
                     });
                 }
