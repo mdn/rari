@@ -88,10 +88,7 @@ fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) 
     }
 }
 
-fn transform(
-    folder: &Path,
-    url_to_title: &BTreeMap<String, String>,
-) -> Result<BTreeMap<String, Css>, DepsError> {
+fn transform(folder: &Path, url_to_title: &BTreeMap<String, String>) -> Result<Css, DepsError> {
     // Read the single css.json file (v7+ format)
     let css_json_path = folder.join("package").join("css.json");
     let text = read_to_string(&css_json_path)?;
@@ -130,9 +127,7 @@ fn transform(
     // Enrich all items with href_title fields
     enrich_with_specs(&mut data, url_to_title);
 
-    // Create a single entry with "CSS" as the key for the combined data
-    let mut result = BTreeMap::new();
-    result.insert("CSS".to_string(), serde_json::from_value(data)?);
+    let result = serde_json::from_value(data)?;
     Ok(result)
 }
 
