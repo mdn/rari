@@ -373,6 +373,33 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
                 Syntax::default().to_syntax_line(format!("<{name}>"))
             }
         }
+        CssType::Function(name) => {
+            let name = format!("{name}()");
+            if let Some(t) = CSS_REF.functions.get(&name) {
+                if let Some(syntax) = &t.syntax {
+                    Syntax {
+                        syntax: syntax.clone(),
+                        specs: t.spec_link.as_ref().map(|s| vec![s]),
+                    }
+                    .to_syntax_line(name)
+                } else {
+                    Syntax::default().to_syntax_line(name)
+                }
+            } else {
+                Syntax::default().to_syntax_line(name)
+            }
+            // FLATTENED
+            //     .functions
+            //     .get(name.as_str())
+            //     .and_then(|(v, spec)| {
+            //         v.value.clone().map(|v| Syntax {
+            //             syntax: v,
+            //             specs: spec.map(|s| vec![s]),
+            //         })
+            //     })
+            //     .unwrap_or_default()
+            //     .to_syntax_line(format!("<{name}>"))
+        }
         _ => SyntaxLine {
             name: format!("TODO: implement get_syntax_internal() for {:?}", typ),
             syntax: "".to_string(),
@@ -381,21 +408,6 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
         // CssType::AtRule(name) => get_at_rule_syntax(name).to_syntax_line(name),
         // CssType::AtRuleDescriptor(name, at_rule_name) => {
         //     get_at_rule_descriptor_syntax(name, at_rule_name).to_syntax_line(name)
-        // }
-        // CssType::Function(name) => {
-        //     let name = format!("{name}()");
-        //     FLATTENED
-        //         .functions
-        //         .get(name.as_str())
-        //         .and_then(|(v, spec)| {
-        //             v.value.clone().map(|v| Syntax {
-        //                 syntax: v,
-        //                 specs: spec.map(|s| vec![s]),
-        //             })
-        //         })
-        //         .unwrap_or_default()
-        //         .to_syntax_line(format!("<{name}>"))
-        // }
         // }
     }
 }
