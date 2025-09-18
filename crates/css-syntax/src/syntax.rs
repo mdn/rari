@@ -1,4 +1,4 @@
-use std::cmp::{max, min, Ordering};
+use std::cmp::{max, min};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
 #[cfg(any(feature = "rari", test))]
@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 use css_definition_syntax::generate::{self, GenerateOptions};
 use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
 use css_definition_syntax::walk::{walk, WalkOptions};
-use css_syntax_types::{Css, CssValueType, CssValuesItem, SpecLink};
+use css_syntax_types::{Css, CssValuesItem, SpecLink};
 use itertools::intersperse;
 #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
@@ -43,28 +43,6 @@ static CSS_REF: LazyLock<Css> = LazyLock::new(|| {
     }
 });
 
-fn flatten_values(
-    values: &'static BTreeMap<String, CssValuesItem>,
-    spec_link: Option<&'static SpecLink>,
-    all: &mut Flattened,
-) {
-    for (k, v) in values.iter() {
-        if let Some(map) = match v.r#type {
-            CssValueType::Type => Some(&mut all.types),
-            CssValueType::Function => Some(&mut all.functions),
-            CssValueType::Value => Some(&mut all.values),
-            CssValueType::Selector => None,
-        } {
-            map.entry(k).or_insert((v, spec_link));
-        };
-        for value in values.values() {
-            if let Some(values) = value.values.as_ref() {
-                flatten_values(values, spec_link, all);
-            }
-        }
-    }
-}
-
 pub type ItemAndHref = (&'static CssValuesItem, Option<&'static SpecLink>);
 
 #[derive(Default, Serialize, Debug)]
@@ -73,98 +51,6 @@ pub struct Flattened {
     pub functions: BTreeMap<&'static str, ItemAndHref>,
     pub types: BTreeMap<&'static str, ItemAndHref>,
 }
-
-// This relies on the ordered names of CSS_REF.
-// "css-values-5" comes after "css-values" and therefore the updated
-// overlapping values in "css-values-5" are ignored.
-
-// static FLATTENED: LazyLock<Flattened> = LazyLock::new(|| {
-//     let mut all = Flattened::default();
-//     let mut entries = CSS_REF.iter().collect::<Vec<_>>();
-//     entries.sort_by(|a, b| {
-//         if b.0.ends_with(|c: char| c.is_ascii_digit() || c == '-')
-//             && b.0
-//                 .trim_end_matches(|c: char| c.is_ascii_digit() || c == '-')
-//                 == a.0
-//         {
-//             Ordering::Greater
-//         } else if a.0.ends_with(|c: char| c.is_ascii_digit() || c == '-')
-//             && a.0
-//                 .trim_end_matches(|c: char| c.is_ascii_digit() || c == '-')
-//                 == b.0
-//         {
-//             Ordering::Less
-//         } else {
-//             a.0.cmp(b.0)
-//         }
-//     });
-
-//     for (_, spec) in entries {
-//         // Process functions - convert to CssValuesItem format
-//         for (k, func) in spec.functions.iter() {
-//             let item = Box::leak(Box::new(CssValuesItem {
-//                 spec_link: func.spec_link.clone(),
-//                 name: func.name.clone(),
-//                 prose: func.prose.clone(),
-//                 r#type: CssValueType::Function,
-//                 value: func.syntax.clone(),
-//                 values: None,
-//             }));
-//             all.functions
-//                 .entry(k.as_str())
-//                 .and_modify(|(e_item, e_spec_link)| {
-//                     if item.value.is_some() || e_item.value.is_none() {
-//                         *e_item = item;
-//                         *e_spec_link = func.spec_link.as_ref();
-//                     }
-//                 })
-//                 .or_insert((item, func.spec_link.as_ref()));
-//         }
-
-//         // Process types - convert to CssValuesItem format
-//         for (k, typ) in spec.types.iter() {
-//             let item = Box::leak(Box::new(CssValuesItem {
-//                 spec_link: typ.spec_link.clone(),
-//                 name: typ.name.clone(),
-//                 prose: typ.prose.clone(),
-//                 r#type: CssValueType::Type,
-//                 value: typ.syntax.clone(),
-//                 values: None,
-//             }));
-//             all.types
-//                 .entry(k.as_str())
-//                 .and_modify(|(e_item, e_href)| {
-//                     if item.value.is_some() || e_item.value.is_none() {
-//                         *e_item = item;
-//                         *e_href = typ.spec_link.as_ref();
-//                     }
-//                 })
-//                 .or_insert((item, typ.spec_link.as_ref()));
-//         }
-
-//         // Process properties for any nested values
-//         for (_, item) in spec.properties.iter() {
-//             if let Some(values) = item.values.as_ref() {
-//                 flatten_values(values, item.spec_link.as_ref(), &mut all);
-//             }
-//         }
-
-//         // Process at-rules for any nested values
-//         for (_, item) in spec.atrules.iter() {
-//             if let Some(values) = item.values.as_ref() {
-//                 flatten_values(values, item.spec_link.as_ref(), &mut all);
-//             }
-//         }
-
-//         // Process selectors for any nested values
-//         for (_, item) in spec.selectors.iter() {
-//             if let Some(values) = item.values.as_ref() {
-//                 flatten_values(values, item.spec_link.as_ref(), &mut all);
-//             }
-//         }
-//     }
-//     all
-// });
 
 pub enum ItemType {
     Property,
@@ -179,21 +65,6 @@ pub enum CssType<'a> {
     Function(&'a str),
     Type(&'a str),
     ShorthandProperty(&'a str),
-}
-
-fn get_specs_for_item<'a>(item_name: &str, item_type: ItemType) -> Vec<&'a str> {
-    let mut specs = Vec::new();
-    // for (name, data) in CSS_REF.iter() {
-    let hit = match item_type {
-        ItemType::Property => CSS_REF.properties.contains_key(item_name),
-        ItemType::AtRule => CSS_REF.atrules.contains_key(item_name),
-    };
-    if hit {
-        specs.push("TODO: correct get_specs_for_item")
-        // specs.push(name.as_str())
-    }
-    // }
-    specs
 }
 
 /// Get the formal syntax for a property from the webref data.
@@ -220,97 +91,31 @@ pub fn get_property_syntax(name: &str) -> Syntax {
             specs: property.spec_link.as_ref().map(|s| vec![s]),
         };
     }
-
-    // let mut used_specs = vec![];
-    // let (mut syntax, new_syntaxes) = specs.into_iter().fold(
-    //     (String::new(), String::new()),
-    //     |(mut syntax, mut new_syntaxes), spec_name| {
-    //         let css_ref = CSS_REF.get(spec_name);
-    //         if let Some(css_ref) = css_ref {
-    //             let prop = css_ref.properties.get(name);
-    //             let base_value = prop.and_then(|i| i.value.as_ref());
-    //             let new_values = prop.and_then(|i| i.new_values.as_ref());
-
-    //             // if specs.is_none() && prop.is_some() {
-    //             //     specs = prop.and_then(|p| p.spec.as_ref());
-    //             // }
-
-    //             if let Some(base_value) = base_value {
-    //                 syntax.push_str(base_value);
-    //             }
-    //             if let Some(new_values) = new_values {
-    //                 new_syntaxes.push_str(" | ");
-    //                 new_syntaxes.push_str(new_values);
-    //             }
-    //             // if new_values.is_some() || base_value.is_some() {
-    //             //     used_specs.push(&css_ref.)
-    //             // }
-    //         }
-    //         (syntax, new_syntaxes)
-    //     },
-    // );
-
-    // Concatenate new_values onto values to return a single syntax string
-    // if !new_syntaxes.is_empty() {
-    //     syntax.push_str(&new_syntaxes);
-    // }
-    // Syntax {
-    //     syntax,
-    //     specs: Some(used_specs),
-    // }
     Syntax::default()
 }
 
 /// Get the formal syntax for an at-rule from the webref data.
 pub fn get_at_rule_syntax(name: &str) -> Syntax {
-    Syntax {
-        syntax: "TODO: Implement get_at_rule_syntax()".to_string(),
-        specs: None,
+    if let Some(property) = CSS_REF.atrules.get(name) {
+        return Syntax {
+            syntax: property.syntax.clone().unwrap_or_default(),
+            specs: property.spec_link.as_ref().map(|s| vec![s]),
+        };
     }
-
-    // let specs = get_specs_for_item(name, ItemType::AtRule);
-
-    // specs
-    //     .into_iter()
-    //     .find_map(|spec| {
-    //         CSS_REF.get(spec).and_then(|s| {
-    //             s.atrules.get(name).and_then(|a| {
-    //                 a.value.clone().map(|v| Syntax {
-    //                     syntax: v,
-    //                     specs: a.spec_link.as_ref().map(|spec_ref| vec![spec_ref]),
-    //                 })
-    //             })
-    //         })
-    //     })
-    //     .unwrap_or_default()
+    Syntax::default()
 }
 
 /// Get the formal syntax for an at-rule descriptor from the webref data.
 pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
-    Syntax {
-        syntax: "TODO: Implement get_at_rule_descriptor_syntax()".to_string(),
-        specs: None,
+    if let Some(at_rule) = CSS_REF.atrules.get(at_rule_name) {
+        if let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
+            return Syntax {
+                syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
+                specs: at_rule_descriptor.spec_link.as_ref().map(|s| vec![s]),
+            };
+        }
     }
-
-    // let specs = get_specs_for_item(at_rule_name, ItemType::AtRule);
-
-    // specs
-    //     .into_iter()
-    //     .find_map(|spec| {
-    //         CSS_REF.get(spec).and_then(|s| {
-    //             s.atrules
-    //                 .get(at_rule_name)
-    //                 .and_then(|a| a.descriptors.get(at_rule_descriptor_name))
-    //                 .and_then(|d| {
-    //                     d.syntax.clone().map(|v| Syntax {
-    //                         syntax: v,
-    //                         // TODO
-    //                         specs: None, //spec.map(|s| vec![s]),
-    //                     })
-    //                 })
-    //         })
-    //     })
-    //     .unwrap_or_default()
+    Syntax::default()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -377,38 +182,19 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
             let name = format!("{name}()");
             if let Some(t) = CSS_REF.functions.get(&name) {
                 if let Some(syntax) = &t.syntax {
-                    Syntax {
+                    return Syntax {
                         syntax: syntax.clone(),
                         specs: t.spec_link.as_ref().map(|s| vec![s]),
                     }
-                    .to_syntax_line(name)
-                } else {
-                    Syntax::default().to_syntax_line(name)
+                    .to_syntax_line(format!("<{name}>"));
                 }
-            } else {
-                Syntax::default().to_syntax_line(name)
             }
-            // FLATTENED
-            //     .functions
-            //     .get(name.as_str())
-            //     .and_then(|(v, spec)| {
-            //         v.value.clone().map(|v| Syntax {
-            //             syntax: v,
-            //             specs: spec.map(|s| vec![s]),
-            //         })
-            //     })
-            //     .unwrap_or_default()
-            //     .to_syntax_line(format!("<{name}>"))
+            Syntax::default().to_syntax_line(format!("<{name}>"))
         }
-        _ => SyntaxLine {
-            name: format!("TODO: implement get_syntax_internal() for {:?}", typ),
-            syntax: "".to_string(),
-            specs: None,
-        },
-        // CssType::AtRule(name) => get_at_rule_syntax(name).to_syntax_line(name),
-        // CssType::AtRuleDescriptor(name, at_rule_name) => {
-        //     get_at_rule_descriptor_syntax(name, at_rule_name).to_syntax_line(name)
-        // }
+        CssType::AtRule(name) => get_at_rule_syntax(name).to_syntax_line(name),
+        CssType::AtRuleDescriptor(name, at_rule_name) => {
+            get_at_rule_descriptor_syntax(name, at_rule_name).to_syntax_line(name)
+        }
     }
 }
 
@@ -819,7 +605,6 @@ pub fn write_formal_syntax(
     sources_prefix: Option<&str>,
 ) -> Result<String, SyntaxError> {
     let syntax: SyntaxLine = get_syntax_internal(css, true);
-    println!("1 get_syntax_internal result: {:?}", syntax);
     if syntax.syntax.is_empty() {
         return Err(SyntaxError::NoSyntaxFound);
     }
@@ -861,8 +646,6 @@ fn write_formal_syntax_internal(
         }
         renderer.render(&mut out, constituent)?;
     }
-
-    tracing::info!("constituents: {:?}", constituents);
 
     let specs = constituents.iter_mut().fold(vec![], |mut acc, s| {
         if let Some(spec) = s.specs.take() {
@@ -1002,7 +785,7 @@ mod test {
     fn test_get_syntax_gradient_type() {
         let SyntaxLine { name, syntax, .. } = get_syntax_internal(CssType::Type("gradient"), true);
         assert_eq!(name, "<gradient>");
-        assert_eq!(syntax, "<linear-gradient()> | <repeating-linear-gradient()> | <radial-gradient()> | <repeating-radial-gradient()>");
+        assert_eq!(syntax, "[ <linear-gradient()> | <repeating-linear-gradient()> | <radial-gradient()> | <repeating-radial-gradient()> | <conic-gradient()> | <repeating-conic-gradient()> ]");
     }
 
     #[test]
@@ -1019,7 +802,7 @@ mod test {
         } = get_syntax_internal(CssType::Type("color_value"), true);
         if let Node::Group(group) = parse(&syntax)? {
             let rendered = renderer.render_terms(&group.terms, group.combinator)?;
-            assert_eq!(rendered, "  <a href=\"/en-US/docs/Web/CSS/color-base\"><span class=\"token property\">&lt;color-base&gt;</span></a>    <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>    <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>  <br/>");
+            assert_eq!(rendered, "  <a href=\"/en-US/docs/Web/CSS/color-base\"><span class=\"token property\">&lt;color-base&gt;</span></a>        <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>        <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/contrast-color()\"><span class=\"token property\">&lt;contrast-color()&gt;</span></a>  <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/device-cmyk()\"><span class=\"token property\">&lt;device-cmyk()&gt;</span></a>     <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/light-dark()\"><span class=\"token property\">&lt;light-dark()&gt;</span></a>      <br/>");
         } else {
             panic!("no group node")
         }
