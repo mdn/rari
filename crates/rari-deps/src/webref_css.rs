@@ -5,7 +5,6 @@ use std::path::Path;
 use css_syntax_types::{BrowserSpec, Css, SpecLink};
 use rari_types::globals::deps;
 use rari_utils::io::read_to_string;
-use semver::VersionReq;
 use serde_json::Value;
 use url::Url;
 
