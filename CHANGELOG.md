@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.51](https://github.com/mdn/rari/compare/v0.1.50...v0.1.51) (2025-09-18)
+
+
+### Miscellaneous
+
+* **web-features:** update schema to match v3 upstream ([#312](https://github.com/mdn/rari/issues/312)) ([9cc6510](https://github.com/mdn/rari/commit/9cc65104edbd844e714fd96b1d3a5f471e0322e8))
+
 ## [0.1.50](https://github.com/mdn/rari/compare/v0.1.49...v0.1.50) (2025-09-17)
 
 

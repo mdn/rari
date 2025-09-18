@@ -1,6 +1,6 @@
 [package]
 name = "rari-lsp"
-version = "0.1.50"
+version = "0.1.51"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
