@@ -589,6 +589,21 @@ impl From<&SpecLink> for SpecLink {
         value.clone()
     }
 }
+// In order to use it with in a BtreeSet<SpecLink>, implement `PartialOrd` and `Ord`
+impl PartialOrd for SpecLink {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SpecLink {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // First compare by title, then by URL if titles are equal
+        self.title
+            .cmp(&other.title)
+            .then_with(|| self.url.cmp(&other.url))
+    }
+}
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ValueName(String);

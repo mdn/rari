@@ -1,5 +1,5 @@
 use std::cmp::{max, min};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Write;
 #[cfg(any(feature = "rari", test))]
 use std::fs;
@@ -663,7 +663,7 @@ fn write_formal_syntax_internal(
             out.push_str(sources_prefix);
         }
 
-        let mut unique_spec_links = HashSet::new();
+        let mut unique_spec_links = BTreeSet::new();
 
         for spec in specs.iter() {
             if let Some(spec) = spec.first() {
@@ -786,6 +786,16 @@ mod test {
         let SyntaxLine { name, syntax, .. } = get_syntax_internal(CssType::Type("gradient"), true);
         assert_eq!(name, "<gradient>");
         assert_eq!(syntax, "[ <linear-gradient()> | <repeating-linear-gradient()> | <radial-gradient()> | <repeating-radial-gradient()> | <conic-gradient()> | <repeating-conic-gradient()> ]");
+    }
+
+    #[test]
+    fn test_get_atrule_descriptor_counter_style_additive_symbols() {
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::AtRuleDescriptor(
+            "additive-symbols",
+            "@counter-style",
+        ));
+        assert_eq!(name, "additive-symbols");
+        assert_eq!(syntax, "[ <integer [0,∞]> && <symbol> ]#");
     }
 
     #[test]
