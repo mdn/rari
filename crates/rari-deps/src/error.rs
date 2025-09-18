@@ -26,4 +26,6 @@ pub enum DepsError {
     PackageVersionNotFound,
     #[error("Version from package.json could not be parsed")]
     PackageVersionParseError,
+    #[error("GitHub error: {0}")]
+    GithubError(String),
 }

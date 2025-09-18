@@ -553,14 +553,14 @@ dependencies = [
 
 [[package]]
 name = "css-definition-syntax"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "thiserror 2.0.12",
 ]
 
 [[package]]
 name = "css-syntax"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "anyhow",
  "css-definition-syntax",
@@ -579,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "css-syntax-types"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "regress",
  "serde",
@@ -783,7 +783,7 @@ dependencies = [
 
 [[package]]
 name = "diff-test"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "ansi-to-html",
  "anyhow",
@@ -2033,12 +2033,11 @@ checksum = "f5438dd2b2ff4c6df6e1ce22d825ed2fa93ee2922235cc45186991717f0a892d"
 
 [[package]]
 name = "nu-ansi-term"
-version = "0.46.0"
+version = "0.50.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84"
+checksum = "d4a28e057d01f97e61255210fcff094d74ed0466038633e95017f5beb68e4399"
 dependencies = [
- "overload",
- "winapi",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2088,12 +2087,6 @@ name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
-
-[[package]]
-name = "overload"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "owo-colors"
@@ -2442,7 +2435,7 @@ dependencies = [
 
 [[package]]
 name = "rari"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "anyhow",
  "axum",
@@ -2472,7 +2465,7 @@ dependencies = [
 
 [[package]]
 name = "rari-data"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "chrono",
  "indexmap",
@@ -2487,7 +2480,7 @@ dependencies = [
 
 [[package]]
 name = "rari-deps"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "chrono",
  "css-syntax-types",
@@ -2508,7 +2501,7 @@ dependencies = [
 
 [[package]]
 name = "rari-doc"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "chrono",
  "constcat",
@@ -2562,14 +2555,14 @@ dependencies = [
 
 [[package]]
 name = "rari-linter"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "thiserror 2.0.12",
 ]
 
 [[package]]
 name = "rari-lsp"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -2591,7 +2584,7 @@ dependencies = [
 
 [[package]]
 name = "rari-md"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "anyhow",
  "base64",
@@ -2604,7 +2597,7 @@ dependencies = [
 
 [[package]]
 name = "rari-sitemap"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "chrono",
  "flate2",
@@ -2618,7 +2611,7 @@ dependencies = [
 
 [[package]]
 name = "rari-templ-func"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "anyhow",
  "darling",
@@ -2629,7 +2622,7 @@ dependencies = [
 
 [[package]]
 name = "rari-tools"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "assert-json-diff",
  "chrono",
@@ -2659,7 +2652,7 @@ dependencies = [
 
 [[package]]
 name = "rari-types"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "chrono",
  "config",
@@ -2681,7 +2674,7 @@ dependencies = [
 
 [[package]]
 name = "rari-utils"
-version = "0.1.48"
+version = "0.1.50"
 dependencies = [
  "serde",
  "serde_json",
@@ -2990,9 +2983,9 @@ dependencies = [
 
 [[package]]
 name = "schemars"
-version = "0.9.0"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cd191f9397d57d581cddd31014772520aa448f65ef991055d7f61582c65165f"
+checksum = "82d20c4491bc164fa2f6c5d44565947a52ad80b9505d8e36f8d54c27c739fcd0"
 dependencies = [
  "chrono",
  "dyn-clone",
@@ -3005,9 +2998,9 @@ dependencies = [
 
 [[package]]
 name = "schemars_derive"
-version = "0.9.0"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5016d94c77c6d32f0b8e08b781f7dc8a90c2007d4e77472cc2807bc10a8438fe"
+checksum = "33d020396d1d138dc19f1165df7545479dcd58d93810dc5d646a16e55abefa80"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3862,9 +3855,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.3.19"
+version = "0.3.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8189decb5ac0fa7bc8b96b7cb9b2701d60d48805aca84a238004d665fcc4008"
+checksum = "2054a14f5307d601f88daf0553e1cbf472acc4f2c51afab632431cdcd72124d5"
 dependencies = [
  "nu-ansi-term",
  "sharded-slab",

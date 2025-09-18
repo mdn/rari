@@ -1,6 +1,6 @@
 [package]
 name = "rari-templ-func"
-version = "0.1.48"
+version = "0.1.50"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true

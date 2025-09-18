@@ -1,6 +1,6 @@
 [package]
 name = "rari-tools"
-version = "0.1.48"
+version = "0.1.50"
 edition.workspace = true
 authors = [
   "Andi Pieper <apieper@mozilla.com>",
