@@ -294,7 +294,7 @@ impl LanguageServer for Backend {
                 let (locale, link) = link
                     .trim_start_matches('/')
                     .split_once('/')
-                    .and_then(|(l, link)| (Locale::from_str(l).ok().map(|l| (l, link))))
+                    .and_then(|(l, link)| Locale::from_str(l).ok().map(|l| (l, link)))
                     .unwrap_or((Locale::EnUs, &link));
                 let items = doc_pages_from_slugish(link, locale)
                     .unwrap()
