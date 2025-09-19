@@ -1,0 +1,203 @@
+{
+  "atrules": [
+    {
+      "name": "@color-profile",
+      "prose": "The @color-profile rule defines and names a color profile which can later be used in the color() function to specify a color.",
+      "href": "https://drafts.csswg.org/css-color-5/#at-ruledef-profile",
+      "descriptors": [
+        {
+          "name": "components",
+          "href": "https://drafts.csswg.org/css-color-5/#descdef-color-profile-components",
+          "for": "@color-profile",
+          "initial": "n/a",
+          "syntax": "<ident>#"
+        },
+        {
+          "name": "rendering-intent",
+          "href": "https://drafts.csswg.org/css-color-5/#descdef-color-profile-rendering-intent",
+          "for": "@color-profile",
+          "initial": "relative-colorimetric",
+          "syntax": "relative-colorimetric | absolute-colorimetric | perceptual | saturation"
+        },
+        {
+          "name": "src",
+          "href": "https://drafts.csswg.org/css-color-5/#descdef-color-profile-src",
+          "for": "@color-profile",
+          "initial": "n/a",
+          "syntax": "<url>"
+        }
+      ],
+      "syntax": "@color-profile [<dashed-ident> | device-cmyk] { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@container",
+      "prose": "The @container rule is a conditional group rule whose condition contains a container query, which is a boolean combination of container size queries and/or container style queries. Style declarations within the <block-contents> block of an @container rule are filtered by its condition to only match when the container query is true for their element’s query container.",
+      "href": "https://drafts.csswg.org/css-conditional-5/#at-ruledef-container",
+      "descriptors": [
+        {
+          "name": "aspect-ratio",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-aspect-ratio",
+          "for": "@container",
+          "type": "range",
+          "syntax": "<ratio>"
+        },
+        {
+          "name": "block-size",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-block-size",
+          "for": "@container",
+          "type": "range",
+          "syntax": "<length>"
+        },
+        {
+          "name": "direction",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-direction",
+          "for": "@container",
+          "type": "discrete",
+          "syntax": "none | top | right | bottom | left | block-start | inline-start | block-end | inline-end | x | y | block | inline"
+        },
+        {
+          "name": "height",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-height",
+          "for": "@container",
+          "type": "range",
+          "syntax": "<length>"
+        },
+        {
+          "name": "inline-size",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-inline-size",
+          "for": "@container",
+          "type": "range",
+          "syntax": "<length>"
+        },
+        {
+          "name": "orientation",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-orientation",
+          "for": "@container",
+          "type": "discrete",
+          "syntax": "portrait | landscape"
+        },
+        {
+          "name": "scrollable",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-scrollable",
+          "for": "@container",
+          "type": "discrete",
+          "syntax": "none | top | right | bottom | left | block-start | inline-start | block-end | inline-end | x | y | block | inline"
+        },
+        {
+          "name": "snapped",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-snapped",
+          "for": "@container",
+          "type": "discrete",
+          "syntax": "none | x | y | block | inline | both"
+        },
+        {
+          "name": "stuck",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-stuck",
+          "for": "@container",
+          "type": "discrete",
+          "syntax": "none | top | right | bottom | left | block-start | inline-start | block-end | inline-end"
+        },
+        {
+          "name": "width",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-width",
+          "for": "@container",
+          "type": "range",
+          "syntax": "<length>"
+        }
+      ],
+      "syntax": "@container <container-condition># { <block-contents> }",
+      "extended": []
+    }
+  ],
+  "functions": [
+    {
+      "name": "light-dark()",
+      "href": "https://drafts.csswg.org/css-color-5/#funcdef-light-dark",
+      "syntax": "light-dark( <color>, <color> )",
+      "extended": []
+    },
+    {
+      "name": "linear-gradient()",
+      "prose": "The linear-gradient() notation specifies a linear gradient in CSS. Its syntax is as follows:",
+      "href": "https://drafts.csswg.org/css-images-3/#funcdef-linear-gradient",
+      "syntax": "linear-gradient( [ <linear-gradient-syntax> ] )",
+      "extended": []
+    }
+  ],
+  "properties": [
+    {
+      "name": "border-style",
+      "href": "https://drafts.csswg.org/css-backgrounds-3/#propdef-border-style",
+      "initial": "see individual properties",
+      "appliesTo": "all elements except ruby base containers and ruby annotation containers",
+      "inherited": "no",
+      "percentages": "N/A",
+      "computedValue": "see individual properties",
+      "canonicalOrder": "per grammar",
+      "animationType": "see individual properties",
+      "styleDeclaration": ["border-style", "borderStyle"],
+      "syntax": "<line-style>{1,4}",
+      "extended": []
+    },
+    {
+      "name": "border-top-left-radius",
+      "href": "https://drafts.csswg.org/css-borders-4/#propdef-border-top-left-radius",
+      "initial": "0",
+      "appliesTo": "all elements (but see prose)",
+      "inherited": "no",
+      "percentages": "Refer to corresponding dimension of the border box.",
+      "computedValue": "pair of computed <length-percentage> values",
+      "canonicalOrder": "per grammar",
+      "animationType": "by computed value",
+      "logicalPropertyGroup": "border-radius",
+      "styleDeclaration": ["border-top-left-radius", "borderTopLeftRadius"],
+      "syntax": "<length-percentage [0,∞]>{1,2}",
+      "extended": []
+    },
+    {
+      "name": "voice-volume",
+      "href": "https://drafts.csswg.org/css-speech-1/#propdef-voice-volume",
+      "initial": "medium",
+      "appliesTo": "all elements",
+      "inherited": "yes",
+      "percentages": "N/A",
+      "computedValue": "silent, or a keyword value and optionally also a decibel offset (if not zero)",
+      "canonicalOrder": "per grammar",
+      "styleDeclaration": ["voice-volume", "voiceVolume"],
+      "syntax": "silent | [[x-soft | soft | medium | loud | x-loud] || <decibel>]",
+      "extended": []
+    }
+  ],
+  "selectors": [
+    {
+      "name": ":focus-visible",
+      "prose": "While the :focus pseudo-class always matches the currently-focused element, UAs only sometimes visibly indicate focus (such as by drawing a “focus ring”), instead using a variety of heuristics to visibly indicate the focus only when it would be most helpful to the user. The :focus-visible pseudo-class matches a focused element (or pseudo-element) in these situations only, allowing authors to change the appearance of the focus indicator without changing when a focus indicator appears.",
+      "href": "https://drafts.csswg.org/selectors-4/#focus-visible-pseudo",
+      "syntax": ":focus-visible",
+      "extended": []
+    },
+    {
+      "name": ":focus-within",
+      "prose": "The :focus-within pseudo-class applies to any element (or pseudo-element) for which the :focus pseudo-class applies, as well as to an element (or pseudo-element) whose descendant in the flat tree (including non-element nodes, such as text nodes) matches the conditions for matching :focus.",
+      "href": "https://drafts.csswg.org/selectors-4/#focus-within-pseudo",
+      "syntax": ":focus-within",
+      "extended": []
+    }
+  ],
+  "types": [
+    {
+      "name": "bg-image",
+      "href": "https://drafts.csswg.org/css-backgrounds-3/#typedef-bg-image",
+      "syntax": "<image> | none",
+      "extended": []
+    },
+    {
+      "for": ["voice-volume"],
+      "name": "decibel",
+      "prose": "The <decibel> type denotes a dimension with a \"dB\" (decibel unit) unit identifier. Decibels represent the ratio of the squares of the new signal amplitude a1 and the current amplitude a0, as per the following logarithmic equation: volume(dB) = 20 × log10(a1 / a0).",
+      "href": "https://drafts.csswg.org/css-speech-1/#typedef-voice-volume-decibel",
+      "extended": []
+    }
+  ]
+}

@@ -14,6 +14,7 @@ serde.workspace = true
 url.workspace = true
 html-escape.workspace = true
 itertools.workspace = true
+tracing.workspace = true
 rari-types = { workspace = true, optional = true }
 rari-deps = { workspace = true, optional = true }
 

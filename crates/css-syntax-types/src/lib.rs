@@ -29,14 +29,12 @@ pub mod error {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct Css {
     pub atrules: BTreeMap<String, AtRule>,
+    pub functions: BTreeMap<String, Function>,
     pub properties: BTreeMap<String, Property>,
     pub selectors: BTreeMap<String, Selector>,
-    pub spec: SpecInExtract,
-    pub values: CssValues,
-    pub warnings: Option<BTreeMap<String, Warning>>,
+    pub types: BTreeMap<String, Type>,
 }
 impl From<&Css> for Css {
     fn from(value: &Css) -> Self {
@@ -45,48 +43,92 @@ impl From<&Css> for Css {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct AtRule {
-    pub descriptors: BTreeMap<String, AtruleDescriptor>,
-    pub href: Option<Url>,
     pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prose: Option<String>,
-    pub value: Option<String>,
-    pub values: Option<CssValues>,
+    #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
+    pub spec_link: Option<SpecLink>,
+    #[serde(default)]
+    pub descriptors: BTreeMap<String, AtruleDescriptor>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub syntax: Option<String>,
 }
 impl From<&AtRule> for AtRule {
     fn from(value: &AtRule) -> Self {
         value.clone()
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Function {
+    #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
+    pub spec_link: Option<SpecLink>,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r#for: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prose: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub syntax: Option<String>,
+}
+impl From<&Function> for Function {
+    fn from(value: &Function) -> Self {
+        value.clone()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Type {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r#for: Option<Vec<String>>,
+    #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
+    pub spec_link: Option<SpecLink>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prose: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub syntax: Option<String>,
+}
+impl From<&Type> for Type {
+    fn from(value: &Type) -> Self {
+        value.clone()
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Property {
-    pub href: Option<Url>,
     pub name: String,
-    #[serde(rename = "newValues", default)]
+    #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
+    pub spec_link: Option<SpecLink>,
+    #[serde(
+        rename = "legacyAliasOf",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub legacy_alias_of: Option<String>,
+    #[serde(rename = "newValues", default, skip_serializing_if = "Option::is_none")]
     pub new_values: Option<String>,
     #[serde(rename = "styleDeclaration", default)]
     pub style_declaration: Vec<String>,
-    pub value: Option<String>,
-    pub values: Option<CssValues>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub syntax: Option<String>,
 }
 impl From<&Property> for Property {
     fn from(value: &Property) -> Self {
         value.clone()
     }
 }
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct Selector {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub href: Option<Url>,
     pub name: String,
+    #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
+    pub spec_link: Option<SpecLink>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prose: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub values: Option<CssValues>,
+    pub syntax: Option<String>,
 }
 impl From<&Selector> for Selector {
     fn from(value: &Selector) -> Self {
@@ -95,12 +137,16 @@ impl From<&Selector> for Selector {
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AtruleDescriptor {
-    #[serde(rename = "for")]
-    pub for_: String,
-    pub href: Option<Url>,
     pub name: String,
-    pub value: Option<String>,
-    pub values: Option<CssValues>,
+    #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
+    pub spec_link: Option<SpecLink>,
+    pub r#for: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub initial: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub syntax: Option<String>,
 }
 impl From<&AtruleDescriptor> for AtruleDescriptor {
     fn from(value: &AtruleDescriptor) -> Self {
@@ -110,13 +156,12 @@ impl From<&AtruleDescriptor> for AtruleDescriptor {
 pub type CssValues = BTreeMap<String, CssValuesItem>;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct CssValuesItem {
-    pub href: Option<Url>,
     pub name: String,
+    #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
+    pub spec_link: Option<SpecLink>,
     pub prose: Option<String>,
-    #[serde(rename = "type")]
-    pub type_: CssValueType,
+    pub r#type: CssValueType,
     pub value: Option<String>,
     pub values: Option<CssValues>,
 }
@@ -250,7 +295,7 @@ pub struct IdlFragmentInSpec {
     pub fragment: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub href: Option<Url>,
-    pub spec: SpecInExtract,
+    pub spec: SpecLink,
 }
 impl From<&IdlFragmentInSpec> for IdlFragmentInSpec {
     fn from(value: &IdlFragmentInSpec) -> Self {
@@ -533,15 +578,30 @@ impl<'de> serde::Deserialize<'de> for Shortname {
             })
     }
 }
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(deny_unknown_fields)]
-pub struct SpecInExtract {
+pub struct SpecLink {
     pub title: String,
     pub url: Url,
 }
-impl From<&SpecInExtract> for SpecInExtract {
-    fn from(value: &SpecInExtract) -> Self {
+impl From<&SpecLink> for SpecLink {
+    fn from(value: &SpecLink) -> Self {
         value.clone()
+    }
+}
+// In order to use it with in a BtreeSet<SpecLink>, implement `PartialOrd` and `Ord`
+impl PartialOrd for SpecLink {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SpecLink {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // First compare by title, then by URL if titles are equal
+        self.title
+            .cmp(&other.title)
+            .then_with(|| self.url.cmp(&other.url))
     }
 }
 
@@ -665,4 +725,79 @@ impl From<&Warning> for Warning {
     fn from(value: &Warning) -> Self {
         value.clone()
     }
+}
+
+// browser specs
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct BrowserSpec {
+    pub url: String,
+    #[serde(rename = "seriesComposition")]
+    pub series_composition: String,
+    pub shortname: String,
+    pub series: Series,
+    #[serde(rename = "seriesVersion")]
+    pub series_version: Option<String>,
+    #[serde(rename = "formerNames", default)]
+    pub former_names: Vec<String>,
+    pub nightly: Option<NightlySpec>,
+    pub title: String,
+    #[serde(rename = "shortTitle")]
+    pub short_title: String,
+    pub organization: String,
+    pub groups: Vec<Group>,
+    pub release: Option<ReleaseSpec>,
+    pub source: String,
+    pub categories: Vec<String>,
+    pub standing: String,
+    pub tests: Option<TestInfo>,
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, serde_json::Value>, // For any additional fields
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Series {
+    pub shortname: String,
+    #[serde(rename = "currentSpecification")]
+    pub current_specification: String,
+    pub title: String,
+    #[serde(rename = "shortTitle")]
+    pub short_title: String,
+    #[serde(rename = "releaseUrl")]
+    pub release_url: Option<String>,
+    #[serde(rename = "nightlyUrl")]
+    pub nightly_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct NightlySpec {
+    pub url: String,
+    pub status: String,
+    #[serde(rename = "sourcePath")]
+    pub source_path: Option<String>,
+    #[serde(rename = "alternateUrls", default)]
+    pub alternate_urls: Vec<String>,
+    pub repository: Option<String>,
+    pub filename: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ReleaseSpec {
+    pub url: String,
+    pub status: String,
+    pub pages: Option<Vec<String>>,
+    pub filename: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Group {
+    pub name: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TestInfo {
+    pub repository: String,
+    #[serde(rename = "testPaths")]
+    pub test_paths: Vec<String>,
 }

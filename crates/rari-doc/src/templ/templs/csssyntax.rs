@@ -5,6 +5,7 @@ use css_syntax::syntax::{
     write_formal_syntax, write_formal_syntax_from_syntax, CssType, LinkedToken,
 };
 use rari_templ_func::rari_f;
+use rari_utils::concat_strs;
 use tracing::{error, warn};
 
 use crate::error::DocError;
@@ -58,16 +59,24 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
 
     let sources_prefix = l10n_json_data("Template", "sources_prefix", env.locale)?;
 
-    Ok(write_formal_syntax(
-        typ,
-        env.locale.as_url_str(),
-        &format!(
-            "/{}/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
-            env.locale.as_url_str()
-        ),
-        &TOOLTIPS,
-        Some(sources_prefix),
-    )?)
+    let copy = l10n_json_data("CSS", "formal_syntax_copy", env.locale)?;
+    let out = concat_strs!(
+        r#"<div class="notecard note note__formal_syntax_prefix"><p><strong>Note:</strong> "#,
+        copy,
+        r#"</p></div>"#,
+        &write_formal_syntax(
+            typ,
+            env.locale.as_url_str(),
+            &format!(
+                "/{}/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
+                env.locale.as_url_str()
+            ),
+            &TOOLTIPS,
+            Some(sources_prefix),
+        )?
+    );
+
+    Ok(out)
 }
 
 #[rari_f(register = "crate::Templ")]
