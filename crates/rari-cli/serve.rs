@@ -28,7 +28,7 @@ use rari_utils::io::read_to_string;
 use serde::Serialize;
 use tower::ServiceExt;
 use tower_http::services::ServeFile;
-use tracing::{error, span, Level};
+use tracing::{error, info, span, Level};
 
 static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -248,7 +248,13 @@ pub fn serve() -> Result<(), anyhow::Error> {
                 .route("/{locale}/search-index.json", get(get_search_index_handler))
                 .fallback(wrapped_handler);
 
-            let listener = tokio::net::TcpListener::bind("0.0.0.0:8083").await.unwrap();
+            const PORT: u16 = 8083;
+            let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{PORT}")).await.map_err(|e| {
+                error!("Failed to bind to port {PORT}: {}", e);
+                e
+            }).unwrap();
+
+            info!("Rari server started on http://0.0.0.0:{PORT}");
             axum::serve(listener, app).await.unwrap();
         });
     Ok(())
