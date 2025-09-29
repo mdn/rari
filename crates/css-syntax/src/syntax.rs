@@ -9,7 +9,6 @@ use css_definition_syntax::generate::{self, GenerateOptions};
 use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
 use css_definition_syntax::walk::{walk, WalkOptions};
 use css_syntax_types::{Css, CssValuesItem, SpecLink};
-use itertools::intersperse;
 #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
@@ -659,10 +658,6 @@ fn write_formal_syntax_internal(
     out.push_str("</pre>");
     if !specs.is_empty() {
         out.push_str("<footer>");
-        if let Some(sources_prefix) = sources_prefix {
-            out.push_str(sources_prefix);
-        }
-
         let mut unique_spec_links = BTreeSet::new();
 
         for spec in specs.iter() {
@@ -675,12 +670,24 @@ fn write_formal_syntax_internal(
                 });
             }
         }
-        out.extend(intersperse(
-            unique_spec_links
-                .iter()
-                .map(|spec| format!(r#"<a href="{}">{}</a>"#, spec.url.as_str(), spec.title)),
-            ", ".to_string(),
-        ));
+
+        if let Some(sources_prefix) = sources_prefix {
+            // The sources_prefix l10n value has a replacement for the spec links, denoted by `{ $specs }`.
+            // Replace this placeholder by the comma-separated list of specs
+            out.push_str(
+                &sources_prefix.replace(
+                    "{ $specs }",
+                    unique_spec_links
+                        .iter()
+                        .map(|spec| {
+                            format!(r#"<a href="{}">{}</a>"#, spec.url.as_str(), spec.title)
+                        })
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                        .as_str(),
+                ),
+            );
+        }
         out.push_str("</footer>");
     }
     Ok(out)
