@@ -5,8 +5,8 @@ use crate::error::DocError;
 use crate::helpers::subpages::{self, ListSubPagesContext, SubPagesSorter};
 
 /// List sub pages
-#[rari_f]
-pub fn list_sub_pages(
+#[rari_f(register = "crate::Templ")]
+pub fn listsubpages(
     url: Option<String>,
     depth: Option<AnyArg>,
     reverse: Option<AnyArg>,
@@ -28,7 +28,7 @@ pub fn list_sub_pages(
             &mut out,
             url,
             env.locale,
-            Some(SubPagesSorter::TitleNatural),
+            Some(SubPagesSorter::Title),
             &[],
             false,
         )?;
@@ -39,7 +39,7 @@ pub fn list_sub_pages(
             env.locale,
             Some(depth),
             ListSubPagesContext {
-                sorter: Some(SubPagesSorter::TitleNatural),
+                sorter: Some(SubPagesSorter::Title),
                 page_types: &[],
                 code: false,
                 include_parent: false,

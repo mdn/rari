@@ -41,7 +41,6 @@ use rari_types::globals::{build_out_root, content_root, content_translated_root,
 use rari_types::locale::Locale;
 use rari_types::settings::Settings;
 use rari_utils::io::read_to_string;
-use schemars::schema_for;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
 use tracing::level_filters::LevelFilter;
@@ -57,7 +56,7 @@ mod serve;
 #[command(propagate_version = true)]
 struct Cli {
     /// Skip updating dependencies (bcd, webref, ...)
-    #[arg(short, long)]
+    #[arg(short, long, env = "RARI_SKIP_UPDATES")]
     skip_updates: bool,
     #[command(flatten)]
     verbose: Verbosity,
@@ -80,6 +79,7 @@ enum Commands {
     /// Subcommands for altering content programmatically
     #[command(subcommand)]
     Content(ContentSubcommand),
+    Lsp,
 }
 
 #[derive(Args)]
@@ -477,6 +477,15 @@ fn main() -> Result<(), Error> {
             let _ = SETTINGS.set(settings);
             serve::serve()?
         }
+        Commands::Lsp => {
+            let mut settings = Settings::new()?;
+            settings.cache_content = true;
+            settings.data_issues = true;
+            settings.blog_unpublished = true;
+            let _ = SETTINGS.set(settings);
+            read_and_cache_doc_pages()?;
+            rari_lsp::run()?
+        }
         Commands::GitHistory => {
             info!("Gathering history 📜");
             let start = std::time::Instant::now();
@@ -548,7 +557,10 @@ fn export_schema(args: ExportSchemaArgs) -> Result<(), Error> {
     let out_path = args
         .output_file
         .unwrap_or_else(|| PathBuf::from("schema.json"));
-    let schema = schema_for!(BuiltPage);
+    let schema = schemars::generate::SchemaSettings::default()
+        .for_serialize()
+        .into_generator()
+        .into_root_schema_for::<BuiltPage>();
     fs::write(out_path, serde_json::to_string_pretty(&schema)?)?;
     Ok(())
 }

@@ -1,6 +1,7 @@
 use std::cmp::{max, min, Ordering};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
+#[cfg(any(feature = "rari", test))]
 use std::fs;
 use std::sync::LazyLock;
 
@@ -9,14 +10,14 @@ use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Typ
 use css_definition_syntax::walk::{walk, WalkOptions};
 use css_syntax_types::{Css, CssValueType, CssValuesItem, SpecInExtract};
 use itertools::intersperse;
-#[cfg(all(feature = "rari", not(test)))]
+#[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
 
 use crate::error::SyntaxError;
 
 static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
-    #[cfg(test)]
+    #[cfg(any(feature = "doctest", test))]
     {
         let package_path = std::path::Path::new("package");
         rari_deps::webref_css::update_webref_css(package_path).unwrap();
@@ -24,12 +25,12 @@ static CSS_REF: LazyLock<BTreeMap<String, Css>> = LazyLock::new(|| {
             .expect("no data dir");
         serde_json::from_str(&json_str).expect("Failed to parse JSON")
     }
-    #[cfg(all(not(feature = "rari"), not(test)))]
+    #[cfg(all(not(feature = "rari"), not(any(feature = "doctest", test))))]
     {
         let webref_css: &str = include_str!("../@webref/css/webref_css.json");
         serde_json::from_str(webref_css).expect("Failed to parse JSON")
     }
-    #[cfg(all(feature = "rari", not(test)))]
+    #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
     {
         let json_str = fs::read_to_string(data_dir().join("@webref/css").join("webref_css.json"))
             .expect("no data dir");
@@ -155,17 +156,17 @@ fn get_specs_for_item<'a>(item_name: &str, item_type: ItemType) -> Vec<&'a str> 
 ///
 /// ```
 /// let color = css_syntax::syntax::get_property_syntax("color");
-/// assert_eq!(color, "<color>");
+/// assert_eq!(color.syntax, "<color>");
 /// ```
 ///
 /// ```
 /// let border = css_syntax::syntax::get_property_syntax("border");
-/// assert_eq!(border, "<line-width> || <line-style> || <color>");
+/// assert_eq!(border.syntax, "<line-width> || <line-style> || <color>");
 /// ```
 ///
 /// ```
 /// let grid_template_rows = css_syntax::syntax::get_property_syntax("grid-template-rows");
-/// assert_eq!(grid_template_rows, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
+/// assert_eq!(grid_template_rows.syntax, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
 /// ```
 pub fn get_property_syntax(name: &str) -> Syntax {
     // 1) Get all specs which list this property
@@ -239,7 +240,7 @@ pub fn get_property_syntax(name: &str) -> Syntax {
 /// Example:
 /// ```
 /// let media = css_syntax::syntax::get_at_rule_syntax("@media");
-/// assert_eq!(media, "@media <media-query-list> { <rule-list> }");
+/// assert_eq!(media.syntax, "@media <media-query-list> { <rule-list> }");
 /// ```
 pub fn get_at_rule_syntax(name: &str) -> Syntax {
     let specs = get_specs_for_item(name, ItemType::AtRule);
@@ -264,7 +265,7 @@ pub fn get_at_rule_syntax(name: &str) -> Syntax {
 /// # Example:
 /// ```
 /// let descriptor = css_syntax::syntax::get_at_rule_descriptor_syntax("width", "@media");
-/// assert_eq!(descriptor, "<length>");
+/// assert_eq!(descriptor.syntax, "<length>");
 /// ```
 pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
     let specs = get_specs_for_item(at_rule_name, ItemType::AtRule);
@@ -820,9 +821,15 @@ fn write_formal_syntax_internal(
     write!(out, r#"<pre class="notranslate css-formal-syntax">"#)?;
     let mut constituents = renderer.get_constituent_syntaxes(syntax)?;
 
-    for constituent in constituents.iter().skip(if skip_first { 1 } else { 0 }) {
+    for (i, constituent) in constituents
+        .iter()
+        .skip(if skip_first { 1 } else { 0 })
+        .enumerate()
+    {
+        if i > 0 {
+            out.push_str("<br/>");
+        }
         renderer.render(&mut out, constituent)?;
-        out.push_str("<br/>");
     }
 
     let specs = constituents.iter_mut().fold(vec![], |mut acc, s| {
@@ -977,7 +984,7 @@ mod test {
 
     #[test]
     fn test_render_node() -> Result<(), SyntaxError> {
-        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"padding\">padding = </span><br/>  <a href=\"/en-US/docs/Web/CSS/padding-top\"><span class=\"token property\">&lt;&#x27;padding-top&#x27;&gt;</span></a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a>  <br/><br/><span class=\"token property\" id=\"&lt;padding-top&gt;\">&lt;padding-top&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/><br/></pre><footer><a href=\"https://drafts.csswg.org/css-box-4/\">CSS Box Model Module Level 4</a>, <a href=\"https://drafts.csswg.org/css-values-4/\">CSS Values and Units Module Level 4</a></footer>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"padding\">padding = </span><br/>  <a href=\"/en-US/docs/Web/CSS/padding-top\"><span class=\"token property\">&lt;&#x27;padding-top&#x27;&gt;</span></a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a>  <br/><br/><span class=\"token property\" id=\"&lt;padding-top&gt;\">&lt;padding-top&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/></pre><footer><a href=\"https://drafts.csswg.org/css-box-4/\">CSS Box Model Module Level 4</a>, <a href=\"https://drafts.csswg.org/css-values-4/\">CSS Values and Units Module Level 4</a></footer>";
         let result = write_formal_syntax(
             CssType::Property("padding"),
             "en-US",
@@ -991,7 +998,7 @@ mod test {
 
     #[test]
     fn test_render_function() -> Result<(), SyntaxError> {
-        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/><br/></pre><footer><a href=\"https://drafts.fxtf.org/filter-effects-1/\">Filter Effects Module Level 1</a></footer>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/></pre><footer><a href=\"https://drafts.fxtf.org/filter-effects-1/\">Filter Effects Module Level 1</a></footer>";
         let result = write_formal_syntax(
             CssType::Function("hue-rotate"),
             "en-US",

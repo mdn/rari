@@ -1,6 +1,6 @@
 [package]
 name = "rari-doc"
-version = "0.1.35"
+version = "0.1.51"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -30,11 +30,12 @@ serde_yaml_ng.workspace = true
 yaml_parser.workspace = true
 schemars.workspace = true
 strum.workspace = true
+inventory.workspace = true
+tree-sitter.workspace = true
+tree-sitter-mdn.workspace = true
 
 yaml-rust = "0.4"
 percent-encoding = "2"
-pest = "2"
-pest_derive = "2"
 validator = { version = "0.20", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 scraper = { version = "0.23", features = ["deterministic"] }
@@ -45,13 +46,13 @@ ego-tree = "0.10"
 rss = { version = "2", features = [], default-features = false }
 cssparser = "0.34"
 
+icu_locale_core = "2"
 ignore = "0.4"
 crossbeam-channel = "0.5"
 rayon = "1"
 enum_dispatch = "0.3"
-icu_collator = "1"
-icu_locid = "1"
-imagesize = "0.13"
+icu_collator = "2"
+imagesize = "0.14"
 svg_metadata = "0.5"
 memoize = "0.5"
 unescaper = "0.1"

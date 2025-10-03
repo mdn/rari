@@ -8,12 +8,10 @@ use std::io::{BufWriter, Write as _};
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 
 use anyhow::{anyhow, Error};
-use base64::prelude::{Engine as _, BASE64_STANDARD_NO_PAD};
 use clap::{Args, Parser, Subcommand};
-use dashmap::DashMap;
 use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
 use itertools::Itertools;
@@ -23,7 +21,6 @@ use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use xml::fmt_html;
 
 mod xml;
@@ -203,9 +200,6 @@ static WS_DIFF: LazyLock<Regex> =
 
 static EMPTY_P_DIFF: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"<p>[\n ]*</p>"#).unwrap());
 
-static DIFF_MAP: LazyLock<Arc<DashMap<String, String>>> =
-    LazyLock::new(|| Arc::new(DashMap::new()));
-
 /// Run html content through these handlers to clean up the html before minifying and diffing.
 fn pre_diff_element_massaging_handlers<'a>(
     _args: &BuildArgs,
@@ -353,15 +347,6 @@ fn full_diff(
                     rhs = fmt_html(&html_minifier::minify(rhs_t).unwrap());
                 }
                 if lhs != rhs {
-                    let mut diff_hash = Sha256::new();
-                    diff_hash.write_all(lhs.as_bytes()).unwrap();
-                    diff_hash.write_all(rhs.as_bytes()).unwrap();
-                    let diff_hash = BASE64_STANDARD_NO_PAD.encode(&diff_hash.finalize()[..]);
-                    if let Some(hash) = DIFF_MAP.get(&diff_hash) {
-                        diff.insert(key, format!("See {}", hash.as_str()));
-                        return;
-                    }
-                    DIFF_MAP.insert(diff_hash, "somewhere else".into());
                     diff.insert(
                         key,
                         ansi_to_html::convert(&if args.fast {
@@ -449,10 +434,7 @@ fn main() -> Result<(), anyhow::Error> {
                         if arg.inline {
                             println!("{}", diff_words(left, right));
                         }
-                        Some((k.clone(), format!(
-                    r#"<li><span>{k}</span><div class="a">{}</div><div class="b">{}</div></li>"#,
-                    left, right
-                )))
+                        Some((k.clone(), format!(r#"<li><span>{k}</span><div class="a">{left}</div><div class="b">{right}</div></li>"#)))
                     }
                 }
                 ).collect::<Vec<_>>();
@@ -505,7 +487,7 @@ fn main() -> Result<(), anyhow::Error> {
                                 return Some(format!(
                                     "{}\n",
                                     diff.into_keys()
-                                        .map(|jsonpath| format!("{};{}", k, jsonpath))
+                                        .map(|jsonpath| format!("{k};{jsonpath}"))
                                         .collect::<Vec<_>>()
                                         .join("\n")
                                 ));

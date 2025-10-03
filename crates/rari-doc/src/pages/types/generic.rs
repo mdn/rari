@@ -12,6 +12,7 @@ use serde::Deserialize;
 use crate::cached_readers::{generic_content_config, generic_content_files, GenericPagesConfig};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
+use crate::pages::types::utils::FmTempl;
 use crate::utils::split_fm;
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
@@ -24,12 +25,16 @@ pub enum Template {
 #[derive(Debug, Clone, Deserialize)]
 pub struct GenericFrontmatter {
     pub title: String,
+    #[serde(rename = "short-title", skip_serializing_if = "Option::is_none")]
+    pub short_title: Option<String>,
     pub template: Option<Template>,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct GenericMeta {
     pub title: String,
+    pub short_title: Option<String>,
     pub locale: Locale,
     pub slug: String,
     pub url: String,
@@ -38,6 +43,7 @@ pub struct GenericMeta {
     pub title_suffix: Option<String>,
     pub page: String,
     pub template: Template,
+    pub description: Option<String>,
 }
 
 impl GenericMeta {
@@ -60,6 +66,7 @@ impl GenericMeta {
         );
         Ok(GenericMeta {
             title: fm.title,
+            short_title: fm.short_title,
             locale,
             slug,
             url,
@@ -68,6 +75,7 @@ impl GenericMeta {
             title_suffix,
             page,
             template: fm.template.unwrap_or_default(),
+            description: fm.description,
         })
     }
 }
@@ -155,7 +163,7 @@ impl PageLike for Generic {
     }
 
     fn short_title(&self) -> Option<&str> {
-        None
+        self.meta.short_title.as_deref()
     }
 
     fn locale(&self) -> Locale {
@@ -175,7 +183,7 @@ impl PageLike for Generic {
     }
 
     fn title_suffix(&self) -> Option<&str> {
-        Some("MDN Curriculum")
+        self.meta.title_suffix.as_deref()
     }
 
     fn page_type(&self) -> PageType {
@@ -200,12 +208,12 @@ impl PageLike for Generic {
             .url
             .match_indices('/')
             .nth(1)
-            .map(|(i, _)| i)
+            .map(|(i, _)| i + 1)
             .unwrap_or(self.meta.url.len())]
     }
 
     fn trailing_slash(&self) -> bool {
-        true
+        false
     }
 
     fn fm_offset(&self) -> usize {
@@ -214,6 +222,10 @@ impl PageLike for Generic {
 
     fn raw_content(&self) -> &str {
         &self.raw
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        None
     }
 }
 

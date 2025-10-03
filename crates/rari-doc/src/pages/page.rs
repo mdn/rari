@@ -18,6 +18,7 @@ use crate::pages::types::contributors::ContributorSpotlight;
 use crate::pages::types::curriculum::Curriculum;
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
+use crate::pages::types::utils::FmTempl;
 use crate::resolve::{url_meta_from, UrlMeta};
 use crate::utils::locale_and_typ_from_path;
 
@@ -113,10 +114,24 @@ impl Page {
                 .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA)),
             PageCategory::Doc => Doc::page_from_slug_path(&folder_path, locale, fallback)
                 .map_err(|_| DocError::PageNotFound(url.to_string(), PageCategory::Doc)),
+            PageCategory::BlogPost if locale != Locale::EnUs => {
+                // Blog is en-US only.
+                Err(DocError::PageNotFound(
+                    url.to_string(),
+                    PageCategory::BlogPost,
+                ))
+            }
             PageCategory::BlogPost => BlogPost::page_from_url(url).ok_or(DocError::PageNotFound(
                 url.to_string(),
                 PageCategory::BlogPost,
             )),
+            PageCategory::Curriculum if locale != Locale::EnUs => {
+                // Curriculum is en-US only.
+                Err(DocError::PageNotFound(
+                    url.to_string(),
+                    PageCategory::Curriculum,
+                ))
+            }
             PageCategory::Curriculum => Curriculum::page_from_url(url).ok_or(
                 DocError::PageNotFound(url.to_string(), PageCategory::Curriculum),
             ),
@@ -251,6 +266,7 @@ pub trait PageLike {
     fn trailing_slash(&self) -> bool;
     fn fm_offset(&self) -> usize;
     fn raw_content(&self) -> &str;
+    fn banners(&self) -> Option<&[FmTempl]>;
 }
 
 impl<T: PageLike> PageLike for Arc<T> {
@@ -320,6 +336,10 @@ impl<T: PageLike> PageLike for Arc<T> {
 
     fn raw_content(&self) -> &str {
         (**self).raw_content()
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        (**self).banners()
     }
 }
 

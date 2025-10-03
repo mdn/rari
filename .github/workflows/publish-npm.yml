@@ -14,13 +14,14 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Setup
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           registry-url: "https://registry.npmjs.org/"
           node-version-file: "./rari-npm/package.json"
+          package-manager-cache: false
 
       - name: Generate Schema
         working-directory: ./rari-npm

@@ -4,8 +4,8 @@ use crate::error::DocError;
 use crate::helpers::web_ext_examples::web_ext_examples_json;
 use crate::templ::api::RariApi;
 
-#[rari_f]
-pub fn web_ext_all_examples() -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn webextallexamples() -> Result<String, DocError> {
     let mut out = String::new();
 
     let all_examples = web_ext_examples_json();
@@ -31,7 +31,7 @@ pub fn web_ext_all_examples() -> Result<String, DocError> {
                 env.locale.as_url_str(),
                 &api.replace(' ', "_").replace("()", "").replace('.', "/"),
             );
-            let link = RariApi::link(&url, env.locale, None, true, None, false)?;
+            let link = RariApi::link(&url, Some(env.locale), None, true, None, false)?;
             out.push_str(&link);
             out.push_str("<br/>")
         }

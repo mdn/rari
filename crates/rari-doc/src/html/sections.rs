@@ -28,7 +28,7 @@ pub struct Split<'a> {
     pub sidebar: Option<String>,
 }
 
-pub fn split_sections(html: &Html) -> Result<Split, DocError> {
+pub fn split_sections(html: &Html) -> Result<Split<'_>, DocError> {
     let root_children = html.root_element().children();
     let raw_sections = root_children;
     let summary_selector = Selector::parse("html > p").unwrap();

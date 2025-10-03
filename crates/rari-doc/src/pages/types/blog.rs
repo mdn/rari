@@ -15,6 +15,7 @@ use crate::cached_readers::{blog_author_by_name, blog_files};
 use crate::error::DocError;
 use crate::pages::json::{PrevNextBySlug, SlugNTitle};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader};
+use crate::pages::types::utils::FmTempl;
 use crate::resolve::build_url;
 use crate::utils::{calculate_read_time_minutes, locale_and_typ_from_path, modified_dt, split_fm};
 
@@ -298,6 +299,10 @@ impl PageLike for BlogPost {
 
     fn raw_content(&self) -> &str {
         &self.raw
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        None
     }
 }
 

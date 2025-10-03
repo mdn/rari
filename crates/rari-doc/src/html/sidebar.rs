@@ -9,6 +9,8 @@ use indexmap::IndexMap;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
 use rari_types::locale::{default_locale, Locale};
+use rari_types::templ::TemplType;
+use rari_types::{Arg, Quotes};
 use rari_utils::concat_strs;
 use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize, Serializer};
@@ -26,6 +28,8 @@ use crate::helpers::subpages::{
 };
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
+use crate::pages::types::utils::FmTempl;
+use crate::templ::templs::{exists, invoke};
 use crate::utils::{is_default, serialize_t_or_vec, t_or_vec};
 
 fn cache_side_bar(sidebar: &str) -> bool {
@@ -128,19 +132,60 @@ pub fn render_sidebar(s: &str, slug: &str, locale: Locale) -> Result<String, Doc
     Ok::<_, DocError>(rendered_sidebar)
 }
 
-pub fn build_sidebar(s: &str, doc: &Doc) -> Result<String, DocError> {
-    let rendered_sidebar = render_sidebar(s, doc.slug(), doc.locale())?;
+pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
+    let name = sidebar.name();
+    let rendered_sidebar = if !exists(name) {
+        if matches!(sidebar, FmTempl::WithArgs { .. }) {
+            let span = span!(Level::ERROR, "sidebar", sidebar = name,);
+            let _enter = span.enter();
+            return Err(DocError::InvalidSidebarEntry);
+        }
+        render_sidebar(name, doc.slug(), doc.locale())?
+    } else {
+        let rari_env = doc.rari_env().ok_or(DocError::NoRariEnv)?;
+        let (name, args) = match sidebar {
+            FmTempl::NoArgs(name) => (name.as_str(), vec![]),
+            FmTempl::WithArgs { name, args } => (
+                name.as_str(),
+                args.iter()
+                    .map(|s| Some(Arg::String(s.clone(), Quotes::Double)))
+                    .collect(),
+            ),
+        };
+        let span = span!(Level::ERROR, "sidebar", sidebar = name,);
+        let _enter = span.enter();
+        let rendered_sidebar = match invoke(&rari_env, name, args) {
+            Ok((rendered_sidebar, TemplType::Sidebar)) => rendered_sidebar,
+            Ok((_, typ)) => {
+                let span = span!(Level::ERROR, "sidebar", sidebar = name,);
+                let _enter = span.enter();
+                tracing::warn!("{typ} macro in sidebar frontmatter");
+                Default::default()
+            }
+            Err(e) => {
+                let span = span!(Level::ERROR, "sidebar", sidebar = name,);
+                let _enter = span.enter();
+                tracing::warn!("{e}");
+                Default::default()
+            }
+        };
+        rendered_sidebar
+    };
     postprocess_sidebar(&rendered_sidebar, doc)
 }
 
 pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
-    let out = doc
-        .meta
-        .sidebar
-        .iter()
-        .map(|s| build_sidebar(s.as_str(), doc))
-        .collect::<Result<String, DocError>>()?;
-    Ok(if out.is_empty() { None } else { Some(out) })
+    Ok(if doc.meta.sidebar.is_empty() {
+        None
+    } else {
+        Some(
+            doc.meta
+                .sidebar
+                .iter()
+                .map(|s| build_sidebar(s, doc))
+                .collect::<Result<String, DocError>>()?,
+        )
+    })
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
@@ -593,9 +638,6 @@ impl SidebarMetaEntry {
         if self.section {
             out.push_str(" class=\"section\"");
         }
-        if self.details.is_set() || !matches!(self.children, MetaChildren::None) {
-            out.push_str(" class=\"toggle\"");
-        }
         if self.details.is_set() {
             out.push_str("><details");
             if self.details.is_open() {
@@ -640,16 +682,21 @@ impl SidebarMetaEntry {
                     },
                 )?;
             }
-            SidebarMetaEntryContent::Link { link: None, title } => {
-                let title = title.as_ref().map(|t| l10n.lookup(t.as_str(), locale));
-                if self.code {
-                    out.push_str("<code>");
-                }
-                out.push_str(title.unwrap_or_default());
-                if self.code {
-                    out.push_str("</code>");
-                }
+            SidebarMetaEntryContent::Link {
+                link: None,
+                title: Some(title),
+            } => {
+                let title = l10n.lookup(title.as_str(), locale);
+                out.extend([
+                    if self.code { "<code>" } else { "<span>" },
+                    title,
+                    if self.code { "</code>" } else { "</span>" },
+                ]);
             }
+            SidebarMetaEntryContent::Link {
+                link: None,
+                title: None,
+            } => {}
             SidebarMetaEntryContent::Page(page) => {
                 render_link_from_page(
                     out,
@@ -696,7 +743,7 @@ impl SidebarMetaEntry {
                     ))
                 };
                 let ctx = ListSubPagesContext {
-                    sorter: None,
+                    sorter: Some(helpers::subpages::SubPagesSorter::ShortTitle),
                     page_types: tags,
                     code: *code,
                     include_parent: *include_parent,
@@ -731,7 +778,7 @@ impl SidebarMetaEntry {
                     locale,
                     *depth,
                     ListSubPagesContext {
-                        sorter: None,
+                        sorter: Some(helpers::subpages::SubPagesSorter::ShortTitle),
                         page_types: tags,
                         code: *code,
                         include_parent: *include_parent,

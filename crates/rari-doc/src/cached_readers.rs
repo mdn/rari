@@ -27,6 +27,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, LazyLock, OnceLock};
 
+use chrono::Utc;
 use dashmap::DashMap;
 use rari_types::globals::{
     blog_root, cache_content, content_root, content_translated_root, contributor_spotlight_root,
@@ -35,6 +36,7 @@ use rari_types::globals::{
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
@@ -51,7 +53,7 @@ use crate::pages::types::generic::Generic;
 use crate::reader::read_docs_parallel;
 use crate::sidebars::jsref;
 use crate::translations::init_translations_from_static_docs;
-use crate::utils::split_fm;
+use crate::utils::{filter_unpublished_blog_post, split_fm};
 use crate::walker::walk_builder;
 
 pub(crate) static STATIC_DOC_PAGE_FILES: OnceLock<HashMap<(Locale, Cow<'_, str>), Page>> =
@@ -233,9 +235,11 @@ pub fn doc_page_from_static_files(path: &Path) -> Result<Page, DocError> {
 
 fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
     if let Some(blog_root) = blog_root() {
+        let now = Utc::now().date_naive();
         let post_root = blog_root.join("posts");
         Ok(read_docs_parallel::<Page, BlogPost>(&[post_root], None)?
             .into_iter()
+            .filter(|post| filter_unpublished_blog_post(&post, &now))
             .map(|page| (page.url().to_ascii_lowercase(), page))
             .collect())
     } else {
@@ -582,7 +586,22 @@ pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
     fn gather() -> GenericContentConfig {
         read_generic_content_config().unwrap_or_else(|e| {
             warn!(ignore = true, "{e}");
-            Default::default()
+            GenericContentConfig {
+                spas: vec![(
+                    "".to_string(),
+                    BuildSPA {
+                        slug: Cow::Borrowed(""),
+                        page_title: Cow::Borrowed("MDN Web Docs"),
+                        trailing_slash: true,
+                        data: SPAData::HomePage(Default::default()),
+                        template: SpaBuildTemplate::SpaHomepage,
+                        ..Default::default()
+                    },
+                )]
+                .into_iter()
+                .collect(),
+                ..Default::default()
+            }
         })
     }
     if cache_content() {
@@ -753,11 +772,25 @@ pub struct BasicSPA {
     pub no_indexing: bool,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PaginationData {
+    pub current_page: usize,
+    pub num_pages: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct HomePageData {
+    pub featured_articles: Vec<String>,
+    pub latest_news: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SPAData {
-    BlogIndex,
-    HomePage,
+    BlogIndex(PaginationData),
+    HomePage(HomePageData),
     NotFound,
     #[serde(untagged)]
     BasicSPA(BasicSPA),
@@ -774,6 +807,7 @@ impl Default for SPAData {
 pub struct BuildSPA {
     pub slug: Cow<'static, str>,
     pub page_title: Cow<'static, str>,
+    pub short_title: Option<Cow<'static, str>>,
     pub page_description: Option<Cow<'static, str>>,
     pub trailing_slash: bool,
     pub en_us_only: bool,

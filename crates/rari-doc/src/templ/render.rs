@@ -2,6 +2,7 @@ use std::fmt::Write;
 
 use rari_md::ext::{DELIM_END, DELIM_END_LEN, DELIM_START, DELIM_START_LEN};
 use rari_types::globals::deny_warnings;
+use rari_types::templ::TemplType;
 use rari_types::{AnyArg, RariEnv};
 use tracing::{span, warn, Level};
 
@@ -72,24 +73,34 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                 let name = ident.to_ascii_lowercase();
                 let line = i64::try_from(mac.pos.0 + offset).unwrap_or(-1);
                 let col = i64::try_from(mac.pos.1).unwrap_or(-1);
-                let span = span!(Level::ERROR, "templ", templ = name, line = line, col = col);
+                let end_col = i64::try_from(mac.pos.1 + input[mac.start..mac.end].chars().count())
+                    .unwrap_or(-1);
+                let span = span!(
+                    Level::ERROR,
+                    "templ",
+                    templ = name,
+                    line = line,
+                    col = col,
+                    end_line = line,
+                    end_col = end_col
+                );
                 let _enter = span.enter();
                 match invoke(env, &name, mac.args) {
-                    Ok((rendered, is_sidebar)) => {
-                        if is_sidebar {
-                            encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
-                            templs.push(String::default());
-                            sidebars.push(rendered);
-                        } else {
-                            encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
-                            templs.push(rendered);
-                        }
+                    Ok((rendered, TemplType::Sidebar)) => {
+                        encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
+                        templs.push(String::default());
+                        sidebars.push(rendered);
+                    }
+                    Ok((rendered, _)) => {
+                        encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
+                        templs.push(rendered);
                     }
                     Err(e) if deny_warnings() => return Err(e),
                     Err(e) => {
                         warn!("{e}",);
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
-                        templs.push(e.to_string());
+                        //templs.push(format!("___ERROR in ({ident}): {e}___"));
+                        templs.push(e.to_string())
                     }
                 };
             }
@@ -111,11 +122,18 @@ pub(crate) fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String
     let Rendered {
         content, templs, ..
     } = render(env, input, 0)?;
-    decode_ref(&content, &templs)
+    decode_ref(&content, &templs, None)
 }
 
-pub(crate) fn decode_ref(input: &str, templs: &[String]) -> Result<String, DocError> {
+pub(crate) fn decode_ref(
+    input: &str,
+    templs: &[String],
+    prepred: Option<&[String]>,
+) -> Result<String, DocError> {
     let mut decoded = String::with_capacity(input.len());
+    if let Some(prepend) = prepred {
+        decoded.extend(prepend.iter().map(String::as_str));
+    }
     if !input.contains(DELIM_START) {
         return Ok(input.to_string());
     }
@@ -194,7 +212,7 @@ mod test {
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ echo("doom") }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, r#"doom"#);
         Ok(())
     }
@@ -207,7 +225,7 @@ mod test {
         let Rendered {
             content, templs, ..
         } = render(&env, r#"{{ echo("\"doom\"") }}"#, 0)?;
-        let out = decode_ref(&content, &templs)?;
+        let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, r#""doom""#);
         Ok(())
     }

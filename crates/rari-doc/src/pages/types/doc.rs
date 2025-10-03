@@ -19,6 +19,7 @@ use validator::Validate;
 use crate::cached_readers::{doc_page_from_static_files, CACHED_DOC_PAGE_FILES};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
+use crate::pages::types::utils::FmTempl;
 use crate::resolve::{build_url, url_to_folder_path};
 use crate::utils::{
     locale_and_typ_from_path, root_for_locale, serialize_t_or_vec, split_fm, t_or_vec,
@@ -79,7 +80,14 @@ pub struct FrontMatter {
         default,
         skip_serializing_if = "Vec::is_empty"
     )]
-    pub sidebar: Vec<String>,
+    pub sidebar: Vec<FmTempl>,
+    #[serde(
+        deserialize_with = "t_or_vec",
+        serialize_with = "serialize_t_or_vec",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub banners: Vec<FmTempl>,
     #[serde(flatten)]
     pub other: HashMap<String, Value>,
 }
@@ -95,11 +103,12 @@ pub struct Meta {
     pub browser_compat: Vec<String>,
     pub spec_urls: Vec<String>,
     pub original_slug: Option<String>,
-    pub sidebar: Vec<String>,
+    pub sidebar: Vec<FmTempl>,
     pub locale: Locale,
     pub full_path: PathBuf,
     pub path: PathBuf,
     pub url: String,
+    pub banners: Vec<FmTempl>,
 }
 
 #[derive(Debug, Clone)]
@@ -287,12 +296,15 @@ impl PageLike for Doc {
     fn raw_content(&self) -> &str {
         &self.raw
     }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        Some(&self.meta.banners)
+    }
 }
 
-fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
-    let full_path = path.into();
+pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, DocError> {
+    let full_path = full_path.into();
     let (locale, _) = locale_and_typ_from_path(&full_path)?;
-    let raw = read_to_string(&full_path)?;
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     let FrontMatter {
@@ -306,6 +318,7 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
         spec_urls,
         original_slug,
         sidebar,
+        banners,
         ..
     } = serde_yaml_ng::from_str(fm)?;
     let url = build_url(&slug, locale, PageCategory::Doc)?;
@@ -351,10 +364,17 @@ fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
             full_path,
             path,
             url,
+            banners,
         },
         raw,
         content_start,
     })
+}
+
+fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
+    let full_path = path.into();
+    let raw = read_to_string(&full_path)?;
+    doc_from_raw(raw, full_path)
 }
 
 fn write_doc(doc: &Doc) -> Result<(), DocError> {

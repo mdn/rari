@@ -11,7 +11,7 @@ use crate::helpers::subpages::get_sub_pages;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
-#[rari_f]
+#[rari_f(register = "crate::Templ")]
 pub fn css_ref_list() -> Result<String, DocError> {
     let mut index = BTreeMap::<char, HashMap<&str, &str>>::new();
 
@@ -46,7 +46,7 @@ pub fn css_ref_list() -> Result<String, DocError> {
     out.push_str(r#"<div class="index">"#);
     for (letter, items) in index {
         out.push_str("<h3>");
-        out.push(letter);
+        out.push_str(&html_escape::encode_safe(letter.encode_utf8(&mut [0; 4])));
         out.push_str("</h3><ul>");
         for (url, label) in items
             .into_iter()
@@ -56,7 +56,7 @@ pub fn css_ref_list() -> Result<String, DocError> {
                 "<li>",
                 &RariApi::link(
                     &concat_strs!("/", url),
-                    env.locale,
+                    Some(env.locale),
                     Some(&html_escape::encode_text(&label)),
                     true,
                     None,

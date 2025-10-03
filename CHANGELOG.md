@@ -5,6 +5,224 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.51](https://github.com/mdn/rari/compare/v0.1.50...v0.1.51) (2025-09-18)
+
+
+### Miscellaneous
+
+* **web-features:** update schema to match v3 upstream ([#312](https://github.com/mdn/rari/issues/312)) ([9cc6510](https://github.com/mdn/rari/commit/9cc65104edbd844e714fd96b1d3a5f471e0322e8))
+
+## [0.1.50](https://github.com/mdn/rari/compare/v0.1.49...v0.1.50) (2025-09-17)
+
+
+### Bug Fixes
+
+* **npm:** generate types matching serialized objects ([#314](https://github.com/mdn/rari/issues/314)) ([df570cc](https://github.com/mdn/rari/commit/df570cc1501af1920530a7ef7f6e2190e8f6dd0a))
+
+## [0.1.49](https://github.com/mdn/rari/compare/v0.1.48...v0.1.49) (2025-09-09)
+
+
+### Bug Fixes
+
+* **contributors:** add short_title to spotlight pages ([#297](https://github.com/mdn/rari/issues/297)) ([264c670](https://github.com/mdn/rari/commit/264c67012e1694cb2e10fae4a5309d16c7b24d02))
+* **rari-npm:** handle exit with signal ([#308](https://github.com/mdn/rari/issues/308)) ([e452c96](https://github.com/mdn/rari/commit/e452c9655587da6737e5d8f88d3b995b8c2f754c))
+* **sidebar:** guides links were wrapped in code element ([#293](https://github.com/mdn/rari/issues/293)) ([6935c7b](https://github.com/mdn/rari/commit/6935c7b766dfd50fedaf07d78312fc9db9ef26b6))
+* **webref_css:** add @webref/css version requirement ([30bd2cc](https://github.com/mdn/rari/commit/30bd2cc8dc4b34dcc1b49866356ff5e090cb1e86))
+* **webref_css:** pin @webref/css to v6 ([#305](https://github.com/mdn/rari/issues/305)) ([30bd2cc](https://github.com/mdn/rari/commit/30bd2cc8dc4b34dcc1b49866356ff5e090cb1e86))
+
+
+### Miscellaneous
+
+* **api:** apply locale passed to RariApi::link + make optional ([#287](https://github.com/mdn/rari/issues/287)) ([6c24ea1](https://github.com/mdn/rari/commit/6c24ea12cec78447b3704e3f7612ab9b9269b128))
+* **deps:** bump slab from 0.4.10 to 0.4.11 ([#295](https://github.com/mdn/rari/issues/295)) ([eba3173](https://github.com/mdn/rari/commit/eba31735854093ebed17d2e79d0f45f2142a68c9))
+* **deps:** bump tracing-subscriber from 0.3.19 to 0.3.20 ([#309](https://github.com/mdn/rari/issues/309)) ([952b3ae](https://github.com/mdn/rari/commit/952b3ae709ab539fb95d90048182d4792ab60c97))
+* **github:** add CODEOWNERS ([#299](https://github.com/mdn/rari/issues/299)) ([f80229c](https://github.com/mdn/rari/commit/f80229c84e5f434427c11f7a58cd86a837ab07b0))
+* **rari-deps:** handle GitHub API error ([#301](https://github.com/mdn/rari/issues/301)) ([0fb32df](https://github.com/mdn/rari/commit/0fb32df0ea2f72ce3807ce702214cedfffcde9ba))
+
+## [0.1.48](https://github.com/mdn/rari/compare/v0.1.47...v0.1.48) (2025-08-11)
+
+
+### Miscellaneous
+
+* **clippy:** update rust toolchain, added elided lifetime specifiers ([#283](https://github.com/mdn/rari/issues/283)) ([6b3dbdd](https://github.com/mdn/rari/commit/6b3dbddceb0e2e98824ac36440342262bcc877c6))
+
+## [0.1.47](https://github.com/mdn/rari/compare/v0.1.46...v0.1.47) (2025-08-07)
+
+
+### Bug Fixes
+
+* **404:** build for every locale ([#281](https://github.com/mdn/rari/issues/281)) ([2a99d06](https://github.com/mdn/rari/commit/2a99d0650506b106f72e63964fefc05c960da42a))
+* **translations:** include current locale when doing build ([#280](https://github.com/mdn/rari/issues/280)) ([4be95c8](https://github.com/mdn/rari/commit/4be95c81af810a835716f9b3729794de885ec479))
+
+## [0.1.46](https://github.com/mdn/rari/compare/v0.1.45...v0.1.46) (2025-07-10)
+
+
+### Bug Fixes
+
+* **blog:** add breadcrumbs to posts ([#271](https://github.com/mdn/rari/issues/271)) ([20d040c](https://github.com/mdn/rari/commit/20d040c88e777dec3af59a9f00559244efd79832))
+* **blog:** filter unpublished posts immediately ([#264](https://github.com/mdn/rari/issues/264)) ([45b5bf5](https://github.com/mdn/rari/commit/45b5bf5b3ca3852ba47184ff313bf38be739552a))
+* **blog:** return only single parent/breadcrumb item for index ([01caa83](https://github.com/mdn/rari/commit/01caa83d4f4c4a3b48569b2f322b125d6c04202c))
+
+
+### Enhancements
+
+* **page:** add other_translations to non-Doc pages ([#272](https://github.com/mdn/rari/issues/272)) ([9ae3a11](https://github.com/mdn/rari/commit/9ae3a11d6e2a1f73ef274bbf5ab0b60f242971d2))
+* **pages:** support short-title for generic ([#274](https://github.com/mdn/rari/issues/274)) ([9627c9b](https://github.com/mdn/rari/commit/9627c9b6acb13b4666f7cf2ec4936320ff6100c3))
+* **sidebars:** add `<wbr>` to long code elements ([#270](https://github.com/mdn/rari/issues/270)) ([8c5d8fc](https://github.com/mdn/rari/commit/8c5d8fc41876f6538f658a48b99ba7513ebe1d00))
+* **spa:** refine {page,short}_title ([#269](https://github.com/mdn/rari/issues/269)) ([5a4b046](https://github.com/mdn/rari/commit/5a4b046297f1d6461dded4ebf1afb578c8eae907))
+
+
+### Miscellaneous
+
+* **clippy:** fix complaints about format strings ([b70a321](https://github.com/mdn/rari/commit/b70a32149099349cb9d901109671b3d3130c2b28))
+
+## [0.1.45](https://github.com/mdn/rari/compare/v0.1.44...v0.1.45) (2025-06-25)
+
+
+### Features
+
+* **frontmatter:** support banners ([#260](https://github.com/mdn/rari/issues/260)) ([2a25e22](https://github.com/mdn/rari/commit/2a25e22c69dd23a1abb82169fd60f037da7bf414))
+* **json:** update schemars and inline renderer ([#258](https://github.com/mdn/rari/issues/258)) ([0d2539c](https://github.com/mdn/rari/commit/0d2539c4aea9beb876a72c53a2d91b0daa2bbc59))
+* **lsp:** support other locales in links ([0381de8](https://github.com/mdn/rari/commit/0381de814e6dfd01129d0ade9a1d61a4c44a64ff))
+* **updates:** allow skip updates from env ([#256](https://github.com/mdn/rari/issues/256)) ([c5b03eb](https://github.com/mdn/rari/commit/c5b03eb1277dd49b7c24d757fc8fdd209e847245))
+
+
+### Miscellaneous
+
+* **deps:** bump brace-expansion from 2.0.1 to 2.0.2 in /rari-npm ([#259](https://github.com/mdn/rari/issues/259)) ([2cfb136](https://github.com/mdn/rari/commit/2cfb13653ca99f4ed489ec0c7a4eae2d8c65afeb))
+* **deps:** update major deps ([47b9a5e](https://github.com/mdn/rari/commit/47b9a5e0745014e74855fb005ab60283bdd504f3))
+
+## [0.1.44](https://github.com/mdn/rari/compare/v0.1.43...v0.1.44) (2025-06-20)
+
+
+### Bug Fixes
+
+* revert "chore(deps): update major deps" ([e69710e](https://github.com/mdn/rari/commit/e69710e3ad6223241d032572664cf73c35dc3aef))
+
+## [0.1.43](https://github.com/mdn/rari/compare/v0.1.42...v0.1.43) (2025-06-19)
+
+
+### Features
+
+* **spas:** support short_title ([d5c48db](https://github.com/mdn/rari/commit/d5c48db5d8cc9c9ddd55723d97ce0f99598c450d))
+
+
+### Bug Fixes
+
+* **serve:** avoid fallback for json ([#251](https://github.com/mdn/rari/issues/251)) ([759cefe](https://github.com/mdn/rari/commit/759cefea69f1dbedb0fa7f022cfa34f74d4abd68))
+* **serve:** return 404 for UrlError::InvalidUrl ([#249](https://github.com/mdn/rari/issues/249)) ([18f54ee](https://github.com/mdn/rari/commit/18f54eec42f316809148324604e47d942c7cdf10))
+* short title for Observatory report page ([#252](https://github.com/mdn/rari/issues/252)) ([b679d74](https://github.com/mdn/rari/commit/b679d74339ab44442e8ad80faa7065da52956db6))
+* **sidebar:** avoid empty span ([#253](https://github.com/mdn/rari/issues/253)) ([ba2e792](https://github.com/mdn/rari/commit/ba2e7928cb000f1303f0cb62f3e0ffaeb12032f0))
+
+
+### Miscellaneous
+
+* **deps:** update major deps ([743c721](https://github.com/mdn/rari/commit/743c7219039100d45ecab9a17a506ff1f07440dd))
+* **deps:** update minor deps ([fdac0e0](https://github.com/mdn/rari/commit/fdac0e0a85a992469f4eaf240168c6b3f3e37db2))
+
+## [0.1.42](https://github.com/mdn/rari/compare/v0.1.41...v0.1.42) (2025-06-17)
+
+
+### Features
+
+* **json:** add fm description to generic and contributor ([#242](https://github.com/mdn/rari/issues/242)) ([b608389](https://github.com/mdn/rari/commit/b60838996ef9b2b39c825997c21be7539d0077e9))
+* **json:** add parents to more pages ([#243](https://github.com/mdn/rari/issues/243)) ([5453fe9](https://github.com/mdn/rari/commit/5453fe91b498e2880648618e5597e369e778ff8f))
+
+
+### Bug Fixes
+
+* **homepage:** fallback for no generic content set ([#245](https://github.com/mdn/rari/issues/245)) ([7766a9c](https://github.com/mdn/rari/commit/7766a9c75bb50db2affd1691b849bdfeb7fd618f))
+
+## [0.1.41](https://github.com/mdn/rari/compare/v0.1.40...v0.1.41) (2025-06-16)
+
+
+### Features
+
+* **client:** add GitHub token support for API requests ([#239](https://github.com/mdn/rari/issues/239)) ([c44bd1e](https://github.com/mdn/rari/commit/c44bd1eb15209a33d7e8b115fe6fd7b47d46038a))
+* **homepage:** use data from generic content ([#238](https://github.com/mdn/rari/issues/238)) ([2e7b94e](https://github.com/mdn/rari/commit/2e7b94e8edaf4b4a7cb77575150da25f262374c6))
+* **sidebar:** support args in fm sidebar ([#237](https://github.com/mdn/rari/issues/237)) ([82b80b0](https://github.com/mdn/rari/commit/82b80b07c462d047648c2c36a242caa8163d5ba5))
+
+
+### Enhancements
+
+* **sidebar:** wrap unlinked summary text in span ([#235](https://github.com/mdn/rari/issues/235)) ([a804805](https://github.com/mdn/rari/commit/a8048052176d499952c6fc7a5948f0fca890f4ec))
+
+
+### Miscellaneous
+
+* **sidebar:** remove unused toggle class ([#234](https://github.com/mdn/rari/issues/234)) ([6e79039](https://github.com/mdn/rari/commit/6e79039c0ebef43a088eb9d2ff037db6e2d1ac8f))
+
+## [0.1.40](https://github.com/mdn/rari/compare/v0.1.39...v0.1.40) (2025-06-12)
+
+
+### Features
+
+* **lsp:** add an experimental language server to rari ([#230](https://github.com/mdn/rari/issues/230)) ([219962a](https://github.com/mdn/rari/commit/219962a1137ed1b1e9606c182c3f294481a4730e))
+
+
+### Bug Fixes
+
+* **css-syntax:** trim trailing line breaks ([#231](https://github.com/mdn/rari/issues/231)) ([553e614](https://github.com/mdn/rari/commit/553e6141f0aa7847c11cd931c5cb3127725c3a46))
+
+## [0.1.39](https://github.com/mdn/rari/compare/v0.1.38...v0.1.39) (2025-06-05)
+
+
+### Features
+
+* **parser:** move to tree-sitter-mdn ([#219](https://github.com/mdn/rari/issues/219)) ([444c6b4](https://github.com/mdn/rari/commit/444c6b442b028345f8e0009a1c2790235aaf08fe))
+
+
+### Bug Fixes
+
+* **release-please:** configure changelog sections ([f1c12e1](https://github.com/mdn/rari/commit/f1c12e18960dfcec811826e27e340debb7b17ac6))
+
+
+### Enhancements
+
+* **rari-doc:** use root short-title in pageTitle ([#220](https://github.com/mdn/rari/issues/220)) ([a98b0d2](https://github.com/mdn/rari/commit/a98b0d2b67c0d1c40d9b19a83fc210dbbeaf8a6d))
+* **sidebar:** make natural sort the default ([#225](https://github.com/mdn/rari/issues/225)) ([31154b8](https://github.com/mdn/rari/commit/31154b8b4f0ef38c25b24534974cb1f027f698e5))
+* **sidebars:** add guides/tutorials to APIRef ([#224](https://github.com/mdn/rari/issues/224)) ([3bd6e0f](https://github.com/mdn/rari/commit/3bd6e0f9a555a05c75e2898afb21ff8a4b7025f7))
+
+
+### Miscellaneous
+
+* **page-types:** add `firefox-release-notes-active` page type ([185ea22](https://github.com/mdn/rari/commit/185ea222502a65eaefee2aafc9d8a85fc36a48f8))
+
+## [0.1.38](https://github.com/mdn/rari/compare/v0.1.37...v0.1.38) (2025-05-19)
+
+
+### Features
+
+* **blog:** add pagination support ([#217](https://github.com/mdn/rari/issues/217)) ([beb4f44](https://github.com/mdn/rari/commit/beb4f4402cef9deacd64b6c960f0e12543300817))
+* **serve:** serve blog assets ([e583414](https://github.com/mdn/rari/commit/e58341471cafca30a94f5bc509a6e3ea2fa4bd91))
+
+
+### Bug Fixes
+
+* **css_info:** fix bad "initial value" link ([71dfa1c](https://github.com/mdn/rari/commit/71dfa1cc57aa56508c7becbe5528fbbab9c956a5))
+* **macro:** fix bad "initial value" link ([#214](https://github.com/mdn/rari/issues/214)) ([71dfa1c](https://github.com/mdn/rari/commit/71dfa1cc57aa56508c7becbe5528fbbab9c956a5))
+* **rust:** bump workspace version ([aa052e1](https://github.com/mdn/rari/commit/aa052e14ba8ec3001277960dbf5c24329d9a25a8))
+
+## [0.1.37](https://github.com/mdn/rari/compare/v0.1.36...v0.1.37) (2025-05-14)
+
+
+### Bug Fixes
+
+* **baseline:** fix per key calculation ([#212](https://github.com/mdn/rari/issues/212)) ([c714f43](https://github.com/mdn/rari/commit/c714f43a4eb93aab74a18f87f74c69fa58719c7c))
+* **html:** escape titles ([d220c4f](https://github.com/mdn/rari/commit/d220c4fc1c0695145bf418801db5d8e1482b1cbf))
+* **macro:** update redirected URLs in the CSSInfo macro ([#211](https://github.com/mdn/rari/issues/211)) ([921e512](https://github.com/mdn/rari/commit/921e5124284a62300d1a82632e08cc3ea078785d))
+* **md:** render DD in order ([#207](https://github.com/mdn/rari/issues/207)) ([28d5aae](https://github.com/mdn/rari/commit/28d5aae65fa27a8d68cd7fac0a0bfea315637020))
+
+## [0.1.36](https://github.com/mdn/rari/compare/v0.1.35...v0.1.36) (2025-04-30)
+
+
+### Features
+
+* **baseline:** display baseline by bcd key ([#200](https://github.com/mdn/rari/issues/200)) ([83a402d](https://github.com/mdn/rari/commit/83a402dc748aaaff7626c64e6310887d2217a190))
+* **md:** update to comrak 0.38 ([#204](https://github.com/mdn/rari/issues/204)) ([ed5327b](https://github.com/mdn/rari/commit/ed5327b84b1d900e54c9167bf59ba18c1bfc14f7))
+* **sidebars:** allow webgl-extension-method to show up in ApiRef sidebar ([#195](https://github.com/mdn/rari/issues/195)) ([cda09bc](https://github.com/mdn/rari/commit/cda09bcddc264965bc759f998384fed169fba9ca))
+* **sidebars:** sort list subpages by short title ([#205](https://github.com/mdn/rari/issues/205)) ([117563a](https://github.com/mdn/rari/commit/117563acc5e741d247196f5b924acef18be65e80))
+
 ## [0.1.35](https://github.com/mdn/rari/compare/v0.1.34...v0.1.35) (2025-04-15)
 
 

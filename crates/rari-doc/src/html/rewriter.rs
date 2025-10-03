@@ -17,12 +17,20 @@ use crate::pages::page::PageLike;
 use crate::pages::types::curriculum::Curriculum;
 
 pub fn post_process_inline_sidebar(input: &str) -> Result<String, DocError> {
-    let element_content_handlers = vec![element!("*[data-rewriter=em]", |el| {
-        el.prepend("<em>", ContentType::Html);
-        el.append("</em>", ContentType::Html);
-        el.remove_attribute("data-rewriter");
-        Ok(())
-    })];
+    let element_content_handlers = vec![
+        element!("*[data-rewriter=em]", |el| {
+            el.prepend("<em>", ContentType::Html);
+            el.append("</em>", ContentType::Html);
+            el.remove_attribute("data-rewriter");
+            Ok(())
+        }),
+        text!("code", |text| {
+            if text.as_str().contains(".") {
+                text.set_str(text.as_str().replace(".", "<wbr>."));
+            }
+            Ok(())
+        }),
+    ];
     Ok(rewrite_str(
         input,
         RewriteStrSettings {
@@ -206,10 +214,18 @@ pub fn post_process_html<T: PageLike>(
         }),
     ];
     if sidebar {
-        element_content_handlers.push(element!("html", |el| {
-            el.remove_and_keep_content();
-            Ok(())
-        }));
+        element_content_handlers.extend([
+            element!("html", |el| {
+                el.remove_and_keep_content();
+                Ok(())
+            }),
+            text!("code", |text| {
+                if text.as_str().contains(".") {
+                    text.set_str(text.as_str().replace(".", "<wbr>."));
+                }
+                Ok(())
+            }),
+        ]);
     }
     if page.page_type() == PageType::Curriculum {
         element_content_handlers = {

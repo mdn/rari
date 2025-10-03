@@ -4,16 +4,16 @@ use rari_utils::concat_strs;
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
-#[rari_f]
-pub fn secure_context_inline() -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn securecontext_inline() -> Result<String, DocError> {
     let label = l10n_json_data("Template", "secure_context_label", env.locale)?;
     let copy = l10n_json_data("Template", "secure_context_inline_copy", env.locale)?;
 
     Ok(write_inline_label(label, copy, "secure"))
 }
 
-#[rari_f]
-pub fn readonly_inline() -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn readonlyinline() -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "readonly_badge_title", env.locale)?;
     let label = l10n_json_data("Template", "readonly_badge_abbreviation", env.locale)?;
 

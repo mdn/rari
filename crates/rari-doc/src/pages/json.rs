@@ -13,14 +13,17 @@ use rari_types::locale::{Locale, Native};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::templates::{
-    BlogPage, ContributorSpotlightPage, CurriculumPage, DocPage, GenericPage, HomePage, SpaPage,
-};
 use super::types::contributors::Usernames;
 use super::types::curriculum::{CurriculumIndexEntry, CurriculumSidebarEntry, Template, Topic};
+use crate::cached_readers::PaginationData;
 use crate::html::code::Code;
 use crate::issues::DisplayIssues;
+use crate::pages::templates::{
+    BlogRenderer, ContributorSpotlightRenderer, CurriculumRenderer, DocPageRenderer,
+    GenericRenderer, HomeRenderer, SpaRenderer,
+};
 use crate::pages::types::blog::BlogMeta;
+use crate::pages::types::utils::FmTempl;
 use crate::specs::Specification;
 use crate::utils::modified_dt;
 
@@ -278,6 +281,8 @@ pub struct JsonDoc {
     pub flaws: Option<DisplayIssues>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub live_samples: Option<Vec<Code>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub banners: Vec<FmTempl>,
 }
 
 impl JsonDocMetadata {
@@ -378,6 +383,7 @@ pub struct JsonDocMetadata {
 pub struct JsonDocPage {
     pub doc: JsonDoc,
     pub url: String,
+    pub renderer: DocPageRenderer,
 }
 
 /// Represents an index of blog posts in the documentation system.
@@ -391,6 +397,7 @@ pub struct JsonDocPage {
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct BlogIndex {
     pub posts: Vec<BlogMeta>,
+    pub pagination: PaginationData,
 }
 
 /// Represents a curriculum document in the system.
@@ -469,6 +476,7 @@ pub struct JsonCurriculumPage {
     #[serde(rename = "pageTitle")]
     pub page_title: String,
     pub locale: Locale,
+    pub renderer: CurriculumRenderer,
 }
 
 /// Represents a blog post in the system.
@@ -535,6 +543,7 @@ pub struct JsonBlogPostDoc {
 ///   Serialized as `blogMeta` and skipped during serialization if it is `None`.
 /// * `hy_data` - An `Option<BlogIndex>` that holds data related to the blog index, if available.
 ///   Serialized as `hyData` and skipped during serialization if it is `None`.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, Default, JsonSchema)]
 #[schemars(rename = "BlogPostPage")]
 pub struct JsonBlogPostPage {
@@ -548,6 +557,9 @@ pub struct JsonBlogPostPage {
     pub blog_meta: Option<BlogMeta>,
     #[serde(rename = "hyData", skip_serializing_if = "Option::is_none")]
     pub hy_data: Option<BlogIndex>,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
+    pub renderer: BlogRenderer,
 }
 
 /// Represents a contributor spotlight page in the documentation system.
@@ -594,14 +606,19 @@ pub struct ContributorSpotlightHyData {
 /// * `url` - A `String` that holds the URL of the contributor spotlight page.
 /// * `page_title` - A `String` that holds the title of the contributor spotlight page. Serialized as `pageTitle`.
 /// * `hy_data` - A `ContributorSpotlightHyData` that holds the data related to the contributor. Serialized as `hyData`.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[schemars(rename = "ContributorSpotlightPage")]
 pub struct JsonContributorSpotlightPage {
     pub url: String,
+    pub short_title: String,
     #[serde(rename = "pageTitle")]
     pub page_title: String,
     #[serde(rename = "hyData")]
     pub hy_data: ContributorSpotlightHyData,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
+    pub renderer: ContributorSpotlightRenderer,
 }
 
 /// Represents the different JSON artifacts of built pages.
@@ -613,19 +630,19 @@ pub struct JsonContributorSpotlightPage {
 #[serde(untagged)]
 pub enum BuiltPage {
     /// Represents a standard documentation page, backed by a Markdown source.
-    Doc(Box<DocPage>),
+    Doc(Box<JsonDocPage>),
     /// Represents a curriculum page, backed by a Markdown source
-    Curriculum(Box<CurriculumPage>),
+    Curriculum(Box<JsonCurriculumPage>),
     /// Represents a blog post, backed by a Markdown source
-    BlogPost(Box<BlogPage>),
+    BlogPost(Box<JsonBlogPostPage>),
     /// Represents a contributor spotlight page, backed by a Markdown source.
-    ContributorSpotlight(Box<ContributorSpotlightPage>),
+    ContributorSpotlight(Box<JsonContributorSpotlightPage>),
     /// Represents a generic page, i.e Observatory FAQ, About pages, etc.
-    GenericPage(Box<GenericPage>),
+    GenericPage(Box<JsonGenericPage>),
     /// Represents a basic single-page application. i.e. AI Help, Observatory, etc.
-    SPA(Box<SpaPage>),
+    SPA(Box<JsonSpaPage>),
     /// Represents the home page.
-    Home(Box<HomePage>),
+    Home(Box<JsonHomePage>),
 }
 
 /// Represents the previous and next navigation links by slug.
@@ -712,6 +729,7 @@ pub struct UrlNTitle {
 /// * `no_indexing` - A `bool` that indicates whether the page should be excluded from indexing by search engines.
 /// * `page_not_found` - A `bool` that indicates whether the page represents a "Page Not Found" (404) error.
 /// * `url` - A `String` that holds the URL of the page.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "SPAPage")]
@@ -723,6 +741,9 @@ pub struct JsonSpaPage {
     pub no_indexing: bool,
     pub page_not_found: bool,
     pub url: String,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
+    pub renderer: SpaRenderer,
 }
 
 /// Represents a featured article (usually a blog post or documentation page) on the home page.
@@ -796,6 +817,7 @@ pub struct HomePageLatestNewsItem {
     pub author: Option<String>,
     pub source: NameUrl,
     pub published_at: NaiveDate,
+    pub summary: String,
 }
 
 /// Represents a recent contribution item on the home page.
@@ -876,6 +898,7 @@ pub struct JsonHomePageSPAHyData {
 ///   including featured articles, contributors, latest news, and recent contributions.
 /// * `page_title` - A `&'static str` that holds the title of the home page.
 /// * `url` - A `String` that holds the URL of the page.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "HomePage")]
@@ -883,6 +906,9 @@ pub struct JsonHomePage {
     pub hy_data: JsonHomePageSPAHyData,
     pub page_title: &'static str,
     pub url: String,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
+    pub renderer: HomeRenderer,
 }
 
 /// Represents the data for a generic page in the system. Generic pages are used for various purposes,
@@ -920,12 +946,27 @@ pub struct JsonGenericHyData {
 /// * `page_title` - A `String` that holds the title of the generic page.
 /// * `url` - A `String` that holds the URL of the generic page.
 /// * `id` - A `String` that holds the unique identifier for the generic page.
+/// * `common` - Common data, e.g. description.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "GenericPage")]
 pub struct JsonGenericPage {
     pub hy_data: JsonGenericHyData,
+    pub short_title: Option<String>,
     pub page_title: String,
     pub url: String,
     pub id: String,
+    #[serde(flatten)]
+    pub common: CommonJsonData,
+    pub renderer: GenericRenderer,
+}
+
+#[derive(Debug, Clone, Default, Serialize, JsonSchema)]
+#[schemars(rename = "GenericPage")]
+pub struct CommonJsonData {
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub parents: Vec<Parent>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub other_translations: Vec<Translation>,
 }

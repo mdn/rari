@@ -7,8 +7,8 @@ use rari_types::locale::Locale;
 use crate::error::DocError;
 use crate::helpers::api_inheritance::inheritance;
 
-#[rari_f]
-pub fn inheritance_diagram(interface: Option<String>) -> Result<String, DocError> {
+#[rari_f(register = "crate::Templ")]
+pub fn inheritancediagram(interface: Option<String>) -> Result<String, DocError> {
     let main_if = interface
         .as_deref()
         .or_else(|| {

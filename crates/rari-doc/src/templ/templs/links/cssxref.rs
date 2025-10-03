@@ -6,7 +6,29 @@ use crate::error::DocError;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
-#[rari_f]
+/// Creates a link to a CSS reference page on MDN.
+///
+/// This macro generates links to CSS properties, functions, data types, selectors,
+/// and other CSS reference documentation. It automatically formats the display text
+/// based on the CSS feature type and handles various CSS naming conventions.
+///
+/// # Arguments
+/// * `name` - The CSS feature name (property, function, data type, etc.)
+/// * `display` - Optional custom display text for the link
+/// * `anchor` - Optional anchor/fragment to append to the URL
+///
+/// # Examples
+/// * `{{CSSxRef("color")}}` -> links to CSS color property
+/// * `{{CSSxRef("background-color", "background color")}}` -> custom display text
+/// * `{{CSSxRef("calc()", "", "#syntax")}}` -> links to calc() function with anchor
+/// * `{{CSSxRef("<color>")}}` -> links to color data type
+///
+/// # Special handling
+/// - Functions automatically get `()` appended if not present
+/// - Data types get wrapped in `<>` brackets if not present
+/// - Handles HTML entity encoding (`&lt;` and `&gt;`)
+/// - Maps special cases like `<color>` to `color_value`
+#[rari_f(register = "crate::Templ")]
 pub fn cssxref(
     name: String,
     display: Option<String>,
@@ -22,9 +44,11 @@ pub fn cssxref_internal(
     anchor: Option<&str>,
     locale: Locale,
 ) -> Result<String, DocError> {
-    let maybe_display_name = display_name
+    let maybe_display_name = &display_name
         .or_else(|| name.rsplit_once('/').map(|(_, s)| s))
         .unwrap_or(name);
+    let decoded_maybe_display_name = html_escape::decode_html_entities(maybe_display_name);
+    let encoded_maybe_display_name = html_escape::encode_text(decoded_maybe_display_name.as_ref());
     let mut slug = name
         .strip_prefix("&lt;")
         .unwrap_or(name.strip_prefix('<').unwrap_or(name));
@@ -34,10 +58,10 @@ pub fn cssxref_internal(
     slug = slug.strip_suffix("()").unwrap_or(slug);
 
     let slug = match name {
-        "&lt;color&gt;" => "color_value",
-        "&lt;flex&gt;" => "flex_value",
-        "&lt;overflow&gt;" => "overflow_value",
-        "&lt;position&gt;" => "position_value",
+        "&lt;color&gt;" | "<color>" => "color_value",
+        "&lt;flex&gt;" | "<flex>" => "flex_value",
+        "&lt;overflow&gt;" | "<overflow>" => "overflow_value",
+        "&lt;position&gt;" | "<position>" => "position_value",
         ":host()" => ":host_function",
         "fit-content()" => "fit_content_function",
         _ => slug,
@@ -50,22 +74,22 @@ pub fn cssxref_internal(
     );
 
     let display_name = if display_name.is_some() {
-        maybe_display_name.to_string()
+        encoded_maybe_display_name.to_string()
     } else if let Ok(doc) = RariApi::get_page_nowarn(&url) {
         match doc.page_type() {
-            PageType::CssFunction if !maybe_display_name.ends_with("()") => {
-                format!("{maybe_display_name}()")
+            PageType::CssFunction if !encoded_maybe_display_name.ends_with("()") => {
+                format!("{encoded_maybe_display_name}()")
             }
             PageType::CssType
-                if !(maybe_display_name.starts_with("&lt;")
-                    && maybe_display_name.ends_with("&gt;")) =>
+                if !(encoded_maybe_display_name.starts_with("&lt;")
+                    && encoded_maybe_display_name.ends_with("&gt;")) =>
             {
-                format!("&lt;{maybe_display_name}&gt;")
+                format!("&lt;{encoded_maybe_display_name}&gt;")
             }
-            _ => maybe_display_name.to_string(),
+            _ => encoded_maybe_display_name.to_string(),
         }
     } else {
-        maybe_display_name.to_string()
+        encoded_maybe_display_name.to_string()
     };
-    RariApi::link(&url, locale, Some(&display_name), true, None, false)
+    RariApi::link(&url, Some(locale), Some(&display_name), true, None, false)
 }

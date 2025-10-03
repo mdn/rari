@@ -12,16 +12,16 @@ use scraper::Html;
 use super::json::{
     BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
     JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, Prose, Section,
-    Source, SpecificationSection, TocEntry, Translation,
+    Source, SpecificationSection, TocEntry,
 };
 use super::page::{Page, PageBuilder, PageLike};
-use super::templates::{BlogPage, ContributorSpotlightPage, CurriculumPage, DocPage, GenericPage};
 use super::types::contributors::ContributorSpotlight;
 use super::types::generic::Generic;
 use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::helpers::parents::parents;
 use crate::helpers::title::{page_title, transform_title};
+use crate::html::banner::build_banner;
 use crate::html::bubble_up::bubble_up_curriculum_page;
 use crate::html::code::{code_blocks, Code};
 use crate::html::modifier::{add_missing_ids, insert_self_links_for_dts, remove_empty_p};
@@ -30,17 +30,22 @@ use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Spli
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
-use crate::pages::json::JsonContributorSpotlightPage;
+use crate::pages::json::{CommonJsonData, JsonContributorSpotlightPage, Translation};
+use crate::pages::templates::{
+    BlogRenderer, ContributorSpotlightRenderer, CurriculumRenderer, DocPageRenderer,
+    GenericRenderer,
+};
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::curriculum::{
-    build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
+    self, build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
     prev_next_modules, prev_next_overview, Curriculum, Template,
 };
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
+use crate::pages::types::utils::FmTempl;
 use crate::specs::extract_specifications;
 use crate::templ::render::{decode_ref, render, Rendered};
-use crate::translations::get_other_translations_for;
+use crate::translations::other_translations;
 
 impl From<BuildSection<'_>> for Section {
     fn from(value: BuildSection) -> Self {
@@ -158,8 +163,18 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     } else {
         (Cow::Borrowed(page.content()), vec![], vec![])
     };
+    let banners = if let Some(banners) = page.banners() {
+        Some(
+            banners
+                .iter()
+                .map(|banner| build_banner(banner, page))
+                .collect::<Result<Vec<String>, DocError>>()?,
+        )
+    } else {
+        None
+    };
     let encoded_html = m2h(&ks_rendered_doc, page.locale())?;
-    let html = decode_ref(&encoded_html, &templs)?;
+    let html = decode_ref(&encoded_html, &templs, banners.as_deref())?;
     let post_processed_html = post_process_html(&html, page, false)?;
 
     let mut fragment = Html::parse_fragment(&post_processed_html);
@@ -255,24 +270,23 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         history.map(|entry| entry.hash.as_str()).unwrap_or_default()
     );
     let popularity = popularities().popularities.get(doc.url()).cloned();
-    let other_translations = get_other_translations_for(doc.slug(), doc.locale())
-        .into_iter()
-        .map(|(locale, title)| Translation {
-            native: locale.into(),
-            locale,
-            title,
-        })
-        .collect();
-
     let no_indexing =
         doc.meta.slug == "MDN/Kitchensink" || doc.is_orphaned() || doc.is_conflicting();
-    let parents = if !doc.is_conflicting() && !doc.is_orphaned() {
-        parents(doc)
+
+    let (parents, other_translations) = if !doc.is_conflicting() && !doc.is_orphaned() {
+        (parents(doc), other_translations(doc))
     } else {
-        Default::default()
+        (
+            Default::default(),
+            vec![Translation {
+                native: doc.locale().into(),
+                locale: doc.locale(),
+                title: doc.title().to_string(),
+            }],
+        )
     };
 
-    Ok(BuiltPage::Doc(Box::new(DocPage::Doc(JsonDocPage {
+    Ok(BuiltPage::Doc(Box::new(JsonDocPage {
         doc: JsonDoc {
             title: doc.title().to_string(),
             is_markdown: true,
@@ -292,7 +306,11 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             summary,
             popularity,
             no_indexing,
-            sidebar_macro: doc.meta.sidebar.first().cloned(),
+            sidebar_macro: doc
+                .meta
+                .sidebar
+                .first()
+                .map(|s| FmTempl::name(s).to_string()),
             source: Source {
                 folder,
                 filename,
@@ -304,9 +322,11 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             page_type: doc.meta.page_type,
             flaws: None,
             live_samples,
+            banners: doc.meta.banners.clone(),
         },
         url: doc.meta.url.clone(),
-    }))))
+        renderer: DocPageRenderer::Doc,
+    })))
 }
 
 fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
@@ -316,57 +336,71 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
         live_samples,
         ..
     } = build_content(post)?;
-    Ok(BuiltPage::BlogPost(Box::new(BlogPage::BlogPost(
-        JsonBlogPostPage {
-            doc: JsonBlogPostDoc {
-                title: post.title().to_string(),
-                mdn_url: post.url().to_owned(),
-                native: post.locale().into(),
-                page_title: page_title(post, true)?,
-                locale: post.locale(),
-                body,
-                toc,
-                summary: Some(post.meta.description.clone()),
-                live_samples,
-                ..Default::default()
-            },
-            url: post.url().to_owned(),
+    Ok(BuiltPage::BlogPost(Box::new(JsonBlogPostPage {
+        doc: JsonBlogPostDoc {
+            title: post.title().to_string(),
+            mdn_url: post.url().to_owned(),
+            native: post.locale().into(),
+            page_title: page_title(post, true)?,
             locale: post.locale(),
-            blog_meta: Some((&post.meta).into()),
-            page_title: page_title(post, false)?,
-            image: Some(format!(
-                "{}{}{}",
-                base_url(),
-                post.url(),
-                post.meta.image.file
-            )),
+            body,
+            toc,
+            summary: Some(post.meta.description.clone()),
+            live_samples,
             ..Default::default()
         },
-    ))))
+        url: post.url().to_owned(),
+        locale: post.locale(),
+        blog_meta: Some((&post.meta).into()),
+        page_title: page_title(post, false)?,
+        image: Some(format!(
+            "{}{}{}",
+            base_url(),
+            post.url(),
+            post.meta.image.file
+        )),
+        common: CommonJsonData {
+            parents: parents(post),
+            other_translations: vec![Translation {
+                native: post.locale().into(),
+                locale: post.locale(),
+                title: post.title().to_string(),
+            }],
+            ..Default::default()
+        },
+        renderer: BlogRenderer::BlogPost,
+        ..Default::default()
+    })))
 }
 
 fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
     let PageContent { body, toc, .. } = built?;
-    Ok(BuiltPage::GenericPage(Box::new(
-        GenericPage::from_page_and_template(
-            JsonGenericPage {
-                hy_data: JsonGenericHyData {
-                    sections: body,
-                    title: page.meta.title.clone(),
-                    toc,
-                },
-                page_title: if let Some(suffix) = &page.meta.title_suffix {
-                    concat_strs!(page.meta.title.as_str(), " | ", suffix)
-                } else {
-                    page.meta.title.clone()
-                },
-                url: page.meta.url.clone(),
-                id: page.meta.page.clone(),
-            },
-            page.meta.template,
-        ),
-    )))
+    Ok(BuiltPage::GenericPage(Box::new(JsonGenericPage {
+        hy_data: JsonGenericHyData {
+            sections: body,
+            title: page.meta.title.clone(),
+            toc,
+        },
+        short_title: page.meta.short_title.clone(),
+        page_title: if let Some(suffix) = &page.meta.title_suffix {
+            concat_strs!(page.meta.title.as_str(), " | ", suffix)
+        } else {
+            page.meta.title.clone()
+        },
+        url: page.meta.url.clone(),
+        id: page.meta.page.clone(),
+        common: CommonJsonData {
+            description: page.meta.description.clone(),
+            parents: parents(page),
+            other_translations: other_translations(page),
+        },
+        renderer: match page.meta.template {
+            super::types::generic::Template::GenericDoc => GenericRenderer::GenericDoc,
+            super::types::generic::Template::GenericAbout => GenericRenderer::GenericAbout,
+            super::types::generic::Template::GenericCommunity => GenericRenderer::GenericCommunity,
+        },
+    })))
 }
 
 fn build_spa(spa: &SPA) -> Result<BuiltPage, DocError> {
@@ -376,8 +410,7 @@ fn build_spa(spa: &SPA) -> Result<BuiltPage, DocError> {
 fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
     let PageContent { body, toc, .. } = build_content(curriculum)?;
     let sidebar = build_sidebar().ok();
-    let parents = parents(curriculum);
-    let group = curriculum_group(&parents);
+    let group = curriculum_group(&parents(curriculum));
     let modules = match curriculum.meta.template {
         Template::Overview => build_overview_modules(curriculum.slug())?,
         Template::Landing => build_landing_modules()?,
@@ -388,34 +421,36 @@ fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
         Template::Overview => prev_next_overview(curriculum.slug())?,
         _ => None,
     };
-    Ok(BuiltPage::Curriculum(Box::new(
-        CurriculumPage::from_page_and_template(
-            JsonCurriculumPage {
-                doc: super::json::JsonCurriculumDoc {
-                    title: curriculum.title().to_string(),
-                    locale: curriculum.locale(),
-                    native: curriculum.locale().into(),
-                    mdn_url: curriculum.meta.url.clone(),
-                    parents,
-                    page_title: page_title(curriculum, true)?,
-                    summary: curriculum.meta.summary.clone(),
-                    body,
-                    sidebar,
-                    toc,
-                    group,
-                    modules,
-                    prev_next,
-                    topic: Some(curriculum.meta.topic),
-                    template: curriculum.meta.template,
-                    ..Default::default()
-                },
-                url: curriculum.url().to_owned(),
-                page_title: page_title(curriculum, false)?,
-                locale: curriculum.locale(),
-            },
-            curriculum.meta.template,
-        ),
-    )))
+    Ok(BuiltPage::Curriculum(Box::new(JsonCurriculumPage {
+        doc: super::json::JsonCurriculumDoc {
+            title: curriculum.title().to_string(),
+            locale: curriculum.locale(),
+            native: curriculum.locale().into(),
+            mdn_url: curriculum.meta.url.clone(),
+            parents: parents(curriculum),
+            page_title: page_title(curriculum, true)?,
+            summary: curriculum.meta.summary.clone(),
+            body,
+            sidebar,
+            toc,
+            group,
+            modules,
+            prev_next,
+            topic: Some(curriculum.meta.topic),
+            template: curriculum.meta.template,
+            ..Default::default()
+        },
+        url: curriculum.url().to_owned(),
+        page_title: page_title(curriculum, false)?,
+        locale: curriculum.locale(),
+        renderer: match curriculum.meta.template {
+            curriculum::Template::Module => CurriculumRenderer::CurriculumModule,
+            curriculum::Template::Overview => CurriculumRenderer::CurriculumOverview,
+            curriculum::Template::Landing => CurriculumRenderer::CurriculumLanding,
+            curriculum::Template::About => CurriculumRenderer::CurriculumAbout,
+            curriculum::Template::Default => CurriculumRenderer::CurriculumDefault,
+        },
+    })))
 }
 
 fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, DocError> {
@@ -431,11 +466,18 @@ fn build_contributor_spotlight(cs: &ContributorSpotlight) -> Result<BuiltPage, D
         quote: cs.meta.quote.clone(),
     };
     Ok(BuiltPage::ContributorSpotlight(Box::new(
-        ContributorSpotlightPage::ContributorSpotlight(JsonContributorSpotlightPage {
+        JsonContributorSpotlightPage {
             url: cs.meta.url.clone(),
+            short_title: cs.meta.short_title.clone(),
             page_title: cs.meta.title.clone(),
             hy_data: contributor_spotlight_data,
-        }),
+            common: CommonJsonData {
+                description: cs.meta.description.clone(),
+                parents: parents(cs),
+                other_translations: other_translations(cs),
+            },
+            renderer: ContributorSpotlightRenderer::ContributorSpotlight,
+        },
     )))
 }
 

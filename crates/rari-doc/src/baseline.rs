@@ -39,7 +39,7 @@ static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
 pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>> {
     if let Some(ref web_features) = *WEB_FEATURES {
         return match &browser_compat {
-            &[bcd_key] => web_features.feature_status(bcd_key.as_str()),
+            &[bcd_key] => web_features.baseline_by_bcd_key(bcd_key.as_str()),
             _ => None,
         };
     }

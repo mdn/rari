@@ -20,8 +20,10 @@ jobs:
       RUSTC_WRAPPER: "sccache"
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@38b70195107dddab2c7bbd522bcf763bac00963b # stable
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@4305c38b25d97ef35a8ad1f985ccf2d2242004f2 # stable
+        with:
+          components: rustfmt, clippy
       - name: sccache-cache
         uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
 
@@ -31,5 +33,7 @@ jobs:
         run: cargo build --verbose
       - name: Run tests
         run: cargo test --verbose --workspace --all-targets --no-fail-fast
+      - name: Run doc tests
+        run: cargo test --verbose --workspace --doc --features doctest --no-fail-fast
       - name: Run clippy
         run: cargo clippy --all-features --workspace -- -Dwarnings

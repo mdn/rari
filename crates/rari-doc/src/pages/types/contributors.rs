@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
+use crate::pages::types::utils::FmTempl;
 use crate::utils::split_fm;
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -29,6 +30,7 @@ pub struct ContributorFrontMatter {
     pub img_alt: String,
     pub usernames: Usernames,
     pub quote: String,
+    pub description: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -42,12 +44,14 @@ pub struct ContributorMeta {
     pub img_alt: String,
     pub usernames: Usernames,
     pub quote: String,
+    pub description: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
 pub struct ContributorBuildMeta {
     pub locale: Locale,
     pub slug: String,
+    pub short_title: String,
     pub title: String,
     pub url: String,
     pub contributor_name: String,
@@ -59,6 +63,7 @@ pub struct ContributorBuildMeta {
     pub quote: String,
     pub path: PathBuf,
     pub full_path: PathBuf,
+    pub description: Option<String>,
 }
 
 impl From<&ContributorBuildMeta> for ContributorMeta {
@@ -73,6 +78,7 @@ impl From<&ContributorBuildMeta> for ContributorMeta {
             img_alt,
             usernames,
             quote,
+            description,
             ..
         } = value;
         ContributorMeta {
@@ -85,6 +91,7 @@ impl From<&ContributorBuildMeta> for ContributorMeta {
             img_alt: img_alt.clone(),
             usernames: usernames.clone(),
             quote: quote.clone(),
+            description: description.clone(),
         }
     }
 }
@@ -108,16 +115,14 @@ impl ContributorBuildMeta {
             img_alt,
             usernames,
             quote,
+            description,
         } = fm;
         let slug = concat_strs!("spotlight/", folder_name.as_str());
         Ok(Self {
             url: concat_strs!("/", locale.as_url_str(), "/community/", slug.as_str()),
             locale,
-            title: concat_strs!(
-                "Contributor, Spotlight - ",
-                contributor_name.as_str(),
-                " | MDN"
-            ),
+            short_title: concat_strs!("Spotlight: ", contributor_name.as_str()),
+            title: concat_strs!(contributor_name.as_str(), " - Contributor Spotlight | MDN"),
             slug,
             contributor_name,
             folder_name,
@@ -128,6 +133,7 @@ impl ContributorBuildMeta {
             quote,
             full_path,
             path,
+            description,
         })
     }
 }
@@ -178,7 +184,7 @@ impl PageLike for ContributorSpotlight {
     }
 
     fn short_title(&self) -> Option<&str> {
-        None
+        Some(&self.meta.short_title)
     }
 
     fn locale(&self) -> Locale {
@@ -231,7 +237,7 @@ impl PageLike for ContributorSpotlight {
     }
 
     fn trailing_slash(&self) -> bool {
-        true
+        false
     }
 
     fn fm_offset(&self) -> usize {
@@ -240,6 +246,10 @@ impl PageLike for ContributorSpotlight {
 
     fn raw_content(&self) -> &str {
         &self.raw
+    }
+
+    fn banners(&self) -> Option<&[FmTempl]> {
+        None
     }
 }
 
