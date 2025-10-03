@@ -5,6 +5,7 @@ use std::path::Path;
 use css_syntax_types::Css;
 use rari_types::globals::deps;
 use rari_utils::io::read_to_string;
+use semver::VersionReq;
 use serde_json::Value;
 
 use crate::error::DepsError;
@@ -85,7 +86,14 @@ fn list_all(folder: &Path) -> Result<BTreeMap<String, Css>, DepsError> {
 }
 
 pub fn update_webref_css(base_path: &Path) -> Result<(), DepsError> {
-    if let Some(package_path) = get_package("@webref/css", &deps().webref_css, base_path)? {
+    if let Some(package_path) = get_package(
+        "@webref/css",
+        &deps()
+            .webref_css
+            .clone()
+            .or_else(|| Some(VersionReq::parse(">=6.0.0, <7.0.0").unwrap())),
+        base_path,
+    )? {
         let webref_css_dest_path = package_path.join("webref_css.json");
         let webref_css = list_all(&package_path)?;
         fs::write(webref_css_dest_path, serde_json::to_string(&webref_css)?)?;
