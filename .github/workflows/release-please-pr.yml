@@ -18,3 +18,4 @@ jobs:
           skip-github-release: true
           repo-url: mdn/rari
           manifest-file: .release-please-manifest.json
+          token: ${{ secrets.RELEASE_PLEASE_GITHUB_TOKEN }}
