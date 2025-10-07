@@ -237,7 +237,6 @@ mod test {
     #[test]
     fn test_transform() {
         let url_to_title = url_titles_map(&PathBuf::from("test/url-titles.json"));
-        // println!("url_to_title: {:#?}", url_to_title);
         let input_path = PathBuf::from("test");
         let _webref_css = transform(&input_path, &url_to_title).unwrap();
     }
