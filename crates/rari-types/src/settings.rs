@@ -10,6 +10,8 @@ use crate::locale::Locale;
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
 pub struct Deps {
+    #[serde(alias = "browser-specs")]
+    pub browser_specs: Option<VersionReq>,
     #[serde(alias = "@mdn/browser-compat-data")]
     pub bcd: Option<VersionReq>,
     #[serde(alias = "mdn-data")]
@@ -20,8 +22,6 @@ pub struct Deps {
     pub web_specs: Option<VersionReq>,
     #[serde(alias = "@webref/css")]
     pub webref_css: Option<VersionReq>,
-    #[serde(alias = "browser-specs")]
-    pub browser_specs: Option<VersionReq>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]

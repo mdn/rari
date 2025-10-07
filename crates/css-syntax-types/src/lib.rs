@@ -62,9 +62,9 @@ impl From<&AtRule> for AtRule {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Function {
+    pub name: String,
     #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
     pub spec_link: Option<SpecLink>,
-    pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#for: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -589,6 +589,7 @@ impl From<&SpecLink> for SpecLink {
         value.clone()
     }
 }
+
 // In order to use it with in a BtreeSet<SpecLink>, implement `PartialOrd` and `Ord`
 impl PartialOrd for SpecLink {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
