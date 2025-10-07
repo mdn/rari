@@ -171,9 +171,7 @@ fn process_browser_specs(folder: &Path) -> Result<BTreeMap<String, String>, Deps
     Ok(url_to_title)
 }
 
-// Since version 7.x of webref-css, there is no link title information available (under `specs` key in the 6.x series)
-// As a workaround, we use a link->title mapping extracted from the `browser-specs` package.
-pub fn update_webref_css(base_path: &Path) -> Result<(), DepsError> {
+fn url_to_title_map(base_path: &Path) -> Result<BTreeMap<String, String>, DepsError> {
     let url_to_title = if let Some(browser_specs_path) =
         get_package("browser-specs", &deps().browser_specs, base_path)?
     {
@@ -201,6 +199,13 @@ pub fn update_webref_css(base_path: &Path) -> Result<(), DepsError> {
             BTreeMap::new()
         }
     };
+    Ok(url_to_title)
+}
+
+// Since version 7.x of webref-css, there is no link title information available (under `specs` key in the 6.x series)
+// As a workaround, we use a link->title mapping extracted from the `browser-specs` package.
+pub fn update_webref_css(base_path: &Path) -> Result<(), DepsError> {
+    let url_to_title = url_to_title_map(base_path)?;
 
     // Process the CSS data with the URL-to-title map passed in.
     if let Some(package_path) = get_package("@webref/css", &deps().webref_css, base_path)? {
