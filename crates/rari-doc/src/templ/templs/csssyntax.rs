@@ -58,7 +58,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
 
     let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
 
-    let out = write_formal_syntax(
+    Ok(write_formal_syntax(
         typ,
         env.locale.as_url_str(),
         &format!(
@@ -67,9 +67,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
-    )?;
-
-    Ok(out)
+    )?)
 }
 
 #[rari_f(register = "crate::Templ")]
