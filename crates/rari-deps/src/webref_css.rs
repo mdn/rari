@@ -232,15 +232,12 @@ fn spec_url_to_title_map(base_path: &Path) -> Result<BTreeMap<String, String>, D
 // Since version 7.x of webref-css, there is no link title information available (under `specs` key in the 6.x series)
 // As a workaround, we use a link->title mapping extracted from the `browser-specs` package.
 pub fn update_webref_css(base_path: &Path) -> Result<(), DepsError> {
-    let url_to_title = spec_url_to_title_map(base_path)?;
-
-    // Process the CSS data with the URL-to-title map passed in.
     if let Some(package_path) = get_package("@webref/css", &deps().webref_css, base_path)? {
+        let url_to_title = spec_url_to_title_map(base_path)?;
         let webref_css = transform(&package_path, &url_to_title)?;
         let webref_css_dest_path = package_path.join("webref_css.json");
         fs::write(webref_css_dest_path, serde_json::to_string(&webref_css)?)?;
     }
-
     Ok(())
 }
 
