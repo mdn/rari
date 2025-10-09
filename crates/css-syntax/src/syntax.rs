@@ -568,25 +568,44 @@ impl From<Node> for Constituent {
     }
 }
 
-pub fn write_formal_syntax_from_syntax(
-    syntax_str: impl Into<String>,
+pub enum SyntaxInput<'a> {
+    SyntaxString(&'a str),
+    Css(CssType<'a>),
+}
+
+pub fn render_formal_syntax(
+    syntax: SyntaxInput,
     locale_str: &str,
     value_definition_url: &str,
-    syntax_tooltip: &'_ HashMap<LinkedToken, String>,
+    syntax_tooltip: &HashMap<LinkedToken, String>,
     sources_prefix: Option<&str>,
 ) -> Result<String, SyntaxError> {
-    let syntax_str = syntax_str.into();
-    let (name, syntax, skip_first) = if let Some((name, syntax)) = syntax_str.split_once("=") {
-        (name, syntax.trim().to_string(), false)
-    } else {
-        ("dummy", syntax_str, true)
+    let (syntax, skip_first) = match syntax {
+        SyntaxInput::SyntaxString(syntax_str) => {
+            let (name, syntax, skip_first) =
+                if let Some((name, syntax)) = syntax_str.split_once("=") {
+                    (name, syntax.trim().to_string(), false)
+                } else {
+                    ("dummy", syntax_str.into(), true)
+                };
+            (
+                SyntaxLine {
+                    name: name.trim().to_string(),
+                    syntax,
+                    specs: None,
+                },
+                skip_first,
+            )
+        }
+        SyntaxInput::Css(css) => {
+            let syntax: SyntaxLine = get_syntax_internal(css, true);
+            if syntax.syntax.is_empty() {
+                return Err(SyntaxError::NoSyntaxFound);
+            }
+            (syntax, false)
+        }
     };
-    let syntax = SyntaxLine {
-        name: name.trim().to_string(),
-        syntax,
-        specs: None,
-    };
-    write_formal_syntax_internal(
+    render_formal_syntax_internal(
         syntax,
         locale_str,
         value_definition_url,
@@ -596,28 +615,7 @@ pub fn write_formal_syntax_from_syntax(
     )
 }
 
-pub fn write_formal_syntax(
-    css: CssType,
-    locale_str: &str,
-    value_definition_url: &str,
-    syntax_tooltip: &'_ HashMap<LinkedToken, String>,
-    sources_prefix: Option<&str>,
-) -> Result<String, SyntaxError> {
-    let syntax: SyntaxLine = get_syntax_internal(css, true);
-    if syntax.syntax.is_empty() {
-        return Err(SyntaxError::NoSyntaxFound);
-    }
-    write_formal_syntax_internal(
-        syntax,
-        locale_str,
-        value_definition_url,
-        syntax_tooltip,
-        sources_prefix,
-        false,
-    )
-}
-
-fn write_formal_syntax_internal(
+fn render_formal_syntax_internal(
     syntax: SyntaxLine,
     locale_str: &str,
     value_definition_url: &str,
@@ -829,8 +827,8 @@ mod test {
     #[test]
     fn test_render_node() -> Result<(), SyntaxError> {
         let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"padding\">padding = </span><br/>  <a href=\"/en-US/docs/Web/CSS/padding-top\"><span class=\"token property\">&lt;&#x27;padding-top&#x27;&gt;</span></a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a>  <br/><br/><span class=\"token property\" id=\"&lt;padding-top&gt;\">&lt;padding-top&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/></pre><footer></footer>";
-        let result = write_formal_syntax(
-            CssType::Property("padding"),
+        let result = render_formal_syntax(
+            SyntaxInput::Css(CssType::Property("padding")),
             "en-US",
             "/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
             &TOOLTIPS,
@@ -843,8 +841,8 @@ mod test {
     #[test]
     fn test_render_function() -> Result<(), SyntaxError> {
         let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
-        let result = write_formal_syntax(
-            CssType::Function("hue-rotate"),
+        let result = render_formal_syntax(
+            SyntaxInput::Css(CssType::Function("hue-rotate")),
             "en-US",
             "/en-US/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
             &TOOLTIPS,
