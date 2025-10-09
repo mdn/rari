@@ -28,4 +28,6 @@ pub enum DepsError {
     PackageVersionParseError,
     #[error("GitHub error: {0}")]
     GithubError(String),
+    #[error("Webref error: {0}")]
+    WebRefParseError(String),
 }

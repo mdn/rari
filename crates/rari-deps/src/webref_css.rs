@@ -98,30 +98,50 @@ fn transform(folder: &Path, url_to_title: &BTreeMap<String, String>) -> Result<C
         data["properties"] = serde_json::to_value(by_name(
             serde_json::from_value(data["properties"].take()).unwrap_or_default(),
         ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `properties` array".to_string(),
+        ));
     }
 
     if data["selectors"].is_array() {
         data["selectors"] = serde_json::to_value(by_name(
             serde_json::from_value(data["selectors"].take()).unwrap_or_default(),
         ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `selectors` array".to_string(),
+        ));
     }
 
     if data["atrules"].is_array() {
         data["atrules"] = serde_json::to_value(by_name(
             serde_json::from_value(data["atrules"].take()).unwrap_or_default(),
         ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `atrules` array".to_string(),
+        ));
     }
 
     if data["functions"].is_array() {
         data["functions"] = serde_json::to_value(by_name(
             serde_json::from_value(data["functions"].take()).unwrap_or_default(),
         ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `functions` array".to_string(),
+        ));
     }
 
     if data["types"].is_array() {
         data["types"] = serde_json::to_value(by_name(
             serde_json::from_value(data["types"].take()).unwrap_or_default(),
         ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `types` array".to_string(),
+        ));
     }
 
     // Enrich all items with href_title fields
