@@ -17,6 +17,7 @@ impl From<&CssValuesItem> for CssValuesItem {
         value.clone()
     }
 }
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum CssValueType {
     #[serde(rename = "type")]
@@ -43,7 +44,6 @@ impl From<&CssValueType> for CssValueType {
         *value
     }
 }
-
 impl std::str::FromStr for CssValueType {
     type Err = crate::error::ConversionError;
     fn from_str(value: &str) -> Result<Self, crate::error::ConversionError> {
@@ -137,6 +137,7 @@ impl<'de> serde::Deserialize<'de> for ValueName {
             })
     }
 }
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum ValuesItemType {
     #[serde(rename = "type")]
@@ -144,7 +145,6 @@ pub enum ValuesItemType {
     #[serde(rename = "function")]
     Function,
 }
-
 impl ValuesItemType {
     pub fn as_str(&self) -> &str {
         match *self {
@@ -158,7 +158,6 @@ impl From<&ValuesItemType> for ValuesItemType {
         *value
     }
 }
-
 impl std::str::FromStr for ValuesItemType {
     type Err = crate::error::ConversionError;
     fn from_str(value: &str) -> Result<Self, crate::error::ConversionError> {
@@ -187,6 +186,7 @@ impl std::convert::TryFrom<String> for ValuesItemType {
         value.parse()
     }
 }
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Warning {
     pub msg: String,
