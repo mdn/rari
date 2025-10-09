@@ -25,7 +25,7 @@ pub struct AtRule {
     #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
     pub spec_link: Option<SpecLink>,
     #[serde(default)]
-    pub descriptors: BTreeMap<String, AtruleDescriptor>,
+    pub descriptors: BTreeMap<String, AtRuleDescriptor>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
 }
@@ -111,7 +111,7 @@ impl From<&Selector> for Selector {
     }
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AtruleDescriptor {
+pub struct AtRuleDescriptor {
     pub name: String,
     #[serde(rename = "specLink", default, skip_serializing_if = "Option::is_none")]
     pub spec_link: Option<SpecLink>,
@@ -123,8 +123,8 @@ pub struct AtruleDescriptor {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
 }
-impl From<&AtruleDescriptor> for AtruleDescriptor {
-    fn from(value: &AtruleDescriptor) -> Self {
+impl From<&AtRuleDescriptor> for AtRuleDescriptor {
+    fn from(value: &AtRuleDescriptor) -> Self {
         value.clone()
     }
 }

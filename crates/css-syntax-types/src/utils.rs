@@ -24,8 +24,8 @@ impl From<std::collections::BTreeMap<Url, LinksValue>> for Links {
         Self(value)
     }
 }
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct LinksValue {
     #[serde(default)]
     pub anchors: Vec<String>,
@@ -37,6 +37,7 @@ impl From<&LinksValue> for LinksValue {
         value.clone()
     }
 }
+
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Shortname(String);
 impl std::ops::Deref for Shortname {
@@ -98,8 +99,8 @@ impl<'de> serde::Deserialize<'de> for Shortname {
             })
     }
 }
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
-#[serde(deny_unknown_fields)]
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct SpecLink {
     pub title: String,
     pub url: Url,
@@ -110,18 +111,18 @@ impl From<&SpecLink> for SpecLink {
     }
 }
 
-// In order to use it with in a BtreeSet<SpecLink>, implement `PartialOrd` and `Ord`
-impl PartialOrd for SpecLink {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
+// // In order to use it with in a BtreeSet<SpecLink>, implement `PartialOrd` and `Ord`
+// impl PartialOrd for SpecLink {
+//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+//         Some(self.cmp(other))
+//     }
+// }
 
-impl Ord for SpecLink {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // First compare by title, then by URL if titles are equal
-        self.title
-            .cmp(&other.title)
-            .then_with(|| self.url.cmp(&other.url))
-    }
-}
+// impl Ord for SpecLink {
+//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+//         // First compare by title, then by URL if titles are equal
+//         self.title
+//             .cmp(&other.title)
+//             .then_with(|| self.url.cmp(&other.url))
+//     }
+// }

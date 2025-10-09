@@ -6,7 +6,7 @@ use crate::SpecLink;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Extensiontype {
-    Variant0(Interfacetype),
+    Variant0(InterfaceType),
     Variant1(String),
 }
 impl From<&Extensiontype> for Extensiontype {
@@ -14,8 +14,8 @@ impl From<&Extensiontype> for Extensiontype {
         value.clone()
     }
 }
-impl From<Interfacetype> for Extensiontype {
-    fn from(value: Interfacetype) -> Self {
+impl From<InterfaceType> for Extensiontype {
+    fn from(value: InterfaceType) -> Self {
         Self::Variant0(value)
     }
 }
@@ -66,7 +66,6 @@ impl From<Interface> for Global {
     }
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct IdlFragmentInSpec {
     pub fragment: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -186,7 +185,7 @@ impl From<std::collections::BTreeMap<Global, Interfaces>> for InterfacesByGlobal
     }
 }
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub enum Interfacetype {
+pub enum InterfaceType {
     #[serde(rename = "dictionary")]
     Dictionary,
     #[serde(rename = "interface")]
@@ -204,12 +203,12 @@ pub enum Interfacetype {
     #[serde(rename = "namespace")]
     Namespace,
 }
-impl From<&Interfacetype> for Interfacetype {
-    fn from(value: &Interfacetype) -> Self {
+impl From<&InterfaceType> for InterfaceType {
+    fn from(value: &InterfaceType) -> Self {
         *value
     }
 }
-impl Interfacetype {
+impl InterfaceType {
     pub fn as_str(&self) -> &str {
         match *self {
             Self::Dictionary => "dictionary",
@@ -223,7 +222,7 @@ impl Interfacetype {
         }
     }
 }
-impl std::str::FromStr for Interfacetype {
+impl std::str::FromStr for InterfaceType {
     type Err = crate::error::ConversionError;
     fn from_str(value: &str) -> Result<Self, crate::error::ConversionError> {
         match value {
@@ -239,19 +238,19 @@ impl std::str::FromStr for Interfacetype {
         }
     }
 }
-impl std::convert::TryFrom<&str> for Interfacetype {
+impl std::convert::TryFrom<&str> for InterfaceType {
     type Error = crate::error::ConversionError;
     fn try_from(value: &str) -> Result<Self, crate::error::ConversionError> {
         value.parse()
     }
 }
-impl std::convert::TryFrom<&String> for Interfacetype {
+impl std::convert::TryFrom<&String> for InterfaceType {
     type Error = crate::error::ConversionError;
     fn try_from(value: &String) -> Result<Self, crate::error::ConversionError> {
         value.parse()
     }
 }
-impl std::convert::TryFrom<String> for Interfacetype {
+impl std::convert::TryFrom<String> for InterfaceType {
     type Error = crate::error::ConversionError;
     fn try_from(value: String) -> Result<Self, crate::error::ConversionError> {
         value.parse()
