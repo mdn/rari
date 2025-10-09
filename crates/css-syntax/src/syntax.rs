@@ -8,14 +8,14 @@ use std::sync::LazyLock;
 use css_definition_syntax::generate::{self, GenerateOptions};
 use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
 use css_definition_syntax::walk::{walk, WalkOptions};
-use css_syntax_types::{Css, CssValuesItem, SpecLink};
+use css_syntax_types::{CssValuesItem, SpecLink, WebrefCss};
 #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
 use serde::Serialize;
 
 use crate::error::SyntaxError;
 
-static CSS_REF: LazyLock<Css> = LazyLock::new(|| {
+static CSS_REF: LazyLock<WebrefCss> = LazyLock::new(|| {
     #[cfg(any(feature = "doctest", test))]
     {
         let package_path = std::path::Path::new("package");

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use css_syntax_types::{BrowserSpec, Css, SpecLink};
+use css_syntax_types::{BrowserSpec, SpecLink, WebrefCss};
 use rari_types::globals::deps;
 use rari_utils::io::read_to_string;
 use serde_json::Value;
@@ -88,7 +88,10 @@ fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) 
     }
 }
 
-fn transform(folder: &Path, url_to_title: &BTreeMap<String, String>) -> Result<Css, DepsError> {
+fn transform(
+    folder: &Path,
+    url_to_title: &BTreeMap<String, String>,
+) -> Result<WebrefCss, DepsError> {
     // Read the single css.json file (v7+ format)
     let css_json_path = folder.join("package").join("css.json");
     let text = read_to_string(&css_json_path)?;

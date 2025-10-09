@@ -4,15 +4,15 @@ use std::collections::BTreeMap;
 use crate::SpecLink;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Css {
+pub struct WebrefCss {
     pub atrules: BTreeMap<String, AtRule>,
     pub functions: BTreeMap<String, Function>,
     pub properties: BTreeMap<String, Property>,
     pub selectors: BTreeMap<String, Selector>,
     pub types: BTreeMap<String, Type>,
 }
-impl From<&Css> for Css {
-    fn from(value: &Css) -> Self {
+impl From<&WebrefCss> for WebrefCss {
+    fn from(value: &WebrefCss) -> Self {
         value.clone()
     }
 }
