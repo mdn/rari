@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.52](https://github.com/mdn/rari/compare/v0.1.51...v0.1.52) (2025-10-13)
+
+
+### Bug Fixes
+
+* **csssyntax:** update renamed CSS slug ([#325](https://github.com/mdn/rari/issues/325)) ([13ae24c](https://github.com/mdn/rari/commit/13ae24cdc345329377bfc9695f07de770d3851fa))
+* **sync-translated-content:** handle renames to sync case changes from content ([#327](https://github.com/mdn/rari/issues/327)) ([f64385d](https://github.com/mdn/rari/commit/f64385dee9a90a26290ec2dea6f483d363dd92b4))
+
+
+### Miscellaneous
+
+* add rustfmt and clippy to linter action toolchain ([#321](https://github.com/mdn/rari/issues/321)) ([3e70d19](https://github.com/mdn/rari/commit/3e70d198d431a7c5c4fd4499c5ff2dd30ad0773c))
+
 ## [0.1.51](https://github.com/mdn/rari/compare/v0.1.50...v0.1.51) (2025-09-18)
 
 
