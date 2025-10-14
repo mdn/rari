@@ -60,7 +60,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         SyntaxInput::Css(typ),
         env.locale.as_url_str(),
         &format!(
-            "/{}/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
+            "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             env.locale.as_url_str()
         ),
         &TOOLTIPS,
@@ -75,7 +75,7 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
         SyntaxInput::SyntaxString(&syntax),
         env.locale.as_url_str(),
         &format!(
-            "/{}/docs/Web/CSS/CSS_Values_and_Units/Value_definition_syntax",
+            "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             env.locale.as_url_str()
         ),
         &TOOLTIPS,
