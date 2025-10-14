@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use css_syntax::syntax::{
-    write_formal_syntax, write_formal_syntax_from_syntax, CssType, LinkedToken,
-};
+use css_syntax::syntax::{render_formal_syntax, CssType, LinkedToken, SyntaxInput};
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 
@@ -56,10 +54,10 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         }
     };
 
-    let sources_prefix = l10n_json_data("Template", "sources_prefix", env.locale)?;
+    let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
 
-    Ok(write_formal_syntax(
-        typ,
+    Ok(render_formal_syntax(
+        SyntaxInput::Css(typ),
         env.locale.as_url_str(),
         &format!(
             "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
@@ -72,9 +70,9 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
 
 #[rari_f(register = "crate::Templ")]
 pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
-    let sources_prefix = l10n_json_data("Template", "sources_prefix", env.locale)?;
-    Ok(write_formal_syntax_from_syntax(
-        syntax,
+    let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
+    Ok(render_formal_syntax(
+        SyntaxInput::SyntaxString(&syntax),
         env.locale.as_url_str(),
         &format!(
             "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
