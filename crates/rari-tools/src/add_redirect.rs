@@ -9,7 +9,7 @@ use crate::redirects::add_redirects;
 pub fn add_redirect(from_url: &str, to_url: &str) -> Result<(), ToolError> {
     do_add_redirect(from_url, to_url)?;
 
-    tracing::info!("Saved {} → {}", from_url, to_url,);
+    tracing::info!("Saved {} → {}", from_url, to_url);
 
     Ok(())
 }
