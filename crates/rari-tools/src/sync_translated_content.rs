@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 
-use console::Style;
 use rari_doc::pages::page::{Page, PageCategory, PageLike, PageWriter};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::resolve::{build_url, url_to_folder_path};
@@ -23,22 +22,14 @@ pub fn sync_translated_content(
 ) -> Result<HashMap<Locale, SyncTranslatedContentResult>, ToolError> {
     validate_locales(locales)?;
 
-    let green = Style::new().green();
-    let dim = Style::new().dim();
-    let bold = Style::new().bold();
-
     if verbose {
-        tracing::info!(
-            "{}",
-            green.apply_to(format!(
-                "Syncing translated content for locales: {locales:?}.\nFixing cross-locale redirects."
-            )),
-        );
+        tracing::info!("Syncing translated content for locales: {locales:?}.");
+        tracing::info!("Fixing cross-locale redirects.");
     }
     fix_redirects(Some(locales))?;
 
     if verbose {
-        tracing::info!("{}", green.apply_to("Reading all documents."));
+        tracing::info!("Reading all documents.");
     }
 
     let docs = read_all_doc_pages()?;
@@ -67,13 +58,10 @@ pub fn sync_translated_content(
                     }
                 });
         tracing::info!(
-            "{}",
-            dim.apply_to(format!(
-                "read {} docs: {} en-Us, {} translated.",
-                docs.len(),
-                doc_count,
-                translated_doc_count
-            ))
+            "read {} docs: {} en-Us, {} translated.",
+            docs.len(),
+            doc_count,
+            translated_doc_count
         );
     }
     let results = HashMap::new();
@@ -121,40 +109,13 @@ pub fn sync_translated_content(
 
     if verbose {
         for (locale, result) in &res {
-            tracing::info!(
-                "{}",
-                green.apply_to(bold.apply_to(format!("Results for locale {locale}")))
-            );
-            tracing::info!(
-                "  {}",
-                green.apply_to(format!("Total of {} documents.", result.total_docs))
-            );
-            tracing::info!(
-                "  {}",
-                green.apply_to(format!("Moved {} documents.", result.moved_docs))
-            );
-            tracing::info!(
-                "  {}",
-                green.apply_to(format!("Renamed {} documents.", result.renamed_docs))
-            );
-            tracing::info!(
-                "  {}",
-                green.apply_to(format!(
-                    "Conflicting {} documents.",
-                    result.conflicting_docs
-                ))
-            );
-            tracing::info!(
-                "  {}",
-                green.apply_to(format!("Orphaned {} documents", result.orphaned_docs))
-            );
-            tracing::info!(
-                "  {}",
-                green.apply_to(format!(
-                    "Fixed {} redirected documents.",
-                    result.redirected_docs
-                ))
-            );
+            tracing::info!("Results for locale {locale}");
+            tracing::info!("  Total of {} documents.", result.total_docs);
+            tracing::info!("  Moved {} documents.", result.moved_docs);
+            tracing::info!("  Renamed {} documents.", result.renamed_docs);
+            tracing::info!("  Conflicting {} documents.", result.conflicting_docs);
+            tracing::info!("  Orphaned {} documents", result.orphaned_docs);
+            tracing::info!("  Fixed {} redirected documents.", result.redirected_docs);
         }
     }
     Ok(res)
@@ -208,9 +169,6 @@ fn sync_translated_document(
 ) -> Result<SyncTranslatedDocumentStatus, ToolError> {
     let mut status = SyncTranslatedDocumentStatus::default();
 
-    let dim = Style::new().dim();
-    let yellow = Style::new().yellow();
-
     if doc.is_orphaned() || doc.is_conflicting() {
         return Ok(status);
     }
@@ -239,10 +197,7 @@ fn sync_translated_document(
 
     if status.orphaned {
         if verbose {
-            tracing::info!(
-                "{}",
-                yellow.apply_to(format!("orphaned: {}", doc.path().to_string_lossy()))
-            );
+            tracing::info!("orphaned: {}", doc.path().to_string_lossy());
         }
         status.followed = false;
         status.moved = true;
@@ -258,11 +213,8 @@ fn sync_translated_document(
     } else if status.moved && md_exists(&resolved_slug, doc.locale())? {
         if verbose {
             tracing::info!(
-                "{}",
-                dim.apply_to(format!(
-                    "unrooting {} (conflicting translation)",
-                    doc.path().to_string_lossy()
-                ))
+                "unrooting {} (conflicting translation)",
+                doc.path().to_string_lossy()
             );
         }
         if resolved_doc.is_some() {

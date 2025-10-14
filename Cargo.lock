@@ -2632,7 +2632,6 @@ version = "0.1.52"
 dependencies = [
  "assert-json-diff",
  "chrono",
- "console",
  "const_format",
  "csv",
  "dialoguer",
