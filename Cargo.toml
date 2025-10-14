@@ -3,10 +3,7 @@ name = "rari"
 version = "0.1.52"
 edition = "2021"
 license = "MPL-2.0"
-authors = [
-  "Florian Dieminger <me@fiji-flo.de>",
-  "The MDN Engineering Team <mdn-dev@mozilla.com>",
-]
+authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
 homepage = "https://github.com/mdn/rari"
 repository = "https://github.com/mdn/rari"
 rust-version = "1.86"
@@ -50,10 +47,7 @@ members = [
 [workspace.package]
 edition = "2021"
 license = "MPL-2.0"
-authors = [
-  "Florian Dieminger <me@fiji-flo.de>",
-  "The MDN Engineering Team <mdn-dev@mozilla.com>",
-]
+authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
 rust-version = "1.86"
 
 [workspace.dependencies]
