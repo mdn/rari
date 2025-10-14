@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.1.48"
+version = "0.1.52"
 edition = "2021"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
@@ -63,7 +63,9 @@ rari-sitemap = { path = "crates/rari-sitemap" }
 rari-lsp = { path = "crates/rari-lsp" }
 
 tracing = "0.1"
-tracing-subscriber = "0.3"
+# pinned because of https://github.com/tokio-rs/tracing/issues/3369
+# and https://github.com/tokio-rs/tracing/issues/3378
+tracing-subscriber = "=0.3.19"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -90,7 +92,7 @@ console = "0.15"
 sha2 = "0.10"
 dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"
-schemars = { version = "0.9", features = ["chrono04", "url2"] }
+schemars = { version = "1", features = ["chrono04", "url2"] }
 pretty_yaml = "0.5"
 yaml_parser = "0.2"
 const_format = "0.2"

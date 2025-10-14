@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.52](https://github.com/mdn/rari/compare/v0.1.51...v0.1.52) (2025-10-13)
+
+
+### Bug Fixes
+
+* **csssyntax:** update renamed CSS slug ([#325](https://github.com/mdn/rari/issues/325)) ([13ae24c](https://github.com/mdn/rari/commit/13ae24cdc345329377bfc9695f07de770d3851fa))
+* **sync-translated-content:** handle renames to sync case changes from content ([#327](https://github.com/mdn/rari/issues/327)) ([f64385d](https://github.com/mdn/rari/commit/f64385dee9a90a26290ec2dea6f483d363dd92b4))
+
+
+### Miscellaneous
+
+* add rustfmt and clippy to linter action toolchain ([#321](https://github.com/mdn/rari/issues/321)) ([3e70d19](https://github.com/mdn/rari/commit/3e70d198d431a7c5c4fd4499c5ff2dd30ad0773c))
+
+## [0.1.51](https://github.com/mdn/rari/compare/v0.1.50...v0.1.51) (2025-09-18)
+
+
+### Miscellaneous
+
+* **web-features:** update schema to match v3 upstream ([#312](https://github.com/mdn/rari/issues/312)) ([9cc6510](https://github.com/mdn/rari/commit/9cc65104edbd844e714fd96b1d3a5f471e0322e8))
+
+## [0.1.50](https://github.com/mdn/rari/compare/v0.1.49...v0.1.50) (2025-09-17)
+
+
+### Bug Fixes
+
+* **npm:** generate types matching serialized objects ([#314](https://github.com/mdn/rari/issues/314)) ([df570cc](https://github.com/mdn/rari/commit/df570cc1501af1920530a7ef7f6e2190e8f6dd0a))
+
+## [0.1.49](https://github.com/mdn/rari/compare/v0.1.48...v0.1.49) (2025-09-09)
+
+
+### Bug Fixes
+
+* **contributors:** add short_title to spotlight pages ([#297](https://github.com/mdn/rari/issues/297)) ([264c670](https://github.com/mdn/rari/commit/264c67012e1694cb2e10fae4a5309d16c7b24d02))
+* **rari-npm:** handle exit with signal ([#308](https://github.com/mdn/rari/issues/308)) ([e452c96](https://github.com/mdn/rari/commit/e452c9655587da6737e5d8f88d3b995b8c2f754c))
+* **sidebar:** guides links were wrapped in code element ([#293](https://github.com/mdn/rari/issues/293)) ([6935c7b](https://github.com/mdn/rari/commit/6935c7b766dfd50fedaf07d78312fc9db9ef26b6))
+* **webref_css:** add @webref/css version requirement ([30bd2cc](https://github.com/mdn/rari/commit/30bd2cc8dc4b34dcc1b49866356ff5e090cb1e86))
+* **webref_css:** pin @webref/css to v6 ([#305](https://github.com/mdn/rari/issues/305)) ([30bd2cc](https://github.com/mdn/rari/commit/30bd2cc8dc4b34dcc1b49866356ff5e090cb1e86))
+
+
+### Miscellaneous
+
+* **api:** apply locale passed to RariApi::link + make optional ([#287](https://github.com/mdn/rari/issues/287)) ([6c24ea1](https://github.com/mdn/rari/commit/6c24ea12cec78447b3704e3f7612ab9b9269b128))
+* **deps:** bump slab from 0.4.10 to 0.4.11 ([#295](https://github.com/mdn/rari/issues/295)) ([eba3173](https://github.com/mdn/rari/commit/eba31735854093ebed17d2e79d0f45f2142a68c9))
+* **deps:** bump tracing-subscriber from 0.3.19 to 0.3.20 ([#309](https://github.com/mdn/rari/issues/309)) ([952b3ae](https://github.com/mdn/rari/commit/952b3ae709ab539fb95d90048182d4792ab60c97))
+* **github:** add CODEOWNERS ([#299](https://github.com/mdn/rari/issues/299)) ([f80229c](https://github.com/mdn/rari/commit/f80229c84e5f434427c11f7a58cd86a837ab07b0))
+* **rari-deps:** handle GitHub API error ([#301](https://github.com/mdn/rari/issues/301)) ([0fb32df](https://github.com/mdn/rari/commit/0fb32df0ea2f72ce3807ce702214cedfffcde9ba))
+
 ## [0.1.48](https://github.com/mdn/rari/compare/v0.1.47...v0.1.48) (2025-08-11)
 
 

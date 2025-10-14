@@ -18,12 +18,15 @@ jobs:
     steps:
       - name: Setup
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Checkout
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           registry-url: "https://registry.npmjs.org/"
           node-version-file: "./rari-npm/package.json"
+          package-manager-cache: false
 
       - name: Test Publish
         if: ${{ ! inputs.publish }}
