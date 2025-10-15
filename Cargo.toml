@@ -63,9 +63,7 @@ rari-sitemap = { path = "crates/rari-sitemap" }
 rari-lsp = { path = "crates/rari-lsp" }
 
 tracing = "0.1"
-# pinned because of https://github.com/tokio-rs/tracing/issues/3369
-# and https://github.com/tokio-rs/tracing/issues/3378
-tracing-subscriber = "=0.3.19"
+tracing-subscriber = "0.3"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -88,7 +86,6 @@ reqwest = { version = "0.12", default-features = false, features = [
 ] }
 indoc = "2"
 base64 = "0.22"
-console = "0.15"
 sha2 = "0.10"
 dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"

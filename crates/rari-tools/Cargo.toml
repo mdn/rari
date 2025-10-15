@@ -22,7 +22,6 @@ reqwest.workspace = true
 url.workspace = true
 indoc.workspace = true
 rayon.workspace = true
-console.workspace = true
 sha2.workspace = true
 serde_yaml_ng.workspace = true
 pretty_yaml.workspace = true
