@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.53](https://github.com/mdn/rari/compare/v0.1.52...v0.1.53) (2025-10-15)
+
+
+### Features
+
+* **css-syntax:** migrate to @webref/css 7 ([#317](https://github.com/mdn/rari/issues/317)) ([b011b7d](https://github.com/mdn/rari/commit/b011b7dadd18251f05047c31a312edbc3bf88a8d))
+
+
+### Bug Fixes
+
+* **CODEOWNERS:** add Engineering for dependencies ([#328](https://github.com/mdn/rari/issues/328)) ([a5b5e04](https://github.com/mdn/rari/commit/a5b5e0460a37225e74a2408213eeed6496fa4aba))
+
+
+### Miscellaneous
+
+* **tools:** remove terminal colorization ([#333](https://github.com/mdn/rari/issues/333)) ([1a800dd](https://github.com/mdn/rari/commit/1a800dd96fd38064d23f7cc03d619f1e37b07999))
+* update authors ([#26](https://github.com/mdn/rari/issues/26)) ([58279fc](https://github.com/mdn/rari/commit/58279fc9966b001541cddbb69a9fb46fc86a6507))
+
 ## [0.1.52](https://github.com/mdn/rari/compare/v0.1.51...v0.1.52) (2025-10-13)
 
 
