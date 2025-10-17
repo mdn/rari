@@ -118,15 +118,6 @@ impl DocFixtures {
             .join(Self::path_from_slug(slug, locale))
             .join("asset.txt");
         fs::write(&path, "Asset content").unwrap();
-        let path = locale_root
-            .join(Self::path_from_slug(slug, locale))
-            .join("assets");
-        fs::create_dir_all(&path).unwrap();
-        let path = locale_root
-            .join(Self::path_from_slug(slug, locale))
-            .join("assets")
-            .join("asset.txt");
-        fs::write(&path, "Asset content").unwrap();
     }
 }
 

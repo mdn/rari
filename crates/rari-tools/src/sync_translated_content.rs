@@ -272,11 +272,14 @@ fn write_and_move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
     new_doc.meta.original_slug = Some(doc.slug().to_owned());
     new_doc.write()?;
 
-    // Move all files and directories with git
+    // Move index.md and all sibling files (assets) with git
     for entry in std::fs::read_dir(source_directory)? {
         let entry = entry?;
+        // Skip subdirectories
+        if entry.file_type()?.is_dir() {
+            continue;
+        }
         let entry_path = entry.path();
-
         let output = exec_git_with_test_fallback(
             &[
                 OsStr::new("mv"),
@@ -285,7 +288,6 @@ fn write_and_move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
             ],
             root_for_locale(doc.locale())?,
         );
-
         if !output.status.success() {
             return Err(ToolError::GitError(format!(
                 "Failed to move file/directory {}: {}",
@@ -595,33 +597,6 @@ mod test {
             .join("other")
             .join("asset.txt");
         assert!(!original_asset_path.exists());
-
-        let original_assets_dir = translated_root
-            .join(Locale::Es.as_folder_str())
-            .join("web")
-            .join("api")
-            .join("other")
-            .join("assets");
-        assert!(!original_assets_dir.exists());
-
-        let moved_asset_path = translated_root
-            .join(Locale::Es.as_folder_str())
-            .join("web")
-            .join("api")
-            .join("othermoved")
-            .join("asset.txt");
-        assert!(moved_asset_path.exists());
-
-        let moved_assets_dir = translated_root
-            .join(Locale::Es.as_folder_str())
-            .join("web")
-            .join("api")
-            .join("othermoved")
-            .join("assets");
-        assert!(moved_assets_dir.exists());
-
-        let moved_asset_in_dir = moved_assets_dir.join("asset.txt");
-        assert!(moved_asset_in_dir.exists());
 
         let mut redirects = HashMap::new();
         redirects

@@ -465,11 +465,9 @@ mod test {
             "pt-br/web/api/other",
             "pt-br/web/api/exampleone",
             "pt-br/web/api/exampleone/asset.txt",
-            "pt-br/web/api/exampleone/assets/asset.txt",
             "pt-br/web/api/exampleone/subexampleone",
             "pt-br/web/api/exampleone/subexampletwo",
             "pt-br/web/api/exampleone/subexampletwo/asset.txt",
-            "pt-br/web/api/exampleone/subexampletwo/assets/asset.txt",
         ];
         let should_not_exist = vec![
             "pt-br/web/api/exampleonenewlocation",
@@ -478,7 +476,6 @@ mod test {
             "pt-br/web/api/exampleonenewlocation/subexampleone",
             "pt-br/web/api/exampleonenewlocation/subexampletwo",
             "pt-br/web/api/exampleonenewlocation/subexampletwo/asset.txt",
-            "pt-br/web/api/exampleonenewlocation/subexampletwo/assets/asset.txt",
         ];
         check_file_existence(root_path, &should_exist, &should_not_exist);
 
@@ -514,20 +511,16 @@ mod test {
             "pt-br/web/api/other",
             "pt-br/web/api/exampleonenewlocation",
             "pt-br/web/api/exampleonenewlocation/asset.txt",
-            "pt-br/web/api/exampleonenewlocation/assets/asset.txt",
             "pt-br/web/api/exampleonenewlocation/subexampleone",
             "pt-br/web/api/exampleonenewlocation/subexampletwo",
             "pt-br/web/api/exampleonenewlocation/subexampletwo/asset.txt",
-            "pt-br/web/api/exampleonenewlocation/subexampletwo/assets/asset.txt",
         ];
         let should_not_exist = vec![
             "pt-br/web/api/exampleone",
             "pt-br/web/api/exampleone/asset.txt",
-            "pt-br/web/api/exampleone/assets/asset.txt",
             "pt-br/web/api/exampleone/subexampleone",
             "pt-br/web/api/exampleone/subexampletwo",
             "pt-br/web/api/exampleone/subexampletwo/asset.txt",
-            "pt-br/web/api/exampleone/subexampletwo/assets/asset.txt",
         ];
         check_file_existence(root_path, &should_exist, &should_not_exist);
 
