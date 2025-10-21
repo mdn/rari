@@ -1,12 +1,9 @@
 [package]
 name = "rari"
-version = "0.1.51"
+version = "0.1.53"
 edition = "2021"
 license = "MPL-2.0"
-authors = [
-  "Florian Dieminger <me@fiji-flo.de>",
-  "The MDN Engineering Team <mdn-dev@mozilla.com>",
-]
+authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
 homepage = "https://github.com/mdn/rari"
 repository = "https://github.com/mdn/rari"
 rust-version = "1.86"
@@ -50,10 +47,7 @@ members = [
 [workspace.package]
 edition = "2021"
 license = "MPL-2.0"
-authors = [
-  "Florian Dieminger <me@fiji-flo.de>",
-  "The MDN Engineering Team <mdn-dev@mozilla.com>",
-]
+authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
 rust-version = "1.86"
 
 [workspace.dependencies]
@@ -92,7 +86,6 @@ reqwest = { version = "0.12", default-features = false, features = [
 ] }
 indoc = "2"
 base64 = "0.22"
-console = "0.15"
 sha2 = "0.10"
 dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"

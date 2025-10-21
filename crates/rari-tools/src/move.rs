@@ -4,7 +4,6 @@ use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use console::{style, Style};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 use rari_doc::{
@@ -32,29 +31,19 @@ pub fn r#move(
     let locale = locale.unwrap_or_default();
 
     // Make a dry run to give some feedback on what would be done
-    let green = Style::new().green();
-    let red = Style::new().red();
-    let bold = Style::new().bold();
     let changes = do_move(old_slug, new_slug, locale, true)?;
     if changes.is_empty() {
-        tracing::info!("{}", style("No changes would be made").green());
+        tracing::info!("No changes would be made");
         return Ok(());
     } else {
         tracing::info!(
-            "{} {} {} {} {} {}",
-            green.apply_to("This will move"),
-            bold.apply_to(changes.len()),
-            green.apply_to("documents from"),
-            green.apply_to(old_slug),
-            green.apply_to("to"),
-            green.apply_to(new_slug)
+            "This will move {} documents from {} to {}",
+            changes.len(),
+            old_slug,
+            new_slug
         );
         for (old_slug, new_slug) in changes {
-            tracing::info!(
-                "{} -> {}",
-                red.apply_to(&old_slug),
-                green.apply_to(&new_slug)
-            );
+            tracing::info!("{} -> {}", &old_slug, &new_slug);
         }
     }
 
@@ -66,12 +55,7 @@ pub fn r#move(
             .unwrap_or_default()
     {
         let moved = do_move(old_slug, new_slug, locale, false)?;
-        tracing::info!(
-            "{} {} {}",
-            green.apply_to("Moved"),
-            bold.apply_to(moved.len()),
-            green.apply_to("documents"),
-        );
+        tracing::info!("Moved {} documents", moved.len(),);
     } else {
         return Ok(());
     }
