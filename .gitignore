@@ -15,3 +15,5 @@ rari-npm/lib/rari-types.d.ts
 
 # inline deps
 /.deps
+
+.rules
