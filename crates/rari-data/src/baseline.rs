@@ -290,7 +290,7 @@ pub struct FeatureData {
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct Discouraged {
-    reason: String,
+    reason_html: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     removal_date: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
