@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.53](https://github.com/mdn/rari/compare/v0.1.52...v0.1.53) (2025-10-15)
+
+
+### Features
+
+* **css-syntax:** migrate to @webref/css 7 ([#317](https://github.com/mdn/rari/issues/317)) ([b011b7d](https://github.com/mdn/rari/commit/b011b7dadd18251f05047c31a312edbc3bf88a8d))
+
+
+### Bug Fixes
+
+* **CODEOWNERS:** add Engineering for dependencies ([#328](https://github.com/mdn/rari/issues/328)) ([a5b5e04](https://github.com/mdn/rari/commit/a5b5e0460a37225e74a2408213eeed6496fa4aba))
+
+
+### Miscellaneous
+
+* **tools:** remove terminal colorization ([#333](https://github.com/mdn/rari/issues/333)) ([1a800dd](https://github.com/mdn/rari/commit/1a800dd96fd38064d23f7cc03d619f1e37b07999))
+* update authors ([#26](https://github.com/mdn/rari/issues/26)) ([58279fc](https://github.com/mdn/rari/commit/58279fc9966b001541cddbb69a9fb46fc86a6507))
+
+## [0.1.52](https://github.com/mdn/rari/compare/v0.1.51...v0.1.52) (2025-10-13)
+
+
+### Bug Fixes
+
+* **csssyntax:** update renamed CSS slug ([#325](https://github.com/mdn/rari/issues/325)) ([13ae24c](https://github.com/mdn/rari/commit/13ae24cdc345329377bfc9695f07de770d3851fa))
+* **sync-translated-content:** handle renames to sync case changes from content ([#327](https://github.com/mdn/rari/issues/327)) ([f64385d](https://github.com/mdn/rari/commit/f64385dee9a90a26290ec2dea6f483d363dd92b4))
+
+
+### Miscellaneous
+
+* add rustfmt and clippy to linter action toolchain ([#321](https://github.com/mdn/rari/issues/321)) ([3e70d19](https://github.com/mdn/rari/commit/3e70d198d431a7c5c4fd4499c5ff2dd30ad0773c))
+
+## [0.1.51](https://github.com/mdn/rari/compare/v0.1.50...v0.1.51) (2025-09-18)
+
+
+### Miscellaneous
+
+* **web-features:** update schema to match v3 upstream ([#312](https://github.com/mdn/rari/issues/312)) ([9cc6510](https://github.com/mdn/rari/commit/9cc65104edbd844e714fd96b1d3a5f471e0322e8))
+
 ## [0.1.50](https://github.com/mdn/rari/compare/v0.1.49...v0.1.50) (2025-09-17)
 
 

@@ -8,7 +8,7 @@ use serde::Deserialize;
 use crate::error::EnvError;
 use crate::locale::Locale;
 use crate::settings::{Deps, Settings};
-use crate::{HistoryEntry, Popularities};
+use crate::{globals, HistoryEntry, Popularities};
 
 #[inline(always)]
 pub fn content_root() -> &'static Path {
@@ -164,8 +164,8 @@ pub fn git_history() -> &'static HashMap<PathBuf, HistoryEntry> {
 }
 
 pub static POPULARITIES: LazyLock<Popularities> = LazyLock::new(|| {
-    let f = content_root()
-        .join(Locale::EnUs.as_folder_str())
+    let f = globals::data_dir()
+        .join("popularities")
         .join("popularities.json");
     if let Ok(json_str) = fs::read_to_string(f) {
         serde_json::from_str(&json_str).expect("unable to parse l10n json")

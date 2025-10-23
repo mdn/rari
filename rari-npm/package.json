@@ -1,6 +1,6 @@
 {
   "name": "@mdn/rari",
-  "version": "0.1.50",
+  "version": "0.1.53",
   "description": "npm package for rari",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -18,7 +18,7 @@
   "bin": {
     "rari": "lib/cli.js"
   },
-  "author": "Florian Dieminger <me@fiji-flo.de>",
+  "author": "MDN Engineering Team <mdn-dev@mozilla.com>",
   "license": "MPL-2.0",
   "engines": {
     "node": ">=20"
