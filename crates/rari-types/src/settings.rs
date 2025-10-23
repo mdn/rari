@@ -12,6 +12,8 @@ use crate::locale::Locale;
 pub struct Deps {
     #[serde(alias = "@mdn/browser-compat-data")]
     pub bcd: Option<VersionReq>,
+    #[serde(alias = "browser-specs")]
+    pub browser_specs: Option<VersionReq>,
     #[serde(alias = "mdn-data")]
     pub mdn_data: Option<VersionReq>,
     #[serde(alias = "web-features")]
@@ -47,7 +49,11 @@ impl Deps {
             .add_source(Environment::default().prefix("deps").try_parsing(true))
             .build()?;
 
-        let deps: Self = s.try_deserialize::<Self>()?;
+        let mut deps: Self = s.try_deserialize::<Self>()?;
+        // Make sure we are in the correct version range for webref-css, unless overridden.
+        if deps.webref_css.is_none() {
+            deps.webref_css = VersionReq::parse(">=7.0.0, <8.0.0").ok();
+        }
         Ok(deps)
     }
 }

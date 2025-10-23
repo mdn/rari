@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Setup
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Checkout
         uses: actions/setup-node@v5

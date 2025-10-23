@@ -22,6 +22,12 @@ pub enum DepsError {
     VersionNotFound,
     #[error("Invalid url: {0}")]
     UrlError(#[from] url::ParseError),
+    #[error("Version key not found in package.json")]
+    PackageVersionNotFound,
+    #[error("Version from package.json could not be parsed")]
+    PackageVersionParseError,
     #[error("GitHub error: {0}")]
     GithubError(String),
+    #[error("Webref error: {0}")]
+    WebRefParseError(String),
 }

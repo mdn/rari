@@ -3,7 +3,6 @@ use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-use console::Style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 use rari_doc::error::DocError;
@@ -32,37 +31,27 @@ pub fn remove(
     validate_args(slug)?;
     let locale = locale.unwrap_or_default();
 
-    let green = Style::new().green();
-    let red = Style::new().red();
-    let yellow = Style::new().yellow();
-    let bold = Style::new().bold();
     let changes = do_remove(slug, locale, recursive, redirect, true)?;
     if changes.is_empty() {
-        tracing::info!("{}", green.apply_to("No changes would be made"));
+        tracing::info!("No changes would be made");
         return Ok(());
     } else {
-        tracing::info!(
-            "{} {} {}",
-            green.apply_to("This will delete"),
-            bold.apply_to(changes.len()),
-            green.apply_to("documents:"),
-        );
+        tracing::info!("This will delete {} documents:", changes.len(),);
         for slug in changes {
-            tracing::info!("{}", red.apply_to(&slug));
+            tracing::info!("{}", &slug);
         }
         if let Some(redirect) = redirect {
             tracing::info!(
-                "{} {} to: {}",
-                green.apply_to("Redirecting"),
-                green.apply_to(if recursive {
+                "Redirecting {} to: {}",
+                if recursive {
                     "each document"
                 } else {
                     "document"
-                }),
-                green.apply_to(&redirect),
+                },
+                &redirect,
             );
         } else {
-            tracing::info!("{}", yellow.apply_to("Deleting without a redirect. Consider using the --redirect option with a related page instead."));
+            tracing::info!("Deleting without a redirect. Consider using the --redirect option with a related page instead.");
         }
     }
 
@@ -78,14 +67,9 @@ pub fn remove(
             .iter()
             .map(|slug| build_url(slug, locale, PageCategory::Doc))
             .collect::<Result<Vec<_>, DocError>>()?;
-        tracing::info!(
-            "{} {} {}",
-            green.apply_to("Deleted"),
-            bold.apply_to(removed.len()),
-            green.apply_to("documents:"),
-        );
+        tracing::info!("Deleted {} documents:", removed.len());
         for url in &removed_urls {
-            tracing::info!("{}", red.apply_to(&url));
+            tracing::info!("{}", &url);
         }
 
         // Find references to deleted documents and
@@ -109,18 +93,14 @@ pub fn remove(
             .collect();
 
         if referencing_docs.is_empty() {
-            tracing::info!(
-                "{}",
-                green.apply_to("No file is referring to the deleted document."),
-            );
+            tracing::info!("No file is referring to the deleted document.");
         } else {
             tracing::info!(
-                "{} {}",
-                yellow.apply_to(referencing_docs.len()),
-                yellow.apply_to("files are referring to the deleted documents. Please update the following files to remove the links:"),
+                "{} files are referring to the deleted documents. Please update the following files to remove the links:",
+                referencing_docs.len()
             );
             for url in &referencing_docs {
-                tracing::info!("{}", yellow.apply_to(url));
+                tracing::info!("{}", url);
             }
         }
     }

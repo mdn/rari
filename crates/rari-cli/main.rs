@@ -41,7 +41,6 @@ use rari_types::globals::{build_out_root, content_root, content_translated_root,
 use rari_types::locale::Locale;
 use rari_types::settings::Settings;
 use rari_utils::io::read_to_string;
-use schemars::schema_for;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
 use tracing::level_filters::LevelFilter;
@@ -558,7 +557,10 @@ fn export_schema(args: ExportSchemaArgs) -> Result<(), Error> {
     let out_path = args
         .output_file
         .unwrap_or_else(|| PathBuf::from("schema.json"));
-    let schema = schema_for!(BuiltPage);
+    let schema = schemars::generate::SchemaSettings::default()
+        .for_serialize()
+        .into_generator()
+        .into_root_schema_for::<BuiltPage>();
     fs::write(out_path, serde_json::to_string_pretty(&schema)?)?;
     Ok(())
 }
