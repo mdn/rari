@@ -13,7 +13,7 @@ use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use rari_utils::error::RariIoError;
-use tracing::{error, warn};
+use tracing::{debug, error, info, warn};
 use url::Url;
 
 use crate::error::{RedirectError, ToolError};
@@ -343,6 +343,7 @@ pub fn fix_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolError> 
             true
         }
     }) {
+        info!("Writing fixed redirects for locale: {}", locale);
         let path = redirects_path(*locale)?;
         write_redirects(&path, pairs)?;
     }
@@ -384,7 +385,7 @@ fn fix_redirects_internal(
     |mut acc, (from, mut to)| -> Result<HashMap<Locale, HashMap<String, String>>, ToolError> {
         // Check if the 'from' URL points to an existing document, remove the redirection with a warning.
         if Page::from_url(&from).is_ok() {
-            warn!("Removing redirect from '{}' to '{}' because the 'from' URL now points to an existing document", from, to);
+            debug!("Removing redirect from '{}' to '{}' because the 'from' URL now points to an existing document", from, to);
             return Ok(acc);
         }
 
