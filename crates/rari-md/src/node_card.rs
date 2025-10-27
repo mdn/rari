@@ -89,6 +89,7 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
                 }
                 if text.starts_with(NoteCard::Warning.new_prefix()) {
                     if text.trim() == NoteCard::Warning.new_prefix() {
+                        remove_leading_space_if_zh_locale(marker, locale);
                         marker.detach();
                     } else if let Some(tail) = text.strip_prefix(NoteCard::Warning.new_prefix()) {
                         data.value = NodeValue::Text(tail.trim().to_string());
@@ -97,6 +98,7 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
                 }
                 if text.starts_with(NoteCard::Note.new_prefix()) {
                     if text.trim() == NoteCard::Note.new_prefix() {
+                        remove_leading_space_if_zh_locale(marker, locale);
                         marker.detach();
                     } else if let Some(tail) = text.strip_prefix(NoteCard::Note.new_prefix()) {
                         data.value = NodeValue::Text(tail.trim().to_string());
@@ -107,6 +109,23 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
         }
     }
     None
+}
+
+fn remove_leading_space_if_zh_locale(node: &AstNode, locale: Locale) {
+    if !matches!(locale, Locale::ZhCn | Locale::ZhTw) {
+        return;
+    }
+    // If the next sibling is a soft break, remove it to avoid extra space. Example raw markdown:
+    //
+    // ```
+    // > [!NOTE]
+    // > This is a note.
+    // ```
+    if let Some(next_sibling) = node.next_sibling() {
+        if matches!(next_sibling.data.borrow().value, NodeValue::SoftBreak) {
+            next_sibling.detach();
+        }
+    }
 }
 
 /// Returns the default title for an alert type

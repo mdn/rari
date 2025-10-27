@@ -203,6 +203,19 @@ mod test {
     }
 
     #[test]
+    fn note_zh_locale() -> Result<(), anyhow::Error> {
+        let out = m2h(
+            "> [!NOTE]\n> This paragraph should have no leading spaces",
+            Locale::ZhCn,
+        )?;
+        assert_eq!(
+            out,
+            "<div class=\"notecard note\" data-add-note data-sourcepos=\"1:1-2:46\">\n<p data-sourcepos=\"1:3-2:46\">This paragraph should have no leading spaces</p>\n</div>\n"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn escape_hrefs() -> Result<(), anyhow::Error> {
         fn eh(s: &str) -> Result<String, anyhow::Error> {
             let mut out = Vec::with_capacity(s.len());
