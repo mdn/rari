@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.54](https://github.com/mdn/rari/compare/v0.1.53...v0.1.54) (2025-10-27)
+
+
+### Features
+
+* **rari-cli:** print port at server startup ([#319](https://github.com/mdn/rari/issues/319)) ([565a054](https://github.com/mdn/rari/commit/565a054c6fa2ee06c76808029727f7cd70917918))
+
+
+### Bug Fixes
+
+* **build:** read popularities from data dir ([#337](https://github.com/mdn/rari/issues/337)) ([1c8568b](https://github.com/mdn/rari/commit/1c8568b78c5d606f545f996a064ecccd20eefe27))
+* **md:** remove the leading space of the first paragraph in note card ([25036cb](https://github.com/mdn/rari/commit/25036cbfdb4e36bd9c8d7c01005bcd683f32927a))
+* **notecard:** remove leading space of first paragraph in Chinese ([#323](https://github.com/mdn/rari/issues/323)) ([25036cb](https://github.com/mdn/rari/commit/25036cbfdb4e36bd9c8d7c01005bcd683f32927a))
+* **sync-translated-content:** move adjacent assets correctly ([#335](https://github.com/mdn/rari/issues/335)) ([bad50ab](https://github.com/mdn/rari/commit/bad50ab6e5a7f0760f64c60dbcc4a4ed88a1bd51))
+
+
+### Miscellaneous
+
+* **css-syntax:** update ill cased links ([#331](https://github.com/mdn/rari/issues/331)) ([2b8bd2b](https://github.com/mdn/rari/commit/2b8bd2bce2c6361f387024231185ab6c9c7d9443))
+* migrate GitHub team references ([#351](https://github.com/mdn/rari/issues/351)) ([da911df](https://github.com/mdn/rari/commit/da911dfb0ffbb6dd3a52b23f3dd542aa09aaf573))
+
 ## [0.1.53](https://github.com/mdn/rari/compare/v0.1.52...v0.1.53) (2025-10-15)
 
 
