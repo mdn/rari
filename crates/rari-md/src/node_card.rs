@@ -53,28 +53,6 @@ impl NoteCard {
 }
 
 pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Option<NoteCard> {
-    if let Some(grand_child) = block_quote.first_child().and_then(|c| c.first_child()) {
-        if matches!(grand_child.data.borrow().value, NodeValue::Strong) {
-            if let Some(marker) = grand_child.first_child() {
-                if let NodeValue::Text(ref text) = marker.data.borrow().value {
-                    let callout = NoteCard::Callout.prefix_for_locale(locale);
-                    if text.starts_with(callout) {
-                        grand_child.detach();
-                        return Some(NoteCard::Callout);
-                    }
-
-                    if text.starts_with(NoteCard::Warning.prefix_for_locale(locale)) {
-                        grand_child.detach();
-                        return Some(NoteCard::Warning);
-                    }
-                    if text.starts_with(NoteCard::Note.prefix_for_locale(locale)) {
-                        grand_child.detach();
-                        return Some(NoteCard::Note);
-                    }
-                }
-            }
-        }
-    }
     if let Some(child) = block_quote.first_child() {
         if let Some(marker) = child.first_child() {
             let mut data = marker.data.borrow_mut();
