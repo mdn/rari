@@ -43,7 +43,7 @@ impl NoteCard {
             (Self::Note, Locale::ZhTw) => "備註：",
         }
     }
-    pub fn new_prefix(&self) -> &str {
+    pub fn prefix(&self) -> &str {
         match self {
             Self::Callout => "[!CALLOUT]",
             Self::Warning => "[!WARNING]",
@@ -53,54 +53,32 @@ impl NoteCard {
 }
 
 pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Option<NoteCard> {
-    if let Some(grand_child) = block_quote.first_child().and_then(|c| c.first_child()) {
-        if matches!(grand_child.data.borrow().value, NodeValue::Strong) {
-            if let Some(marker) = grand_child.first_child() {
-                if let NodeValue::Text(ref text) = marker.data.borrow().value {
-                    let callout = NoteCard::Callout.prefix_for_locale(locale);
-                    if text.starts_with(callout) {
-                        grand_child.detach();
-                        return Some(NoteCard::Callout);
-                    }
-
-                    if text.starts_with(NoteCard::Warning.prefix_for_locale(locale)) {
-                        grand_child.detach();
-                        return Some(NoteCard::Warning);
-                    }
-                    if text.starts_with(NoteCard::Note.prefix_for_locale(locale)) {
-                        grand_child.detach();
-                        return Some(NoteCard::Note);
-                    }
-                }
-            }
-        }
-    }
     if let Some(child) = block_quote.first_child() {
         if let Some(marker) = child.first_child() {
             let mut data = marker.data.borrow_mut();
             if let NodeValue::Text(ref text) = data.value {
-                if text.starts_with(NoteCard::Callout.new_prefix()) {
-                    if text.trim() == NoteCard::Callout.new_prefix() {
+                if text.starts_with(NoteCard::Callout.prefix()) {
+                    if text.trim() == NoteCard::Callout.prefix() {
                         marker.detach();
-                    } else if let Some(tail) = text.strip_prefix(NoteCard::Callout.new_prefix()) {
+                    } else if let Some(tail) = text.strip_prefix(NoteCard::Callout.prefix()) {
                         data.value = NodeValue::Text(tail.trim().to_string());
                     }
                     return Some(NoteCard::Callout);
                 }
-                if text.starts_with(NoteCard::Warning.new_prefix()) {
-                    if text.trim() == NoteCard::Warning.new_prefix() {
+                if text.starts_with(NoteCard::Warning.prefix()) {
+                    if text.trim() == NoteCard::Warning.prefix() {
                         remove_leading_space_if_zh_locale(marker, locale);
                         marker.detach();
-                    } else if let Some(tail) = text.strip_prefix(NoteCard::Warning.new_prefix()) {
+                    } else if let Some(tail) = text.strip_prefix(NoteCard::Warning.prefix()) {
                         data.value = NodeValue::Text(tail.trim().to_string());
                     }
                     return Some(NoteCard::Warning);
                 }
-                if text.starts_with(NoteCard::Note.new_prefix()) {
-                    if text.trim() == NoteCard::Note.new_prefix() {
+                if text.starts_with(NoteCard::Note.prefix()) {
+                    if text.trim() == NoteCard::Note.prefix() {
                         remove_leading_space_if_zh_locale(marker, locale);
                         marker.detach();
-                    } else if let Some(tail) = text.strip_prefix(NoteCard::Note.new_prefix()) {
+                    } else if let Some(tail) = text.strip_prefix(NoteCard::Note.prefix()) {
                         data.value = NodeValue::Text(tail.trim().to_string());
                     }
                     return Some(NoteCard::Note);
