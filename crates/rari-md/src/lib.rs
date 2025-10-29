@@ -177,27 +177,27 @@ mod test {
 
     #[test]
     fn callout() -> Result<(), anyhow::Error> {
-        let out = m2h("> **Callout:** foobar", Locale::EnUs)?;
-        assert_eq!(out, "<div class=\"callout\" data-sourcepos=\"1:1-1:21\">\n<p data-sourcepos=\"1:3-1:21\"> foobar</p>\n</div>\n");
+        let out = m2h("> [!CALLOUT]\n> foobar", Locale::EnUs)?;
+        assert_eq!(out, "<div class=\"callout\" data-sourcepos=\"1:1-2:8\">\n<p data-sourcepos=\"1:3-2:8\">\nfoobar</p>\n</div>\n");
         Ok(())
     }
 
     #[test]
     fn callout_strong() -> Result<(), anyhow::Error> {
-        let out = m2h("> **Callout:** **foobar**", Locale::EnUs)?;
+        let out = m2h("> [!CALLOUT]\n> **foobar**", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<div class=\"callout\" data-sourcepos=\"1:1-1:25\">\n<p data-sourcepos=\"1:3-1:25\"> <strong data-sourcepos=\"1:16-1:25\">foobar</strong></p>\n</div>\n"
+            "<div class=\"callout\" data-sourcepos=\"1:1-2:12\">\n<p data-sourcepos=\"1:3-2:12\">\n<strong data-sourcepos=\"2:3-2:12\">foobar</strong></p>\n</div>\n"
         );
         Ok(())
     }
 
     #[test]
     fn note() -> Result<(), anyhow::Error> {
-        let out = m2h("> **Note:** foobar", Locale::EnUs)?;
+        let out = m2h("> [!NOTE]\n> foobar", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<div class=\"notecard note\" data-add-note data-sourcepos=\"1:1-1:18\">\n<p data-sourcepos=\"1:3-1:18\"> foobar</p>\n</div>\n"
+            "<div class=\"notecard note\" data-add-note data-sourcepos=\"1:1-2:8\">\n<p data-sourcepos=\"1:3-2:8\">\nfoobar</p>\n</div>\n"
         );
         Ok(())
     }
