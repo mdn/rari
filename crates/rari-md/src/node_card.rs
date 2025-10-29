@@ -43,7 +43,7 @@ impl NoteCard {
             (Self::Note, Locale::ZhTw) => "備註：",
         }
     }
-    pub fn new_prefix(&self) -> &str {
+    pub fn prefix(&self) -> &str {
         match self {
             Self::Callout => "[!CALLOUT]",
             Self::Warning => "[!WARNING]",
@@ -57,28 +57,28 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
         if let Some(marker) = child.first_child() {
             let mut data = marker.data.borrow_mut();
             if let NodeValue::Text(ref text) = data.value {
-                if text.starts_with(NoteCard::Callout.new_prefix()) {
-                    if text.trim() == NoteCard::Callout.new_prefix() {
+                if text.starts_with(NoteCard::Callout.prefix()) {
+                    if text.trim() == NoteCard::Callout.prefix() {
                         marker.detach();
-                    } else if let Some(tail) = text.strip_prefix(NoteCard::Callout.new_prefix()) {
+                    } else if let Some(tail) = text.strip_prefix(NoteCard::Callout.prefix()) {
                         data.value = NodeValue::Text(tail.trim().to_string());
                     }
                     return Some(NoteCard::Callout);
                 }
-                if text.starts_with(NoteCard::Warning.new_prefix()) {
-                    if text.trim() == NoteCard::Warning.new_prefix() {
+                if text.starts_with(NoteCard::Warning.prefix()) {
+                    if text.trim() == NoteCard::Warning.prefix() {
                         remove_leading_space_if_zh_locale(marker, locale);
                         marker.detach();
-                    } else if let Some(tail) = text.strip_prefix(NoteCard::Warning.new_prefix()) {
+                    } else if let Some(tail) = text.strip_prefix(NoteCard::Warning.prefix()) {
                         data.value = NodeValue::Text(tail.trim().to_string());
                     }
                     return Some(NoteCard::Warning);
                 }
-                if text.starts_with(NoteCard::Note.new_prefix()) {
-                    if text.trim() == NoteCard::Note.new_prefix() {
+                if text.starts_with(NoteCard::Note.prefix()) {
+                    if text.trim() == NoteCard::Note.prefix() {
                         remove_leading_space_if_zh_locale(marker, locale);
                         marker.detach();
-                    } else if let Some(tail) = text.strip_prefix(NoteCard::Note.new_prefix()) {
+                    } else if let Some(tail) = text.strip_prefix(NoteCard::Note.prefix()) {
                         data.value = NodeValue::Text(tail.trim().to_string());
                     }
                     return Some(NoteCard::Note);
