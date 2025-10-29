@@ -5,8 +5,8 @@ on:
     workflows: [build-and-upload-binaries]
     types: [completed]
 
-# No GITHUB_TOKEN permissions, as we only use it to increase API limit.
-permissions: {}
+permissions:
+  id-token: write # OIDC for npm Trusted Publishing
 
 jobs:
   on-success:
@@ -37,6 +37,4 @@ jobs:
 
       - name: Publish
         working-directory: ./rari-npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
