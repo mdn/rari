@@ -25,6 +25,10 @@ jobs:
           node-version-file: "./rari-npm/package.json"
           package-manager-cache: false
 
+      # Ensure npm 11.5.1 or later for trusted publishing
+      - name: Install latest npm
+        run: npm install -g npm@latest
+
       - name: Generate Schema
         working-directory: ./rari-npm
         run: npm install && npm run export-schema && npm run generate-types
