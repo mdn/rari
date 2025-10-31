@@ -4,8 +4,9 @@ use std::path::PathBuf;
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
 
+#[derive(Debug)]
 pub(crate) struct RedirectFixtures {
-    path: PathBuf,
+    pub path: PathBuf,
     do_not_remove: bool,
 }
 
@@ -22,6 +23,13 @@ impl RedirectFixtures {
         Locale::for_generic_and_spas()
             .iter()
             .map(|locale| Self::new_internal(&[], *locale, false))
+            .collect()
+    }
+    #[allow(dead_code)]
+    pub fn debug_all_locales_empty() -> Vec<Self> {
+        Locale::for_generic_and_spas()
+            .iter()
+            .map(|locale| Self::new_internal(&[], *locale, true))
             .collect()
     }
 
@@ -47,7 +55,6 @@ impl RedirectFixtures {
             );
         }
         content.push('\n');
-
         fs::write(&folder_path, content).unwrap();
 
         RedirectFixtures {
