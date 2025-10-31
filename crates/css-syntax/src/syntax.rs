@@ -84,7 +84,8 @@ pub enum CssType<'a> {
 /// assert_eq!(grid_template_rows.syntax, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
 /// ```
 pub fn get_property_syntax(name: &str) -> Syntax {
-    if let Some(property) = CSS_REF.properties.get(name) {
+    // TODO: proper scoping via for
+    if let Some(property) = CSS_REF.properties.get("__no_for__").unwrap().get(name) {
         return Syntax {
             syntax: property.syntax.clone().unwrap_or_default(),
             specs: property.spec_link.as_ref().map(|s| vec![s]),
@@ -95,7 +96,8 @@ pub fn get_property_syntax(name: &str) -> Syntax {
 
 /// Get the formal syntax for an at-rule from the webref data.
 pub fn get_at_rule_syntax(name: &str) -> Syntax {
-    if let Some(property) = CSS_REF.atrules.get(name) {
+    // TODO: proper scoping via for
+    if let Some(property) = CSS_REF.atrules.get("__no_for__").unwrap().get(name) {
         return Syntax {
             syntax: property.syntax.clone().unwrap_or_default(),
             specs: property.spec_link.as_ref().map(|s| vec![s]),
@@ -106,7 +108,8 @@ pub fn get_at_rule_syntax(name: &str) -> Syntax {
 
 /// Get the formal syntax for an at-rule descriptor from the webref data.
 pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
-    if let Some(at_rule) = CSS_REF.atrules.get(at_rule_name) {
+    // TODO: proper scoping via for
+    if let Some(at_rule) = CSS_REF.atrules.get("__no_for__").unwrap().get(at_rule_name) {
         if let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
             return Syntax {
                 syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
@@ -140,18 +143,17 @@ impl Syntax {
     }
 }
 
-// ... rest of the file remains similar with adjustments for href instead of spec ...
-
 #[inline]
 fn skip(name: &str) -> bool {
     name == "color" || name == "gradient"
 }
 
 pub fn get_syntax(typ: CssType) -> SyntaxLine {
-    get_syntax_internal(typ, false)
+    // TODO: proper scoping via for
+    get_syntax_internal(typ, None, false)
 }
 
-fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
+fn get_syntax_internal(typ: CssType, browser_compat: Option<&str>, top_level: bool) -> SyntaxLine {
     match typ {
         CssType::ShorthandProperty(name) | CssType::Property(name) => {
             let trimmed = name
@@ -575,6 +577,7 @@ pub enum SyntaxInput<'a> {
 
 pub fn render_formal_syntax(
     syntax: SyntaxInput,
+    browser_compat: Option<&str>,
     locale_str: &str,
     value_definition_url: &str,
     syntax_tooltip: &HashMap<LinkedToken, String>,
@@ -598,7 +601,7 @@ pub fn render_formal_syntax(
             )
         }
         SyntaxInput::Css(css) => {
-            let syntax: SyntaxLine = get_syntax_internal(css, true);
+            let syntax: SyntaxLine = get_syntax_internal(css, browser_compat, true);
             if syntax.syntax.is_empty() {
                 return Err(SyntaxError::NoSyntaxFound);
             }
@@ -739,7 +742,8 @@ mod test {
 
     #[test]
     fn test_get_syntax_color_property_color() {
-        let SyntaxLine { name, syntax, .. } = get_syntax_internal(CssType::Property("color"), true);
+        let SyntaxLine { name, syntax, .. } =
+            get_syntax_internal(CssType::Property("color"), None, true);
         assert_eq!(name, "color");
         assert_eq!(syntax, "<color>");
     }
@@ -758,7 +762,7 @@ mod test {
     #[test]
     fn test_get_syntax_color_type() {
         let SyntaxLine { name, syntax, .. } =
-            get_syntax_internal(CssType::Type("color_value"), true);
+            get_syntax_internal(CssType::Type("color_value"), None, true);
         assert_eq!(name, "<color>");
         assert_eq!(syntax, "<color-base> | currentColor | <system-color> | <contrast-color()> | <device-cmyk()> | <light-dark()>");
     }
@@ -829,6 +833,7 @@ mod test {
         let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"padding\">padding = </span><br/>  <a href=\"/en-US/docs/Web/CSS/padding-top\"><span class=\"token property\">&lt;&#x27;padding-top&#x27;&gt;</span></a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a>  <br/><br/><span class=\"token property\" id=\"&lt;padding-top&gt;\">&lt;padding-top&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Property("padding")),
+            &[],
             "en-US",
             "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             &TOOLTIPS,
@@ -843,6 +848,7 @@ mod test {
         let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Function("hue-rotate")),
+            &[],
             "en-US",
             "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             &TOOLTIPS,

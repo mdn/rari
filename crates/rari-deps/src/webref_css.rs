@@ -17,11 +17,60 @@ fn normalize_name(name: &str) -> String {
         .to_string()
 }
 
+fn by_for_and_name(values: Vec<Value>) -> BTreeMap<String, BTreeMap<String, Value>> {
+    let mut result: BTreeMap<String, BTreeMap<String, Value>> = BTreeMap::new();
+
+    for mut value in values {
+        let name = normalize_name(value["name"].as_str().unwrap());
+
+        // Recursively process nested descriptors
+        if value["descriptors"].is_array() {
+            let descriptors = by_name(serde_json::from_value(value["descriptors"].take()).unwrap());
+            value["descriptors"] = serde_json::to_value(descriptors).unwrap();
+        }
+
+        // Recursively process nested values (for compatibility with nested structures)
+        if value["values"].is_array() {
+            let nested_values = by_name(serde_json::from_value(value["values"].take()).unwrap());
+            value["values"] = serde_json::to_value(nested_values).unwrap();
+        }
+
+        // Handle 'for' key - could be a string, array, or missing
+        let for_keys: Vec<String> = match &value["for"] {
+            Value::String(s) => vec![s.clone()],
+            Value::Array(arr) => arr
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect(),
+            _ => vec!["__no_for__".to_string()],
+        };
+
+        // Insert the value into each 'for' group
+        for for_key in for_keys {
+            result
+                .entry(for_key)
+                .or_default()
+                .insert(name.clone(), value.clone());
+        }
+    }
+
+    result
+}
+
 fn by_name(values: Vec<Value>) -> BTreeMap<String, Value> {
-    values
+    // let mut seen_keys = std::collections::HashSet::new();
+    // let mut duplicates = Vec::new();
+
+    let result: BTreeMap<String, Value> = values
         .into_iter()
         .map(|mut value| {
             let name = normalize_name(value["name"].as_str().unwrap());
+
+            // // Check for duplicates
+            // if !seen_keys.insert(name.clone()) {
+            //     duplicates.push(name.clone());
+            //     print!("Duplicate key found: {}, {:?}", name, value);
+            // }
 
             // Recursively process nested descriptors
             if value["descriptors"].is_array() {
@@ -38,7 +87,13 @@ fn by_name(values: Vec<Value>) -> BTreeMap<String, Value> {
 
             (name, value)
         })
-        .collect()
+        .collect();
+
+    // if !duplicates.is_empty() {
+    //     println!("Warning: Found duplicate keys: {:?}", duplicates);
+    // }
+
+    result
 }
 
 // Add href_title fields based on browser specs mapping
@@ -88,7 +143,8 @@ fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) 
     }
 }
 
-fn transform(
+#[allow(unused)]
+fn transform_old(
     folder: &Path,
     url_to_title: &BTreeMap<String, String>,
 ) -> Result<WebrefCss, DepsError> {
@@ -139,6 +195,72 @@ fn transform(
 
     if data["types"].is_array() {
         data["types"] = serde_json::to_value(by_name(
+            serde_json::from_value(data["types"].take()).unwrap_or_default(),
+        ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `types` array".to_string(),
+        ));
+    }
+
+    // Enrich all items with href_title fields
+    enrich_with_specs(&mut data, url_to_title);
+
+    let result = serde_json::from_value(data)?;
+    Ok(result)
+}
+
+fn transform(
+    folder: &Path,
+    url_to_title: &BTreeMap<String, String>,
+) -> Result<WebrefCss, DepsError> {
+    // Read the single css.json file (v7+ format)
+    let css_json_path = folder.join("package").join("css.json");
+    let text = read_to_string(&css_json_path)?;
+    let mut data: Value = serde_json::from_str(&text)?;
+
+    if data["properties"].is_array() {
+        data["properties"] = serde_json::to_value(by_for_and_name(
+            serde_json::from_value(data["properties"].take()).unwrap_or_default(),
+        ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `properties` array".to_string(),
+        ));
+    }
+
+    if data["selectors"].is_array() {
+        data["selectors"] = serde_json::to_value(by_for_and_name(
+            serde_json::from_value(data["selectors"].take()).unwrap_or_default(),
+        ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `selectors` array".to_string(),
+        ));
+    }
+
+    if data["atrules"].is_array() {
+        data["atrules"] = serde_json::to_value(by_for_and_name(
+            serde_json::from_value(data["atrules"].take()).unwrap_or_default(),
+        ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `atrules` array".to_string(),
+        ));
+    }
+
+    if data["functions"].is_array() {
+        data["functions"] = serde_json::to_value(by_for_and_name(
+            serde_json::from_value(data["functions"].take()).unwrap_or_default(),
+        ))?;
+    } else {
+        return Err(DepsError::WebRefParseError(
+            "Webref-CSS data lacks the `functions` array".to_string(),
+        ));
+    }
+
+    if data["types"].is_array() {
+        data["types"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["types"].take()).unwrap_or_default(),
         ))?;
     } else {
