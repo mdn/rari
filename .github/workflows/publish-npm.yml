@@ -5,8 +5,8 @@ on:
     workflows: [build-and-upload-binaries]
     types: [completed]
 
-# No GITHUB_TOKEN permissions, as we only use it to increase API limit.
-permissions: {}
+permissions:
+  id-token: write # OIDC for npm Trusted Publishing
 
 jobs:
   on-success:
@@ -25,6 +25,10 @@ jobs:
           node-version-file: "./rari-npm/package.json"
           package-manager-cache: false
 
+      # Ensure npm 11.5.1 or later for trusted publishing
+      - name: Install latest npm
+        run: npm install -g npm@latest
+
       - name: Generate Schema
         working-directory: ./rari-npm
         run: npm install && npm run export-schema && npm run generate-types
@@ -33,6 +37,4 @@ jobs:
 
       - name: Publish
         working-directory: ./rari-npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
