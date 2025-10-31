@@ -83,9 +83,12 @@ pub enum CssType<'a> {
 /// let grid_template_rows = css_syntax::syntax::get_property_syntax("grid-template-rows");
 /// assert_eq!(grid_template_rows.syntax, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
 /// ```
-pub fn get_property_syntax(name: &str) -> Syntax {
+pub fn get_property_syntax(name: &str, browser_compat: Option<&str>) -> Syntax {
     // TODO: proper scoping via for
-    if let Some(property) = CSS_REF.properties.get("__no_for__").unwrap().get(name) {
+    if let Some(scoped) = CSS_REF
+        .properties
+        .get(browser_compat.unwrap_or("__no_for__")) && let Some(property) = scoped.get(name)
+    {
         return Syntax {
             syntax: property.syntax.clone().unwrap_or_default(),
             specs: property.spec_link.as_ref().map(|s| vec![s]),
@@ -148,12 +151,23 @@ fn skip(name: &str) -> bool {
     name == "color" || name == "gradient"
 }
 
-pub fn get_syntax(typ: CssType) -> SyntaxLine {
-    // TODO: proper scoping via for
-    get_syntax_internal(typ, None, false)
+pub fn get_syntax(typ: CssType, browser_compat: Option<&str>) -> SyntaxLine {
+    get_syntax_internal(typ, browser_compat, false)
+}
+
+fn get_scoped_syntax(typ: CssType, browser_compat: Option<&str>) -> SyntaxLine {
+    match typ {
+        CssType::Property(_) => todo!(),
+        CssType::AtRule(_) => todo!(),
+        CssType::AtRuleDescriptor(_, _) => todo!(),
+        CssType::Function(_) => todo!(),
+        CssType::Type(_) => todo!(),
+        CssType::ShorthandProperty(_) => todo!(),
+    }
 }
 
 fn get_syntax_internal(typ: CssType, browser_compat: Option<&str>, top_level: bool) -> SyntaxLine {
+    let scope_key = browser_compat.unwrap_or("__no_for__");
     match typ {
         CssType::ShorthandProperty(name) | CssType::Property(name) => {
             let trimmed = name
