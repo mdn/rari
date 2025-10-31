@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/mdn/rari/compare/v0.1.54...v0.2.0) (2025-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* **notecard:** remove the support of the legacy note card format ([#350](https://github.com/mdn/rari/issues/350))
+
+### Miscellaneous
+
+* **css-syntax:** update to webref 8 ([#357](https://github.com/mdn/rari/issues/357)) ([31bfae8](https://github.com/mdn/rari/commit/31bfae867944c800ddff637cc8ec7a6d8456a0ba))
+* **notecard:** remove the support of the legacy note card format ([#350](https://github.com/mdn/rari/issues/350)) ([482a324](https://github.com/mdn/rari/commit/482a32423fe904a02e0626018a6e72b5c91f8ff6))
+* **npm:** migrate to Trusted Publishing ([#356](https://github.com/mdn/rari/issues/356)) ([c776eff](https://github.com/mdn/rari/commit/c776efff67117ecc42af88d81608ad8ae1920dfb))
+
 ## [0.1.54](https://github.com/mdn/rari/compare/v0.1.53...v0.1.54) (2025-10-27)
 
 
