@@ -1407,10 +1407,9 @@ mod tests {
         let new_redirects = read_redirects_raw(&redirects.path).unwrap();
         pairs.extend(new_redirects);
 
-        // // Verify that the redirect with existing 'from' document was removed
-        // let en_us_redirects = result.get(&Locale::EnUs).unwrap();
-        // assert!(!en_us_redirects.contains_key("/en-us/docs/ajax"));
-        // // The other redirect should still exist
-        // assert!(en_us_redirects.contains_key("/en-us/docs/nonexistent"));
+        // Verify that the redirect with existing 'from' document was removed
+        assert!(!pairs.contains_key("/en-US/docs/A"));
+        // The other redirect should still exist
+        assert!(pairs.contains_key("/en-US/docs/nonexistent"));
     }
 }
