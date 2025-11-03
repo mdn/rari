@@ -5,8 +5,8 @@ on:
     workflows: [build-and-upload-binaries]
     types: [completed]
 
-# No GITHUB_TOKEN permissions, as we only use it to increase API limit.
-permissions: {}
+permissions:
+  id-token: write # OIDC for npm Trusted Publishing
 
 jobs:
   on-success:
@@ -14,16 +14,20 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Setup
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
 
       - name: Checkout
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           registry-url: "https://registry.npmjs.org/"
           node-version-file: "./rari-npm/package.json"
           package-manager-cache: false
+
+      # Ensure npm 11.5.1 or later for trusted publishing
+      - name: Install latest npm
+        run: npm install -g npm@latest
 
       - name: Generate Schema
         working-directory: ./rari-npm
@@ -33,6 +37,4 @@ jobs:
 
       - name: Publish
         working-directory: ./rari-npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance

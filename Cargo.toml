@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.1.53"
+version = "0.2.0"
 edition = "2021"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
