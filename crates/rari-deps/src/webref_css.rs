@@ -42,7 +42,7 @@ fn by_for_and_name(values: Vec<Value>) -> BTreeMap<String, BTreeMap<String, Valu
                 .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect(),
-            _ => vec!["__no_for__".to_string()],
+            _ => vec!["__global_scope__".to_string()],
         };
 
         // Insert the value into each 'for' group

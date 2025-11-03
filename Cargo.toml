@@ -45,7 +45,7 @@ members = [
 ]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
 rust-version = "1.86"

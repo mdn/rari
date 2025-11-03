@@ -6,8 +6,8 @@ use std::fs;
 use std::sync::LazyLock;
 
 use css_definition_syntax::generate::{self, GenerateOptions};
-use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
-use css_definition_syntax::walk::{walk, WalkOptions};
+use css_definition_syntax::parser::{CombinatorType, Multiplier, Node, Type, parse};
+use css_definition_syntax::walk::{WalkOptions, walk};
 use css_syntax_types::{CssValuesItem, SpecLink, WebrefCss};
 #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
@@ -67,52 +67,82 @@ pub enum CssType<'a> {
 }
 
 /// Get the formal syntax for a property from the webref data.
+/// The optional scope refers to the syntax scope with a `for` key in the webref data.
+/// If the scoped value cannot be found, an unscoped fallback is tried.
 /// # Examples
 ///
 /// ```
-/// let color = css_syntax::syntax::get_property_syntax("color");
+/// let color = css_syntax::syntax::get_property_syntax("color", None);
 /// assert_eq!(color.syntax, "<color>");
 /// ```
 ///
 /// ```
-/// let border = css_syntax::syntax::get_property_syntax("border");
+/// let border = css_syntax::syntax::get_property_syntax("border", None);
 /// assert_eq!(border.syntax, "<line-width> || <line-style> || <color>");
 /// ```
 ///
 /// ```
-/// let grid_template_rows = css_syntax::syntax::get_property_syntax("grid-template-rows");
+/// let grid_template_rows = css_syntax::syntax::get_property_syntax("grid-template-rows", None);
 /// assert_eq!(grid_template_rows.syntax, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
 /// ```
-pub fn get_property_syntax(name: &str, browser_compat: Option<&str>) -> Syntax {
-    // TODO: proper scoping via for
-    if let Some(scoped) = CSS_REF
-        .properties
-        .get(browser_compat.unwrap_or("__no_for__")) && let Some(property) = scoped.get(name)
-    {
-        return Syntax {
-            syntax: property.syntax.clone().unwrap_or_default(),
-            specs: property.spec_link.as_ref().map(|s| vec![s]),
-        };
+pub fn get_property_syntax(name: &str, scope: Option<&str>) -> Syntax {
+    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
+
+    for scope in scopes {
+        if let Some(scoped) = CSS_REF.properties.get(scope)
+            && let Some(property) = scoped.get(name)
+        {
+            return Syntax {
+                syntax: property.syntax.clone().unwrap_or_default(),
+                specs: property.spec_link.as_ref().map(|s| vec![s]),
+            };
+        }
     }
     Syntax::default()
 }
 
 /// Get the formal syntax for an at-rule from the webref data.
-pub fn get_at_rule_syntax(name: &str) -> Syntax {
-    // TODO: proper scoping via for
-    if let Some(property) = CSS_REF.atrules.get("__no_for__").unwrap().get(name) {
-        return Syntax {
-            syntax: property.syntax.clone().unwrap_or_default(),
-            specs: property.spec_link.as_ref().map(|s| vec![s]),
-        };
+pub fn get_at_rule_syntax(name: &str, scope: Option<&str>) -> Syntax {
+    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
+    for scope in scopes {
+        if let Some(scoped) = CSS_REF.atrules.get(scope)
+            && let Some(property) = scoped.get(name)
+        {
+            return Syntax {
+                syntax: property.syntax.clone().unwrap_or_default(),
+                specs: property.spec_link.as_ref().map(|s| vec![s]),
+            };
+        }
     }
     Syntax::default()
 }
 
 /// Get the formal syntax for an at-rule descriptor from the webref data.
-pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
-    // TODO: proper scoping via for
-    if let Some(at_rule) = CSS_REF.atrules.get("__no_for__").unwrap().get(at_rule_name) {
+pub fn get_at_rule_descriptor_syntax(
+    at_rule_descriptor_name: &str,
+    at_rule_name: &str,
+    scope: Option<&str>,
+) -> Syntax {
+    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
+    for scope in scopes {
+        if let Some(scoped) = CSS_REF.atrules.get(scope)
+            && let Some(at_rule) = scoped.get(at_rule_name)
+        {
+            if let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
+                return Syntax {
+                    syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
+                    specs: at_rule_descriptor.spec_link.as_ref().map(|s| vec![s]),
+                };
+            }
+        }
+    }
+
+    if let Some(at_rule) = CSS_REF
+        .atrules
+        .get("__global_scope__")
+        .unwrap()
+        .get(at_rule_name)
+    {
         if let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
             return Syntax {
                 syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
@@ -167,7 +197,7 @@ fn get_scoped_syntax(typ: CssType, browser_compat: Option<&str>) -> SyntaxLine {
 }
 
 fn get_syntax_internal(typ: CssType, browser_compat: Option<&str>, top_level: bool) -> SyntaxLine {
-    let scope_key = browser_compat.unwrap_or("__no_for__");
+    let scope_key = browser_compat.unwrap_or("__global_scope__");
     match typ {
         CssType::ShorthandProperty(name) | CssType::Property(name) => {
             let trimmed = name
@@ -778,7 +808,10 @@ mod test {
         let SyntaxLine { name, syntax, .. } =
             get_syntax_internal(CssType::Type("color_value"), None, true);
         assert_eq!(name, "<color>");
-        assert_eq!(syntax, "<color-base> | currentColor | <system-color> | <contrast-color()> | <device-cmyk()> | <light-dark()>");
+        assert_eq!(
+            syntax,
+            "<color-base> | currentColor | <system-color> | <contrast-color()> | <device-cmyk()> | <light-dark()>"
+        );
     }
     #[test]
     fn test_get_syntax_minmax_function() {
@@ -808,7 +841,10 @@ mod test {
     fn test_get_syntax_gradient_type() {
         let SyntaxLine { name, syntax, .. } = get_syntax_internal(CssType::Type("gradient"), true);
         assert_eq!(name, "<gradient>");
-        assert_eq!(syntax, "[ <linear-gradient()> | <repeating-linear-gradient()> | <radial-gradient()> | <repeating-radial-gradient()> | <conic-gradient()> | <repeating-conic-gradient()> ]");
+        assert_eq!(
+            syntax,
+            "[ <linear-gradient()> | <repeating-linear-gradient()> | <radial-gradient()> | <repeating-radial-gradient()> | <conic-gradient()> | <repeating-conic-gradient()> ]"
+        );
     }
 
     #[test]
@@ -825,8 +861,7 @@ mod test {
     fn test_render_terms() -> Result<(), SyntaxError> {
         let renderer = SyntaxRenderer {
             locale_str: "en-US",
-            value_definition_url:
-                "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
+            value_definition_url: "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
         };
@@ -835,7 +870,10 @@ mod test {
         } = get_syntax_internal(CssType::Type("color_value"), true);
         if let Node::Group(group) = parse(&syntax)? {
             let rendered = renderer.render_terms(&group.terms, group.combinator)?;
-            assert_eq!(rendered, "  <a href=\"/en-US/docs/Web/CSS/color-base\"><span class=\"token property\">&lt;color-base&gt;</span></a>        <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>        <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/contrast-color()\"><span class=\"token property\">&lt;contrast-color()&gt;</span></a>  <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/device-cmyk()\"><span class=\"token property\">&lt;device-cmyk()&gt;</span></a>     <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/light-dark()\"><span class=\"token property\">&lt;light-dark()&gt;</span></a>      <br/>");
+            assert_eq!(
+                rendered,
+                "  <a href=\"/en-US/docs/Web/CSS/color-base\"><span class=\"token property\">&lt;color-base&gt;</span></a>        <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>        <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/contrast-color()\"><span class=\"token property\">&lt;contrast-color()&gt;</span></a>  <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/device-cmyk()\"><span class=\"token property\">&lt;device-cmyk()&gt;</span></a>     <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/light-dark()\"><span class=\"token property\">&lt;light-dark()&gt;</span></a>      <br/>"
+            );
         } else {
             panic!("no group node")
         }
