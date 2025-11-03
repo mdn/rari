@@ -117,6 +117,36 @@ pub fn get_at_rule_syntax(name: &str, scope: Option<&str>) -> Syntax {
     Syntax::default()
 }
 
+pub fn get_type_syntax(name: &str, scope: Option<&str>) -> Syntax {
+    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
+    for scope in scopes {
+        if let Some(scoped) = CSS_REF.types.get(scope)
+            && let Some(property) = scoped.get(name)
+        {
+            return Syntax {
+                syntax: property.syntax.clone().unwrap_or_default(),
+                specs: property.spec_link.as_ref().map(|s| vec![s]),
+            };
+        }
+    }
+    Syntax::default()
+}
+
+pub fn get_functions_syntax(name: &str, scope: Option<&str>) -> Syntax {
+    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
+    for scope in scopes {
+        if let Some(scoped) = CSS_REF.functions.get(scope)
+            && let Some(property) = scoped.get(name)
+        {
+            return Syntax {
+                syntax: property.syntax.clone().unwrap_or_default(),
+                specs: property.spec_link.as_ref().map(|s| vec![s]),
+            };
+        }
+    }
+    Syntax::default()
+}
+
 /// Get the formal syntax for an at-rule descriptor from the webref data.
 pub fn get_at_rule_descriptor_syntax(
     at_rule_descriptor_name: &str,
@@ -185,7 +215,7 @@ pub fn get_syntax(typ: CssType, browser_compat: Option<&str>) -> SyntaxLine {
     get_syntax_internal(typ, browser_compat, false)
 }
 
-fn get_scoped_syntax(typ: CssType, browser_compat: Option<&str>) -> SyntaxLine {
+fn _get_scoped_syntax(typ: CssType, _browser_compat: Option<&str>) -> SyntaxLine {
     match typ {
         CssType::Property(_) => todo!(),
         CssType::AtRule(_) => todo!(),
@@ -197,48 +227,51 @@ fn get_scoped_syntax(typ: CssType, browser_compat: Option<&str>) -> SyntaxLine {
 }
 
 fn get_syntax_internal(typ: CssType, browser_compat: Option<&str>, top_level: bool) -> SyntaxLine {
-    let scope_key = browser_compat.unwrap_or("__global_scope__");
     match typ {
         CssType::ShorthandProperty(name) | CssType::Property(name) => {
             let trimmed = name
                 .trim_start_matches(['<', '\''])
                 .trim_end_matches(['\'', '>']);
-            get_property_syntax(trimmed).to_syntax_line(name)
+            get_property_syntax(trimmed, browser_compat).to_syntax_line(name)
         }
         CssType::Type(name) => {
             let name = name.trim_end_matches("_value");
             if skip(name) && !top_level {
                 Syntax::default().to_syntax_line(format!("<{name}>"))
-            } else if let Some(t) = CSS_REF.types.get(name) {
-                if let Some(syntax) = &t.syntax {
-                    Syntax {
-                        syntax: syntax.clone(),
-                        specs: t.spec_link.as_ref().map(|s| vec![s]),
-                    }
-                    .to_syntax_line(format!("<{name}>"))
-                } else {
-                    Syntax::default().to_syntax_line(format!("<{name}>"))
-                }
             } else {
-                Syntax::default().to_syntax_line(format!("<{name}>"))
+                get_type_syntax(name, browser_compat).to_syntax_line(name)
             }
+            // } else if let Some(t) = CSS_REF.types.get(name) {
+            //     if let Some(syntax) = &t.syntax {
+            //         Syntax {
+            //             syntax: syntax.clone(),
+            //             specs: t.spec_link.as_ref().map(|s| vec![s]),
+            //         }
+            //         .to_syntax_line(format!("<{name}>"))
+            //     } else {
+            //         Syntax::default().to_syntax_line(format!("<{name}>"))
+            //     }
+            // } else {
+            //     Syntax::default().to_syntax_line(format!("<{name}>"))
+            // }
         }
         CssType::Function(name) => {
             let name = format!("{name}()");
-            if let Some(t) = CSS_REF.functions.get(&name) {
-                if let Some(syntax) = &t.syntax {
-                    return Syntax {
-                        syntax: syntax.clone(),
-                        specs: t.spec_link.as_ref().map(|s| vec![s]),
-                    }
-                    .to_syntax_line(format!("<{name}>"));
-                }
-            }
-            Syntax::default().to_syntax_line(format!("<{name}>"))
+            get_functions_syntax(&name, browser_compat).to_syntax_line(name)
+            // if let Some(t) = CSS_REF.functions.get(&name) {
+            //     if let Some(syntax) = &t.syntax {
+            //         return Syntax {
+            //             syntax: syntax.clone(),
+            //             specs: t.spec_link.as_ref().map(|s| vec![s]),
+            //         }
+            //         .to_syntax_line(format!("<{name}>"));
+            //     }
+            // }
+            // Syntax::default().to_syntax_line(format!("<{name}>"))
         }
-        CssType::AtRule(name) => get_at_rule_syntax(name).to_syntax_line(name),
+        CssType::AtRule(name) => get_at_rule_syntax(name, browser_compat).to_syntax_line(name),
         CssType::AtRuleDescriptor(name, at_rule_name) => {
-            get_at_rule_descriptor_syntax(name, at_rule_name).to_syntax_line(name)
+            get_at_rule_descriptor_syntax(name, at_rule_name, browser_compat).to_syntax_line(name)
         }
     }
 }
@@ -532,6 +565,7 @@ impl SyntaxRenderer<'_> {
             },
         )
     }
+
     fn get_constituent_syntaxes(
         &mut self,
         syntax: SyntaxLine,
@@ -559,22 +593,27 @@ impl SyntaxRenderer<'_> {
             for constituent in all_constituents[last_len..].iter_mut() {
                 if let Some(constituent_entry) = match &mut constituent.node {
                     Node::Type(typ) if typ.name.ends_with("()") => {
-                        let syntax = get_syntax(CssType::Function(&typ.name[..typ.name.len() - 2]));
+                        // TODO: what about the browser specs key?
+                        let syntax =
+                            get_syntax(CssType::Function(&typ.name[..typ.name.len() - 2]), None);
                         Some(syntax)
                     }
                     Node::Type(typ) => {
-                        let syntax = get_syntax(CssType::Type(&typ.name));
+                        // TODO: what about the browser specs key?
+                        let syntax = get_syntax(CssType::Type(&typ.name), None);
                         typ.opts = None;
                         Some(syntax)
                     }
                     Node::Property(property) => {
-                        let mut syntax = get_syntax(CssType::Property(&property.name));
+                        // TODO: what about the browser specs key?
+                        let mut syntax = get_syntax(CssType::Property(&property.name), None);
                         syntax.name = format!("<{}>", syntax.name);
                         Some(syntax)
                     }
                     // Node::Function(function) => Some(get_syntax(CssType::Function(&function.name))),
                     Node::AtKeyword(at_keyword) => {
-                        Some(get_syntax(CssType::AtRule(&at_keyword.name)))
+                        // TODO: what about the browser specs key?
+                        Some(get_syntax(CssType::AtRule(&at_keyword.name), None))
                     }
                     _ => None,
                 } {
@@ -793,13 +832,14 @@ mod test {
     }
     #[test]
     fn test_get_syntax_color_property_content_visibility() {
-        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Property("content-visibility"));
+        let SyntaxLine { name, syntax, .. } =
+            get_syntax(CssType::Property("content-visibility"), None);
         assert_eq!(name, "content-visibility");
         assert_eq!(syntax, "visible | auto | hidden");
     }
     #[test]
     fn test_get_syntax_length_type() {
-        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Type("length"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Type("length"), None);
         assert_eq!(name, "<length>");
         assert_eq!(syntax, "");
     }
@@ -815,31 +855,32 @@ mod test {
     }
     #[test]
     fn test_get_syntax_minmax_function() {
-        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Function("minmax"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Function("minmax"), None);
         assert_eq!(name, "<minmax()>");
         assert_eq!(syntax, "minmax(min, max)");
     }
     #[test]
     fn test_get_syntax_sin_function() {
-        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Function("sin"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Function("sin"), None);
         assert_eq!(name, "<sin()>");
         assert_eq!(syntax, "sin( <calc-sum> )");
     }
     #[test]
     fn test_get_syntax_media_at_rule() {
-        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::AtRule("@media"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::AtRule("@media"), None);
         assert_eq!(name, "@media");
         assert_eq!(syntax, "@media <media-query-list> { <rule-list> }");
     }
     #[test]
     fn test_get_syntax_padding_property() {
-        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Property("padding"));
+        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Property("padding"), None);
         assert_eq!(name, "padding");
         assert_eq!(syntax, "<'padding-top'>{1,4}");
     }
     #[test]
     fn test_get_syntax_gradient_type() {
-        let SyntaxLine { name, syntax, .. } = get_syntax_internal(CssType::Type("gradient"), true);
+        let SyntaxLine { name, syntax, .. } =
+            get_syntax_internal(CssType::Type("gradient"), None, true);
         assert_eq!(name, "<gradient>");
         assert_eq!(
             syntax,
@@ -849,10 +890,10 @@ mod test {
 
     #[test]
     fn test_get_atrule_descriptor_counter_style_additive_symbols() {
-        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::AtRuleDescriptor(
-            "additive-symbols",
-            "@counter-style",
-        ));
+        let SyntaxLine { name, syntax, .. } = get_syntax(
+            CssType::AtRuleDescriptor("additive-symbols", "@counter-style"),
+            None,
+        );
         assert_eq!(name, "additive-symbols");
         assert_eq!(syntax, "[ <integer [0,∞]> && <symbol> ]#");
     }
@@ -867,7 +908,7 @@ mod test {
         };
         let SyntaxLine {
             name: _, syntax, ..
-        } = get_syntax_internal(CssType::Type("color_value"), true);
+        } = get_syntax_internal(CssType::Type("color_value"), None, true);
         if let Node::Group(group) = parse(&syntax)? {
             let rendered = renderer.render_terms(&group.terms, group.combinator)?;
             assert_eq!(
@@ -885,7 +926,7 @@ mod test {
         let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"padding\">padding = </span><br/>  <a href=\"/en-US/docs/Web/CSS/padding-top\"><span class=\"token property\">&lt;&#x27;padding-top&#x27;&gt;</span></a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a>  <br/><br/><span class=\"token property\" id=\"&lt;padding-top&gt;\">&lt;padding-top&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Property("padding")),
-            &[],
+            None,
             "en-US",
             "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             &TOOLTIPS,
@@ -900,7 +941,7 @@ mod test {
         let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Function("hue-rotate")),
-            &[],
+            None,
             "en-US",
             "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             &TOOLTIPS,

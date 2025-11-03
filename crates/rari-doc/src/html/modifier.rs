@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use ego_tree::NodeId;
-use html5ever::{namespace_url, ns, Attribute, QualName};
+use html5ever::{Attribute, QualName, namespace_url, ns};
 use rari_md::anchor::anchorize;
 use rari_utils::concat_strs;
 use scraper::node::{self};
@@ -22,7 +22,7 @@ use crate::error::DocError;
 /// the specified attribute in the node's attributes list.
 pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str) {
     if let Some(mut details) = html.tree.get_mut(node_id) {
-        if let Node::Element(ref mut el) = details.value() {
+        if let Node::Element(el) = details.value() {
             el.attrs.insert(
                 QualName {
                     prefix: None,
@@ -46,7 +46,7 @@ pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str
 /// attribute from the node's attributes list, if it exists.
 pub fn remove_attribute(html: &mut Html, node_id: NodeId, key: &str) {
     if let Some(mut details) = html.tree.get_mut(node_id) {
-        if let Node::Element(ref mut el) = details.value() {
+        if let Node::Element(el) = details.value() {
             el.attrs.swap_remove(&QualName {
                 prefix: None,
                 ns: ns!(),

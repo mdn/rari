@@ -22,7 +22,7 @@ pub fn sidebar(group: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
 
     let mut entries = vec![];
 
-    if let [ref overview, ..] = web_api_groups.overview.as_slice() {
+    if let [overview, ..] = web_api_groups.overview.as_slice() {
         entries.push(SidebarMetaEntry {
             section: true,
             content: SidebarMetaEntryContent::Page(Doc::page_from_slug(

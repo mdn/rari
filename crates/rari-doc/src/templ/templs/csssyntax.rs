@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use css_syntax::syntax::{render_formal_syntax, CssType, LinkedToken, SyntaxInput};
+use css_syntax::syntax::{CssType, LinkedToken, SyntaxInput, render_formal_syntax};
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 
@@ -24,8 +24,8 @@ static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
 #[rari_f(register = "crate::Templ")]
 pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
     let page_type = env.page_type;
-    info!(
-        "Generating CSS syntax for {} {} {:?}",
+    tracing::info!(
+        "Generating CSS syntax for {} {:?} {:?}",
         name.as_deref().unwrap_or("unknown"),
         env.browser_compat,
         env
@@ -64,7 +64,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
 
     Ok(render_formal_syntax(
         SyntaxInput::Css(typ),
-        env.browser_compat,
+        env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
         &format!(
             "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
@@ -80,7 +80,7 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
     let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
     Ok(render_formal_syntax(
         SyntaxInput::SyntaxString(&syntax),
-        env.browser_compat,
+        env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
         &format!(
             "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
