@@ -105,22 +105,24 @@ impl Settings {
 
     #[cfg(feature = "testing")]
     pub fn new() -> Result<Self, ConfigError> {
-        std::env::set_var(
-            "CONTENT_ROOT",
-            std::env::var("TESTING_CONTENT_ROOT").unwrap(),
-        );
-        std::env::set_var(
-            "CONTENT_TRANSLATED_ROOT",
-            std::env::var("TESTING_CONTENT_TRANSLATED_ROOT").unwrap(),
-        );
-        std::env::set_var(
-            "CACHE_CONTENT",
-            std::env::var("TESTING_CACHE_CONTENT").unwrap(),
-        );
-        std::env::set_var(
-            "READER_IGNORES_GITIGNORE",
-            std::env::var("TESTING_READER_IGNORES_GITIGNORE").unwrap(),
-        );
+        unsafe {
+            std::env::set_var(
+                "CONTENT_ROOT",
+                std::env::var("TESTING_CONTENT_ROOT").unwrap(),
+            );
+            std::env::set_var(
+                "CONTENT_TRANSLATED_ROOT",
+                std::env::var("TESTING_CONTENT_TRANSLATED_ROOT").unwrap(),
+            );
+            std::env::set_var(
+                "CACHE_CONTENT",
+                std::env::var("TESTING_CACHE_CONTENT").unwrap(),
+            );
+            std::env::set_var(
+                "READER_IGNORES_GITIGNORE",
+                std::env::var("TESTING_READER_IGNORES_GITIGNORE").unwrap(),
+            );
+        }
         Self::new_internal()
     }
     #[cfg(not(feature = "testing"))]
