@@ -135,9 +135,27 @@ pub fn get_type_syntax(name: &str, scope: Option<&str>) -> Syntax {
 pub fn get_functions_syntax(name: &str, scope: Option<&str>) -> Syntax {
     let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
     for scope in scopes {
+        if let Some(scoped) = CSS_REF.functions.get(scope) {
+            println!(
+                "GET_FUNCTIONS_SYNTAX scope={} name={} function lookup ok",
+                scope, name
+            );
+            if let Some(property) = scoped.get(name) {
+                println!(
+                    "GET_FUNCTIONS_SYNTAX scope={} name={} property={:?}",
+                    scope, name, property
+                );
+            } else {
+                println!("GET_FUNCTIONS_SYNTAX lookup of {name} in scope {scope} failed");
+            }
+        }
         if let Some(scoped) = CSS_REF.functions.get(scope)
             && let Some(property) = scoped.get(name)
         {
+            println!(
+                "GET_FUNCTIONS_SYNTAX scope={} name={} {:?}",
+                scope, name, property
+            );
             return Syntax {
                 syntax: property.syntax.clone().unwrap_or_default(),
                 specs: property.spec_link.as_ref().map(|s| vec![s]),
@@ -239,7 +257,7 @@ fn get_syntax_internal(typ: CssType, browser_compat: Option<&str>, top_level: bo
             if skip(name) && !top_level {
                 Syntax::default().to_syntax_line(format!("<{name}>"))
             } else {
-                get_type_syntax(name, browser_compat).to_syntax_line(name)
+                get_type_syntax(name, browser_compat).to_syntax_line(format!("<{name}>"))
             }
             // } else if let Some(t) = CSS_REF.types.get(name) {
             //     if let Some(syntax) = &t.syntax {
@@ -257,7 +275,12 @@ fn get_syntax_internal(typ: CssType, browser_compat: Option<&str>, top_level: bo
         }
         CssType::Function(name) => {
             let name = format!("{name}()");
-            get_functions_syntax(&name, browser_compat).to_syntax_line(name)
+            println!(
+                "FUNCTION {} {:?}",
+                name,
+                get_functions_syntax(&name, browser_compat).to_syntax_line(format!("<{name}>"))
+            );
+            get_functions_syntax(&name, browser_compat).to_syntax_line(format!("<{name}>"))
             // if let Some(t) = CSS_REF.functions.get(&name) {
             //     if let Some(syntax) = &t.syntax {
             //         return Syntax {
@@ -855,7 +878,8 @@ mod test {
     }
     #[test]
     fn test_get_syntax_minmax_function() {
-        let SyntaxLine { name, syntax, .. } = get_syntax(CssType::Function("minmax"), None);
+        let SyntaxLine { name, syntax, .. } =
+            get_syntax(CssType::Function("minmax"), Some("grid-template-columns"));
         assert_eq!(name, "<minmax()>");
         assert_eq!(syntax, "minmax(min, max)");
     }
@@ -941,7 +965,7 @@ mod test {
         let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Function("hue-rotate")),
-            None,
+            Some("filter"),
             "en-US",
             "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             &TOOLTIPS,
