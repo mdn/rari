@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id};
 use tracing::{Event, Subscriber};
-use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
+use tracing_subscriber::registry::LookupSpan;
 
 use crate::pages::page::{Page, PageLike};
 

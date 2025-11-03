@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use rari_md::{m2h_internal, M2HOptions};
+use rari_md::{M2HOptions, m2h_internal};
 use scraper::Html;
 
 use crate::error::DocError;

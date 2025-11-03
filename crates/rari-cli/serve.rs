@@ -5,29 +5,29 @@ use std::sync::atomic::{AtomicI64, AtomicU64};
 
 use axum::body::Body;
 use axum::extract::{Path, Query, Request};
-use axum::http::{header, StatusCode};
+use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, put};
 use axum::{Json, Router};
 use rari_doc::cached_readers::wiki_histories;
 use rari_doc::contributors::contributors_txt;
 use rari_doc::error::{DocError, UrlError};
-use rari_doc::issues::{to_display_issues, IN_MEMORY, ISSUE_COUNTER_F};
+use rari_doc::issues::{IN_MEMORY, ISSUE_COUNTER_F, to_display_issues};
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageCategory, PageLike};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
-use rari_doc::resolve::{url_meta_from, UrlMeta};
+use rari_doc::resolve::{UrlMeta, url_meta_from};
 use rari_tools::error::ToolError;
 use rari_tools::fix::issues::fix_page;
+use rari_types::Popularities;
 use rari_types::globals::{self, blog_root, content_root, content_translated_root};
 use rari_types::locale::Locale;
-use rari_types::Popularities;
 use rari_utils::io::read_to_string;
 use serde::Serialize;
 use tower::ServiceExt;
 use tower_http::services::ServeFile;
-use tracing::{error, info, span, Level};
+use tracing::{Level, error, info, span};
 
 static REQ_COUNTER: AtomicU64 = AtomicU64::new(1);
 

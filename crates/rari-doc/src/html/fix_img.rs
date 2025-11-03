@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::path::Path;
 
-use lol_html::html_content::Element;
 use lol_html::HandlerResult;
+use lol_html::html_content::Element;
 use rari_types::locale::default_locale;
 use tracing::warn;
 use url::{ParseOptions, Url};

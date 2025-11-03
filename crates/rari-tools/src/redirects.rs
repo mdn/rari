@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use rari_doc::pages::page::{Page, PageLike};
-use rari_doc::resolve::{url_meta_from, UrlMeta};
+use rari_doc::resolve::{UrlMeta, url_meta_from};
 use rari_doc::utils::root_for_locale;
 use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
@@ -575,7 +575,8 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
     let parts: Vec<&str> = url.split('/').collect();
     if parts.len() < 4 {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL '{url}' does not have enough parts for locale validation for locale '{locale}'."        )));
+            "From-URL '{url}' does not have enough parts for locale validation for locale '{locale}'."
+        )));
     }
 
     let from_locale = parts[1];

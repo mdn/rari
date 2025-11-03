@@ -2,7 +2,7 @@ use rari_templ_func::rari_f;
 use rari_types::fm_types::PageType;
 
 use crate::error::DocError;
-use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
+use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::{Page, PageLike};
 
 #[rari_f(register = "crate::Templ")]
@@ -62,7 +62,7 @@ mod test {
     use rari_types::RariEnv;
 
     use crate::error::DocError;
-    use crate::templ::render::{decode_ref, render, Rendered};
+    use crate::templ::render::{Rendered, decode_ref, render};
 
     #[test]
     fn test_compat_none() -> Result<(), DocError> {

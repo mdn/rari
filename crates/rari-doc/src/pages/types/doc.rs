@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use pretty_yaml::config::{FormatOptions, LanguageOptions};
 use rari_md::m2h;
-use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::locale::{default_locale, Locale};
 use rari_types::RariEnv;
+use rari_types::fm_types::{FeatureStatus, PageType};
+use rari_types::locale::{Locale, default_locale};
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ use serde_yaml_ng::Value;
 use tracing::debug;
 use validator::Validate;
 
-use crate::cached_readers::{doc_page_from_static_files, CACHED_DOC_PAGE_FILES};
+use crate::cached_readers::{CACHED_DOC_PAGE_FILES, doc_page_from_static_files};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::pages::types::utils::FmTempl;

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
-use lol_html::html_content::Element;
 use lol_html::HandlerResult;
+use lol_html::html_content::Element;
 use rari_types::fm_types::PageType;
 use rari_types::locale::default_locale;
 use rari_utils::concat_strs;
