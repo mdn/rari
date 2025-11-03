@@ -102,13 +102,14 @@ async fn get_file_handler(req: Request) -> Result<Response, AppError> {
     } = url_meta_from(url)?;
 
     // Blog author avatars are special.
-    if matches!(page_category, PageCategory::BlogPost) && slug.starts_with("author/") {
-        if let Some(blog_root_parent) = blog_root() {
-            let path = blog_root_parent
-                .join("authors")
-                .join(slug.strip_prefix("author/").unwrap());
-            return Ok(ServeFile::new(path).oneshot(req).await.into_response());
-        }
+    if matches!(page_category, PageCategory::BlogPost)
+        && slug.starts_with("author/")
+        && let Some(blog_root_parent) = blog_root()
+    {
+        let path = blog_root_parent
+            .join("authors")
+            .join(slug.strip_prefix("author/").unwrap());
+        return Ok(ServeFile::new(path).oneshot(req).await.into_response());
     }
 
     if let Some(last_slash) = url.rfind('/') {
