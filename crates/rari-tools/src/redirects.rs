@@ -13,7 +13,7 @@ use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use rari_utils::error::RariIoError;
-use tracing::{error, warn};
+use tracing::{debug, error, info, warn};
 use url::Url;
 
 use crate::error::{RedirectError, ToolError};
@@ -343,6 +343,7 @@ pub fn fix_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolError> 
             true
         }
     }) {
+        info!("Writing fixed redirects for locale: {}", locale);
         let path = redirects_path(*locale)?;
         write_redirects(&path, pairs)?;
     }
@@ -382,6 +383,12 @@ fn fix_redirects_internal(
     let locale_pairs = clean_pairs.into_iter().try_fold(
     HashMap::<Locale, HashMap<String, String>>::new(),
     |mut acc, (from, mut to)| -> Result<HashMap<Locale, HashMap<String, String>>, ToolError> {
+        // Check if the 'from' URL points to an existing document, remove the redirection with a warning.
+        if Page::from_url(&from).is_ok() {
+            debug!("Removing redirect from '{}' to '{}' because the 'from' URL now points to an existing document", from, to);
+            return Ok(acc);
+        }
+
         // Extract the locale string from the 'from' path
         let locale_str = from.split('/').nth(1).unwrap_or_default();
 
@@ -1373,5 +1380,36 @@ mod tests {
         let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
         let res = validate_redirects(Some(&[Locale::EnUs]));
         assert!(matches!(res, Err(ToolError::InvalidRedirectOrder(..))))
+    }
+
+    #[test]
+    fn test_fix_redirects_removes_existing_from_documents() {
+        // Create a document that will exist
+        let _docs = DocFixtures::new(&["A".to_string(), "B".to_string()], Locale::EnUs);
+
+        // Create redirect pairs where one 'from' URL will resolve to an existing document
+        let pairs = [
+            ("docs/A".to_string(), "docs/B".to_string()),
+            ("docs/nonexistent".to_string(), "docs/A".to_string()),
+        ];
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
+
+        // Run fix_redirects_internal
+        // let result = fix_redirects_internal(&pairs).unwrap();
+        let result = fix_redirects(Some(&[Locale::EnUs]));
+        assert!(result.is_ok());
+
+        // re-read en-US redirect fixture and make sure it only contains a single redirect
+        let mut pairs = HashMap::new();
+        // let path = redirects_path(locale)?;
+
+        let new_redirects = read_redirects_raw(&redirects.path).unwrap();
+        pairs.extend(new_redirects);
+
+        // Verify that the redirect with existing 'from' document was removed
+        assert!(!pairs.contains_key("/en-US/docs/A"));
+        // The other redirect should still exist
+        assert!(pairs.contains_key("/en-US/docs/nonexistent"));
     }
 }
