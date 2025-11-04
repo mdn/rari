@@ -135,27 +135,9 @@ pub fn get_type_syntax(name: &str, scope: Option<&str>) -> Syntax {
 pub fn get_functions_syntax(name: &str, scope: Option<&str>) -> Syntax {
     let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.functions.get(scope) {
-            println!(
-                "GET_FUNCTIONS_SYNTAX scope={} name={} function lookup ok",
-                scope, name
-            );
-            if let Some(property) = scoped.get(name) {
-                println!(
-                    "GET_FUNCTIONS_SYNTAX scope={} name={} property={:?}",
-                    scope, name, property
-                );
-            } else {
-                println!("GET_FUNCTIONS_SYNTAX lookup of {name} in scope {scope} failed");
-            }
-        }
         if let Some(scoped) = CSS_REF.functions.get(scope)
             && let Some(property) = scoped.get(name)
         {
-            println!(
-                "GET_FUNCTIONS_SYNTAX scope={} name={} {:?}",
-                scope, name, property
-            );
             return Syntax {
                 syntax: property.syntax.clone().unwrap_or_default(),
                 specs: property.spec_link.as_ref().map(|s| vec![s]),
@@ -259,38 +241,10 @@ fn get_syntax_internal(typ: CssType, browser_compat: Option<&str>, top_level: bo
             } else {
                 get_type_syntax(name, browser_compat).to_syntax_line(format!("<{name}>"))
             }
-            // } else if let Some(t) = CSS_REF.types.get(name) {
-            //     if let Some(syntax) = &t.syntax {
-            //         Syntax {
-            //             syntax: syntax.clone(),
-            //             specs: t.spec_link.as_ref().map(|s| vec![s]),
-            //         }
-            //         .to_syntax_line(format!("<{name}>"))
-            //     } else {
-            //         Syntax::default().to_syntax_line(format!("<{name}>"))
-            //     }
-            // } else {
-            //     Syntax::default().to_syntax_line(format!("<{name}>"))
-            // }
         }
         CssType::Function(name) => {
             let name = format!("{name}()");
-            println!(
-                "FUNCTION {} {:?}",
-                name,
-                get_functions_syntax(&name, browser_compat).to_syntax_line(format!("<{name}>"))
-            );
             get_functions_syntax(&name, browser_compat).to_syntax_line(format!("<{name}>"))
-            // if let Some(t) = CSS_REF.functions.get(&name) {
-            //     if let Some(syntax) = &t.syntax {
-            //         return Syntax {
-            //             syntax: syntax.clone(),
-            //             specs: t.spec_link.as_ref().map(|s| vec![s]),
-            //         }
-            //         .to_syntax_line(format!("<{name}>"));
-            //     }
-            // }
-            // Syntax::default().to_syntax_line(format!("<{name}>"))
         }
         CssType::AtRule(name) => get_at_rule_syntax(name, browser_compat).to_syntax_line(name),
         CssType::AtRuleDescriptor(name, at_rule_name) => {
@@ -689,6 +643,12 @@ pub fn render_formal_syntax(
     syntax_tooltip: &HashMap<LinkedToken, String>,
     sources_prefix: Option<&str>,
 ) -> Result<String, SyntaxError> {
+    let scope = if let Some(bc) = browser_compat {
+        bc.split(".").collect::<Vec<&str>>().get(2).copied()
+    } else {
+        None
+    };
+
     let (syntax, skip_first) = match syntax {
         SyntaxInput::SyntaxString(syntax_str) => {
             let (name, syntax, skip_first) =
@@ -707,13 +667,24 @@ pub fn render_formal_syntax(
             )
         }
         SyntaxInput::Css(css) => {
-            let syntax: SyntaxLine = get_syntax_internal(css, browser_compat, true);
+            let syntax: SyntaxLine = get_syntax_internal(css, scope, true);
             if syntax.syntax.is_empty() {
                 return Err(SyntaxError::NoSyntaxFound);
             }
             (syntax, false)
         }
     };
+
+    if syntax.name != scope.unwrap_or("__global_scope__") {
+        println!(
+            "Rendering formal syntax {} with scope {} -> {}\n      Result: {}",
+            syntax.name,
+            browser_compat.unwrap_or_default(),
+            scope.unwrap_or("__global_scope__"),
+            syntax.syntax
+        );
+    }
+
     render_formal_syntax_internal(
         syntax,
         locale_str,

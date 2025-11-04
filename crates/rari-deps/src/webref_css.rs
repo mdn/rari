@@ -36,11 +36,14 @@ fn by_for_and_name(values: Vec<Value>) -> BTreeMap<String, BTreeMap<String, Valu
         }
 
         // Handle 'for' key - could be a string, array, or missing
+        // Add the entry to the global scope as well, not all pages have the needed
+        // browser-compat key to properly find the entry in its scope.
         let for_keys: Vec<String> = match &value["for"] {
-            Value::String(s) => vec![s.clone()],
+            Value::String(s) => vec![s.clone(), "__global_scope__".to_string()],
             Value::Array(arr) => arr
                 .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .chain(vec!["__global_scope__".to_string()])
                 .collect(),
             _ => vec!["__global_scope__".to_string()],
         };
@@ -58,19 +61,10 @@ fn by_for_and_name(values: Vec<Value>) -> BTreeMap<String, BTreeMap<String, Valu
 }
 
 fn by_name(values: Vec<Value>) -> BTreeMap<String, Value> {
-    // let mut seen_keys = std::collections::HashSet::new();
-    // let mut duplicates = Vec::new();
-
-    let result: BTreeMap<String, Value> = values
+    values
         .into_iter()
         .map(|mut value| {
             let name = normalize_name(value["name"].as_str().unwrap());
-
-            // // Check for duplicates
-            // if !seen_keys.insert(name.clone()) {
-            //     duplicates.push(name.clone());
-            //     print!("Duplicate key found: {}, {:?}", name, value);
-            // }
 
             // Recursively process nested descriptors
             if value["descriptors"].is_array() {
@@ -87,13 +81,7 @@ fn by_name(values: Vec<Value>) -> BTreeMap<String, Value> {
 
             (name, value)
         })
-        .collect();
-
-    // if !duplicates.is_empty() {
-    //     println!("Warning: Found duplicate keys: {:?}", duplicates);
-    // }
-
-    result
+        .collect()
 }
 
 // Add href_title fields based on browser specs mapping
