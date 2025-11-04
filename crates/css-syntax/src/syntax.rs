@@ -570,26 +570,22 @@ impl SyntaxRenderer<'_> {
             for constituent in all_constituents[last_len..].iter_mut() {
                 if let Some(constituent_entry) = match &mut constituent.node {
                     Node::Type(typ) if typ.name.ends_with("()") => {
-                        // TODO: what about the browser specs key?
                         let syntax =
                             get_syntax(CssType::Function(&typ.name[..typ.name.len() - 2]), None);
                         Some(syntax)
                     }
                     Node::Type(typ) => {
-                        // TODO: what about the browser specs key?
                         let syntax = get_syntax(CssType::Type(&typ.name), None);
                         typ.opts = None;
                         Some(syntax)
                     }
                     Node::Property(property) => {
-                        // TODO: what about the browser specs key?
                         let mut syntax = get_syntax(CssType::Property(&property.name), None);
                         syntax.name = format!("<{}>", syntax.name);
                         Some(syntax)
                     }
                     // Node::Function(function) => Some(get_syntax(CssType::Function(&function.name))),
                     Node::AtKeyword(at_keyword) => {
-                        // TODO: what about the browser specs key?
                         Some(get_syntax(CssType::AtRule(&at_keyword.name), None))
                     }
                     _ => None,
@@ -674,16 +670,6 @@ pub fn render_formal_syntax(
             (syntax, false)
         }
     };
-
-    if syntax.name != scope.unwrap_or("__global_scope__") {
-        println!(
-            "Rendering formal syntax {} with scope {} -> {}\n      Result: {}",
-            syntax.name,
-            browser_compat.unwrap_or_default(),
-            scope.unwrap_or("__global_scope__"),
-            syntax.syntax
-        );
-    }
 
     render_formal_syntax_internal(
         syntax,
