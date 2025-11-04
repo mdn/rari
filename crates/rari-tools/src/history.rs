@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread::spawn;
 
-use rari_types::HistoryEntry;
 use rari_types::globals::{content_root, content_translated_root};
+use rari_types::HistoryEntry;
 
 use crate::error::ToolError;
 use crate::git::exec_git;

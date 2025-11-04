@@ -5,7 +5,7 @@ use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
-use crate::html::links::{LinkFlags, render_link_via_page};
+use crate::html::links::{render_link_via_page, LinkFlags};
 
 const OLD_VERSIONS: &[&str] = &["3.6", "3.5", "3", "2", "1.5"];
 

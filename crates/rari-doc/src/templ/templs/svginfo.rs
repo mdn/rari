@@ -1,5 +1,5 @@
 use rari_templ_func::rari_f;
-use rari_types::globals::{SVGDataDescription, json_svg_data_lookup};
+use rari_types::globals::{json_svg_data_lookup, SVGDataDescription};
 
 use super::links::svgxref::svgxref_internal;
 use crate::error::DocError;

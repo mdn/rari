@@ -2,12 +2,12 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use enum_dispatch::enum_dispatch;
-use rari_types::RariEnv;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::{
     blog_root, contributor_spotlight_root, curriculum_root, generic_content_root,
 };
 use rari_types::locale::Locale;
+use rari_types::RariEnv;
 
 use super::json::BuiltPage;
 use super::types::contributors::contributor_spotlight_from_url;
@@ -19,7 +19,7 @@ use crate::pages::types::curriculum::Curriculum;
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
 use crate::pages::types::utils::FmTempl;
-use crate::resolve::{UrlMeta, url_meta_from};
+use crate::resolve::{url_meta_from, UrlMeta};
 use crate::utils::locale_and_typ_from_path;
 
 /// Represents a page in the documentation system.

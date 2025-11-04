@@ -1,6 +1,6 @@
 use rari_templ_func::rari_f;
-use rari_types::AnyArg;
 use rari_types::locale::Locale;
+use rari_types::AnyArg;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;

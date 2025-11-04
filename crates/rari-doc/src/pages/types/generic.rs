@@ -1,15 +1,15 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use rari_types::RariEnv;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::generic_content_root;
 use rari_types::locale::Locale;
+use rari_types::RariEnv;
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use serde::Deserialize;
 
-use crate::cached_readers::{GenericPagesConfig, generic_content_config, generic_content_files};
+use crate::cached_readers::{generic_content_config, generic_content_files, GenericPagesConfig};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::pages::types::utils::FmTempl;

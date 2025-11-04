@@ -1,6 +1,6 @@
 use darling::FromMeta;
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
+use quote::{quote, ToTokens};
 
 use crate::{Arg, RariEnv};
 

@@ -11,7 +11,7 @@ use rari_types::locale::Locale;
 use super::l10n::l10n_json_data;
 use super::titles::api_page_title;
 use crate::error::DocError;
-use crate::html::links::{LinkModifier, render_internal_link};
+use crate::html::links::{render_internal_link, LinkModifier};
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::redirects::resolve_redirect;
 use crate::utils::COLLATOR;

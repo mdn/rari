@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rari_doc::resolve::{UrlMeta, url_meta_from};
+use rari_doc::resolve::{url_meta_from, UrlMeta};
 use rari_types::locale::Locale;
 
 use crate::error::ToolError;

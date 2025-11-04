@@ -23,10 +23,10 @@ use crate::helpers::parents::parents;
 use crate::helpers::title::{page_title, transform_title};
 use crate::html::banner::build_banner;
 use crate::html::bubble_up::bubble_up_curriculum_page;
-use crate::html::code::{Code, code_blocks};
+use crate::html::code::{code_blocks, Code};
 use crate::html::modifier::{add_missing_ids, insert_self_links_for_dts, remove_empty_p};
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
-use crate::html::sections::{BuildSection, BuildSectionType, Split, split_sections};
+use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Split};
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
@@ -37,14 +37,14 @@ use crate::pages::templates::{
 };
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::curriculum::{
-    self, Curriculum, Template, build_landing_modules, build_overview_modules, build_sidebar,
-    curriculum_group, prev_next_modules, prev_next_overview,
+    self, build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
+    prev_next_modules, prev_next_overview, Curriculum, Template,
 };
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
 use crate::pages::types::utils::FmTempl;
 use crate::specs::extract_specifications;
-use crate::templ::render::{Rendered, decode_ref, render};
+use crate::templ::render::{decode_ref, render, Rendered};
 use crate::translations::other_translations;
 
 impl From<BuildSection<'_>> for Section {

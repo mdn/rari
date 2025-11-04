@@ -3,9 +3,9 @@ use std::fs;
 use std::path::PathBuf;
 
 use chrono::{DateTime, SecondsFormat};
-use fake::Fake;
 use fake::faker::chrono::en::DateTimeBetween;
 use fake::faker::internet::en::Username;
+use fake::Fake;
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
 use serde_json::Value;

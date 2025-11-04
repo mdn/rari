@@ -1,5 +1,5 @@
 use comrak::nodes::{AstNode, NodeValue};
-use comrak::{Arena, ComrakOptions, parse_document};
+use comrak::{parse_document, Arena, ComrakOptions};
 use html::{CustomFormatter, RariContext};
 use rari_types::locale::Locale;
 

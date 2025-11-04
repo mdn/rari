@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use ignore::WalkBuilder;
 use ignore::types::TypesBuilder;
+use ignore::WalkBuilder;
 use rari_types::globals::{content_root, content_translated_root, settings};
 
 /// Creates a `WalkBuilder` for walking through the specified paths globbing "index.md" files. The glob can be overridden.

@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use rari_doc::pages::page::{Page, PageLike};
-use rari_doc::resolve::{UrlMeta, url_meta_from};
+use rari_doc::resolve::{url_meta_from, UrlMeta};
 use rari_doc::utils::root_for_locale;
 use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;

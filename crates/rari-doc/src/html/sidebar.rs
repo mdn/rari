@@ -8,23 +8,23 @@ use dashmap::DashMap;
 use indexmap::IndexMap;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
-use rari_types::locale::{Locale, default_locale};
+use rari_types::locale::{default_locale, Locale};
 use rari_types::templ::TemplType;
 use rari_types::{Arg, Quotes};
 use rari_utils::concat_strs;
 use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize, Serializer};
-use tracing::{Level, span};
+use tracing::{span, Level};
 
-use super::links::{LinkFlags, LinkModifier, render_link_from_page, render_link_via_page};
+use super::links::{render_link_from_page, render_link_via_page, LinkFlags, LinkModifier};
 use super::modifier::insert_attribute;
 use super::rewriter::post_process_html;
 use crate::cached_readers::read_sidebar;
 use crate::error::DocError;
 use crate::helpers;
 use crate::helpers::subpages::{
-    ListSubPagesContext, list_sub_pages_flattened_grouped_internal,
-    list_sub_pages_flattened_internal, list_sub_pages_nested_internal,
+    list_sub_pages_flattened_grouped_internal, list_sub_pages_flattened_internal,
+    list_sub_pages_nested_internal, ListSubPagesContext,
 };
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
@@ -308,7 +308,11 @@ const fn default_depth() -> usize {
 
 /// depth == 0 => None which means infinite otherwise Some(depth).
 const fn depth_to_option(depth: usize) -> Option<usize> {
-    if depth == 0 { None } else { Some(depth) }
+    if depth == 0 {
+        None
+    } else {
+        Some(depth)
+    }
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]

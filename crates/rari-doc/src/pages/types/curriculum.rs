@@ -3,10 +3,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
 use constcat::concat;
-use rari_types::RariEnv;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::curriculum_root;
 use rari_types::locale::Locale;
+use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use regex::Regex;
 use schemars::JsonSchema;

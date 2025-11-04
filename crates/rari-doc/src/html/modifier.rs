@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use ego_tree::NodeId;
-use html5ever::{Attribute, QualName, namespace_url, ns};
+use html5ever::{namespace_url, ns, Attribute, QualName};
 use rari_md::anchor::anchorize;
 use rari_utils::concat_strs;
 use scraper::node::{self};

@@ -6,8 +6,8 @@ use std::fs;
 use std::sync::LazyLock;
 
 use css_definition_syntax::generate::{self, GenerateOptions};
-use css_definition_syntax::parser::{CombinatorType, Multiplier, Node, Type, parse};
-use css_definition_syntax::walk::{WalkOptions, walk};
+use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
+use css_definition_syntax::walk::{walk, WalkOptions};
 use css_syntax_types::{CssValuesItem, SpecLink, WebrefCss};
 #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
@@ -89,13 +89,13 @@ pub fn get_property_syntax(name: &str, scope: Option<&str>) -> Syntax {
     let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
 
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.properties.get(scope)
-            && let Some(property) = scoped.get(name)
-        {
-            return Syntax {
-                syntax: property.syntax.clone().unwrap_or_default(),
-                specs: property.spec_link.as_ref().map(|s| vec![s]),
-            };
+        if let Some(scoped) = CSS_REF.properties.get(scope) {
+            if let Some(property) = scoped.get(name) {
+                return Syntax {
+                    syntax: property.syntax.clone().unwrap_or_default(),
+                    specs: property.spec_link.as_ref().map(|s| vec![s]),
+                };
+            }
         }
     }
     Syntax::default()
@@ -105,13 +105,13 @@ pub fn get_property_syntax(name: &str, scope: Option<&str>) -> Syntax {
 pub fn get_at_rule_syntax(name: &str, scope: Option<&str>) -> Syntax {
     let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.atrules.get(scope)
-            && let Some(property) = scoped.get(name)
-        {
-            return Syntax {
-                syntax: property.syntax.clone().unwrap_or_default(),
-                specs: property.spec_link.as_ref().map(|s| vec![s]),
-            };
+        if let Some(scoped) = CSS_REF.atrules.get(scope) {
+            if let Some(property) = scoped.get(name) {
+                return Syntax {
+                    syntax: property.syntax.clone().unwrap_or_default(),
+                    specs: property.spec_link.as_ref().map(|s| vec![s]),
+                };
+            }
         }
     }
     Syntax::default()
@@ -120,13 +120,13 @@ pub fn get_at_rule_syntax(name: &str, scope: Option<&str>) -> Syntax {
 pub fn get_type_syntax(name: &str, scope: Option<&str>) -> Syntax {
     let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.types.get(scope)
-            && let Some(property) = scoped.get(name)
-        {
-            return Syntax {
-                syntax: property.syntax.clone().unwrap_or_default(),
-                specs: property.spec_link.as_ref().map(|s| vec![s]),
-            };
+        if let Some(scoped) = CSS_REF.types.get(scope) {
+            if let Some(property) = scoped.get(name) {
+                return Syntax {
+                    syntax: property.syntax.clone().unwrap_or_default(),
+                    specs: property.spec_link.as_ref().map(|s| vec![s]),
+                };
+            }
         }
     }
     Syntax::default()
@@ -135,13 +135,13 @@ pub fn get_type_syntax(name: &str, scope: Option<&str>) -> Syntax {
 pub fn get_functions_syntax(name: &str, scope: Option<&str>) -> Syntax {
     let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.functions.get(scope)
-            && let Some(property) = scoped.get(name)
-        {
-            return Syntax {
-                syntax: property.syntax.clone().unwrap_or_default(),
-                specs: property.spec_link.as_ref().map(|s| vec![s]),
-            };
+        if let Some(scoped) = CSS_REF.functions.get(scope) {
+            if let Some(property) = scoped.get(name) {
+                return Syntax {
+                    syntax: property.syntax.clone().unwrap_or_default(),
+                    specs: property.spec_link.as_ref().map(|s| vec![s]),
+                };
+            }
         }
     }
     Syntax::default()
@@ -155,14 +155,14 @@ pub fn get_at_rule_descriptor_syntax(
 ) -> Syntax {
     let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.atrules.get(scope)
-            && let Some(at_rule) = scoped.get(at_rule_name)
-        {
-            if let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
-                return Syntax {
-                    syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
-                    specs: at_rule_descriptor.spec_link.as_ref().map(|s| vec![s]),
-                };
+        if let Some(scoped) = CSS_REF.atrules.get(scope) {
+            if let Some(at_rule) = scoped.get(at_rule_name) {
+                if let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
+                    return Syntax {
+                        syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
+                        specs: at_rule_descriptor.spec_link.as_ref().map(|s| vec![s]),
+                    };
+                }
             }
         }
     }
@@ -883,7 +883,8 @@ mod test {
     fn test_render_terms() -> Result<(), SyntaxError> {
         let renderer = SyntaxRenderer {
             locale_str: "en-US",
-            value_definition_url: "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
+            value_definition_url:
+                "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
         };

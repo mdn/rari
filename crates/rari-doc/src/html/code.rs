@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use ego_tree::NodeId;
-use html5ever::{QualName, namespace_url, ns};
+use html5ever::{namespace_url, ns, QualName};
 use rari_types::globals::settings;
 use rari_utils::concat_strs;
 use schemars::JsonSchema;

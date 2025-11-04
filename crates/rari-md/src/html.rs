@@ -11,7 +11,7 @@ use rari_types::locale::Locale;
 use crate::anchor::anchorize;
 use crate::ctype::isspace;
 use crate::ext::DELIM_START;
-use crate::node_card::{NoteCard, is_callout};
+use crate::node_card::{is_callout, NoteCard};
 use crate::utils::{escape_href, tagfilter_block};
 
 pub struct RariContext {

@@ -1,5 +1,5 @@
-use rari_doc::Templ;
 use rari_doc::templ::templs::TEMPL_MAP;
+use rari_doc::Templ;
 
 pub(crate) type KeywordDocsMap = std::collections::HashMap<&'static str, &'static Templ>;
 

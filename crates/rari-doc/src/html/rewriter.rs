@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use lol_html::html_content::ContentType;
-use lol_html::{HtmlRewriter, RewriteStrSettings, Settings, element, rewrite_str, text};
+use lol_html::{element, rewrite_str, text, HtmlRewriter, RewriteStrSettings, Settings};
 use rari_md::ext::DELIM_START;
 use rari_md::node_card::NoteCard;
 use rari_types::fm_types::PageType;

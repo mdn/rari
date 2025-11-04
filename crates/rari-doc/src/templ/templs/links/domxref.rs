@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rari_templ_func::rari_f;
 use rari_types::{AnyArg, ArgError};
-use tracing::{Level, span};
+use tracing::{span, Level};
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;

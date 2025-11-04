@@ -161,7 +161,11 @@ fn triangle(out: &mut String, x: i32, y: i32, reverse: bool) -> Result<(), Error
 
 fn calculate_rect_width(text: &str) -> i32 {
     let width = text.len() as i32 * 8;
-    if width < 75 { 75 } else { width }
+    if width < 75 {
+        75
+    } else {
+        width
+    }
 }
 
 fn move_by(number: i32, delta: i32, reverse: bool) -> i32 {

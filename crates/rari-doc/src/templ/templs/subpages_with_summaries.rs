@@ -1,7 +1,7 @@
 use rari_templ_func::rari_f;
 
 use crate::error::DocError;
-use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
+use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
 use crate::helpers::summary_hack::{get_hacky_summary_md, strip_paragraph_unchecked};
 use crate::pages::page::PageLike;
 
