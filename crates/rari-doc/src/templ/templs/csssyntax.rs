@@ -24,12 +24,6 @@ static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
 #[rari_f(register = "crate::Templ")]
 pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
     let page_type = env.page_type;
-    tracing::info!(
-        "Generating CSS syntax for {} {:?} {:?}",
-        name.as_deref().unwrap_or("unknown"),
-        env.browser_compat,
-        env
-    );
     let mut slug_rev_iter = env.slug.rsplitn(3, '/');
     let slug_name = slug_rev_iter.next().unwrap();
     let name = name.as_deref().unwrap_or(slug_name);
