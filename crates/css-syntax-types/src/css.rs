@@ -5,20 +5,6 @@ use serde::{Deserialize, Serialize};
 use crate::SpecLink;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct WebrefCssOld {
-    pub atrules: BTreeMap<String, AtRule>,
-    pub functions: BTreeMap<String, Function>,
-    pub properties: BTreeMap<String, Property>,
-    pub selectors: BTreeMap<String, Selector>,
-    pub types: BTreeMap<String, Type>,
-}
-impl From<&WebrefCssOld> for WebrefCssOld {
-    fn from(value: &WebrefCssOld) -> Self {
-        value.clone()
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct WebrefCss {
     pub atrules: BTreeMap<String, BTreeMap<String, AtRule>>,
     pub functions: BTreeMap<String, BTreeMap<String, Function>>,
