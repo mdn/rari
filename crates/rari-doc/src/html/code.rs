@@ -111,8 +111,8 @@ pub fn code_blocks(html: &mut Html) -> Option<Vec<Code>> {
     let mut result = Vec::with_capacity(examples.len());
     for code in examples {
         for node_id in &code.node_ids {
-            if let Some(mut node) = html.tree.get_mut(*node_id) {
-                if let Node::Element(el) = node.value() {
+            if let Some(mut node) = html.tree.get_mut(*node_id)
+                && let Node::Element(el) = node.value() {
                     let class = el.attr("class").unwrap_or_default();
                     let claas = concat_strs!(
                         class,
@@ -129,7 +129,6 @@ pub fn code_blocks(html: &mut Html) -> Option<Vec<Code>> {
                         claas.into(),
                     );
                 }
-            }
         }
         result.push(code.into())
     }

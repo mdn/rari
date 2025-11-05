@@ -190,14 +190,13 @@ pub(crate) fn locale_and_typ_from_path(path: &Path) -> Result<(Locale, PageCateg
         return Ok((Locale::EnUs, PageCategory::Doc));
     }
 
-    if let Some(root) = blog_root() {
-        if path.starts_with(root) {
+    if let Some(root) = blog_root()
+        && path.starts_with(root) {
             return Ok((Locale::EnUs, PageCategory::BlogPost));
         }
-    }
-    if let Some(root) = content_translated_root() {
-        if let Ok(relative) = path.strip_prefix(root) {
-            if let Some(locale_str) = relative.components().next() {
+    if let Some(root) = content_translated_root()
+        && let Ok(relative) = path.strip_prefix(root)
+            && let Some(locale_str) = relative.components().next() {
                 let locale_str = locale_str
                     .as_os_str()
                     .to_str()
@@ -205,8 +204,6 @@ pub(crate) fn locale_and_typ_from_path(path: &Path) -> Result<(Locale, PageCateg
                 let locale = Locale::from_str(locale_str)?;
                 return Ok((locale, PageCategory::Doc));
             }
-        }
-    }
     Err(DocError::LocaleError(LocaleError::NoLocaleInPath))
 }
 
@@ -371,20 +368,18 @@ thread_local! {
 }
 
 pub fn trim_after<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
-    if let Some(pat) = pat {
-        if let Some(i) = input.find(pat) {
+    if let Some(pat) = pat
+        && let Some(i) = input.find(pat) {
             return &input[..=i];
         }
-    }
     input
 }
 
 pub fn trim_before<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
-    if let Some(pat) = pat {
-        if let Some(i) = input.find(pat) {
+    if let Some(pat) = pat
+        && let Some(i) = input.find(pat) {
             return &input[i..];
         }
-    }
     input
 }
 

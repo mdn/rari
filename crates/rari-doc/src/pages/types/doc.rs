@@ -173,11 +173,10 @@ impl PageReader<Page> for Doc {
             return Ok(doc);
         }
 
-        if let Some(cache) = CACHED_DOC_PAGE_FILES.get() {
-            if let Some(doc) = cache.get(&path) {
+        if let Some(cache) = CACHED_DOC_PAGE_FILES.get()
+            && let Some(doc) = cache.get(&path) {
                 return Ok(doc.clone());
             }
-        }
         debug!("reading doc: {}", &path.display());
         let mut doc = read_doc(&path)?;
 
@@ -227,11 +226,10 @@ impl PageLike for Doc {
 
     fn short_title(&self) -> Option<&str> {
         self.meta.short_title.as_deref().or_else(|| {
-            if self.meta.title.starts_with('<') {
-                if let Some(end) = self.meta.title.find('>') {
+            if self.meta.title.starts_with('<')
+                && let Some(end) = self.meta.title.find('>') {
                     return Some(&self.meta.title[..end + 1]);
                 }
-            }
             None
         })
     }

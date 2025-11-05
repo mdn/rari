@@ -559,8 +559,8 @@ fn regroup_terms(
                     terms.remove(i);
                     continue;
                 } else {
-                    if let Some(subgroup_start) = subgroup_start {
-                        if i - subgroup_start > 1 {
+                    if let Some(subgroup_start) = subgroup_start
+                        && i - subgroup_start > 1 {
                             let group = terms.splice(subgroup_start..i, empty()).collect();
                             terms.insert(
                                 subgroup_start,
@@ -573,15 +573,14 @@ fn regroup_terms(
                             );
                             i = subgroup_start + 1;
                         }
-                    }
                     subgroup_start = None;
                 }
             }
             i += 1;
         }
 
-        if let Some(subgroup_start) = subgroup_start {
-            if !combinators.is_empty() {
+        if let Some(subgroup_start) = subgroup_start
+            && !combinators.is_empty() {
                 let group = terms.splice(subgroup_start..i, empty()).collect();
                 terms.insert(
                     subgroup_start,
@@ -593,7 +592,6 @@ fn regroup_terms(
                     }),
                 );
             }
-        }
     }
     (terms, combinator)
 }
@@ -667,11 +665,10 @@ fn peek(
     stop_char: Option<char>,
 ) -> Result<Option<Node>, SyntaxDefinitionError> {
     let code = tokenizer.char_code();
-    if let Some(stop_char) = stop_char {
-        if code == stop_char {
+    if let Some(stop_char) = stop_char
+        && code == stop_char {
             return Ok(None);
         }
-    }
     if is_name_char(code) {
         return Ok(Some(read_keyword_or_function(tokenizer)?));
     }

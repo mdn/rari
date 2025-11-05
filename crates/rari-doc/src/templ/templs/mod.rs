@@ -74,11 +74,10 @@ pub fn invoke(
         None if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
         None => {
             TEMPL_RECORDER.with(|tx| {
-                if let Some(tx) = tx {
-                    if let Err(e) = tx.send(name.to_string()) {
+                if let Some(tx) = tx
+                    && let Err(e) = tx.send(name.to_string()) {
                         error!("templ recorder: {e}");
                     }
-                }
             });
             return Ok((format!("<s>unsupported templ: {name}</s>"), TemplType::None));
         } //

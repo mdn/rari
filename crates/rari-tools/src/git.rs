@@ -21,12 +21,12 @@ pub fn exec_git_with_test_fallback(args: &[impl AsRef<OsStr>], root: impl AsRef<
 }
 
 pub fn exec_git(args: &[impl AsRef<OsStr>], root: impl AsRef<Path>) -> Output {
-    let output = Command::new("git")
+    
+    Command::new("git")
         .args(args)
         .current_dir(root)
         .output()
-        .expect("failed to execute process");
-    output
+        .expect("failed to execute process")
 }
 
 fn exec_git_internal(
@@ -34,10 +34,10 @@ fn exec_git_internal(
     args: &[impl AsRef<OsStr>],
     root: impl AsRef<Path>,
 ) -> Output {
-    let output = Command::new(command)
+    
+    Command::new(command)
         .args(args)
         .current_dir(root)
         .output()
-        .expect("failed to execute process");
-    output
+        .expect("failed to execute process")
 }

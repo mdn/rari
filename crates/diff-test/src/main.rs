@@ -226,13 +226,11 @@ fn full_diff(
     diff: &mut BTreeMap<String, String>,
     args: &BuildArgs,
 ) {
-    if path.len() == 1 {
-        if let PathIndex::Object(s) = &path[0] {
-            if s == "url" {
+    if path.len() == 1
+        && let PathIndex::Object(s) = &path[0]
+            && s == "url" {
                 return;
             }
-        }
-    }
     let key = make_key(path);
 
     if SKIP_GLOB_LIST.iter().any(|i| file.starts_with(i)) {

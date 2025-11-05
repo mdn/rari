@@ -79,12 +79,11 @@ impl RariApi {
             None => url,
         };
         Page::from_url_with_fallback(url).map_err(|e| {
-            if let DocError::PageNotFound(_, _) = e {
-                if !matches!(warn, LinkWarn::No) {
+            if let DocError::PageNotFound(_, _) = e
+                && !matches!(warn, LinkWarn::No) {
                     let ic = get_issue_counter();
                     tracing::warn!(source = "templ-broken-link", ic = ic, url = url);
                 }
-            }
             e
         })
     }

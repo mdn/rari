@@ -344,8 +344,8 @@ pub fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
 }
 
 fn remove_me_replace_placeholder(s: &str, replacements: &[&str]) -> String {
-    let s = s
-        .replace("$1$", replacements.first().unwrap_or(&"$1$"))
-        .replace("$2$", replacements.get(1).unwrap_or(&"$2$"));
+    
     s
+        .replace("$1$", replacements.first().unwrap_or(&"$1$"))
+        .replace("$2$", replacements.get(1).unwrap_or(&"$2$"))
 }

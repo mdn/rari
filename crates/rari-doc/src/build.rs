@@ -69,8 +69,8 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     );
     let _enter = span.enter();
     let mut built_page = page.build()?;
-    if settings().json_issues {
-        if let BuiltPage::Doc(json_doc) = &mut built_page {
+    if settings().json_issues
+        && let BuiltPage::Doc(json_doc) = &mut built_page {
             let flaws = if let Some(issues) = IN_MEMORY
                 .get_events()
                 .get(page.full_path().to_string_lossy().as_ref())
@@ -81,7 +81,6 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
             };
             json_doc.doc.flaws = flaws;
         }
-    }
     let out_path = build_out_root()
         .expect("No BUILD_OUT_ROOT")
         .join(url_to_folder_path(page.url().trim_start_matches('/')));

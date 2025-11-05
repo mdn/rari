@@ -58,8 +58,8 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
             let tx = tx.clone();
             let success = &success;
             Box::new(move |result| {
-                if let Ok(f) = result {
-                    if f.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                if let Ok(f) = result
+                    && f.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
                         let p = f.into_path();
                         match T::read(p, None) {
                             Ok(doc) => {
@@ -74,7 +74,6 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
                             }
                         }
                     }
-                }
                 ignore::WalkState::Continue
             })
         });

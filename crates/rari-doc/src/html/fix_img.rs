@@ -28,13 +28,12 @@ pub fn handle_img(
                 return Ok(());
             }
             let mut file = page.full_path().parent().unwrap().join(&src);
-            if !file.try_exists().unwrap_or_default() {
-                if let Ok(en_us_page) =
+            if !file.try_exists().unwrap_or_default()
+                && let Ok(en_us_page) =
                     Page::from_url_with_locale_and_fallback(page.url(), default_locale())
                 {
                     file = en_us_page.full_path().parent().unwrap().join(&src);
                 }
-            }
             let (width, height) = img_size(el, &src, &file, data_issues)?;
             if let Some(width) = width {
                 el.set_attribute("width", &width)?;

@@ -68,16 +68,14 @@ fn modification_times(path: &Path) -> Result<(), ToolError> {
                 date = *date_data;
             }
 
-            if let Some(data) = data.get(2) {
-                if let Some(parent_hash) = data.split(' ').nth(1) {
+            if let Some(data) = data.get(2)
+                && let Some(parent_hash) = data.split(' ').nth(1) {
                     parents.insert(parent_hash, HistoryEntry::new(date, hash));
                 }
-            }
-        } else if line.ends_with("index.md") {
-            if let Ok(rel_path) = PathBuf::from(line).strip_prefix("files") {
+        } else if line.ends_with("index.md")
+            && let Ok(rel_path) = PathBuf::from(line).strip_prefix("files") {
                 history.insert(rel_path.to_path_buf(), HistoryEntry::new(date, hash));
             }
-        }
     }
 
     // Replace merged commit dates with their parent date.

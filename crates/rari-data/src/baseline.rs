@@ -101,16 +101,13 @@ impl WebFeatures {
         if let Ok(start) = self
             .bcd_keys
             .binary_search_by_key(&bcd_key_spaced, |ks| &ks.bcd_key_spaced)
-        {
-            if start < self.bcd_keys.len() {
-                if let Some(end) = self.bcd_keys[start + 1..]
+            && start < self.bcd_keys.len()
+                && let Some(end) = self.bcd_keys[start + 1..]
                     .iter()
                     .position(|ks| !ks.bcd_key_spaced.starts_with(&suffix))
                 {
                     return &self.bcd_keys[start + 1..start + 1 + end];
                 }
-            }
-        }
         &[]
     }
 
@@ -118,8 +115,8 @@ impl WebFeatures {
     // https://github.com/mdn/yari/issues/11546#issuecomment-2531611136
     pub fn baseline_by_bcd_key(&self, bcd_key: &str) -> Option<Baseline<'_>> {
         let bcd_key_spaced = &spaced(bcd_key);
-        if let Some(feature) = self.feature_data_by_key(bcd_key_spaced) {
-            if let Some(status_for_key) = feature
+        if let Some(feature) = self.feature_data_by_key(bcd_key_spaced)
+            && let Some(status_for_key) = feature
                 .status
                 .by_compat_key
                 .as_ref()
@@ -169,7 +166,6 @@ impl WebFeatures {
                     feature,
                 });
             }
-        }
         None
     }
 

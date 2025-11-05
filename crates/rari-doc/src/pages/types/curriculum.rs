@@ -271,13 +271,11 @@ impl PageLike for Curriculum {
 }
 
 pub fn curriculum_group(parents: &[Parent]) -> Option<String> {
-    if parents.len() > 1 {
-        if let Some(group) = parents.get(parents.len() - 2) {
-            if group.title.ends_with("modules") {
+    if parents.len() > 1
+        && let Some(group) = parents.get(parents.len() - 2)
+            && group.title.ends_with("modules") {
                 return Some(group.title.to_string());
-            }
-        }
-    };
+            };
     None
 }
 
@@ -302,12 +300,11 @@ pub fn build_sidebar() -> Result<Vec<CurriculumSidebarEntry>, DocError> {
         Vec::new(),
         |mut acc: Vec<CurriculumSidebarEntry>, (_, entry)| {
             let lvl = entry.slug.split('/').count();
-            if lvl > 2 {
-                if let Some(last) = acc.last_mut() {
+            if lvl > 2
+                && let Some(last) = acc.last_mut() {
                     last.children.push(entry);
                     return acc;
                 }
-            }
 
             acc.push(entry);
             acc
@@ -402,12 +399,11 @@ fn grouped_index() -> Result<Vec<CurriculumIndexEntry>, DocError> {
         Vec::new(),
         |mut acc: Vec<CurriculumIndexEntry>, entry| {
             let lvl = entry.slug.as_deref().unwrap_or_default().split('/').count();
-            if lvl > 2 {
-                if let Some(last) = acc.last_mut() {
+            if lvl > 2
+                && let Some(last) = acc.last_mut() {
                     last.children.push(entry.clone());
                     return acc;
                 }
-            }
 
             acc.push(entry.clone());
             acc

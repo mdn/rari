@@ -19,11 +19,10 @@ pub fn webextallcompattables() -> Result<String, DocError> {
         SubPagesSorter::default(),
     )?;
     for page in sub_pages.iter().filter_map(|page| {
-        if page.page_type() == PageType::WebextensionApi {
-            if let Page::Doc(doc) = page {
+        if page.page_type() == PageType::WebextensionApi
+            && let Page::Doc(doc) = page {
                 return Some(doc);
             }
-        }
         None
     }) {
         for feature_name in &page.meta.browser_compat {

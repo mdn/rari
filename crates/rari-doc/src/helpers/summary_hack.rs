@@ -43,9 +43,9 @@ pub fn get_hacky_summary_md(page: &Page) -> Result<String, DocError> {
 /// ```
 pub fn strip_paragraph_unchecked(input: &str) -> &str {
     let out = input.trim().strip_prefix("<p>").unwrap_or(input);
-    let out = out.trim().strip_suffix("</p>").unwrap_or(out);
+    
 
-    out
+    (out.trim().strip_suffix("</p>").unwrap_or(out)) as _
 }
 
 pub fn text_content(html_str: &str) -> String {

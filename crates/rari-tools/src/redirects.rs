@@ -399,11 +399,10 @@ fn fix_redirects_internal(
         })?;
         if to.starts_with('/') {
             let (bare_url, hash) = to.split_once('#').map(|(u, h)| (u, Some(h))).unwrap_or((&to, None));
-            if let Ok(page) = Page::from_url(bare_url) {
-                if page.url() != bare_url {
+            if let Ok(page) = Page::from_url(bare_url)
+                && page.url() != bare_url {
                     to = if let Some(hash) = hash { concat_strs!(page.url(), "#", hash) } else { page.url().to_string() } ;
                 }
-            }
         }
         let locale_map = acc.entry(locale).or_default();
         locale_map.insert(from, to);
@@ -662,8 +661,8 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
                 locale
             )));
         }
-        if let Ok(page) = Page::from_url(bare_url) {
-            if page.url() != bare_url {
+        if let Ok(page) = Page::from_url(bare_url)
+            && page.url() != bare_url {
                 return Err(ToolError::InvalidRedirectToURL(format!(
                     "To-URL '{}' does not equal page url '{}' for '{}' for locale '{}'.",
                     bare_url,
@@ -672,7 +671,6 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
                     locale
                 )));
             }
-        }
     } else {
         return Err(ToolError::InvalidRedirectToURL(format!(
             "To-URL '{url}' has to be external (https://) or start with '/' for locale '{locale}'."
@@ -690,8 +688,8 @@ fn is_vanity_redirect_url(url: &str) -> bool {
 }
 
 fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
-    if let Some(symbol_index) = url.find(FORBIDDEN_URL_SYMBOLS) {
-        if let Some(escaped_symbol) = &url[symbol_index..]
+    if let Some(symbol_index) = url.find(FORBIDDEN_URL_SYMBOLS)
+        && let Some(escaped_symbol) = &url[symbol_index..]
             .chars()
             .next()
             .map(|c| c.escape_default())
@@ -700,7 +698,6 @@ fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
                 "URL '{url}' contains forbidden symbol '{escaped_symbol}'."
             )));
         }
-    }
     Ok(())
 }
 

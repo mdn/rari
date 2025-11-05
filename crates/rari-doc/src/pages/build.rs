@@ -128,11 +128,10 @@ impl BuildSection<'_> {
     pub fn make_toc_entry(&self, with_h3: bool) -> Option<TocEntry> {
         let id = self.id.clone();
         let text = self.heading.map(|h| h.inner_html());
-        if let (Some(id), Some(text)) = (id, text) {
-            if !self.is_h3 || with_h3 {
+        if let (Some(id), Some(text)) = (id, text)
+            && (!self.is_h3 || with_h3) {
                 return Some(TocEntry { id, text });
             }
-        }
         None
     }
 }

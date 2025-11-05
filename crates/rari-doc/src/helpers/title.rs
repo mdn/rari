@@ -23,19 +23,17 @@ pub fn page_title(doc: &impl PageLike, with_suffix: bool) -> Result<String, DocE
 
     out.push_str(doc.title());
 
-    if let Some(root_url) = root_doc_url(doc.url()) {
-        if root_url != doc.url() {
+    if let Some(root_url) = root_doc_url(doc.url())
+        && root_url != doc.url() {
             let root_doc = Page::from_url_with_fallback(root_url)?;
             out.push_str(" - ");
             out.push_str(root_doc.short_title().unwrap_or(root_doc.title()));
         }
-    }
-    if with_suffix {
-        if let Some(suffix) = doc.title_suffix() {
+    if with_suffix
+        && let Some(suffix) = doc.title_suffix() {
             out.push_str(" | ");
             out.push_str(suffix);
         }
-    }
     Ok(out)
 }
 

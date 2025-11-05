@@ -80,11 +80,10 @@ fn expand_details_and_mark_current(html: &mut Html, a_selector: Selector) -> Res
             parent_id = Some(parent.id());
         }
         while let Some(parent) = next {
-            if let Node::Element(el) = parent.value() {
-                if el.name() == "details" {
+            if let Node::Element(el) = parent.value()
+                && el.name() == "details" {
                     details.push(parent.id())
                 }
-            }
             next = parent.parent();
         }
     }
@@ -154,7 +153,8 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
         };
         let span = span!(Level::ERROR, "sidebar", sidebar = name,);
         let _enter = span.enter();
-        let rendered_sidebar = match invoke(&rari_env, name, args) {
+        
+        match invoke(&rari_env, name, args) {
             Ok((rendered_sidebar, TemplType::Sidebar)) => rendered_sidebar,
             Ok((_, typ)) => {
                 let span = span!(Level::ERROR, "sidebar", sidebar = name,);
@@ -168,8 +168,7 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
                 tracing::warn!("{e}");
                 Default::default()
             }
-        };
-        rendered_sidebar
+        }
     };
     postprocess_sidebar(&rendered_sidebar, doc)
 }

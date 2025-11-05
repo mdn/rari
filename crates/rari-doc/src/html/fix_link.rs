@@ -150,8 +150,8 @@ pub fn handle_internal_link(
         };
         if (original_href != resolved_href || remove_href) && !en_us_fallback {
             if let Some(pos) = el.get_attribute("data-sourcepos") {
-                if let Some((start, end)) = pos.split_once('-') {
-                    if let Some((line, col)) = start.split_once(':') {
+                if let Some((start, end)) = pos.split_once('-')
+                    && let Some((line, col)) = start.split_once(':') {
                         let line = line
                             .parse::<i64>()
                             .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
@@ -203,7 +203,6 @@ pub fn handle_internal_link(
                             el.set_attribute("data-flaw", &ic.to_string())?;
                         }
                     }
-                }
             } else {
                 let ic = get_issue_counter();
                 if remove_href {

@@ -53,8 +53,8 @@ impl NoteCard {
 }
 
 pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Option<NoteCard> {
-    if let Some(child) = block_quote.first_child() {
-        if let Some(marker) = child.first_child() {
+    if let Some(child) = block_quote.first_child()
+        && let Some(marker) = child.first_child() {
             let mut data = marker.data.borrow_mut();
             if let NodeValue::Text(ref text) = data.value {
                 if text.starts_with(NoteCard::Callout.prefix()) {
@@ -85,7 +85,6 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
                 }
             }
         }
-    }
     None
 }
 
@@ -99,11 +98,10 @@ fn remove_leading_space_if_zh_locale(node: &AstNode, locale: Locale) {
     // > [!NOTE]
     // > This is a note.
     // ```
-    if let Some(next_sibling) = node.next_sibling() {
-        if matches!(next_sibling.data.borrow().value, NodeValue::SoftBreak) {
+    if let Some(next_sibling) = node.next_sibling()
+        && matches!(next_sibling.data.borrow().value, NodeValue::SoftBreak) {
             next_sibling.detach();
         }
-    }
 }
 
 /// Returns the default title for an alert type

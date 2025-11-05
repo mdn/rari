@@ -21,8 +21,8 @@ use crate::error::DocError;
 /// If the node exists and is an element, this function adds or updates
 /// the specified attribute in the node's attributes list.
 pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str) {
-    if let Some(mut details) = html.tree.get_mut(node_id) {
-        if let Node::Element(el) = details.value() {
+    if let Some(mut details) = html.tree.get_mut(node_id)
+        && let Node::Element(el) = details.value() {
             el.attrs.insert(
                 QualName {
                     prefix: None,
@@ -32,7 +32,6 @@ pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str
                 value.into(),
             );
         }
-    }
 }
 
 /// Removes an attribute from a specified HTML node.
@@ -45,15 +44,14 @@ pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str
 /// If the node exists and is an element, this function removes the specified
 /// attribute from the node's attributes list, if it exists.
 pub fn remove_attribute(html: &mut Html, node_id: NodeId, key: &str) {
-    if let Some(mut details) = html.tree.get_mut(node_id) {
-        if let Node::Element(el) = details.value() {
+    if let Some(mut details) = html.tree.get_mut(node_id)
+        && let Node::Element(el) = details.value() {
             el.attrs.swap_remove(&QualName {
                 prefix: None,
                 ns: ns!(),
                 local: key.into(),
             });
         }
-    }
 }
 
 /// Retrieves the `id` attribute of an HTML node if it exists, prefixed with `#`.
@@ -66,13 +64,11 @@ pub fn remove_attribute(html: &mut Html, node_id: NodeId, key: &str) {
 /// * `Option<String>` - Returns `Some(String)` containing the `id` prefixed with `#` if found, or `None` if the node
 ///   has no `id` attribute.
 pub fn get_id(html: &Html, node_id: NodeId) -> Option<String> {
-    if let Some(node) = html.tree.get(node_id) {
-        if let Node::Element(node_el) = node.value() {
-            if let Some(id) = node_el.attr("id") {
+    if let Some(node) = html.tree.get(node_id)
+        && let Node::Element(node_el) = node.value()
+            && let Some(id) = node_el.attr("id") {
                 return Some(concat_strs!("#", id));
             }
-        }
-    }
     None
 }
 

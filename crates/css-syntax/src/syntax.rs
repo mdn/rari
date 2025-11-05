@@ -106,14 +106,13 @@ pub fn get_at_rule_syntax(name: &str) -> Syntax {
 
 /// Get the formal syntax for an at-rule descriptor from the webref data.
 pub fn get_at_rule_descriptor_syntax(at_rule_descriptor_name: &str, at_rule_name: &str) -> Syntax {
-    if let Some(at_rule) = CSS_REF.atrules.get(at_rule_name) {
-        if let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
+    if let Some(at_rule) = CSS_REF.atrules.get(at_rule_name)
+        && let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
             return Syntax {
                 syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
                 specs: at_rule_descriptor.spec_link.as_ref().map(|s| vec![s]),
             };
         }
-    }
     Syntax::default()
 }
 
@@ -179,15 +178,14 @@ fn get_syntax_internal(typ: CssType, top_level: bool) -> SyntaxLine {
         }
         CssType::Function(name) => {
             let name = format!("{name}()");
-            if let Some(t) = CSS_REF.functions.get(&name) {
-                if let Some(syntax) = &t.syntax {
+            if let Some(t) = CSS_REF.functions.get(&name)
+                && let Some(syntax) = &t.syntax {
                     return Syntax {
                         syntax: syntax.clone(),
                         specs: t.spec_link.as_ref().map(|s| vec![s]),
                     }
                     .to_syntax_line(format!("<{name}>"));
                 }
-            }
             Syntax::default().to_syntax_line(format!("<{name}>"))
         }
         CssType::AtRule(name) => get_at_rule_syntax(name).to_syntax_line(name),
@@ -531,14 +529,13 @@ impl SyntaxRenderer<'_> {
                         Some(get_syntax(CssType::AtRule(&at_keyword.name)))
                     }
                     _ => None,
-                } {
-                    if !constituent_entry.syntax.is_empty()
+                }
+                    && !constituent_entry.syntax.is_empty()
                         && !constituent_syntaxes.contains(&constituent_entry)
                     {
                         constituent.syntax_used = true;
                         constituent_syntaxes.push(constituent_entry)
                     }
-                }
             }
         }
         self.constituents
@@ -645,11 +642,10 @@ fn render_formal_syntax_internal(
     }
 
     let specs = constituents.iter_mut().fold(vec![], |mut acc, s| {
-        if let Some(spec) = s.specs.take() {
-            if !acc.contains(&spec) {
+        if let Some(spec) = s.specs.take()
+            && !acc.contains(&spec) {
                 acc.push(spec)
             }
-        }
         acc
     });
 
