@@ -14,6 +14,7 @@ use rari_types::globals::data_dir;
 use serde::Serialize;
 
 use crate::error::SyntaxError;
+use crate::syntax_provider::SyntaxProvider;
 
 static CSS_REF: LazyLock<WebrefCss> = LazyLock::new(|| {
     #[cfg(any(feature = "doctest", test))]
@@ -66,80 +67,32 @@ pub enum CssType<'a> {
     ShorthandProperty(&'a str),
 }
 
+fn scope_chain(scope: Option<&str>) -> Vec<&str> {
+    scope.into_iter().chain(["__global_scope__"]).collect()
+}
+
 /// Get the formal syntax for a property from the webref data.
 /// The optional scope refers to the syntax scope with a `for` key in the webref data.
-/// If the scoped value cannot be found, an unscoped fallback is tried.
-/// # Examples
-///
-/// ```
-/// let color = css_syntax::syntax::get_property_syntax("color", None);
-/// assert_eq!(color.syntax, "<color>");
-/// ```
-///
-/// ```
-/// let border = css_syntax::syntax::get_property_syntax("border", None);
-/// assert_eq!(border.syntax, "<line-width> || <line-style> || <color>");
-/// ```
-///
-/// ```
-/// let grid_template_rows = css_syntax::syntax::get_property_syntax("grid-template-rows", None);
-/// assert_eq!(grid_template_rows.syntax, "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?");
-/// ```
-pub fn get_property_syntax(name: &str, scope: Option<&str>) -> Syntax {
-    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
-
+/// If the scoped value cannot be found, an unscoped fallback is tried. The `extractor`
+/// is a closure that extracts the relevant subtree syntax from the webref data.
+fn get_generic_syntax<T: SyntaxProvider + 'static + std::fmt::Debug>(
+    name: &str,
+    scope: Option<&str>,
+    field: &'static BTreeMap<String, BTreeMap<String, T>>,
+) -> Syntax {
+    let scopes = scope_chain(scope);
+    println!("Scopes: {:?} {:?}", scopes, scope);
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.properties.get(scope) {
-            if let Some(property) = scoped.get(name) {
+        println!("Checking scope: {}", scope);
+        if let Some(scoped) = field.get(scope) {
+            println!(
+                "Scoped data found for {scope}, looking up {name} \n{:#?}",
+                scoped.keys()
+            );
+            if let Some(item) = scoped.get(name) {
                 return Syntax {
-                    syntax: property.syntax.clone().unwrap_or_default(),
-                    specs: property.spec_link.as_ref().map(|s| vec![s]),
-                };
-            }
-        }
-    }
-    Syntax::default()
-}
-
-/// Get the formal syntax for an at-rule from the webref data.
-pub fn get_at_rule_syntax(name: &str, scope: Option<&str>) -> Syntax {
-    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
-    for scope in scopes {
-        if let Some(scoped) = CSS_REF.atrules.get(scope) {
-            if let Some(property) = scoped.get(name) {
-                return Syntax {
-                    syntax: property.syntax.clone().unwrap_or_default(),
-                    specs: property.spec_link.as_ref().map(|s| vec![s]),
-                };
-            }
-        }
-    }
-    Syntax::default()
-}
-
-pub fn get_type_syntax(name: &str, scope: Option<&str>) -> Syntax {
-    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
-    for scope in scopes {
-        if let Some(scoped) = CSS_REF.types.get(scope) {
-            if let Some(property) = scoped.get(name) {
-                return Syntax {
-                    syntax: property.syntax.clone().unwrap_or_default(),
-                    specs: property.spec_link.as_ref().map(|s| vec![s]),
-                };
-            }
-        }
-    }
-    Syntax::default()
-}
-
-pub fn get_functions_syntax(name: &str, scope: Option<&str>) -> Syntax {
-    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
-    for scope in scopes {
-        if let Some(scoped) = CSS_REF.functions.get(scope) {
-            if let Some(property) = scoped.get(name) {
-                return Syntax {
-                    syntax: property.syntax.clone().unwrap_or_default(),
-                    specs: property.spec_link.as_ref().map(|s| vec![s]),
+                    syntax: item.syntax().clone().unwrap_or_default(),
+                    specs: item.spec_link().as_ref().map(|s| vec![s]),
                 };
             }
         }
@@ -153,7 +106,7 @@ pub fn get_at_rule_descriptor_syntax(
     at_rule_name: &str,
     scope: Option<&str>,
 ) -> Syntax {
-    let scopes = [scope.unwrap_or("__global_scope__"), "__global_scope__"];
+    let scopes = scope_chain(scope);
     for scope in scopes {
         if let Some(scoped) = CSS_REF.atrules.get(scope) {
             if let Some(at_rule) = scoped.get(at_rule_name) {
@@ -211,44 +164,35 @@ fn skip(name: &str) -> bool {
     name == "color" || name == "gradient"
 }
 
-pub fn get_syntax(typ: CssType, browser_compat: Option<&str>) -> SyntaxLine {
-    get_syntax_internal(typ, browser_compat, false)
+pub fn get_syntax(typ: CssType, scope: Option<&str>) -> SyntaxLine {
+    get_syntax_internal(typ, scope, false)
 }
 
-fn _get_scoped_syntax(typ: CssType, _browser_compat: Option<&str>) -> SyntaxLine {
-    match typ {
-        CssType::Property(_) => todo!(),
-        CssType::AtRule(_) => todo!(),
-        CssType::AtRuleDescriptor(_, _) => todo!(),
-        CssType::Function(_) => todo!(),
-        CssType::Type(_) => todo!(),
-        CssType::ShorthandProperty(_) => todo!(),
-    }
-}
-
-fn get_syntax_internal(typ: CssType, browser_compat: Option<&str>, top_level: bool) -> SyntaxLine {
+fn get_syntax_internal(typ: CssType, scope: Option<&str>, top_level: bool) -> SyntaxLine {
     match typ {
         CssType::ShorthandProperty(name) | CssType::Property(name) => {
             let trimmed = name
                 .trim_start_matches(['<', '\''])
                 .trim_end_matches(['\'', '>']);
-            get_property_syntax(trimmed, browser_compat).to_syntax_line(name)
+            get_generic_syntax(trimmed, scope, &CSS_REF.properties).to_syntax_line(name)
         }
         CssType::Type(name) => {
             let name = name.trim_end_matches("_value");
             if skip(name) && !top_level {
                 Syntax::default().to_syntax_line(format!("<{name}>"))
             } else {
-                get_type_syntax(name, browser_compat).to_syntax_line(format!("<{name}>"))
+                get_generic_syntax(name, scope, &CSS_REF.types).to_syntax_line(format!("<{name}>"))
             }
         }
         CssType::Function(name) => {
             let name = format!("{name}()");
-            get_functions_syntax(&name, browser_compat).to_syntax_line(format!("<{name}>"))
+            get_generic_syntax(&name, scope, &CSS_REF.functions).to_syntax_line(format!("<{name}>"))
         }
-        CssType::AtRule(name) => get_at_rule_syntax(name, browser_compat).to_syntax_line(name),
+        CssType::AtRule(name) => {
+            get_generic_syntax(name, scope, &CSS_REF.atrules).to_syntax_line(name)
+        }
         CssType::AtRuleDescriptor(name, at_rule_name) => {
-            get_at_rule_descriptor_syntax(name, at_rule_name, browser_compat).to_syntax_line(name)
+            get_at_rule_descriptor_syntax(name, at_rule_name, scope).to_syntax_line(name)
         }
     }
 }
@@ -923,7 +867,7 @@ mod test {
         let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Function("hue-rotate")),
-            Some("filter"),
+            Some("css.types.filter-function.hue-rotate"),
             "en-US",
             "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             &TOOLTIPS,
@@ -931,5 +875,21 @@ mod test {
         )?;
         assert_eq!(result, expected);
         Ok(())
+    }
+
+    #[test]
+    fn test_get_generic_syntax() {
+        let color = get_generic_syntax("color", None, &CSS_REF.properties);
+        assert_eq!(color.syntax, "<color>");
+
+        let border = get_generic_syntax("border", None, &CSS_REF.properties);
+        assert_eq!(border.syntax, "<line-width> || <line-style> || <color>");
+
+        let grid_template_rows =
+            get_generic_syntax("grid-template-rows", None, &CSS_REF.properties);
+        assert_eq!(
+            grid_template_rows.syntax,
+            "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?"
+        );
     }
 }
