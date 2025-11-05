@@ -22,7 +22,7 @@ use crate::error::DocError;
 /// the specified attribute in the node's attributes list.
 pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str) {
     if let Some(mut details) = html.tree.get_mut(node_id) {
-        if let Node::Element(ref mut el) = details.value() {
+        if let Node::Element(el) = details.value() {
             el.attrs.insert(
                 QualName {
                     prefix: None,
@@ -46,7 +46,7 @@ pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str
 /// attribute from the node's attributes list, if it exists.
 pub fn remove_attribute(html: &mut Html, node_id: NodeId, key: &str) {
     if let Some(mut details) = html.tree.get_mut(node_id) {
-        if let Node::Element(ref mut el) = details.value() {
+        if let Node::Element(el) = details.value() {
             el.attrs.swap_remove(&QualName {
                 prefix: None,
                 ns: ns!(),

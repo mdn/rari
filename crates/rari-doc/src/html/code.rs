@@ -112,7 +112,7 @@ pub fn code_blocks(html: &mut Html) -> Option<Vec<Code>> {
     for code in examples {
         for node_id in &code.node_ids {
             if let Some(mut node) = html.tree.get_mut(*node_id) {
-                if let Node::Element(ref mut el) = node.value() {
+                if let Node::Element(el) = node.value() {
                     let class = el.attr("class").unwrap_or_default();
                     let claas = concat_strs!(
                         class,
