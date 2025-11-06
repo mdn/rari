@@ -2,8 +2,8 @@ use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
 use crate::error::DocError;
-use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
-use crate::html::links::{render_internal_link, LinkModifier};
+use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
+use crate::html::links::{LinkModifier, render_internal_link};
 use crate::pages::page::{Page, PageLike};
 use crate::utils::{trim_after, trim_before};
 

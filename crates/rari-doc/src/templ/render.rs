@@ -4,9 +4,9 @@ use rari_md::ext::{DELIM_END, DELIM_END_LEN, DELIM_START, DELIM_START_LEN};
 use rari_types::globals::deny_warnings;
 use rari_types::templ::TemplType;
 use rari_types::{AnyArg, RariEnv};
-use tracing::{span, warn, Level};
+use tracing::{Level, span, warn};
 
-use super::parser::{parse, Token};
+use super::parser::{Token, parse};
 use super::templs::invoke;
 use crate::error::DocError;
 

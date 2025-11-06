@@ -55,18 +55,18 @@ fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) 
             };
 
             if let Some(href_val) = url_field {
-                if let Some(href_str) = href_val.as_str() {
-                    if let Ok(url) = Url::parse(href_str) {
-                        let mut url_without_fragment = url.clone();
-                        url_without_fragment.set_fragment(None);
-                        let title = url_to_title
-                            .get(url_without_fragment.as_str())
-                            .cloned()
-                            .unwrap_or_else(|| "CSS Specification".to_string());
+                if let Some(href_str) = href_val.as_str()
+                    && let Ok(url) = Url::parse(href_str)
+                {
+                    let mut url_without_fragment = url.clone();
+                    url_without_fragment.set_fragment(None);
+                    let title = url_to_title
+                        .get(url_without_fragment.as_str())
+                        .cloned()
+                        .unwrap_or_else(|| "CSS Specification".to_string());
 
-                        let spec = SpecLink { title, url };
-                        obj.insert("specLink".to_string(), serde_json::to_value(spec).unwrap());
-                    }
+                    let spec = SpecLink { title, url };
+                    obj.insert("specLink".to_string(), serde_json::to_value(spec).unwrap());
                 }
                 obj.remove(field_name);
             }
@@ -171,23 +171,23 @@ fn process_browser_specs(folder: &Path) -> Result<BTreeMap<String, String>, Deps
         }
 
         // Also add release URL if different from main URL
-        if let Some(release) = &spec.release {
-            if release.url != spec.url {
-                url_to_title.insert(release.url.clone(), spec.title.clone());
-            }
+        if let Some(release) = &spec.release
+            && release.url != spec.url
+        {
+            url_to_title.insert(release.url.clone(), spec.title.clone());
         }
 
         // Add series URLs if different
-        if let Some(release_url) = spec.series.release_url {
-            if release_url != spec.url {
-                url_to_title.insert(release_url.clone(), spec.title.clone());
-            }
+        if let Some(release_url) = spec.series.release_url
+            && release_url != spec.url
+        {
+            url_to_title.insert(release_url.clone(), spec.title.clone());
         }
 
-        if let Some(nightly_url) = &spec.series.nightly_url {
-            if Some(nightly_url) != spec.nightly.as_ref().map(|n| &n.url) {
-                url_to_title.insert(nightly_url.clone(), spec.title.clone());
-            }
+        if let Some(nightly_url) = &spec.series.nightly_url
+            && Some(nightly_url) != spec.nightly.as_ref().map(|n| &n.url)
+        {
+            url_to_title.insert(nightly_url.clone(), spec.title.clone());
         }
     }
 

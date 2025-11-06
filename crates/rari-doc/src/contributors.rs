@@ -74,14 +74,14 @@ pub fn contributors_txt(wiki_history: Option<&WikiHistoryEntry>, github_file_url
         &github_file_url.replace("blob", "commits"),
         "\n\n",
     ]);
-    if let Some(wh) = wiki_history {
-        if !wh.contributors.is_empty() {
-            out.extend([
-                "# Original Wiki contributors\n",
-                &wh.contributors.join("\n"),
-                "\n",
-            ]);
-        }
+    if let Some(wh) = wiki_history
+        && !wh.contributors.is_empty()
+    {
+        out.extend([
+            "# Original Wiki contributors\n",
+            &wh.contributors.join("\n"),
+            "\n",
+        ]);
     }
     out
 }

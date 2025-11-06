@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use css_syntax::syntax::{render_formal_syntax, CssType, LinkedToken, SyntaxInput};
+use css_syntax::syntax::{CssType, LinkedToken, SyntaxInput, render_formal_syntax};
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 

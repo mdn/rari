@@ -60,8 +60,7 @@ pub fn create_rss(
     base_url: &str,
 ) -> Result<(), DocError> {
     let title = "MDN Blog";
-    let description =
-      "The MDN Web Docs blog publishes articles about web development, open source software, web platform updates, tutorials, changes and updates to MDN, and more.";
+    let description = "The MDN Web Docs blog publishes articles about web development, open source software, web platform updates, tutorials, changes and updates to MDN, and more.";
     let link = concat_strs!(base_url, "/", default_locale().as_url_str(), "/blog/");
     let language = "en";
     let image = Image {

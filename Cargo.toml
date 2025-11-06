@@ -1,12 +1,12 @@
 [package]
 name = "rari"
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
 homepage = "https://github.com/mdn/rari"
 repository = "https://github.com/mdn/rari"
-rust-version = "1.86"
+rust-version = "1.90"
 
 [[bin]]
 path = "crates/rari-cli/main.rs"
@@ -45,10 +45,10 @@ members = [
 ]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
-rust-version = "1.86"
+rust-version = "1.90"
 
 [workspace.dependencies]
 rari-doc = { path = "crates/rari-doc" }

@@ -5,21 +5,21 @@ use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::mpsc::channel;
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 use std::thread::spawn;
 
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::Verbosity;
 use dashmap::DashMap;
-use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
+use dialoguer::theme::ColorfulTheme;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas, build_top_level_meta,
 };
-use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
+use rari_doc::cached_readers::{CACHED_DOC_PAGE_FILES, read_and_cache_doc_pages};
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::Page;
@@ -37,17 +37,17 @@ use rari_tools::redirects::{fix_redirects, validate_redirects};
 use rari_tools::remove::remove;
 use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
-use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
+use rari_types::globals::{SETTINGS, build_out_root, content_root, content_translated_root};
 use rari_types::locale::Locale;
 use rari_types::settings::Settings;
 use rari_utils::io::read_to_string;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
 use tracing::level_filters::LevelFilter;
-use tracing::{info, Level};
+use tracing::{Level, info};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{filter, Layer};
+use tracing_subscriber::{Layer, filter};
 
 mod serve;
 

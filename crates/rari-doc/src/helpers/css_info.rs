@@ -4,9 +4,9 @@ use std::sync::OnceLock;
 
 use indexmap::IndexMap;
 use itertools::Itertools;
+use rari_types::RariEnv;
 use rari_types::globals::data_dir;
 use rari_types::locale::Locale;
-use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use serde_json::Value;
 use tracing::warn;
@@ -344,8 +344,6 @@ pub fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
 }
 
 fn remove_me_replace_placeholder(s: &str, replacements: &[&str]) -> String {
-    let s = s
-        .replace("$1$", replacements.first().unwrap_or(&"$1$"))
-        .replace("$2$", replacements.get(1).unwrap_or(&"$2$"));
-    s
+    s.replace("$1$", replacements.first().unwrap_or(&"$1$"))
+        .replace("$2$", replacements.get(1).unwrap_or(&"$2$"))
 }

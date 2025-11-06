@@ -1,6 +1,6 @@
 use rari_types::templ::TemplType;
 use rari_types::{Arg, Quotes};
-use tracing::{span, Level};
+use tracing::{Level, span};
 
 use crate::error::DocError;
 use crate::pages::page::PageLike;

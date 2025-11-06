@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use ego_tree::NodeId;
-use html5ever::{namespace_url, ns, Attribute, QualName};
+use html5ever::{Attribute, QualName, namespace_url, ns};
 use rari_md::anchor::anchorize;
 use rari_utils::concat_strs;
 use scraper::node::{self};
@@ -21,17 +21,17 @@ use crate::error::DocError;
 /// If the node exists and is an element, this function adds or updates
 /// the specified attribute in the node's attributes list.
 pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str) {
-    if let Some(mut details) = html.tree.get_mut(node_id) {
-        if let Node::Element(ref mut el) = details.value() {
-            el.attrs.insert(
-                QualName {
-                    prefix: None,
-                    ns: ns!(),
-                    local: key.into(),
-                },
-                value.into(),
-            );
-        }
+    if let Some(mut details) = html.tree.get_mut(node_id)
+        && let Node::Element(el) = details.value()
+    {
+        el.attrs.insert(
+            QualName {
+                prefix: None,
+                ns: ns!(),
+                local: key.into(),
+            },
+            value.into(),
+        );
     }
 }
 
@@ -45,14 +45,14 @@ pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str
 /// If the node exists and is an element, this function removes the specified
 /// attribute from the node's attributes list, if it exists.
 pub fn remove_attribute(html: &mut Html, node_id: NodeId, key: &str) {
-    if let Some(mut details) = html.tree.get_mut(node_id) {
-        if let Node::Element(ref mut el) = details.value() {
-            el.attrs.swap_remove(&QualName {
-                prefix: None,
-                ns: ns!(),
-                local: key.into(),
-            });
-        }
+    if let Some(mut details) = html.tree.get_mut(node_id)
+        && let Node::Element(el) = details.value()
+    {
+        el.attrs.swap_remove(&QualName {
+            prefix: None,
+            ns: ns!(),
+            local: key.into(),
+        });
     }
 }
 
@@ -66,12 +66,11 @@ pub fn remove_attribute(html: &mut Html, node_id: NodeId, key: &str) {
 /// * `Option<String>` - Returns `Some(String)` containing the `id` prefixed with `#` if found, or `None` if the node
 ///   has no `id` attribute.
 pub fn get_id(html: &Html, node_id: NodeId) -> Option<String> {
-    if let Some(node) = html.tree.get(node_id) {
-        if let Node::Element(node_el) = node.value() {
-            if let Some(id) = node_el.attr("id") {
-                return Some(concat_strs!("#", id));
-            }
-        }
+    if let Some(node) = html.tree.get(node_id)
+        && let Node::Element(node_el) = node.value()
+        && let Some(id) = node_el.attr("id")
+    {
+        return Some(concat_strs!("#", id));
     }
     None
 }

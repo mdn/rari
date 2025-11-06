@@ -8,7 +8,7 @@ use serde::Deserialize;
 use crate::error::EnvError;
 use crate::locale::Locale;
 use crate::settings::{Deps, Settings};
-use crate::{globals, HistoryEntry, Popularities};
+use crate::{HistoryEntry, Popularities, globals};
 
 #[inline(always)]
 pub fn content_root() -> &'static Path {

@@ -1,12 +1,12 @@
 extern crate proc_macro;
 use std::fmt::Write;
 
-use darling::ast::NestedMeta;
 use darling::FromMeta;
+use darling::ast::NestedMeta;
 use proc_macro::TokenStream;
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::punctuated::Punctuated;
-use syn::{parse_macro_input, parse_quote, Lit};
+use syn::{Lit, parse_macro_input, parse_quote};
 
 enum Complete {
     None,
