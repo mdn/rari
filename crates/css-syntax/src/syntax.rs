@@ -82,13 +82,13 @@ fn get_generic_syntax<T: SyntaxProvider + 'static + std::fmt::Debug>(
 ) -> Syntax {
     let scopes = scope_chain(scope);
     for scope in scopes {
-        if let Some(scoped) = field.get(scope) {
-            if let Some(item) = scoped.get(name) {
-                return Syntax {
-                    syntax: item.syntax().clone().unwrap_or_default(),
-                    specs: item.spec_link().as_ref().map(|s| vec![s]),
-                };
-            }
+        if let Some(scoped) = field.get(scope)
+            && let Some(item) = scoped.get(name)
+        {
+            return Syntax {
+                syntax: item.syntax().clone().unwrap_or_default(),
+                specs: item.spec_link().as_ref().map(|s| vec![s]),
+            };
         }
     }
     Syntax::default()
@@ -102,17 +102,17 @@ pub fn get_at_rule_descriptor_syntax(
 ) -> Syntax {
     let scopes = scope_chain(scope);
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.atrules.get(scope) {
-            if let Some(at_rule) = scoped.get(at_rule_name) {
-                if let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
-                    return Syntax {
-                        syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
-                        specs: at_rule_descriptor.spec_link.as_ref().map(|s| vec![s]),
-                    };
-                }
-            }
+        if let Some(scoped) = CSS_REF.atrules.get(scope)
+            && let Some(at_rule) = scoped.get(at_rule_name)
+            && let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name)
+        {
+            return Syntax {
+                syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
+                specs: at_rule_descriptor.spec_link.as_ref().map(|s| vec![s]),
+            };
         }
     }
+
     Syntax::default()
 }
 
