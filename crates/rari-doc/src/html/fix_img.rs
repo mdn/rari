@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::path::Path;
 
-use lol_html::html_content::Element;
 use lol_html::HandlerResult;
+use lol_html::html_content::Element;
 use rari_types::locale::default_locale;
 use tracing::warn;
 use url::{ParseOptions, Url};
@@ -31,9 +31,9 @@ pub fn handle_img(
             if !file.try_exists().unwrap_or_default()
                 && let Ok(en_us_page) =
                     Page::from_url_with_locale_and_fallback(page.url(), default_locale())
-                {
-                    file = en_us_page.full_path().parent().unwrap().join(&src);
-                }
+            {
+                file = en_us_page.full_path().parent().unwrap().join(&src);
+            }
             let (width, height) = img_size(el, &src, &file, data_issues)?;
             if let Some(width) = width {
                 el.set_attribute("width", &width)?;

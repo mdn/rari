@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use rari_doc::pages::page::{Page, PageLike};
-use rari_doc::resolve::{url_meta_from, UrlMeta};
+use rari_doc::resolve::{UrlMeta, url_meta_from};
 use rari_doc::utils::root_for_locale;
 use rari_types::globals::deny_warnings;
 use rari_types::locale::Locale;
@@ -574,7 +574,8 @@ fn validate_from_url(url: &str, locale: Locale) -> Result<(), ToolError> {
     let parts: Vec<&str> = url.split('/').collect();
     if parts.len() < 4 {
         return Err(ToolError::InvalidRedirectFromURL(format!(
-            "From-URL '{url}' does not have enough parts for locale validation for locale '{locale}'."        )));
+            "From-URL '{url}' does not have enough parts for locale validation for locale '{locale}'."
+        )));
     }
 
     let from_locale = parts[1];
@@ -662,15 +663,16 @@ fn validate_to_url(url: &str, locale: Locale) -> Result<(), ToolError> {
             )));
         }
         if let Ok(page) = Page::from_url(bare_url)
-            && page.url() != bare_url {
-                return Err(ToolError::InvalidRedirectToURL(format!(
-                    "To-URL '{}' does not equal page url '{}' for '{}' for locale '{}'.",
-                    bare_url,
-                    page.url(),
-                    path.display(),
-                    locale
-                )));
-            }
+            && page.url() != bare_url
+        {
+            return Err(ToolError::InvalidRedirectToURL(format!(
+                "To-URL '{}' does not equal page url '{}' for '{}' for locale '{}'.",
+                bare_url,
+                page.url(),
+                path.display(),
+                locale
+            )));
+        }
     } else {
         return Err(ToolError::InvalidRedirectToURL(format!(
             "To-URL '{url}' has to be external (https://) or start with '/' for locale '{locale}'."
@@ -693,11 +695,11 @@ fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
             .chars()
             .next()
             .map(|c| c.escape_default())
-        {
-            return Err(ToolError::InvalidRedirectToURL(format!(
-                "URL '{url}' contains forbidden symbol '{escaped_symbol}'."
-            )));
-        }
+    {
+        return Err(ToolError::InvalidRedirectToURL(format!(
+            "URL '{url}' contains forbidden symbol '{escaped_symbol}'."
+        )));
+    }
     Ok(())
 }
 

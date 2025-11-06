@@ -560,19 +560,20 @@ fn regroup_terms(
                     continue;
                 } else {
                     if let Some(subgroup_start) = subgroup_start
-                        && i - subgroup_start > 1 {
-                            let group = terms.splice(subgroup_start..i, empty()).collect();
-                            terms.insert(
-                                subgroup_start,
-                                Node::Group(Group {
-                                    terms: group,
-                                    combinator,
-                                    disallow_empty: false,
-                                    explicit: false,
-                                }),
-                            );
-                            i = subgroup_start + 1;
-                        }
+                        && i - subgroup_start > 1
+                    {
+                        let group = terms.splice(subgroup_start..i, empty()).collect();
+                        terms.insert(
+                            subgroup_start,
+                            Node::Group(Group {
+                                terms: group,
+                                combinator,
+                                disallow_empty: false,
+                                explicit: false,
+                            }),
+                        );
+                        i = subgroup_start + 1;
+                    }
                     subgroup_start = None;
                 }
             }
@@ -580,18 +581,19 @@ fn regroup_terms(
         }
 
         if let Some(subgroup_start) = subgroup_start
-            && !combinators.is_empty() {
-                let group = terms.splice(subgroup_start..i, empty()).collect();
-                terms.insert(
-                    subgroup_start,
-                    Node::Group(Group {
-                        terms: group,
-                        combinator,
-                        disallow_empty: false,
-                        explicit: false,
-                    }),
-                );
-            }
+            && !combinators.is_empty()
+        {
+            let group = terms.splice(subgroup_start..i, empty()).collect();
+            terms.insert(
+                subgroup_start,
+                Node::Group(Group {
+                    terms: group,
+                    combinator,
+                    disallow_empty: false,
+                    explicit: false,
+                }),
+            );
+        }
     }
     (terms, combinator)
 }
@@ -666,9 +668,10 @@ fn peek(
 ) -> Result<Option<Node>, SyntaxDefinitionError> {
     let code = tokenizer.char_code();
     if let Some(stop_char) = stop_char
-        && code == stop_char {
-            return Ok(None);
-        }
+        && code == stop_char
+    {
+        return Ok(None);
+    }
     if is_name_char(code) {
         return Ok(Some(read_keyword_or_function(tokenizer)?));
     }

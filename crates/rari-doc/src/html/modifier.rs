@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use ego_tree::NodeId;
-use html5ever::{namespace_url, ns, Attribute, QualName};
+use html5ever::{Attribute, QualName, namespace_url, ns};
 use rari_md::anchor::anchorize;
 use rari_utils::concat_strs;
 use scraper::node::{self};
@@ -22,16 +22,17 @@ use crate::error::DocError;
 /// the specified attribute in the node's attributes list.
 pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str) {
     if let Some(mut details) = html.tree.get_mut(node_id)
-        && let Node::Element(el) = details.value() {
-            el.attrs.insert(
-                QualName {
-                    prefix: None,
-                    ns: ns!(),
-                    local: key.into(),
-                },
-                value.into(),
-            );
-        }
+        && let Node::Element(el) = details.value()
+    {
+        el.attrs.insert(
+            QualName {
+                prefix: None,
+                ns: ns!(),
+                local: key.into(),
+            },
+            value.into(),
+        );
+    }
 }
 
 /// Removes an attribute from a specified HTML node.
@@ -45,13 +46,14 @@ pub fn insert_attribute(html: &mut Html, node_id: NodeId, key: &str, value: &str
 /// attribute from the node's attributes list, if it exists.
 pub fn remove_attribute(html: &mut Html, node_id: NodeId, key: &str) {
     if let Some(mut details) = html.tree.get_mut(node_id)
-        && let Node::Element(el) = details.value() {
-            el.attrs.swap_remove(&QualName {
-                prefix: None,
-                ns: ns!(),
-                local: key.into(),
-            });
-        }
+        && let Node::Element(el) = details.value()
+    {
+        el.attrs.swap_remove(&QualName {
+            prefix: None,
+            ns: ns!(),
+            local: key.into(),
+        });
+    }
 }
 
 /// Retrieves the `id` attribute of an HTML node if it exists, prefixed with `#`.
@@ -66,9 +68,10 @@ pub fn remove_attribute(html: &mut Html, node_id: NodeId, key: &str) {
 pub fn get_id(html: &Html, node_id: NodeId) -> Option<String> {
     if let Some(node) = html.tree.get(node_id)
         && let Node::Element(node_el) = node.value()
-            && let Some(id) = node_el.attr("id") {
-                return Some(concat_strs!("#", id));
-            }
+        && let Some(id) = node_el.attr("id")
+    {
+        return Some(concat_strs!("#", id));
+    }
     None
 }
 

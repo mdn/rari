@@ -21,7 +21,6 @@ pub fn exec_git_with_test_fallback(args: &[impl AsRef<OsStr>], root: impl AsRef<
 }
 
 pub fn exec_git(args: &[impl AsRef<OsStr>], root: impl AsRef<Path>) -> Output {
-    
     Command::new("git")
         .args(args)
         .current_dir(root)
@@ -34,7 +33,6 @@ fn exec_git_internal(
     args: &[impl AsRef<OsStr>],
     root: impl AsRef<Path>,
 ) -> Output {
-    
     Command::new(command)
         .args(args)
         .current_dir(root)

@@ -45,16 +45,16 @@ static JSON_L10N_FILES: LazyLock<HashMap<String, JsonL10nFile>> = LazyLock::new(
         .filter_map(|f| {
             if let Ok(f) = f
                 && f.path().is_file()
-                    && f.path()
-                        .extension()
-                        .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
-                    && f.path()
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .is_some_and(|s| s.starts_with("L10n-"))
-                {
-                    return Some(f.path());
-                }
+                && f.path()
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+                && f.path()
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|s| s.starts_with("L10n-"))
+            {
+                return Some(f.path());
+            }
             None
         })
         .map(|f| {

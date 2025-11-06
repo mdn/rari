@@ -3,7 +3,7 @@ use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
-use crate::helpers::web_ext_examples::{WebExtExample, WEB_EXT_EXAMPLES_DATA};
+use crate::helpers::web_ext_examples::{WEB_EXT_EXAMPLES_DATA, WebExtExample};
 
 #[rari_f(register = "crate::Templ")]
 pub fn webextexamples(heading: Option<String>) -> Result<String, DocError> {

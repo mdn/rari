@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use ego_tree::NodeId;
-use html5ever::{namespace_url, ns, QualName};
+use html5ever::{QualName, namespace_url, ns};
 use rari_types::globals::settings;
 use rari_utils::concat_strs;
 use schemars::JsonSchema;
@@ -112,23 +112,24 @@ pub fn code_blocks(html: &mut Html) -> Option<Vec<Code>> {
     for code in examples {
         for node_id in &code.node_ids {
             if let Some(mut node) = html.tree.get_mut(*node_id)
-                && let Node::Element(el) = node.value() {
-                    let class = el.attr("class").unwrap_or_default();
-                    let claas = concat_strs!(
-                        class,
-                        if class.is_empty() { "" } else { " " },
-                        "live-sample---",
-                        code.id.as_str()
-                    );
-                    el.attrs.insert(
-                        QualName {
-                            prefix: None,
-                            ns: ns!(),
-                            local: "class".into(),
-                        },
-                        claas.into(),
-                    );
-                }
+                && let Node::Element(el) = node.value()
+            {
+                let class = el.attr("class").unwrap_or_default();
+                let claas = concat_strs!(
+                    class,
+                    if class.is_empty() { "" } else { " " },
+                    "live-sample---",
+                    code.id.as_str()
+                );
+                el.attrs.insert(
+                    QualName {
+                        prefix: None,
+                        ns: ns!(),
+                        local: "class".into(),
+                    },
+                    claas.into(),
+                );
+            }
         }
         result.push(code.into())
     }

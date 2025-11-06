@@ -143,9 +143,10 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
         _ => {
             let key = (name.to_string(), locale);
             if cache_content()
-                && let Some(sidebar) = CACHED_SIDEBAR_FILES.get(&key) {
-                    return Ok(sidebar.clone());
-                }
+                && let Some(sidebar) = CACHED_SIDEBAR_FILES.get(&key)
+            {
+                return Ok(sidebar.clone());
+            }
             let mut file = content_root().to_path_buf();
             file.push("sidebars");
             file.push(name);

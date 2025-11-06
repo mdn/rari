@@ -75,9 +75,10 @@ pub fn invoke(
         None => {
             TEMPL_RECORDER.with(|tx| {
                 if let Some(tx) = tx
-                    && let Err(e) = tx.send(name.to_string()) {
-                        error!("templ recorder: {e}");
-                    }
+                    && let Err(e) = tx.send(name.to_string())
+                {
+                    error!("templ recorder: {e}");
+                }
             });
             return Ok((format!("<s>unsupported templ: {name}</s>"), TemplType::None));
         } //

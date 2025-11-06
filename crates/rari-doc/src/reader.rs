@@ -59,21 +59,22 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
             let success = &success;
             Box::new(move |result| {
                 if let Ok(f) = result
-                    && f.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-                        let p = f.into_path();
-                        match T::read(p, None) {
-                            Ok(doc) => {
-                                if let Err(e) = tx.send(Ok(doc)) {
-                                    error!("{e}");
-                                }
-                            }
-                            Err(e) => {
+                    && f.file_type().map(|ft| ft.is_file()).unwrap_or(false)
+                {
+                    let p = f.into_path();
+                    match T::read(p, None) {
+                        Ok(doc) => {
+                            if let Err(e) = tx.send(Ok(doc)) {
                                 error!("{e}");
-                                success.store(false, Ordering::Relaxed);
-                                //tx.send(Err(e.into())).unwrap();
                             }
                         }
+                        Err(e) => {
+                            error!("{e}");
+                            success.store(false, Ordering::Relaxed);
+                            //tx.send(Err(e.into())).unwrap();
+                        }
                     }
+                }
                 ignore::WalkState::Continue
             })
         });

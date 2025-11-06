@@ -6,17 +6,17 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write as _};
 use std::path::Path;
+use std::sync::LazyLock;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::LazyLock;
 
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use clap::{Args, Parser, Subcommand};
-use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
+use ignore::types::TypesBuilder;
 use itertools::Itertools;
 use jsonpath_lib::Compiled;
-use lol_html::{element, rewrite_str, ElementContentHandlers, RewriteStrSettings, Selector};
+use lol_html::{ElementContentHandlers, RewriteStrSettings, Selector, element, rewrite_str};
 use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
@@ -228,9 +228,10 @@ fn full_diff(
 ) {
     if path.len() == 1
         && let PathIndex::Object(s) = &path[0]
-            && s == "url" {
-                return;
-            }
+        && s == "url"
+    {
+        return;
+    }
     let key = make_key(path);
 
     if SKIP_GLOB_LIST.iter().any(|i| file.starts_with(i)) {

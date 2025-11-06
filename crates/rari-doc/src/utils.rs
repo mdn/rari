@@ -10,8 +10,8 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::path::Path;
 use std::str::FromStr;
-use std::sync::mpsc::Sender;
 use std::sync::OnceLock;
+use std::sync::mpsc::Sender;
 
 use chrono::{NaiveDate, NaiveDateTime};
 use icu_collator::options::{CollatorOptions, Strength};
@@ -21,7 +21,7 @@ use icu_locale_core::locale;
 use rari_types::error::EnvError;
 use rari_types::globals::{blog_root, content_root, content_translated_root, settings};
 use rari_types::locale::{Locale, LocaleError};
-use serde::de::{self, value, SeqAccess, Visitor};
+use serde::de::{self, SeqAccess, Visitor, value};
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -191,19 +191,21 @@ pub(crate) fn locale_and_typ_from_path(path: &Path) -> Result<(Locale, PageCateg
     }
 
     if let Some(root) = blog_root()
-        && path.starts_with(root) {
-            return Ok((Locale::EnUs, PageCategory::BlogPost));
-        }
+        && path.starts_with(root)
+    {
+        return Ok((Locale::EnUs, PageCategory::BlogPost));
+    }
     if let Some(root) = content_translated_root()
         && let Ok(relative) = path.strip_prefix(root)
-            && let Some(locale_str) = relative.components().next() {
-                let locale_str = locale_str
-                    .as_os_str()
-                    .to_str()
-                    .ok_or(LocaleError::NoLocaleInPath)?;
-                let locale = Locale::from_str(locale_str)?;
-                return Ok((locale, PageCategory::Doc));
-            }
+        && let Some(locale_str) = relative.components().next()
+    {
+        let locale_str = locale_str
+            .as_os_str()
+            .to_str()
+            .ok_or(LocaleError::NoLocaleInPath)?;
+        let locale = Locale::from_str(locale_str)?;
+        return Ok((locale, PageCategory::Doc));
+    }
     Err(DocError::LocaleError(LocaleError::NoLocaleInPath))
 }
 
@@ -369,17 +371,19 @@ thread_local! {
 
 pub fn trim_after<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
     if let Some(pat) = pat
-        && let Some(i) = input.find(pat) {
-            return &input[..=i];
-        }
+        && let Some(i) = input.find(pat)
+    {
+        return &input[..=i];
+    }
     input
 }
 
 pub fn trim_before<'a>(input: &'a str, pat: Option<&str>) -> &'a str {
     if let Some(pat) = pat
-        && let Some(i) = input.find(pat) {
-            return &input[i..];
-        }
+        && let Some(i) = input.find(pat)
+    {
+        return &input[i..];
+    }
     input
 }
 

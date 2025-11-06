@@ -10,7 +10,7 @@ use rari_doc::html::sidebar::{
 };
 use rari_doc::redirects::resolve_redirect;
 use rari_types::globals::content_root;
-use rari_types::locale::{default_locale, Locale};
+use rari_types::locale::{Locale, default_locale};
 use rari_utils::concat_strs;
 
 use crate::error::ToolError;
@@ -64,12 +64,12 @@ impl LinkFixer for CaseFixer {
     fn fix_link(&self, link: Option<String>) -> Option<String> {
         if let Some(link) = &link
             && let Some(slug) = link.strip_prefix("/")
-                && let Some(redirect) =
-                    resolve_redirect(&concat_strs!(EN_US_DOCS_SLASH_PREFIX, slug))
-                    && let Some(new_slug) = redirect.strip_prefix(EN_US_DOCS_SLASH_PREFIX)
-                        && new_slug != slug {
-                            return Some(concat_strs!("/", new_slug));
-                        }
+            && let Some(redirect) = resolve_redirect(&concat_strs!(EN_US_DOCS_SLASH_PREFIX, slug))
+            && let Some(new_slug) = redirect.strip_prefix(EN_US_DOCS_SLASH_PREFIX)
+            && new_slug != slug
+        {
+            return Some(concat_strs!("/", new_slug));
+        }
         link
     }
 }

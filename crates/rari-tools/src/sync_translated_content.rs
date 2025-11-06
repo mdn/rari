@@ -335,9 +335,10 @@ fn resolve<'a>(
 
     let page = Page::from_url(resolved_url);
     if let Ok(page) = page
-        && page.slug() != slug {
-            return Cow::Owned(page.slug().to_string());
-        }
+        && page.slug() != slug
+    {
+        return Cow::Owned(page.slug().to_string());
+    }
     Cow::Borrowed(slug)
 }
 

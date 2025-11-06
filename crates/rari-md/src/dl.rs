@@ -15,10 +15,11 @@ pub(crate) fn is_dl<'a>(list: &'a AstNode<'a>) -> bool {
                     return false;
                 }
                 if let Some(j) = i.first_child()
-                    && let NodeValue::Text(ref t) = j.data.borrow().value {
-                        //println!("{:?}", std::str::from_utf8(t));
-                        return t.starts_with(": ");
-                    }
+                    && let NodeValue::Text(ref t) = j.data.borrow().value
+                {
+                    //println!("{:?}", std::str::from_utf8(t));
+                    return t.starts_with(": ");
+                }
             }
             false
         })
@@ -40,17 +41,18 @@ pub(crate) fn convert_dl<'a>(list: &'a AstNode<'a>) {
                     break;
                 }
                 if let Some(j) = i.first_child()
-                    && let NodeValue::Text(ref mut t) = j.data.borrow_mut().value {
-                        match t.len() {
-                            0 => {}
-                            1 => {
-                                t.drain(0..1);
-                            }
-                            _ => {
-                                t.drain(0..2);
-                            }
+                    && let NodeValue::Text(ref mut t) = j.data.borrow_mut().value
+                {
+                    match t.len() {
+                        0 => {}
+                        1 => {
+                            t.drain(0..1);
+                        }
+                        _ => {
+                            t.drain(0..2);
                         }
                     }
+                }
             }
             item.data.borrow_mut().value = NodeValue::DescriptionDetails;
             item.detach();

@@ -2,7 +2,7 @@ use rari_templ_func::rari_f;
 use rari_types::fm_types::PageType;
 
 use crate::error::DocError;
-use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
+use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::{Page, PageLike};
 
 #[rari_f(register = "crate::Templ")]
@@ -20,9 +20,10 @@ pub fn webextallcompattables() -> Result<String, DocError> {
     )?;
     for page in sub_pages.iter().filter_map(|page| {
         if page.page_type() == PageType::WebextensionApi
-            && let Page::Doc(doc) = page {
-                return Some(doc);
-            }
+            && let Page::Doc(doc) = page
+        {
+            return Some(doc);
+        }
         None
     }) {
         for feature_name in &page.meta.browser_compat {
@@ -61,7 +62,7 @@ mod test {
     use rari_types::RariEnv;
 
     use crate::error::DocError;
-    use crate::templ::render::{decode_ref, render, Rendered};
+    use crate::templ::render::{Rendered, decode_ref, render};
 
     #[test]
     fn test_compat_none() -> Result<(), DocError> {

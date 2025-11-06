@@ -5,17 +5,17 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
 use constcat::concat;
+use rari_types::RariEnv;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::{content_translated_root, settings};
 use rari_types::locale::Locale;
-use rari_types::RariEnv;
 use rari_utils::concat_strs;
 
 use super::spa_homepage::{
     featured_articles, featured_contributor, latest_news, recent_contributions,
 };
 use crate::cached_readers::{
-    blog_files, generic_content_config, BasicSPA, BuildSPA, PaginationData, SPAData,
+    BasicSPA, BuildSPA, PaginationData, SPAData, blog_files, generic_content_config,
 };
 use crate::error::DocError;
 use crate::helpers::parents::parents;
@@ -314,8 +314,7 @@ const OBSERVATORY_TITLE: &str = "HTTP Observatory";
 const OBSERVATORY_REPORT_TITLE: &str = "Report";
 const OBSERVATORY_TITLE_FULL: &str = concat!(OBSERVATORY_TITLE, " | MDN");
 
-const OBSERVATORY_DESCRIPTION: &str =
-"Test your site’s HTTP headers, including CSP and HSTS, to find security problems and get actionable recommendations to make your website more secure. Test other websites to see how you compare.";
+const OBSERVATORY_DESCRIPTION: &str = "Test your site’s HTTP headers, including CSP and HSTS, to find security problems and get actionable recommendations to make your website more secure. Test other websites to see how you compare.";
 
 static POSTS_PER_PAGE: LazyLock<usize> = LazyLock::new(|| {
     if settings().blog_pagination {

@@ -39,13 +39,14 @@ fn get_version(package_name: &str, version_req: &VersionReq) -> Result<VersionEn
         .rfind(|(k, _)| version_req.matches(k))
     {
         if let Some((latest, _)) = package.versions.last()
-            && latest > &entry.version {
-                tracing::warn!(
-                    "Update for {package_name} available {} -> {}",
-                    entry.version,
-                    latest
-                );
-            }
+            && latest > &entry.version
+        {
+            tracing::warn!(
+                "Update for {package_name} available {} -> {}",
+                entry.version,
+                latest
+            );
+        }
         Ok(entry.clone())
     } else {
         Err(DepsError::VersionNotFound)

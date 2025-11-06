@@ -102,12 +102,12 @@ impl WebFeatures {
             .bcd_keys
             .binary_search_by_key(&bcd_key_spaced, |ks| &ks.bcd_key_spaced)
             && start < self.bcd_keys.len()
-                && let Some(end) = self.bcd_keys[start + 1..]
-                    .iter()
-                    .position(|ks| !ks.bcd_key_spaced.starts_with(&suffix))
-                {
-                    return &self.bcd_keys[start + 1..start + 1 + end];
-                }
+            && let Some(end) = self.bcd_keys[start + 1..]
+                .iter()
+                .position(|ks| !ks.bcd_key_spaced.starts_with(&suffix))
+        {
+            return &self.bcd_keys[start + 1..start + 1 + end];
+        }
         &[]
     }
 
@@ -121,51 +121,51 @@ impl WebFeatures {
                 .by_compat_key
                 .as_ref()
                 .and_then(|by_key| by_key.get(bcd_key))
-            {
-                let sub_keys = self.sub_keys(bcd_key_spaced);
-                let sub_status = sub_keys
-                    .iter()
-                    .map(|sub_key| {
-                        self.feature_data_by_name(&sub_key.feature)
-                            .and_then(|feature| feature.status.by_compat_key.as_ref())
-                            .and_then(|by_key| by_key.get(&sub_key.bcd_key))
-                            .map(|status_for_key| status_for_key.baseline)
-                    })
-                    .collect::<Vec<_>>();
+        {
+            let sub_keys = self.sub_keys(bcd_key_spaced);
+            let sub_status = sub_keys
+                .iter()
+                .map(|sub_key| {
+                    self.feature_data_by_name(&sub_key.feature)
+                        .and_then(|feature| feature.status.by_compat_key.as_ref())
+                        .and_then(|by_key| by_key.get(&sub_key.bcd_key))
+                        .map(|status_for_key| status_for_key.baseline)
+                })
+                .collect::<Vec<_>>();
 
-                let asterisk = if sub_status
-                    .iter()
-                    .all(|baseline| baseline == &Some(status_for_key.baseline))
-                {
-                    false
-                } else {
-                    match status_for_key.baseline {
-                        BaselineHighLow::False => {
-                            let Support {
-                                chrome,
-                                chrome_android,
-                                firefox,
-                                firefox_android,
-                                safari,
-                                safari_ios,
-                                ..
-                            } = &status_for_key.support;
-                            !(chrome == chrome_android
-                                && firefox == firefox_android
-                                && safari == safari_ios)
-                        }
-                        BaselineHighLow::Low => !sub_status.iter().all(|ss| {
-                            matches!(ss, Some(BaselineHighLow::Low | BaselineHighLow::High))
-                        }),
-                        _ => true,
+            let asterisk = if sub_status
+                .iter()
+                .all(|baseline| baseline == &Some(status_for_key.baseline))
+            {
+                false
+            } else {
+                match status_for_key.baseline {
+                    BaselineHighLow::False => {
+                        let Support {
+                            chrome,
+                            chrome_android,
+                            firefox,
+                            firefox_android,
+                            safari,
+                            safari_ios,
+                            ..
+                        } = &status_for_key.support;
+                        !(chrome == chrome_android
+                            && firefox == firefox_android
+                            && safari == safari_ios)
                     }
-                };
-                return Some(Baseline {
-                    support: status_for_key,
-                    asterisk,
-                    feature,
-                });
-            }
+                    BaselineHighLow::Low => !sub_status
+                        .iter()
+                        .all(|ss| matches!(ss, Some(BaselineHighLow::Low | BaselineHighLow::High))),
+                    _ => true,
+                }
+            };
+            return Some(Baseline {
+                support: status_for_key,
+                asterisk,
+                feature,
+            });
+        }
         None
     }
 

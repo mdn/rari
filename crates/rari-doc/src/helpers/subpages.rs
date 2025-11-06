@@ -11,7 +11,7 @@ use rari_types::locale::Locale;
 use super::l10n::l10n_json_data;
 use super::titles::api_page_title;
 use crate::error::DocError;
-use crate::html::links::{render_internal_link, LinkModifier};
+use crate::html::links::{LinkModifier, render_internal_link};
 use crate::pages::page::{Page, PageLike, PageReader};
 use crate::redirects::resolve_redirect;
 use crate::utils::COLLATOR;
@@ -295,7 +295,7 @@ pub fn get_sub_pages(
             return Err(DocError::RedirectedLink {
                 from: url.to_string(),
                 to: redirect.to_string(),
-            })
+            });
         }
         Some(redirect) => redirect,
         None => url,
