@@ -81,14 +81,8 @@ fn get_generic_syntax<T: SyntaxProvider + 'static + std::fmt::Debug>(
     field: &'static BTreeMap<String, BTreeMap<String, T>>,
 ) -> Syntax {
     let scopes = scope_chain(scope);
-    println!("Scopes: {:?} {:?}", scopes, scope);
     for scope in scopes {
-        println!("Checking scope: {}", scope);
         if let Some(scoped) = field.get(scope) {
-            println!(
-                "Scoped data found for {scope}, looking up {name} \n{:#?}",
-                scoped.keys()
-            );
             if let Some(item) = scoped.get(name) {
                 return Syntax {
                     syntax: item.syntax().clone().unwrap_or_default(),
@@ -865,6 +859,46 @@ mod test {
         )?;
         assert_eq!(result, expected);
         Ok(())
+    }
+    #[test]
+    fn test_render_function_scoped() -> Result<(), SyntaxError> {
+        // rect() from the clip specs
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/top\"><span class=\"token property\">&lt;top&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/right\"><span class=\"token property\">&lt;right&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/bottom\"><span class=\"token property\">&lt;bottom&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/left\"><span class=\"token property\">&lt;left&gt;</span></a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
+        let result = render_formal_syntax(
+            SyntaxInput::Css(CssType::Function("rect")),
+            Some("css.properties.clip"),
+            "en-US",
+            "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
+            &TOOLTIPS,
+            None,
+        )?;
+        assert_eq!(result, expected);
+
+        // rect() from the shape specs
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <span class=\"token property\">&lt;length-percentage&gt;</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <span class=\"token keyword\">auto</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{4}</a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <span class=\"token keyword\">round</span> <a href=\"/en-US/docs/Web/CSS/border-radius\"><span class=\"token property\">&lt;&#x27;border-radius&#x27;&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/><br/><span class=\"token property\" id=\"&lt;border-radius&gt;\">&lt;border-radius&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> / <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a>  <br/></pre><footer></footer>";
+        let result = render_formal_syntax(
+            SyntaxInput::Css(CssType::Function("rect")),
+            Some("css.types.basic-shape.rect"),
+            "en-US",
+            "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
+            &TOOLTIPS,
+            None,
+        )?;
+        assert_eq!(result, expected);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_scoped_syntax() {
+        let result = get_syntax(CssType::Function("rect"), Some("basic-shape"));
+        assert_eq!(
+            result.syntax,
+            "rect( [ <length-percentage> | auto ]{4} [ round <'border-radius'> ]? )"
+        );
+
+        let result = get_syntax(CssType::Function("rect"), Some("clip"));
+        assert_eq!(result.syntax, "rect( <top>, <right>, <bottom>, <left> )");
     }
 
     #[test]
