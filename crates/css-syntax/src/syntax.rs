@@ -119,20 +119,6 @@ pub fn get_at_rule_descriptor_syntax(
             }
         }
     }
-
-    if let Some(at_rule) = CSS_REF
-        .atrules
-        .get("__global_scope__")
-        .unwrap()
-        .get(at_rule_name)
-    {
-        if let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name) {
-            return Syntax {
-                syntax: at_rule_descriptor.syntax.clone().unwrap_or_default(),
-                specs: at_rule_descriptor.spec_link.as_ref().map(|s| vec![s]),
-            };
-        }
-    }
     Syntax::default()
 }
 
@@ -575,6 +561,14 @@ pub enum SyntaxInput<'a> {
     Css(CssType<'a>),
 }
 
+fn scope_from_browser_compat(browser_compat: Option<&str>) -> Option<&str> {
+    if let Some(bc) = browser_compat {
+        bc.split(".").collect::<Vec<&str>>().get(2).copied()
+    } else {
+        None
+    }
+}
+
 pub fn render_formal_syntax(
     syntax: SyntaxInput,
     browser_compat: Option<&str>,
@@ -583,11 +577,7 @@ pub fn render_formal_syntax(
     syntax_tooltip: &HashMap<LinkedToken, String>,
     sources_prefix: Option<&str>,
 ) -> Result<String, SyntaxError> {
-    let scope = if let Some(bc) = browser_compat {
-        bc.split(".").collect::<Vec<&str>>().get(2).copied()
-    } else {
-        None
-    };
+    let scope = scope_from_browser_compat(browser_compat);
 
     let (syntax, skip_first) = match syntax {
         SyntaxInput::SyntaxString(syntax_str) => {
