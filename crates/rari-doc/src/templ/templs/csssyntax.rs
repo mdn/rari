@@ -56,8 +56,16 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
 
     let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
 
+    if env.browser_compat.len() > 1 {
+        warn!(
+            "Multiple browser-compat entries found. CSS formal syntax will be rendered using the first entry as the scope: {}",
+            env.browser_compat.first().unwrap()
+        );
+    }
+
     Ok(render_formal_syntax(
         SyntaxInput::Css(typ),
+        env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
         &format!(
             "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
@@ -73,6 +81,7 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
     let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
     Ok(render_formal_syntax(
         SyntaxInput::SyntaxString(&syntax),
+        env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
         &format!(
             "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",

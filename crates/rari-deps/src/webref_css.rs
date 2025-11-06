@@ -17,6 +17,49 @@ fn normalize_name(name: &str) -> String {
         .to_string()
 }
 
+fn by_for_and_name(values: Vec<Value>) -> BTreeMap<String, BTreeMap<String, Value>> {
+    let mut result: BTreeMap<String, BTreeMap<String, Value>> = BTreeMap::new();
+
+    for mut value in values {
+        let name = normalize_name(value["name"].as_str().unwrap());
+
+        // Recursively process nested descriptors
+        if value["descriptors"].is_array() {
+            let descriptors = by_name(serde_json::from_value(value["descriptors"].take()).unwrap());
+            value["descriptors"] = serde_json::to_value(descriptors).unwrap();
+        }
+
+        // Recursively process nested values (for compatibility with nested structures)
+        if value["values"].is_array() {
+            let nested_values = by_name(serde_json::from_value(value["values"].take()).unwrap());
+            value["values"] = serde_json::to_value(nested_values).unwrap();
+        }
+
+        // Handle 'for' key - could be a string, array, or missing
+        // Add the entry to the global scope as well, not all pages have the needed
+        // browser-compat key to properly find the entry in its scope.
+        let for_keys: Vec<String> = match &value["for"] {
+            Value::String(s) => vec![normalize_name(s), "__global_scope__".to_string()],
+            Value::Array(arr) => arr
+                .iter()
+                .filter_map(|v| v.as_str().map(normalize_name))
+                .chain(vec!["__global_scope__".to_string()])
+                .collect(),
+            _ => vec!["__global_scope__".to_string()],
+        };
+
+        // Insert the value into each 'for' group
+        for for_key in for_keys {
+            result
+                .entry(for_key)
+                .or_default()
+                .insert(name.clone(), value.clone());
+        }
+    }
+
+    result
+}
+
 fn by_name(values: Vec<Value>) -> BTreeMap<String, Value> {
     values
         .into_iter()
@@ -98,7 +141,7 @@ fn transform(
     let mut data: Value = serde_json::from_str(&text)?;
 
     if data["properties"].is_array() {
-        data["properties"] = serde_json::to_value(by_name(
+        data["properties"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["properties"].take()).unwrap_or_default(),
         ))?;
     } else {
@@ -108,7 +151,7 @@ fn transform(
     }
 
     if data["selectors"].is_array() {
-        data["selectors"] = serde_json::to_value(by_name(
+        data["selectors"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["selectors"].take()).unwrap_or_default(),
         ))?;
     } else {
@@ -118,7 +161,7 @@ fn transform(
     }
 
     if data["atrules"].is_array() {
-        data["atrules"] = serde_json::to_value(by_name(
+        data["atrules"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["atrules"].take()).unwrap_or_default(),
         ))?;
     } else {
@@ -128,7 +171,7 @@ fn transform(
     }
 
     if data["functions"].is_array() {
-        data["functions"] = serde_json::to_value(by_name(
+        data["functions"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["functions"].take()).unwrap_or_default(),
         ))?;
     } else {
@@ -138,7 +181,7 @@ fn transform(
     }
 
     if data["types"].is_array() {
-        data["types"] = serde_json::to_value(by_name(
+        data["types"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["types"].take()).unwrap_or_default(),
         ))?;
     } else {

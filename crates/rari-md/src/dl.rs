@@ -17,7 +17,6 @@ pub(crate) fn is_dl<'a>(list: &'a AstNode<'a>) -> bool {
                 if let Some(j) = i.first_child()
                     && let NodeValue::Text(ref t) = j.data.borrow().value
                 {
-                    //println!("{:?}", std::str::from_utf8(t));
                     return t.starts_with(": ");
                 }
             }
