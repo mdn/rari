@@ -57,7 +57,10 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
     let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
 
     if env.browser_compat.len() > 1 {
-        warn!("Multiple browser-compat entries found. CSS formal syntax will be rendered using the first entry as the scope: {}", env.browser_compat.first().unwrap());
+        warn!(
+            "Multiple browser-compat entries found. CSS formal syntax will be rendered using the first entry as the scope: {}",
+            env.browser_compat.first().unwrap()
+        );
     }
 
     Ok(render_formal_syntax(
