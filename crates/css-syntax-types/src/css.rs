@@ -4,12 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::SpecLink;
 
-/// Represents a CSS specification. Each field contains a map of CSS entities to their respective definitions.
+/// Represents a CSS specification. Each field contains a map of scopes, with each scope containing a map of
+/// CSS entities to their respective definitions.
 /// The top-level map of each field contains the scope (i.e. `for` references in webref parlance) of the specification.
 /// The second level map is a simple name->spec relation.
 /// Every field also have a `__global_scope__` field where all entries are held. In case of duplicates in the `__global_scope__`,
 /// the last entry wins. Not a problem since those should be properly handled by their respective scopes.
-/// The scope is ultimately derived from the browser_compat key in the page's frontmatter.
+/// The scope used is ultimately derived from the browser_compat key in the page's frontmatter.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct WebrefCss {
     pub atrules: BTreeMap<String, BTreeMap<String, AtRule>>,
