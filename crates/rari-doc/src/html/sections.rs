@@ -34,11 +34,7 @@ pub fn split_sections(html: &Html) -> Result<Split<'_>, DocError> {
     let summary_selector = Selector::parse("html > p").unwrap();
     let summary = html.select(&summary_selector).find_map(|s| {
         let text = s.text().collect::<String>();
-        if !text.is_empty() {
-            Some(text)
-        } else {
-            None
-        }
+        if !text.is_empty() { Some(text) } else { None }
     });
     let mut sidebar = None;
 

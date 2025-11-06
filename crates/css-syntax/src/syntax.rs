@@ -6,8 +6,8 @@ use std::fs;
 use std::sync::LazyLock;
 
 use css_definition_syntax::generate::{self, GenerateOptions};
-use css_definition_syntax::parser::{parse, CombinatorType, Multiplier, Node, Type};
-use css_definition_syntax::walk::{walk, WalkOptions};
+use css_definition_syntax::parser::{CombinatorType, Multiplier, Node, Type, parse};
+use css_definition_syntax::walk::{WalkOptions, walk};
 use css_syntax_types::{CssValuesItem, SpecLink, WebrefCss};
 #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
 use rari_types::globals::data_dir;
@@ -513,13 +513,11 @@ impl SyntaxRenderer<'_> {
                         Some(get_syntax(CssType::AtRule(&at_keyword.name), None))
                     }
                     _ => None,
-                } {
-                    if !constituent_entry.syntax.is_empty()
-                        && !constituent_syntaxes.contains(&constituent_entry)
-                    {
-                        constituent.syntax_used = true;
-                        constituent_syntaxes.push(constituent_entry)
-                    }
+                } && !constituent_entry.syntax.is_empty()
+                    && !constituent_syntaxes.contains(&constituent_entry)
+                {
+                    constituent.syntax_used = true;
+                    constituent_syntaxes.push(constituent_entry)
                 }
             }
         }
@@ -639,10 +637,10 @@ fn render_formal_syntax_internal(
     }
 
     let specs = constituents.iter_mut().fold(vec![], |mut acc, s| {
-        if let Some(spec) = s.specs.take() {
-            if !acc.contains(&spec) {
-                acc.push(spec)
-            }
+        if let Some(spec) = s.specs.take()
+            && !acc.contains(&spec)
+        {
+            acc.push(spec)
         }
         acc
     });
@@ -811,8 +809,7 @@ mod test {
     fn test_render_terms() -> Result<(), SyntaxError> {
         let renderer = SyntaxRenderer {
             locale_str: "en-US",
-            value_definition_url:
-                "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
+            value_definition_url: "/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
         };

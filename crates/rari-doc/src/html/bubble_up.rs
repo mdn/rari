@@ -35,10 +35,9 @@ pub fn bubble_up_curriculum_page(html: &mut Html) -> Result<(), DocError> {
         if matches!(
             strong.text().next(),
             Some("Notes" | "Note" | "General notes")
-        ) {
-            if let Some(bq) = strong.parent().and_then(|p| p.parent()) {
-                rews.push((bq.id(), "curriculum-notes"))
-            }
+        ) && let Some(bq) = strong.parent().and_then(|p| p.parent())
+        {
+            rews.push((bq.id(), "curriculum-notes"))
         }
     }
 

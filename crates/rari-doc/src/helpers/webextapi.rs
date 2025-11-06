@@ -4,7 +4,7 @@ use rari_utils::concat_strs;
 
 use super::l10n::l10n_json_data;
 use crate::error::DocError;
-use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
+use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::helpers::titles::api_page_title;
 use crate::html::sidebar::{Details, MetaChildren, SidebarMetaEntry, SidebarMetaEntryContent};
 use crate::pages::page::{Page, PageLike};

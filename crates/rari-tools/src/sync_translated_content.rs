@@ -334,10 +334,10 @@ fn resolve<'a>(
         .unwrap_or(&en_us_url_lc);
 
     let page = Page::from_url(resolved_url);
-    if let Ok(page) = page {
-        if page.slug() != slug {
-            return Cow::Owned(page.slug().to_string());
-        }
+    if let Ok(page) = page
+        && page.slug() != slug
+    {
+        return Cow::Owned(page.slug().to_string());
     }
     Cow::Borrowed(slug)
 }

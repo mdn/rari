@@ -1,9 +1,9 @@
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use dashmap::mapref::one::{Ref, RefMut};
 use dashmap::DashMap;
+use dashmap::mapref::one::{Ref, RefMut};
 use lsp_textdocument::FullTextDocument;
 use rari_doc::find::doc_pages_from_slugish;
 use rari_doc::issues::{DIssue, DisplayIssue};
@@ -24,7 +24,7 @@ use tower_lsp_server::lsp_types::{
     TextDocumentContentChangeEvent, TextDocumentEdit, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextEdit, Uri, WorkspaceEdit,
 };
-use tower_lsp_server::{jsonrpc, LanguageServer, UriExt};
+use tower_lsp_server::{LanguageServer, UriExt, jsonrpc};
 use tree_sitter::Tree;
 use tree_sitter_md::{MarkdownParser, MarkdownTree};
 

@@ -9,9 +9,9 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufWriter;
 
+use rari_types::Popularities;
 use rari_types::globals::{self, build_out_root};
 use rari_types::locale::Locale;
-use rari_types::Popularities;
 use rari_utils::error::RariIoError;
 use rari_utils::io::read_to_string;
 use serde::Serialize;

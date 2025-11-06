@@ -16,10 +16,10 @@ use rari_types::globals::{
     base_url, blog_root, build_out_root, contributor_spotlight_root, curriculum_root,
     generic_content_root, git_history, settings,
 };
-use rari_types::locale::{default_locale, Locale};
+use rari_types::locale::{Locale, default_locale};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sha2::{Digest, Sha256};
-use tracing::{span, Level};
+use tracing::{Level, span};
 
 use crate::cached_readers::{
     blog_files, contributor_spotlight_files, curriculum_files, generic_content_files,
@@ -27,7 +27,7 @@ use crate::cached_readers::{
 };
 use crate::contributors::contributors_txt;
 use crate::error::DocError;
-use crate::issues::{to_display_issues, IN_MEMORY};
+use crate::issues::{IN_MEMORY, to_display_issues};
 use crate::pages::build::copy_additional_files;
 use crate::pages::json::{BuiltPage, JsonDocMetadata};
 use crate::pages::page::{Page, PageBuilder, PageLike};
@@ -69,18 +69,18 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     );
     let _enter = span.enter();
     let mut built_page = page.build()?;
-    if settings().json_issues {
-        if let BuiltPage::Doc(json_doc) = &mut built_page {
-            let flaws = if let Some(issues) = IN_MEMORY
-                .get_events()
-                .get(page.full_path().to_string_lossy().as_ref())
-            {
-                Some(to_display_issues(issues.value().clone(), page))
-            } else {
-                Some(Default::default())
-            };
-            json_doc.doc.flaws = flaws;
-        }
+    if settings().json_issues
+        && let BuiltPage::Doc(json_doc) = &mut built_page
+    {
+        let flaws = if let Some(issues) = IN_MEMORY
+            .get_events()
+            .get(page.full_path().to_string_lossy().as_ref())
+        {
+            Some(to_display_issues(issues.value().clone(), page))
+        } else {
+            Some(Default::default())
+        };
+        json_doc.doc.flaws = flaws;
     }
     let out_path = build_out_root()
         .expect("No BUILD_OUT_ROOT")

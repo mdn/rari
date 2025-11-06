@@ -4,12 +4,12 @@ use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
+use dialoguer::theme::ColorfulTheme;
 use rari_doc::{
     helpers::subpages::get_sub_pages,
     pages::page::{self, Page, PageCategory, PageLike, PageWriter},
-    resolve::{build_url, url_meta_from, UrlMeta}, //  url_path_to_path_buf
+    resolve::{UrlMeta, build_url, url_meta_from}, //  url_path_to_path_buf
     utils::root_for_locale,
 };
 use rari_types::locale::Locale;

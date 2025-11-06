@@ -3,10 +3,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
 use constcat::concat;
+use rari_types::RariEnv;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::curriculum_root;
 use rari_types::locale::Locale;
-use rari_types::RariEnv;
 use rari_utils::io::read_to_string;
 use regex::Regex;
 use schemars::JsonSchema;
@@ -271,12 +271,11 @@ impl PageLike for Curriculum {
 }
 
 pub fn curriculum_group(parents: &[Parent]) -> Option<String> {
-    if parents.len() > 1 {
-        if let Some(group) = parents.get(parents.len() - 2) {
-            if group.title.ends_with("modules") {
-                return Some(group.title.to_string());
-            }
-        }
+    if parents.len() > 1
+        && let Some(group) = parents.get(parents.len() - 2)
+        && group.title.ends_with("modules")
+    {
+        return Some(group.title.to_string());
     };
     None
 }
@@ -302,11 +301,11 @@ pub fn build_sidebar() -> Result<Vec<CurriculumSidebarEntry>, DocError> {
         Vec::new(),
         |mut acc: Vec<CurriculumSidebarEntry>, (_, entry)| {
             let lvl = entry.slug.split('/').count();
-            if lvl > 2 {
-                if let Some(last) = acc.last_mut() {
-                    last.children.push(entry);
-                    return acc;
-                }
+            if lvl > 2
+                && let Some(last) = acc.last_mut()
+            {
+                last.children.push(entry);
+                return acc;
             }
 
             acc.push(entry);
@@ -402,11 +401,11 @@ fn grouped_index() -> Result<Vec<CurriculumIndexEntry>, DocError> {
         Vec::new(),
         |mut acc: Vec<CurriculumIndexEntry>, entry| {
             let lvl = entry.slug.as_deref().unwrap_or_default().split('/').count();
-            if lvl > 2 {
-                if let Some(last) = acc.last_mut() {
-                    last.children.push(entry.clone());
-                    return acc;
-                }
+            if lvl > 2
+                && let Some(last) = acc.last_mut()
+            {
+                last.children.push(entry.clone());
+                return acc;
             }
 
             acc.push(entry.clone());

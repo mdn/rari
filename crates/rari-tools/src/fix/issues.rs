@@ -3,7 +3,7 @@ use std::io::{BufWriter, Write};
 
 use rari_doc::issues::{DIssue, IN_MEMORY};
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
-use tracing::{span, Level};
+use tracing::{Level, span};
 
 use crate::error::ToolError;
 
