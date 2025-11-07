@@ -7,7 +7,7 @@ permissions:
   contents: write
   pull-requests: write
 
-name: release-please-pr
+name: release-please
 
 jobs:
   release-please:
@@ -15,7 +15,6 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
         with:
-          skip-github-release: true
           repo-url: mdn/rari
           manifest-file: .release-please-manifest.json
           token: ${{ secrets.RELEASE_PLEASE_GITHUB_TOKEN }}
