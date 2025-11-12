@@ -11,7 +11,6 @@ use crate::error::ToolError;
 struct OLCMapper {
     offset: usize,
     line: usize,
-    column: usize,
 }
 
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
@@ -87,34 +86,63 @@ pub fn fix_issues(raw: &str, issues: &[DIssue]) -> Result<String, ToolError> {
 }
 
 fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) -> Option<usize> {
-    let OLCMapper {
-        offset,
-        line,
-        column,
-    } = olc;
+    let OLCMapper { offset, line } = olc;
+
+    // Bounds check: ensure offset is valid before proceeding
+    if offset > input.len() {
+        tracing::warn!("offset {} exceeds input length {}", offset, input.len());
+        return None;
+    }
+
     let lines = new_line - line;
 
-    let offset = if new_line > line {
+    let mut new_offset = if new_line > line {
+        // Moving to a new line: find the start of the target line and add column offset
         let begin_of_line = input[offset..]
             .lines()
             .take(lines)
             .map(|line| line.len() + 1)
             .sum::<usize>();
         let new_column_offset = new_column;
-        Some(offset + begin_of_line + new_column_offset)
-    } else if new_line == line && new_column > column {
-        Some(offset + (new_column - column))
+        offset + begin_of_line + new_column_offset
+    } else if new_line == line {
+        // Same line: find the start of the line and calculate absolute position
+        // We need to find the start of the current line in the original input
+        let line_start = input[..offset].rfind('\n').map(|pos| pos + 1).unwrap_or(0);
+        let target_offset = line_start + new_column;
+
+        // Only proceed if the target is after our current position
+        if target_offset >= offset {
+            target_offset
+        } else {
+            tracing::warn!(
+                "skipping issue: target offset {} is before current offset {}",
+                target_offset,
+                offset
+            );
+            return None;
+        }
     } else {
         tracing::warn!("skipping issues");
-        None
+        return None;
     };
-    if let Some(offset) = offset {
-        let mut index = offset;
-        while !input.is_char_boundary(index) {
-            index -= 1;
-        }
+
+    // Bounds check: ensure new offset is within input
+    if new_offset > input.len() {
+        tracing::warn!(
+            "new offset {} exceeds input length {}",
+            new_offset,
+            input.len()
+        );
+        return None;
     }
-    offset
+
+    // Ensure we're on a char boundary
+    while new_offset > 0 && !input.is_char_boundary(new_offset) {
+        new_offset -= 1;
+    }
+
+    Some(new_offset)
 }
 
 fn fix_issue<'a>(
@@ -141,10 +169,10 @@ fn fix_issue<'a>(
                     let fix = display_issue.suggestion.as_deref().unwrap_or_default();
                     let new_offset = href_offset + href.len();
                     acc.push(fix);
+
                     return OLCMapper {
                         offset: new_offset,
                         line: new_line,
-                        column: new_column + start + href.len(),
                     };
                 }
             }
