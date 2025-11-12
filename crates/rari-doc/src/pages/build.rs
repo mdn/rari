@@ -8,6 +8,7 @@ use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use scraper::Html;
+use tracing::{Level, span};
 
 use super::json::{
     BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
@@ -218,6 +219,15 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
 }
 
 fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
+    let span = span!(
+        Level::ERROR,
+        "page",
+        locale = doc.locale().as_url_str(),
+        slug = doc.slug(),
+        file = doc.full_path().to_string_lossy().as_ref(),
+    );
+    let _enter = span.enter();
+
     let PageContent {
         body,
         toc,

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1](https://github.com/mdn/rari/compare/v0.2.0...v0.2.1) (2025-11-06)
+
+
+### Bug Fixes
+
+* **css-syntax:** distinguish formal syntax scopes ([#359](https://github.com/mdn/rari/issues/359)) ([7a96e37](https://github.com/mdn/rari/commit/7a96e37c8b7209df65e14fc55b931ad551a040e5))
+* **tools/redirects:** remove entries where target page exists ([#352](https://github.com/mdn/rari/issues/352)) ([29efb99](https://github.com/mdn/rari/commit/29efb996fd19ba7e686d3028a45a358567a749f8))
+
+
+### Miscellaneous
+
+* **deps:** bump rust from 1.86 to 1.90 ([#360](https://github.com/mdn/rari/issues/360)) ([fd36371](https://github.com/mdn/rari/commit/fd363711f2b00d16efe18cf50f1a1c81b8665e2e))
+* **rustfmt:** disable unstable features ([#363](https://github.com/mdn/rari/issues/363)) ([247311f](https://github.com/mdn/rari/commit/247311fcf4ce5b6a3a8537b4652f97a2b0aec86c))
+
 ## [0.2.0](https://github.com/mdn/rari/compare/v0.1.54...v0.2.0) (2025-10-31)
 
 
