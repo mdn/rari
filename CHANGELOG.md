@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2](https://github.com/mdn/rari/compare/v0.2.1...v0.2.2) (2025-11-12)
+
+
+### Bug Fixes
+
+* **doc:** add tracing context to `build_doc()` ([#371](https://github.com/mdn/rari/issues/371)) ([ce04c82](https://github.com/mdn/rari/commit/ce04c823c8a2c56f3c35eda050fe79d349224cd5))
+
 ## [0.2.1](https://github.com/mdn/rari/compare/v0.2.0...v0.2.1) (2025-11-06)
 
 
