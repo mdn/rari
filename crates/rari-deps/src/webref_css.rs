@@ -108,15 +108,49 @@ fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) 
                         .cloned()
                         .unwrap_or_else(|| "CSS Specification".to_string());
 
-                    let spec = SpecLink { title, url };
+                    let spec = SpecLink {
+                        title,
+                        url: url_without_fragment,
+                    };
                     obj.insert("specLink".to_string(), serde_json::to_value(spec).unwrap());
                 }
                 obj.remove(field_name);
             }
 
-            // Recursively process all nested values, but skip spec_link fields to avoid infinite loops
+            if let Some(extended) = obj.get("extended")
+                && let Some(extended) = extended.as_array()
+            {
+                let specs = extended
+                    .iter()
+                    .filter_map(|value| {
+                        if let Some(href_str) = value.as_str()
+                            && let Ok(mut url) = Url::parse(href_str)
+                        {
+                            let title = url_to_title
+                                .get(value.as_str().unwrap())
+                                .cloned()
+                                .unwrap_or_else(|| "CSS Specification".to_string());
+                            url.set_fragment(None);
+                            // println!("Parsed URL: {} {}", title, url.as_str());
+                            Some(SpecLink { title, url })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                if !specs.is_empty() {
+                    obj.insert(
+                        "extendedSpecLinks".to_string(),
+                        serde_json::to_value(specs).unwrap(),
+                    );
+                }
+                obj.remove("extended");
+            }
+
+            // Recursively process all nested values, but skip specLink and extendedSpecLinks fields to avoid infinite loops
             for (key, value) in obj.iter_mut() {
-                if key != "specLink" {
+                if key != "specLink" && key != "extendedSpecLinks" {
                     enrich_with_specs(value, url_to_title);
                 }
             }
