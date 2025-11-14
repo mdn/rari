@@ -339,6 +339,35 @@ mod test {
     fn test_transform() {
         let url_to_title = url_titles_map(&PathBuf::from("test/url-titles.json"));
         let input_path = PathBuf::from("test");
-        let _webref_css = transform(&input_path, &url_to_title).unwrap();
+        let webref_css = transform(&input_path, &url_to_title).unwrap();
+        // println!("webref_css: {:#?}", webref_css.atrules);
+        assert!(!webref_css.atrules.is_empty());
+        assert!(!webref_css.functions.is_empty());
+        assert!(!webref_css.properties.is_empty());
+        assert!(!webref_css.selectors.is_empty());
+        assert!(!webref_css.types.is_empty());
+
+        assert!(webref_css.atrules.contains_key("__global_scope__"));
+        assert!(webref_css.functions.contains_key("__global_scope__"));
+        assert!(webref_css.properties.contains_key("__global_scope__"));
+        assert!(webref_css.selectors.contains_key("__global_scope__"));
+        assert!(webref_css.types.contains_key("__global_scope__"));
+
+        // The `align-self` property has some extended spec links, check that.
+        assert!(
+            webref_css
+                .properties
+                .get("__global_scope__")
+                .unwrap()
+                .contains_key("align-self")
+        );
+        let align_self = webref_css
+            .properties
+            .get("__global_scope__")
+            .unwrap()
+            .get("align-self")
+            .unwrap();
+
+        assert!(!align_self.extended_spec_links.is_empty());
     }
 }
