@@ -353,6 +353,24 @@ mod test {
         assert!(webref_css.selectors.contains_key("__global_scope__"));
         assert!(webref_css.types.contains_key("__global_scope__"));
 
+        // Check scoping via `for` field
+        // `fit-content()` should be in the global scope and in `grid-template-columns` scope
+        assert!(webref_css.functions.contains_key("grid-template-columns"));
+        assert!(
+            webref_css
+                .functions
+                .get("__global_scope__")
+                .unwrap()
+                .contains_key("fit-content()")
+        );
+        assert!(
+            webref_css
+                .functions
+                .get("grid-template-columns")
+                .unwrap()
+                .contains_key("fit-content()")
+        );
+
         // The `align-self` property has some extended spec links, check that.
         assert!(
             webref_css

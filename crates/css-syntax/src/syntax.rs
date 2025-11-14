@@ -1,5 +1,5 @@
 use std::cmp::{max, min};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Write;
 #[cfg(any(feature = "rari", test))]
 use std::fs;
@@ -85,11 +85,11 @@ fn get_generic_syntax<T: SyntaxProvider + 'static + std::fmt::Debug>(
         if let Some(scoped) = field.get(scope)
             && let Some(item) = scoped.get(name)
         {
-            let mut specs = Vec::new();
+            let mut specs = BTreeSet::new();
 
             // Add the main spec link if present
             if let Some(spec_link) = item.spec_link().as_ref() {
-                specs.push(spec_link);
+                specs.insert(spec_link);
             }
 
             // Add extended spec links
@@ -97,7 +97,11 @@ fn get_generic_syntax<T: SyntaxProvider + 'static + std::fmt::Debug>(
 
             return Syntax {
                 syntax: item.syntax().clone().unwrap_or_default(),
-                specs: if specs.is_empty() { None } else { Some(specs) },
+                specs: if specs.is_empty() {
+                    None
+                } else {
+                    Some(specs.into_iter().collect())
+                },
             };
         }
     }
