@@ -108,15 +108,48 @@ fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) 
                         .cloned()
                         .unwrap_or_else(|| "CSS Specification".to_string());
 
-                    let spec = SpecLink { title, url };
+                    let spec = SpecLink {
+                        title,
+                        url: url_without_fragment,
+                    };
                     obj.insert("specLink".to_string(), serde_json::to_value(spec).unwrap());
                 }
                 obj.remove(field_name);
             }
 
-            // Recursively process all nested values, but skip spec_link fields to avoid infinite loops
+            if let Some(extended) = obj.get("extended")
+                && let Some(extended) = extended.as_array()
+            {
+                let specs = extended
+                    .iter()
+                    .filter_map(|value| {
+                        if let Some(href_str) = value.as_str()
+                            && let Ok(mut url) = Url::parse(href_str)
+                        {
+                            let title = url_to_title
+                                .get(value.as_str().unwrap())
+                                .cloned()
+                                .unwrap_or_else(|| "CSS Specification".to_string());
+                            url.set_fragment(None);
+                            Some(SpecLink { title, url })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                if !specs.is_empty() {
+                    obj.insert(
+                        "extendedSpecLinks".to_string(),
+                        serde_json::to_value(specs).unwrap(),
+                    );
+                }
+                obj.remove("extended");
+            }
+
+            // Recursively process all nested values, but skip specLink and extendedSpecLinks fields to avoid infinite loops
             for (key, value) in obj.iter_mut() {
-                if key != "specLink" {
+                if key != "specLink" && key != "extendedSpecLinks" {
                     enrich_with_specs(value, url_to_title);
                 }
             }
@@ -305,6 +338,52 @@ mod test {
     fn test_transform() {
         let url_to_title = url_titles_map(&PathBuf::from("test/url-titles.json"));
         let input_path = PathBuf::from("test");
-        let _webref_css = transform(&input_path, &url_to_title).unwrap();
+        let webref_css = transform(&input_path, &url_to_title).unwrap();
+        assert!(!webref_css.atrules.is_empty());
+        assert!(!webref_css.functions.is_empty());
+        assert!(!webref_css.properties.is_empty());
+        assert!(!webref_css.selectors.is_empty());
+        assert!(!webref_css.types.is_empty());
+
+        assert!(webref_css.atrules.contains_key("__global_scope__"));
+        assert!(webref_css.functions.contains_key("__global_scope__"));
+        assert!(webref_css.properties.contains_key("__global_scope__"));
+        assert!(webref_css.selectors.contains_key("__global_scope__"));
+        assert!(webref_css.types.contains_key("__global_scope__"));
+
+        // Check scoping via `for` field
+        // `fit-content()` should be in the global scope and in `grid-template-columns` scope
+        assert!(webref_css.functions.contains_key("grid-template-columns"));
+        assert!(
+            webref_css
+                .functions
+                .get("__global_scope__")
+                .unwrap()
+                .contains_key("fit-content()")
+        );
+        assert!(
+            webref_css
+                .functions
+                .get("grid-template-columns")
+                .unwrap()
+                .contains_key("fit-content()")
+        );
+
+        // The `align-self` property has some extended spec links, check that.
+        assert!(
+            webref_css
+                .properties
+                .get("__global_scope__")
+                .unwrap()
+                .contains_key("align-self")
+        );
+        let align_self = webref_css
+            .properties
+            .get("__global_scope__")
+            .unwrap()
+            .get("align-self")
+            .unwrap();
+
+        assert!(!align_self.extended_spec_links.is_empty());
     }
 }

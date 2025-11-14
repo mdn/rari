@@ -36,6 +36,12 @@ pub struct AtRule {
     pub descriptors: BTreeMap<String, AtRuleDescriptor>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
+    #[serde(
+        rename = "extendedSpecLinks",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    pub extended_spec_links: Vec<SpecLink>,
 }
 impl From<&AtRule> for AtRule {
     fn from(value: &AtRule) -> Self {
@@ -54,6 +60,12 @@ pub struct Function {
     pub prose: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
+    #[serde(
+        rename = "extendedSpecLinks",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    pub extended_spec_links: Vec<SpecLink>,
 }
 impl From<&Function> for Function {
     fn from(value: &Function) -> Self {
@@ -72,6 +84,12 @@ pub struct Type {
     pub prose: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
+    #[serde(
+        rename = "extendedSpecLinks",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    pub extended_spec_links: Vec<SpecLink>,
 }
 impl From<&Type> for Type {
     fn from(value: &Type) -> Self {
@@ -96,6 +114,12 @@ pub struct Property {
     pub style_declaration: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
+    #[serde(
+        rename = "extendedSpecLinks",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    pub extended_spec_links: Vec<SpecLink>,
 }
 impl From<&Property> for Property {
     fn from(value: &Property) -> Self {
@@ -112,6 +136,12 @@ pub struct Selector {
     pub prose: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
+    #[serde(
+        rename = "extendedSpecLinks",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    pub extended_spec_links: Vec<SpecLink>,
 }
 impl From<&Selector> for Selector {
     fn from(value: &Selector) -> Self {
