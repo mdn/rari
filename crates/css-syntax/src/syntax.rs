@@ -664,12 +664,12 @@ fn render_formal_syntax_internal(
     out.push_str("</pre>");
     if !specs.is_empty() {
         out.push_str("<footer>");
-        let mut spec_links = Vec::new();
+        let mut spec_links = BTreeSet::new();
 
         for spec in specs.iter() {
             let mut url_without_fragment = spec.url.clone();
             url_without_fragment.set_fragment(None);
-            spec_links.push(SpecLink {
+            spec_links.insert(SpecLink {
                 url: url_without_fragment,
                 title: spec.title.clone(),
             });
