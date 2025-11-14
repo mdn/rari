@@ -131,7 +131,6 @@ fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) 
                                 .cloned()
                                 .unwrap_or_else(|| "CSS Specification".to_string());
                             url.set_fragment(None);
-                            // println!("Parsed URL: {} {}", title, url.as_str());
                             Some(SpecLink { title, url })
                         } else {
                             None
@@ -340,7 +339,6 @@ mod test {
         let url_to_title = url_titles_map(&PathBuf::from("test/url-titles.json"));
         let input_path = PathBuf::from("test");
         let webref_css = transform(&input_path, &url_to_title).unwrap();
-        // println!("webref_css: {:#?}", webref_css.atrules);
         assert!(!webref_css.atrules.is_empty());
         assert!(!webref_css.functions.is_empty());
         assert!(!webref_css.properties.is_empty());
