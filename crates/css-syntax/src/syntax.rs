@@ -85,9 +85,23 @@ fn get_generic_syntax<T: SyntaxProvider + 'static + std::fmt::Debug>(
         if let Some(scoped) = field.get(scope)
             && let Some(item) = scoped.get(name)
         {
+            let mut specs = BTreeSet::new();
+
+            // Add the main spec link if present
+            if let Some(spec_link) = item.spec_link().as_ref() {
+                specs.insert(spec_link);
+            }
+
+            // Add extended spec links
+            specs.extend(item.extended_spec_links().iter());
+
             return Syntax {
                 syntax: item.syntax().clone().unwrap_or_default(),
-                specs: item.spec_link().as_ref().map(|s| vec![s]),
+                specs: if specs.is_empty() {
+                    None
+                } else {
+                    Some(specs.into_iter().collect())
+                },
             };
         }
     }
@@ -637,10 +651,12 @@ fn render_formal_syntax_internal(
     }
 
     let specs = constituents.iter_mut().fold(vec![], |mut acc, s| {
-        if let Some(spec) = s.specs.take()
-            && !acc.contains(&spec)
-        {
-            acc.push(spec)
+        if let Some(specs_vec) = s.specs.take() {
+            for spec in specs_vec {
+                if !acc.contains(&spec) {
+                    acc.push(spec);
+                }
+            }
         }
         acc
     });
@@ -648,17 +664,15 @@ fn render_formal_syntax_internal(
     out.push_str("</pre>");
     if !specs.is_empty() {
         out.push_str("<footer>");
-        let mut unique_spec_links = BTreeSet::new();
+        let mut spec_links = BTreeSet::new();
 
         for spec in specs.iter() {
-            if let Some(spec) = spec.first() {
-                let mut url_without_fragment = spec.url.clone();
-                url_without_fragment.set_fragment(None);
-                unique_spec_links.insert(SpecLink {
-                    url: url_without_fragment,
-                    title: spec.title.clone(),
-                });
-            }
+            let mut url_without_fragment = spec.url.clone();
+            url_without_fragment.set_fragment(None);
+            spec_links.insert(SpecLink {
+                url: url_without_fragment,
+                title: spec.title.clone(),
+            });
         }
 
         if let Some(sources_prefix) = sources_prefix {
@@ -667,7 +681,7 @@ fn render_formal_syntax_internal(
             out.push_str(
                 &sources_prefix.replace(
                     "{ $specs }",
-                    unique_spec_links
+                    spec_links
                         .iter()
                         .map(|spec| {
                             format!(r#"<a href="{}">{}</a>"#, spec.url.as_str(), spec.title)
