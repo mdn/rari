@@ -59,15 +59,6 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     Ok(issues)
 }
 
-pub fn sort_issues_by_actual_offset(raw: &str, issues: &mut [DIssue]) {
-    issues.sort_by(|a, b| {
-        let x = actual_offset(raw, a);
-        let y = actual_offset(raw, b);
-
-        x.cmp(&y)
-    });
-}
-
 pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     let olc = OLCMapper::default();
     let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
@@ -91,11 +82,41 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     0
 }
 
+pub struct SuggestionWithOffset {
+    offset: usize,
+    offset_end: usize,
+    suggestion: String,
+}
+
+pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SuggestionWithOffset> {
+    let mut suggestions = issues
+        .iter()
+        .filter_map(|dissue| {
+            let offset = actual_offset(raw, dissue);
+            if let Some(suggestion) = dissue.display_issue().suggestion.as_deref() {
+                return Some(SuggestionWithOffset {
+                    offset,
+                    offset_end: offset + suggestion.len(),
+                    suggestion: suggestion.into(),
+                });
+            } else {
+                return None;
+            }
+        })
+        .collect::<Vec<_>>();
+
+    suggestions.sort_by(|a, b| a.offset.cmp(&b.offset));
+
+    suggestions
+}
+
 pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
-    let mut issues = get_fixable_issues(page)?;
+    let issues = get_fixable_issues(page)?;
 
     let raw = page.raw_content();
-    sort_issues_by_actual_offset(raw, &mut issues);
+
+    let suggestions = collect_suggestions(raw, &issues);
+
     let fixed = fix_issues(raw, &issues)?;
     let is_fixed = fixed != raw;
     if is_fixed {
