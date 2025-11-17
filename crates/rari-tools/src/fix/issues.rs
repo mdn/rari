@@ -59,10 +59,21 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     Ok(issues)
 }
 
+pub fn sort_issues_by_offset(issues: &mut [DIssue]) {
+    issues.sort_by(|a, b| {
+        if a.display_issue().line == b.display_issue().line {
+            a.display_issue().column.cmp(&b.display_issue().column)
+        } else {
+            a.display_issue().line.cmp(&b.display_issue().line)
+        }
+    });
+}
+
 pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
-    let issues = get_fixable_issues(page)?;
+    let mut issues = get_fixable_issues(page)?;
 
     let raw = page.raw_content();
+    sort_issues_by_offset(&mut issues);
     let fixed = fix_issues(raw, &issues)?;
     let is_fixed = fixed != raw;
     if is_fixed {
