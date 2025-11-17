@@ -136,6 +136,16 @@ pub fn apply_suggestions(
     let mut current_offset = 0;
 
     for suggestion in suggestions {
+        // Skip this suggestion if it overlaps with previously applied region
+        if suggestion.offset < current_offset {
+            tracing::debug!(
+                "Skipping overlapping suggestion at offset {} (current offset: {})",
+                suggestion.offset,
+                current_offset
+            );
+            continue;
+        }
+
         // Add the unchanged portion before this suggestion
         if suggestion.offset > current_offset {
             result.push(&raw[current_offset..suggestion.offset]);
