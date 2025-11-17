@@ -84,7 +84,6 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
 
 pub struct SuggestionWithOffset {
     offset: usize,
-    offset_end: usize,
     suggestion: String,
 }
 
@@ -96,7 +95,6 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SuggestionWithOf
             if let Some(suggestion) = dissue.display_issue().suggestion.as_deref() {
                 return Some(SuggestionWithOffset {
                     offset,
-                    offset_end: offset + suggestion.len(),
                     suggestion: suggestion.into(),
                 });
             } else {
@@ -155,7 +153,7 @@ pub fn apply_suggestions(
         result.push(&suggestion.suggestion);
 
         // Update current offset to the end of the replaced region
-        current_offset = suggestion.offset_end;
+        current_offset = suggestion.offset + suggestion.len();
     }
 
     // Add any remaining content after the last suggestion
