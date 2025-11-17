@@ -61,6 +61,15 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
 pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
     let issues = get_fixable_issues(page)?;
 
+    let span = span!(
+        Level::ERROR,
+        "page",
+        locale = page.locale().as_url_str(),
+        slug = page.slug(),
+        file = page.full_path().to_string_lossy().as_ref(),
+    );
+    let _enter = span.enter();
+
     let raw = page.raw_content();
     let fixed = fix_issues(raw, &issues)?;
     let is_fixed = fixed != raw;
