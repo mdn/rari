@@ -117,7 +117,7 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
 
     let suggestions = collect_suggestions(raw, &issues);
 
-    let fixed = fix_issues(raw, &issues)?;
+    let fixed = apply_suggestions(raw, &suggestions)?;
     let is_fixed = fixed != raw;
     if is_fixed {
         tracing::info!("updating {}", page.full_path().display());
@@ -128,16 +128,32 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
     Ok(is_fixed)
 }
 
-pub fn fix_issues(raw: &str, issues: &[DIssue]) -> Result<String, ToolError> {
-    let (olc, mut fixed) =
-        issues
-            .iter()
-            .fold((OLCMapper::default(), vec![]), |(olc, mut acc), dissue| {
-                let olc = fix_issue(&mut acc, dissue, raw, olc);
-                (olc, acc)
-            });
-    fixed.push(&raw[olc.offset..]);
-    Ok(fixed.join(""))
+pub fn apply_suggestions(
+    raw: &str,
+    suggestions: &[SuggestionWithOffset],
+) -> Result<String, ToolError> {
+    let mut result = Vec::new();
+    let mut current_offset = 0;
+
+    for suggestion in suggestions {
+        // Add the unchanged portion before this suggestion
+        if suggestion.offset > current_offset {
+            result.push(&raw[current_offset..suggestion.offset]);
+        }
+
+        // Add the suggestion
+        result.push(&suggestion.suggestion);
+
+        // Update current offset to the end of the replaced region
+        current_offset = suggestion.offset_end;
+    }
+
+    // Add any remaining content after the last suggestion
+    if current_offset < raw.len() {
+        result.push(&raw[current_offset..]);
+    }
+
+    Ok(result.join(""))
 }
 
 fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) -> Option<usize> {
@@ -169,41 +185,4 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
         }
     }
     offset
-}
-
-fn fix_issue<'a>(
-    acc: &mut Vec<&'a str>,
-    dissue: &'a DIssue,
-    raw: &'a str,
-    olc: OLCMapper,
-) -> OLCMapper {
-    let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
-    let new_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
-    if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
-        #[allow(clippy::single_match)]
-        match dissue {
-            DIssue::BrokenLink {
-                display_issue,
-                href: Some(href),
-            } => {
-                if let Some(start) = raw[offset..].find(href) {
-                    let href_offset = offset + start;
-
-                    if href_offset > olc.offset {
-                        acc.push(&raw[olc.offset..href_offset]);
-                    }
-                    let fix = display_issue.suggestion.as_deref().unwrap_or_default();
-                    let new_offset = href_offset + href.len();
-                    acc.push(fix);
-                    return OLCMapper {
-                        offset: new_offset,
-                        line: new_line,
-                        column: new_column + start + href.len(),
-                    };
-                }
-            }
-            _ => {}
-        }
-    }
-    olc
 }
