@@ -11,6 +11,7 @@ use crate::error::ToolError;
 struct OLCMapper {
     offset: usize,
     line: usize,
+    column: usize,
 }
 
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
@@ -95,7 +96,7 @@ pub fn fix_issues(raw: &str, issues: &[DIssue]) -> Result<String, ToolError> {
 }
 
 fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) -> Option<usize> {
-    let OLCMapper { offset, line } = olc;
+    let OLCMapper { offset, line, column: _ } = olc;
 
     // Bounds check: ensure offset is valid before proceeding
     if offset > input.len() {
@@ -178,10 +179,10 @@ fn fix_issue<'a>(
                     let fix = display_issue.suggestion.as_deref().unwrap_or_default();
                     let new_offset = href_offset + href.len();
                     acc.push(fix);
-
                     return OLCMapper {
                         offset: new_offset,
                         line: new_line,
+                        column: new_column + start + href.len(),
                     };
                 }
             }
