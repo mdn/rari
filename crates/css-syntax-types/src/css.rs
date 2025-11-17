@@ -96,6 +96,19 @@ pub struct Property {
     pub style_declaration: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
+    // "animationType",
+    // "appliesTo",
+    // "canonicalOrder",
+    // "computedValue",
+    // "extended",
+    // "href",
+    // "inherited",
+    // "initial",
+    // "logicalPropertyGroup",
+    // "name",
+    // "percentages",
+    // "styleDeclaration",
+    // "syntax"
 }
 impl From<&Property> for Property {
     fn from(value: &Property) -> Self {

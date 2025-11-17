@@ -68,6 +68,7 @@ pub fn mdn_data_files() -> &'static MDNDataFiles {
         }
     })
 }
+
 pub fn css_info_properties(
     at_rule: Option<&str>,
     locale: Locale,
@@ -151,6 +152,10 @@ pub fn write_computed_output(
         return Ok(());
     }
     let data = &css_info_data[property];
+    println!(
+        "write_computed_output property data: {} => {:?}",
+        property, data
+    );
     match data {
         Value::Null => {
             //write_missing(out, locale)?;

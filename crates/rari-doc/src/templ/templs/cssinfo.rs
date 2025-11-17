@@ -23,6 +23,12 @@ pub fn cssinfo() -> Result<String, DocError> {
             None
         }
     });
+
+    println!(
+        "CSSINFO slug={} name={} at_rule={:?} browser_compat={:?}",
+        env.slug, name, at_rule, env.browser_compat
+    );
+
     let data = mdn_data_files();
     let css_info_data = if let Some(at_rule) = at_rule {
         &data.css_at_rules.get(at_rule).unwrap_or(&Value::Null)["descriptors"][&name]
@@ -30,6 +36,11 @@ pub fn cssinfo() -> Result<String, DocError> {
         data.css_properties.get(&name).unwrap_or(&Value::Null)
     };
     let props = css_info_properties(at_rule, env.locale, css_info_data)?;
+
+    println!(
+        "css info properties from css_info_properties() => {:?}",
+        props
+    );
 
     let mut out = String::new();
 
