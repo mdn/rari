@@ -59,21 +59,43 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     Ok(issues)
 }
 
-pub fn sort_issues_by_offset(issues: &mut [DIssue]) {
+pub fn sort_issues_by_actual_offset(raw: &str, issues: &mut [DIssue]) {
     issues.sort_by(|a, b| {
-        if a.display_issue().line == b.display_issue().line {
-            a.display_issue().column.cmp(&b.display_issue().column)
-        } else {
-            a.display_issue().line.cmp(&b.display_issue().line)
-        }
+        let x = actual_offset(raw, a);
+        let y = actual_offset(raw, b);
+
+        x.cmp(&y)
     });
+}
+
+pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
+    let olc = OLCMapper::default();
+    let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
+    let new_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
+    if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
+        if let DIssue::BrokenLink {
+            display_issue: _,
+            href: Some(href),
+        } = dissue
+            && let Some(start) = raw[offset..].find(href)
+        {
+            let href_offset = offset + start;
+
+            let actual_offset = href_offset + href.len();
+
+            return actual_offset;
+        }
+        return offset;
+    }
+
+    0
 }
 
 pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
     let mut issues = get_fixable_issues(page)?;
 
     let raw = page.raw_content();
-    sort_issues_by_offset(&mut issues);
+    sort_issues_by_actual_offset(raw, &mut issues);
     let fixed = fix_issues(raw, &issues)?;
     let is_fixed = fixed != raw;
     if is_fixed {
