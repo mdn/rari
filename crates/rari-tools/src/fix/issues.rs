@@ -82,23 +82,30 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     0
 }
 
-pub struct SuggestionWithOffset {
+pub struct SearchReplaceWithOffset {
     offset: usize,
-    suggestion: String,
+    search: String,
+    replace: String,
 }
 
-pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SuggestionWithOffset> {
+pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWithOffset> {
     let mut suggestions = issues
         .iter()
         .filter_map(|dissue| {
             let offset = actual_offset(raw, dissue);
-            if let Some(suggestion) = dissue.display_issue().suggestion.as_deref() {
-                return Some(SuggestionWithOffset {
-                    offset,
-                    suggestion: suggestion.into(),
-                });
+            if let DIssue::BrokenLink {
+                display_issue,
+                href: Some(href),
+            } = dissue
+                && let Some(suggestion) = display_issue.suggestion.as_deref()
+            {
+                Some(SearchReplaceWithOffset {
+                    offset: offset - href.len(),
+                    search: href.into(),
+                    replace: suggestion.into(),
+                })
             } else {
-                return None;
+                None
             }
         })
         .collect::<Vec<_>>();
@@ -128,7 +135,7 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
 
 pub fn apply_suggestions(
     raw: &str,
-    suggestions: &[SuggestionWithOffset],
+    suggestions: &[SearchReplaceWithOffset],
 ) -> Result<String, ToolError> {
     let mut result = Vec::new();
     let mut current_offset = 0;
@@ -150,10 +157,10 @@ pub fn apply_suggestions(
         }
 
         // Add the suggestion
-        result.push(&suggestion.suggestion);
+        result.push(&suggestion.replace);
 
         // Update current offset to the end of the replaced region
-        current_offset = suggestion.offset + suggestion.len();
+        current_offset = suggestion.offset + suggestion.search.len();
     }
 
     // Add any remaining content after the last suggestion
