@@ -96,9 +96,9 @@ pub fn apply_suggestions(
         // Skip this suggestion if it overlaps with previously applied region
         if suggestion.offset < current_offset {
             tracing::warn!(
-                "Skipping overlapping suggestion at offset {} (current offset: {})",
-                suggestion.offset,
-                current_offset
+                "Cannot apply suggestion ('{}' -> '{}'), because it overlaps with another suggestion.",
+                suggestion.search,
+                suggestion.replace
             );
             continue;
         }
@@ -112,7 +112,9 @@ pub fn apply_suggestions(
         let end_offset = suggestion.offset + suggestion.search.len();
         if end_offset > raw.len() {
             tracing::warn!(
-                "Skipping suggestion at offset {} - end offset {} exceeds raw content length {}",
+                "Cannot apply suggestion ('{}' -> '{}'), because its offset ({}-{}) exceeds raw content length {}",
+                suggestion.search,
+                suggestion.replace,
                 suggestion.offset,
                 end_offset,
                 raw.len()
@@ -123,9 +125,10 @@ pub fn apply_suggestions(
         let actual_content = &raw[suggestion.offset..end_offset];
         if actual_content != suggestion.search {
             tracing::warn!(
-                "Skipping suggestion at offset {} - expected '{}' but found '{}'",
-                suggestion.offset,
+                "Cannot apply suggestion ('{}' -> '{}'), because actual content at offset {} is '{}'",
                 suggestion.search,
+                suggestion.replace,
+                suggestion.offset,
                 actual_content
             );
             continue;
