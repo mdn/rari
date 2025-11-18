@@ -117,24 +117,6 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
     suggestions
 }
 
-pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
-    let issues = get_fixable_issues(page)?;
-
-    let raw = page.raw_content();
-
-    let suggestions = collect_suggestions(raw, &issues);
-
-    let fixed = apply_suggestions(raw, &suggestions)?;
-    let is_fixed = fixed != raw;
-    if is_fixed {
-        tracing::info!("updating {}", page.full_path().display());
-        let file = File::create(page.full_path()).unwrap();
-        let mut buffed = BufWriter::new(file);
-        buffed.write_all(fixed.as_bytes())?;
-    }
-    Ok(is_fixed)
-}
-
 pub fn apply_suggestions(
     raw: &str,
     suggestions: &[SearchReplaceWithOffset],
@@ -171,6 +153,24 @@ pub fn apply_suggestions(
     }
 
     Ok(result.join(""))
+}
+
+pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
+    let issues = get_fixable_issues(page)?;
+
+    let raw = page.raw_content();
+
+    let suggestions = collect_suggestions(raw, &issues);
+
+    let fixed = apply_suggestions(raw, &suggestions)?;
+    let is_fixed = fixed != raw;
+    if is_fixed {
+        tracing::info!("updating {}", page.full_path().display());
+        let file = File::create(page.full_path()).unwrap();
+        let mut buffed = BufWriter::new(file);
+        buffed.write_all(fixed.as_bytes())?;
+    }
+    Ok(is_fixed)
 }
 
 fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) -> Option<usize> {
