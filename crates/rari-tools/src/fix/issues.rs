@@ -15,17 +15,8 @@ struct OLCMapper {
 }
 
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
-    let file = page.full_path().to_string_lossy();
-    let span = span!(
-        Level::ERROR,
-        "page",
-        locale = page.locale().as_url_str(),
-        slug = page.slug(),
-        file = file.as_ref()
-    );
-    let enter = span.enter();
     let _ = page.build()?;
-    drop(enter);
+
     let mut issues = {
         let m = IN_MEMORY.get_events();
         let (_, req_issues) = m
@@ -156,6 +147,15 @@ pub fn apply_suggestions(
 }
 
 pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
+    let span = span!(
+        Level::ERROR,
+        "page",
+        locale = page.locale().as_url_str(),
+        slug = page.slug(),
+        file = page.full_path().to_string_lossy().as_ref()
+    );
+    let enter = span.enter();
+
     let issues = get_fixable_issues(page)?;
 
     let raw = page.raw_content();
@@ -163,6 +163,7 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
     let suggestions = collect_suggestions(raw, &issues);
 
     let fixed = apply_suggestions(raw, &suggestions)?;
+    drop(enter);
     let is_fixed = fixed != raw;
     if is_fixed {
         tracing::info!("updating {}", page.full_path().display());
