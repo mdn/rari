@@ -52,11 +52,15 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct SearchReplaceWithOffset {
+    /// Byte offset in the source where the search string begins
     offset: usize,
+    /// Text to find at the specified offset
     search: String,
+    /// Text to replace the search string with
     replace: String,
 }
 
+/// Converts issues into offset-based search/replace suggestions
 pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWithOffset> {
     let mut suggestions = issues
         .iter()
@@ -85,6 +89,7 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
     suggestions
 }
 
+/// Applies search/replace suggestions to raw content, returning the modified text
 pub fn apply_suggestions(
     raw: &str,
     suggestions: &[SearchReplaceWithOffset],
