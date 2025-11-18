@@ -330,7 +330,10 @@ pub fn fix_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolError> 
     let mut pairs = HashMap::new();
     for locale in locales {
         let path = redirects_path(*locale)?;
-        pairs.extend(read_redirects_raw(&path)?);
+        match read_redirects_raw(&path) {
+            Ok(redirects) => pairs.extend(redirects),
+            Err(e) => warn!("Could not read redirects for {}: {}", locale, e),
+        }
     }
 
     let locale_pairs = fix_redirects_internal(&pairs)?;
