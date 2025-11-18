@@ -201,3 +201,38 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
     }
     offset
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_apply_suggestions_with_duplicate_offsets() {
+        let raw = "[Box Alignment][box-alignment]\n\
+                   [Box Alignment][box-alignment]\n\
+                   \n\
+                   [box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n";
+
+        let suggestions = vec![
+            SearchReplaceWithOffset {
+                offset: 80,
+                search: "/en-US/docs/Web/CSS/CSS_box_alignment".to_string(),
+                replace: "/en-US/docs/Web/CSS/Guides/Box_alignment".to_string(),
+            },
+            SearchReplaceWithOffset {
+                offset: 80,
+                search: "/en-US/docs/Web/CSS/CSS_box_alignment".to_string(),
+                replace: "/en-US/docs/Web/CSS/Guides/Box_alignment".to_string(),
+            },
+        ];
+
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+
+        let expected = "[Box Alignment][box-alignment]\n\
+                        [Box Alignment][box-alignment]\n\
+                        \n\
+                        [box-alignment]: /en-US/docs/Web/CSS/Guides/Box_alignment\n";
+
+        assert_eq!(result, expected);
+    }
+}
