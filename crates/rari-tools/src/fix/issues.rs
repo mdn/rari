@@ -117,11 +117,34 @@ pub fn apply_suggestions(
             result.push(&raw[current_offset..suggestion.offset]);
         }
 
+        // Validate that the search string matches what's actually in the raw content
+        let end_offset = suggestion.offset + suggestion.search.len();
+        if end_offset > raw.len() {
+            tracing::warn!(
+                "Skipping suggestion at offset {} - end offset {} exceeds raw content length {}",
+                suggestion.offset,
+                end_offset,
+                raw.len()
+            );
+            continue;
+        }
+
+        let actual_content = &raw[suggestion.offset..end_offset];
+        if actual_content != suggestion.search {
+            tracing::warn!(
+                "Skipping suggestion at offset {} - expected '{}' but found '{}'",
+                suggestion.offset,
+                suggestion.search,
+                actual_content
+            );
+            continue;
+        }
+
         // Add the suggestion
         result.push(&suggestion.replace);
 
         // Update current offset to the end of the replaced region
-        current_offset = suggestion.offset + suggestion.search.len();
+        current_offset = end_offset;
     }
 
     // Add any remaining content after the last suggestion
