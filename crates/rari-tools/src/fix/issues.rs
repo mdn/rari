@@ -82,7 +82,7 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     0
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SearchReplaceWithOffset {
     offset: usize,
     search: String,
@@ -112,6 +112,7 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
         .collect::<Vec<_>>();
 
     suggestions.sort_by(|a, b| a.offset.cmp(&b.offset));
+    suggestions.dedup();
 
     suggestions
 }
@@ -144,7 +145,7 @@ pub fn apply_suggestions(
     for suggestion in suggestions {
         // Skip this suggestion if it overlaps with previously applied region
         if suggestion.offset < current_offset {
-            tracing::debug!(
+            tracing::warn!(
                 "Skipping overlapping suggestion at offset {} (current offset: {})",
                 suggestion.offset,
                 current_offset
@@ -311,7 +312,7 @@ sidebar: cssref\n\
 
         // Both issues should produce suggestions with the same offset (80)
         // since they both reference the same link definition on line 4
-        assert_eq!(suggestions.len(), 3);
+        assert_eq!(suggestions.len(), 2);
         assert_eq!(suggestions[0].offset, 234);
         assert_eq!(
             suggestions[0].search,
@@ -320,15 +321,6 @@ sidebar: cssref\n\
         assert_eq!(
             suggestions[0].replace,
             "/en-US/docs/Web/CSS/Guides/Flexible_box_layout"
-        );
-        assert_eq!(suggestions[1].offset, 295);
-        assert_eq!(
-            suggestions[1].search,
-            "/en-US/docs/Web/CSS/CSS_box_alignment"
-        );
-        assert_eq!(
-            suggestions[1].replace,
-            "/en-US/docs/Web/CSS/Guides/Box_alignment"
         );
         assert_eq!(suggestions[1].offset, 295);
         assert_eq!(
