@@ -82,6 +82,7 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     0
 }
 
+#[derive(Debug, Clone)]
 pub struct SearchReplaceWithOffset {
     offset: usize,
     search: String,
@@ -205,6 +206,7 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rari_doc::issues::{DisplayIssue, IssueType};
 
     #[test]
     fn test_apply_suggestions_with_duplicate_offsets() {
@@ -234,5 +236,108 @@ mod tests {
                         [box-alignment]: /en-US/docs/Web/CSS/Guides/Box_alignment\n";
 
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_collect_suggestions_with_duplicate_broken_links() {
+        let raw = "---\n\
+title: CSS layout cookbook\n\
+short-title: Layout cookbook\n\
+slug: Web/CSS/How_to/Layout_cookbook\n\
+page-type: landing-page\n\
+sidebar: cssref\n\
+---\n\
+[Box Alignment][box-alignment]\n\
+[Flexbox][flexbox] [Box Alignment][box-alignment]\n\
+\n\
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n\
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n";
+
+        let issues = vec![
+            DIssue::BrokenLink {
+                display_issue: DisplayIssue {
+                    id: 1,
+                    explanation: Some("/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string()),
+                    suggestion: Some("/en-US/docs/Web/CSS/Guides/Box_alignment".to_string()),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(9),
+                    column: Some(1),
+                    end_line: Some(9),
+                    end_column: Some(30),
+                    source_context: Some("\n[Box Alignment][box-alignment]\n^\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n".to_string()),
+                    filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
+                    name: IssueType::RedirectedLink,
+                },
+                href: Some("/en-US/docs/Web/CSS/CSS_box_alignment".to_string()),
+            },
+            DIssue::BrokenLink {
+                display_issue: DisplayIssue {
+                    id: 2,
+                    explanation: Some("/en-US/docs/Web/CSS/CSS_flexible_box_layout is a redirect".to_string()),
+                    suggestion: Some("/en-US/docs/Web/CSS/Guides/Flexible_box_layout".to_string()),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(10),
+                    column: Some(1),
+                    end_line: Some(10),
+                    end_column: Some(30),
+                    source_context: Some("\n[Box Alignment][box-alignment]\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n^\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n".to_string()),
+                    filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
+                    name: IssueType::RedirectedLink,
+                },
+                href: Some("/en-US/docs/Web/CSS/CSS_flexible_box_layout".to_string()),
+            },
+            DIssue::BrokenLink {
+                display_issue: DisplayIssue {
+                    id: 3,
+                    explanation: Some("/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string()),
+                    suggestion: Some("/en-US/docs/Web/CSS/Guides/Box_alignment".to_string()),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(10),
+                    column: Some(20),
+                    end_line: Some(10),
+                    end_column: Some(49),
+                    source_context: Some("\n[Box Alignment][box-alignment]\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n-------------------^\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n".to_string()),
+                    filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
+                    name: IssueType::RedirectedLink,
+                },
+                href: Some("/en-US/docs/Web/CSS/CSS_box_alignment".to_string()),
+            },
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        // Both issues should produce suggestions with the same offset (80)
+        // since they both reference the same link definition on line 4
+        assert_eq!(suggestions.len(), 3);
+        assert_eq!(suggestions[0].offset, 234);
+        assert_eq!(
+            suggestions[0].search,
+            "/en-US/docs/Web/CSS/CSS_flexible_box_layout"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "/en-US/docs/Web/CSS/Guides/Flexible_box_layout"
+        );
+        assert_eq!(suggestions[1].offset, 295);
+        assert_eq!(
+            suggestions[1].search,
+            "/en-US/docs/Web/CSS/CSS_box_alignment"
+        );
+        assert_eq!(
+            suggestions[1].replace,
+            "/en-US/docs/Web/CSS/Guides/Box_alignment"
+        );
+        assert_eq!(suggestions[1].offset, 295);
+        assert_eq!(
+            suggestions[1].search,
+            "/en-US/docs/Web/CSS/CSS_box_alignment"
+        );
+        assert_eq!(
+            suggestions[1].replace,
+            "/en-US/docs/Web/CSS/Guides/Box_alignment"
+        );
     }
 }
