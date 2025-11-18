@@ -59,29 +59,6 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     Ok(issues)
 }
 
-pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
-    let olc = OLCMapper::default();
-    let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
-    let new_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
-    if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
-        if let DIssue::BrokenLink {
-            display_issue: _,
-            href: Some(href),
-        } = dissue
-            && let Some(start) = raw[offset..].find(href)
-        {
-            let href_offset = offset + start;
-
-            let actual_offset = href_offset + href.len();
-
-            return actual_offset;
-        }
-        return offset;
-    }
-
-    0
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct SearchReplaceWithOffset {
     offset: usize,
@@ -202,6 +179,29 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
         }
     }
     offset
+}
+
+pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
+    let olc = OLCMapper::default();
+    let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
+    let new_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
+    if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
+        if let DIssue::BrokenLink {
+            display_issue: _,
+            href: Some(href),
+        } = dissue
+            && let Some(start) = raw[offset..].find(href)
+        {
+            let href_offset = offset + start;
+
+            let actual_offset = href_offset + href.len();
+
+            return actual_offset;
+        }
+        return offset;
+    }
+
+    0
 }
 
 #[cfg(test)]
