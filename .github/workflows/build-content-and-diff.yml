@@ -2,6 +2,8 @@ name: Build Content and Diff
 
 on:
   pull_request:
+    paths:
+      - '**/*.rs'
 
 # No GITHUB_TOKEN permissions, as we don't use it.
 permissions: {}
