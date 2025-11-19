@@ -5,6 +5,10 @@ on:
     paths:
       - '**/*.rs'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 # No GITHUB_TOKEN permissions, as we don't use it.
 permissions: {}
 
