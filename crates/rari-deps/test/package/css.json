@@ -1,6 +1,77 @@
 {
   "atrules": [
     {
+      "name": "@-webkit-keyframes",
+      "href": "https://compat.spec.whatwg.org/#at-ruledef--webkit-keyframes",
+      "descriptors": [],
+      "extended": []
+    },
+    {
+      "descriptors": [],
+      "name": "@annotation",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-ruledef-font-feature-values-annotation",
+      "for": ["@font-feature-values"],
+      "syntax": "@annotation { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@apply",
+      "href": "https://drafts.csswg.org/css-mixins-1/#at-ruledef-apply",
+      "descriptors": [],
+      "syntax": "@apply [ <dashed-ident> | <dashed-function> ] [ { <declaration-list> } ]?;",
+      "extended": []
+    },
+    {
+      "name": "@bottom-center",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-bottom-center",
+      "descriptors": [],
+      "syntax": "@bottom-center { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@bottom-left",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-bottom-left",
+      "descriptors": [],
+      "syntax": "@bottom-left { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@bottom-left-corner",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-bottom-left-corner",
+      "descriptors": [],
+      "syntax": "@bottom-left-corner { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@bottom-right",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-bottom-right",
+      "descriptors": [],
+      "syntax": "@bottom-right { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@bottom-right-corner",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-bottom-right-corner",
+      "descriptors": [],
+      "syntax": "@bottom-right-corner { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "descriptors": [],
+      "name": "@character-variant",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-ruledef-font-feature-values-character-variant",
+      "for": ["@font-feature-values"],
+      "syntax": "@character-variant { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@charset",
+      "prose": "However, there is no actual at-rule named @charset. When a stylesheet is actually parsed, any occurrences of an @charset rule must be treated as an unrecognized rule, and thus dropped as invalid when the stylesheet is grammar-checked.",
+      "href": "https://drafts.csswg.org/css-syntax-3/#at-ruledef-charset",
+      "descriptors": [],
+      "extended": []
+    },
+    {
       "name": "@color-profile",
       "prose": "The @color-profile rule defines and names a color profile which can later be used in the color() function to specify a color.",
       "href": "https://drafts.csswg.org/css-color-5/#at-ruledef-profile",
@@ -50,11 +121,11 @@
           "syntax": "<length>"
         },
         {
-          "name": "direction",
-          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-direction",
+          "name": "fallback",
+          "href": "https://drafts.csswg.org/css-anchor-position-2/#descdef-container-fallback",
           "for": "@container",
           "type": "discrete",
-          "syntax": "none | top | right | bottom | left | block-start | inline-start | block-end | inline-end | x | y | block | inline"
+          "syntax": "none | [ [<dashed-ident> || <try-tactic>] | <position-area-query> ]"
         },
         {
           "name": "height",
@@ -85,6 +156,13 @@
           "syntax": "none | top | right | bottom | left | block-start | inline-start | block-end | inline-end | x | y | block | inline"
         },
         {
+          "name": "scrolled",
+          "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-scrolled",
+          "for": "@container",
+          "type": "discrete",
+          "syntax": "none | top | right | bottom | left | block-start | inline-start | block-end | inline-end | x | y | block | inline"
+        },
+        {
           "name": "snapped",
           "href": "https://drafts.csswg.org/css-conditional-5/#descdef-container-snapped",
           "for": "@container",
@@ -108,95 +186,1123 @@
       ],
       "syntax": "@container <container-condition># { <block-contents> }",
       "extended": []
+    },
+    {
+      "name": "@contents",
+      "href": "https://drafts.csswg.org/css-mixins-1/#at-ruledef-contents",
+      "descriptors": [],
+      "syntax": "@contents [ { <declaration-list> } ]?",
+      "extended": []
+    },
+    {
+      "name": "@counter-style",
+      "prose": "The @counter-style rule allows authors to define a custom counter style. The components of a counter style are specified by descriptors in the @counter-style rule. The algorithm is specified implicitly by a combination of the system, symbols, and additive-symbols properties.",
+      "href": "https://drafts.csswg.org/css-counter-styles-3/#at-ruledef-counter-style",
+      "descriptors": [
+        {
+          "name": "additive-symbols",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-additive-symbols",
+          "for": "@counter-style",
+          "initial": "n/a",
+          "syntax": "[ <integer [0,∞]> && <symbol> ]#"
+        },
+        {
+          "name": "fallback",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-fallback",
+          "for": "@counter-style",
+          "initial": "decimal",
+          "syntax": "<counter-style-name>"
+        },
+        {
+          "name": "negative",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-negative",
+          "for": "@counter-style",
+          "initial": "\"-\"",
+          "syntax": "<symbol> <symbol>?"
+        },
+        {
+          "name": "pad",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-pad",
+          "for": "@counter-style",
+          "initial": "0 \"\"",
+          "syntax": "<integer [0,∞]> && <symbol>"
+        },
+        {
+          "name": "prefix",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-prefix",
+          "for": "@counter-style",
+          "initial": "\"\"",
+          "syntax": "<symbol>"
+        },
+        {
+          "name": "range",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-range",
+          "for": "@counter-style",
+          "initial": "auto",
+          "syntax": "[ [ <integer> | infinite ]{2} ]# | auto"
+        },
+        {
+          "name": "speak-as",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-speak-as",
+          "for": "@counter-style",
+          "initial": "auto",
+          "syntax": "auto | bullets | numbers | words | spell-out | <counter-style-name>"
+        },
+        {
+          "name": "suffix",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-suffix",
+          "for": "@counter-style",
+          "initial": "\". \"",
+          "syntax": "<symbol>"
+        },
+        {
+          "name": "symbols",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-symbols",
+          "for": "@counter-style",
+          "initial": "n/a",
+          "syntax": "<symbol>+"
+        },
+        {
+          "name": "system",
+          "href": "https://drafts.csswg.org/css-counter-styles-3/#descdef-counter-style-system",
+          "for": "@counter-style",
+          "initial": "symbolic",
+          "syntax": "cyclic | numeric | alphabetic | symbolic | additive | [fixed <integer>?] | [ extends <counter-style-name> ]"
+        }
+      ],
+      "syntax": "@counter-style <counter-style-name> { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@custom-media",
+      "href": "https://drafts.csswg.org/mediaqueries-5/#at-ruledef-custom-media",
+      "descriptors": [],
+      "syntax": "@custom-media <extension-name> [ <media-query-list> | true | false ] ;",
+      "extended": []
+    },
+    {
+      "name": "@custom-selector",
+      "href": "https://drafts.csswg.org/css-extensions-1/#at-ruledef-custom-selector",
+      "descriptors": [],
+      "syntax": "@custom-selector <custom-selector> <selector-list> ;",
+      "extended": []
+    },
+    {
+      "name": "@else",
+      "prose": "The @else rule is a conditional group rule used to form conditional rule chains, which associate multiple conditional group rules and guarantee that only the first one that matches will evaluate its condition as true. It is defined as:",
+      "href": "https://drafts.csswg.org/css-conditional-5/#at-ruledef-else",
+      "descriptors": [],
+      "syntax": "@else <boolean-condition>? { <rule-list> }",
+      "extended": []
+    },
+    {
+      "name": "@env",
+      "href": "https://drafts.csswg.org/css-mixins-1/#at-ruledef-env",
+      "descriptors": [],
+      "syntax": "@env <custom-property-name> <css-type>? : <declaration-value>? ;",
+      "extended": []
+    },
+    {
+      "name": "@font-face",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-font-face-rule",
+      "descriptors": [
+        {
+          "name": "ascent-override",
+          "href": "https://drafts.csswg.org/css-fonts-5/#descdef-font-face-ascent-override",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "[ normal | <percentage [0,∞]> ]{1,2}"
+        },
+        {
+          "name": "descent-override",
+          "href": "https://drafts.csswg.org/css-fonts-5/#descdef-font-face-descent-override",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "[ normal | <percentage [0,∞]> ]{1,2}"
+        },
+        {
+          "name": "font-display",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-font-display",
+          "for": "@font-face",
+          "initial": "auto",
+          "syntax": "auto | block | swap | fallback | optional"
+        },
+        {
+          "name": "font-family",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-font-family",
+          "for": "@font-face",
+          "initial": "N/A",
+          "syntax": "<family-name>"
+        },
+        {
+          "name": "font-feature-settings",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-font-feature-settings",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "normal | <feature-tag-value>#"
+        },
+        {
+          "name": "font-language-override",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-font-language-override",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "normal | <string>"
+        },
+        {
+          "name": "font-named-instance",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-font-named-instance",
+          "for": "@font-face",
+          "initial": "auto",
+          "syntax": "auto | <string>"
+        },
+        {
+          "name": "font-size",
+          "href": "https://drafts.csswg.org/css-fonts-5/#descdef-font-face-font-size",
+          "for": "@font-face",
+          "initial": "auto",
+          "syntax": "auto | [<number>]{1,2}"
+        },
+        {
+          "name": "font-style",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-font-style",
+          "for": "@font-face",
+          "initial": "auto",
+          "syntax": "auto | normal | italic | left | right | oblique [ <angle [-90deg,90deg]>{1,2} ]?"
+        },
+        {
+          "name": "font-variation-settings",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-font-variation-settings",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "normal | [ <string> <number>]#"
+        },
+        {
+          "name": "font-weight",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-font-weight",
+          "for": "@font-face",
+          "initial": "auto",
+          "syntax": "auto | <font-weight-absolute>{1,2}"
+        },
+        {
+          "name": "font-width",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-font-width",
+          "for": "@font-face",
+          "initial": "auto",
+          "syntax": "auto | <'font-width'>{1,2}"
+        },
+        {
+          "name": "line-gap-override",
+          "href": "https://drafts.csswg.org/css-fonts-5/#descdef-font-face-line-gap-override",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "[ normal | <percentage [0,∞]> ]{1,2}"
+        },
+        {
+          "name": "size-adjust",
+          "href": "https://drafts.csswg.org/css-fonts-5/#descdef-font-face-size-adjust",
+          "for": "@font-face",
+          "initial": "100%",
+          "syntax": "<percentage [0,∞]>"
+        },
+        {
+          "name": "src",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-src",
+          "for": "@font-face",
+          "initial": "N/A",
+          "syntax": "<font-src-list>"
+        },
+        {
+          "name": "subscript-position-override",
+          "href": "https://drafts.csswg.org/css-fonts-5/#descdef-font-face-subscript-position-override",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "[ normal | from-font | <percentage> ]{1,2}"
+        },
+        {
+          "name": "subscript-size-override",
+          "href": "https://drafts.csswg.org/css-fonts-5/#descdef-font-face-subscript-size-override",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "[ normal | from-font | <percentage [0,∞]> ]{1,2}"
+        },
+        {
+          "name": "superscript-position-override",
+          "href": "https://drafts.csswg.org/css-fonts-5/#descdef-font-face-superscript-position-override",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "[ normal | from-font | <percentage> ]{1,2}"
+        },
+        {
+          "name": "superscript-size-override",
+          "href": "https://drafts.csswg.org/css-fonts-5/#descdef-font-face-superscript-size-override",
+          "for": "@font-face",
+          "initial": "normal",
+          "syntax": "[ normal | from-font | <percentage [0,∞]> ]{1,2}"
+        },
+        {
+          "name": "unicode-range",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-face-unicode-range",
+          "for": "@font-face",
+          "initial": "U+0-10FFFF",
+          "syntax": "<unicode-range-token>#"
+        }
+      ],
+      "syntax": "@font-face { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@font-feature-values",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-ruledef-font-feature-values",
+      "descriptors": [
+        {
+          "name": "font-display",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-feature-values-font-display",
+          "for": "@font-feature-values",
+          "initial": "auto",
+          "syntax": "auto | block | swap | fallback | optional"
+        }
+      ],
+      "syntax": "@font-feature-values <family-name># { <declaration-rule-list> }",
+      "extended": []
+    },
+    {
+      "name": "@font-palette-values",
+      "prose": "The @font-palette-values rule defines a color palette and associates that color palette with a specific font. This allows a web author to select arbitrary <color>s to use inside a color font rather than being limited to the preexisting palettes inside font files.",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-ruledef-font-palette-values",
+      "descriptors": [
+        {
+          "name": "base-palette",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-palette-values-base-palette",
+          "for": "@font-palette-values",
+          "initial": "N/A",
+          "syntax": "light | dark | <integer [0,∞]>"
+        },
+        {
+          "name": "font-family",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-palette-values-font-family",
+          "for": "@font-palette-values",
+          "initial": "N/A",
+          "syntax": "<family-name>#"
+        },
+        {
+          "name": "override-colors",
+          "href": "https://drafts.csswg.org/css-fonts-4/#descdef-font-palette-values-override-colors",
+          "for": "@font-palette-values",
+          "initial": "N/A",
+          "syntax": "[ <integer [0,∞]> <color> ]#"
+        }
+      ],
+      "syntax": "@font-palette-values <dashed-ident> { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@function",
+      "href": "https://drafts.csswg.org/css-mixins-1/#at-ruledef-function",
+      "descriptors": [
+        {
+          "name": "result",
+          "href": "https://drafts.csswg.org/css-mixins-1/#descdef-function-result",
+          "for": "@function",
+          "initial": "n/a (see prose)",
+          "syntax": "<declaration-value>?"
+        }
+      ],
+      "syntax": "@function <function-token> <function-parameter>#? ) [ returns <css-type> ]? { <declaration-rule-list> }",
+      "extended": []
+    },
+    {
+      "descriptors": [],
+      "name": "@historical-forms",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-ruledef-font-feature-values-historical-forms",
+      "for": ["@font-feature-values"],
+      "syntax": "@historical-forms { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@import",
+      "prose": "The @import rule allows users to import style rules from other style sheets. If an @import rule refers to a valid stylesheet, user agents must treat the contents of the stylesheet as if they were written in place of the @import rule, with two exceptions:",
+      "href": "https://drafts.csswg.org/css-cascade-5/#at-ruledef-import",
+      "descriptors": [],
+      "syntax": "@import [ <url> | <string> ] [ layer | layer(<layer-name>) ]? <import-conditions> ;",
+      "extended": []
+    },
+    {
+      "name": "@keyframes",
+      "prose": "Keyframes are specified using the @keyframes at-rule, defined as follows:",
+      "href": "https://drafts.csswg.org/css-animations-1/#at-ruledef-keyframes",
+      "descriptors": [],
+      "syntax": "@keyframes <keyframes-name> { <qualified-rule-list> }",
+      "extended": []
+    },
+    {
+      "name": "@layer",
+      "prose": "The @layer rule declares a cascade layer, with the option to assign style rules.",
+      "href": "https://drafts.csswg.org/css-cascade-5/#at-ruledef-layer",
+      "descriptors": [],
+      "syntax": "@layer <layer-name>? { <rule-list> } | @layer <layer-name>#;",
+      "extended": []
+    },
+    {
+      "name": "@left-bottom",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-left-bottom",
+      "descriptors": [],
+      "syntax": "@left-bottom { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@left-middle",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-left-middle",
+      "descriptors": [],
+      "syntax": "@left-middle { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@left-top",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-left-top",
+      "descriptors": [],
+      "syntax": "@left-top { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@media",
+      "prose": "The @media rule is a conditional group rule whose condition is a media query. Its syntax is:",
+      "href": "https://drafts.csswg.org/css-conditional-3/#at-ruledef-media",
+      "descriptors": [
+        {
+          "name": "-webkit-device-pixel-ratio",
+          "href": "https://compat.spec.whatwg.org/#descdef-media--webkit-device-pixel-ratio",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<number>"
+        },
+        {
+          "name": "-webkit-transform-3d",
+          "href": "https://compat.spec.whatwg.org/#descdef-media--webkit-transform-3d",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "<mq-boolean>"
+        },
+        {
+          "name": "any-hover",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-any-hover",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | hover"
+        },
+        {
+          "name": "any-pointer",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-any-pointer",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | coarse | fine"
+        },
+        {
+          "name": "aspect-ratio",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-aspect-ratio",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<ratio>"
+        },
+        {
+          "name": "color",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-color",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<integer>"
+        },
+        {
+          "name": "color-gamut",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-color-gamut",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "srgb | p3 | rec2020"
+        },
+        {
+          "name": "color-index",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-color-index",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<integer>"
+        },
+        {
+          "name": "device-aspect-ratio",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-device-aspect-ratio",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<ratio>"
+        },
+        {
+          "name": "device-height",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-device-height",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<length>"
+        },
+        {
+          "name": "device-width",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-device-width",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<length>"
+        },
+        {
+          "name": "display-mode",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-display-mode",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "fullscreen | standalone | minimal-ui | browser | picture-in-picture"
+        },
+        {
+          "name": "dynamic-range",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-dynamic-range",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "standard | high"
+        },
+        {
+          "name": "environment-blending",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-environment-blending",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "opaque | additive | subtractive"
+        },
+        {
+          "name": "forced-colors",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-forced-colors",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | active"
+        },
+        {
+          "name": "grid",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-grid",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "<mq-boolean>"
+        },
+        {
+          "name": "height",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-height",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<length>"
+        },
+        {
+          "name": "horizontal-viewport-segments",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-horizontal-viewport-segments",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<integer>"
+        },
+        {
+          "name": "hover",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-hover",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | hover"
+        },
+        {
+          "name": "inverted-colors",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-inverted-colors",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | inverted"
+        },
+        {
+          "name": "monochrome",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-monochrome",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<integer>"
+        },
+        {
+          "name": "nav-controls",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-nav-controls",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | back"
+        },
+        {
+          "name": "orientation",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-orientation",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "portrait | landscape"
+        },
+        {
+          "name": "overflow-block",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-overflow-block",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | scroll | paged"
+        },
+        {
+          "name": "overflow-inline",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-overflow-inline",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | scroll"
+        },
+        {
+          "name": "pointer",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-pointer",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | coarse | fine"
+        },
+        {
+          "name": "prefers-color-scheme",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-prefers-color-scheme",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "light | dark"
+        },
+        {
+          "name": "prefers-contrast",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-prefers-contrast",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "no-preference | less | more | custom"
+        },
+        {
+          "name": "prefers-reduced-data",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-prefers-reduced-data",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "no-preference | reduce"
+        },
+        {
+          "name": "prefers-reduced-motion",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-prefers-reduced-motion",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "no-preference | reduce"
+        },
+        {
+          "name": "prefers-reduced-transparency",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-prefers-reduced-transparency",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "no-preference | reduce"
+        },
+        {
+          "name": "resolution",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-resolution",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<resolution> | infinite"
+        },
+        {
+          "name": "scan",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-scan",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "interlace | progressive"
+        },
+        {
+          "name": "scripting",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-scripting",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | initial-only | enabled"
+        },
+        {
+          "name": "shape",
+          "href": "https://drafts.csswg.org/css-round-display-1/#descdef-media-shape",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "rect | round"
+        },
+        {
+          "name": "update",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-update",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "none | slow | fast"
+        },
+        {
+          "name": "vertical-viewport-segments",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-vertical-viewport-segments",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<integer>"
+        },
+        {
+          "name": "video-color-gamut",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-video-color-gamut",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "srgb | p3 | rec2020"
+        },
+        {
+          "name": "video-dynamic-range",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-video-dynamic-range",
+          "for": "@media",
+          "type": "discrete",
+          "syntax": "standard | high"
+        },
+        {
+          "name": "width",
+          "href": "https://drafts.csswg.org/mediaqueries-5/#descdef-media-width",
+          "for": "@media",
+          "type": "range",
+          "syntax": "<length>"
+        }
+      ],
+      "syntax": "@media <media-query-list> { <rule-list> }",
+      "extended": []
+    },
+    {
+      "name": "@mixin",
+      "href": "https://drafts.csswg.org/css-mixins-1/#at-ruledef-mixin",
+      "descriptors": [],
+      "syntax": "@mixin <function-token> <function-parameter>#? , [@contents]? ) { <declaration-rule-list> }",
+      "extended": []
+    },
+    {
+      "name": "@namespace",
+      "prose": "The @namespace at-rule declares a namespace prefix and associates it with a given namespace name (a string). This namespace prefix can then be used in namespace-qualified names such as the CSS qualified names defined below.",
+      "href": "https://drafts.csswg.org/css-namespaces-3/#at-ruledef-namespace",
+      "descriptors": [],
+      "syntax": "@namespace <namespace-prefix>? [ <string> | <url> ] ;",
+      "extended": []
+    },
+    {
+      "descriptors": [],
+      "name": "@ornaments",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-ruledef-font-feature-values-ornaments",
+      "for": ["@font-feature-values"],
+      "syntax": "@ornaments { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@page",
+      "prose": "Authors can specify various aspects of a page box, such as its dimensions, orientation, and margins, within an @page rule. @page rules are allowed wherever rule-sets are allowed. An @page rule consists of the keyword @page, an optional comma-separated list of page selectors and a block of declarations (said to be in the page context). An @page rule can also contain other at-rules, interleaved between declarations. The current level of this specification only allows margin at-rules inside @page.",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-page",
+      "descriptors": [
+        {
+          "name": "bleed",
+          "href": "https://drafts.csswg.org/css-page-3/#descdef-page-bleed",
+          "for": "@page",
+          "initial": "auto",
+          "computedValue": "as specified",
+          "syntax": "auto | <length>"
+        },
+        {
+          "name": "marks",
+          "href": "https://drafts.csswg.org/css-page-3/#descdef-page-marks",
+          "for": "@page",
+          "initial": "none",
+          "computedValue": "as specified",
+          "syntax": "none | [ crop || cross ]"
+        },
+        {
+          "name": "page-orientation",
+          "href": "https://drafts.csswg.org/css-page-3/#descdef-page-page-orientation",
+          "for": "@page",
+          "initial": "upright",
+          "computedValue": "as specified",
+          "syntax": "upright | rotate-left | rotate-right"
+        },
+        {
+          "name": "size",
+          "href": "https://drafts.csswg.org/css-page-3/#descdef-page-size",
+          "for": "@page",
+          "initial": "auto",
+          "computedValue": "specified value, with <length>s made absolute.",
+          "syntax": "<length [0,∞]>{1,2} | auto | [ <page-size> || [ portrait | landscape ] ]"
+        }
+      ],
+      "syntax": "@page <page-selector-list>? { <declaration-rule-list> }",
+      "extended": []
+    },
+    {
+      "name": "@position-try",
+      "prose": "The @position-try rule defines a position option with a given name, specifying one or more sets of positioning properties that can be applied to a box via position-try-fallbacks,",
+      "href": "https://drafts.csswg.org/css-anchor-position-1/#at-ruledef-position-try",
+      "descriptors": [],
+      "syntax": "@position-try <dashed-ident> { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@property",
+      "href": "https://drafts.css-houdini.org/css-properties-values-api-1/#at-ruledef-property",
+      "descriptors": [
+        {
+          "name": "inherits",
+          "href": "https://drafts.css-houdini.org/css-properties-values-api-1/#descdef-property-inherits",
+          "for": "@property",
+          "initial": "n/a (see prose)",
+          "syntax": "true | false"
+        },
+        {
+          "name": "initial-value",
+          "href": "https://drafts.css-houdini.org/css-properties-values-api-1/#descdef-property-initial-value",
+          "for": "@property",
+          "initial": "the guaranteed-invalid value (but see prose)",
+          "syntax": "<declaration-value>?"
+        },
+        {
+          "name": "syntax",
+          "href": "https://drafts.css-houdini.org/css-properties-values-api-1/#descdef-property-syntax",
+          "for": "@property",
+          "initial": "n/a (see prose)",
+          "syntax": "<string>"
+        }
+      ],
+      "syntax": "@property <custom-property-name> { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@right-bottom",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-right-bottom",
+      "descriptors": [],
+      "syntax": "@right-bottom { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@right-middle",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-right-middle",
+      "descriptors": [],
+      "syntax": "@right-middle { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@right-top",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-right-top",
+      "descriptors": [],
+      "syntax": "@right-top { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@scope",
+      "prose": "Scoped styles are described in CSS using the @scope block at-rule, which declares a scoping root and optional scoping limits associated with a set of style rules.",
+      "href": "https://drafts.csswg.org/css-cascade-6/#at-ruledef-scope",
+      "descriptors": [],
+      "syntax": "@scope [(<scope-start>)]? [to (<scope-end>)]? { <block-contents> }",
+      "extended": []
+    },
+    {
+      "name": "@starting-style",
+      "prose": "The @starting-style rule is a grouping rule. The style rules inside it are used to establish styles to transition from, if the previous style change event did not establish a before-change style for the element whose styles are being computed.",
+      "href": "https://drafts.csswg.org/css-transitions-2/#at-ruledef-starting-style",
+      "descriptors": [],
+      "extended": []
+    },
+    {
+      "descriptors": [],
+      "name": "@styleset",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-ruledef-font-feature-values-styleset",
+      "for": ["@font-feature-values"],
+      "syntax": "@styleset { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "descriptors": [],
+      "name": "@stylistic",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-ruledef-font-feature-values-stylistic",
+      "for": ["@font-feature-values"],
+      "syntax": "@stylistic { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@supports",
+      "prose": "The @supports rule is a conditional group rule whose condition tests whether the user agent supports CSS property:value pairs. Authors can use it to write style sheets that use new features when available but degrade gracefully when those features are not supported. These queries are called CSS feature queries or (colloquially) supports queries.",
+      "href": "https://drafts.csswg.org/css-conditional-3/#at-ruledef-supports",
+      "descriptors": [],
+      "syntax": "@supports <supports-condition> { <rule-list> }",
+      "extended": []
+    },
+    {
+      "name": "@supports-condition",
+      "prose": "The @supports-condition at-rule is a conditional group rule that allows authors to define and name a supports query for later reuse, creating a named supports condition. This enables complex or frequently-used feature queries to be referenced by name, improving maintainability and readability.",
+      "href": "https://drafts.csswg.org/css-conditional-5/#at-ruledef-supports-condition",
+      "descriptors": [],
+      "syntax": "@supports-condition <supports-condition-name> { <block-contents> }",
+      "extended": []
+    },
+    {
+      "descriptors": [],
+      "name": "@swash",
+      "href": "https://drafts.csswg.org/css-fonts-4/#at-ruledef-font-feature-values-swash",
+      "for": ["@font-feature-values"],
+      "syntax": "@swash { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@top-center",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-top-center",
+      "descriptors": [],
+      "syntax": "@top-center { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@top-left",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-top-left",
+      "descriptors": [],
+      "syntax": "@top-left { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@top-left-corner",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-top-left-corner",
+      "descriptors": [],
+      "syntax": "@top-left-corner { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@top-right",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-top-right",
+      "descriptors": [],
+      "syntax": "@top-right { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@top-right-corner",
+      "href": "https://drafts.csswg.org/css-page-3/#at-ruledef-top-right-corner",
+      "descriptors": [],
+      "syntax": "@top-right-corner { <declaration-list> };",
+      "extended": []
+    },
+    {
+      "name": "@view-transition",
+      "href": "https://drafts.csswg.org/css-view-transitions-2/#at-view-transition-rule",
+      "descriptors": [
+        {
+          "name": "navigation",
+          "href": "https://drafts.csswg.org/css-view-transitions-2/#descdef-view-transition-navigation",
+          "for": "@view-transition",
+          "initial": "none",
+          "syntax": "auto | none"
+        },
+        {
+          "name": "types",
+          "href": "https://drafts.csswg.org/css-view-transitions-2/#descdef-view-transition-types",
+          "for": "@view-transition",
+          "initial": "none",
+          "syntax": "none | <custom-ident>+"
+        }
+      ],
+      "syntax": "@view-transition { <declaration-list> }",
+      "extended": []
+    },
+    {
+      "name": "@when",
+      "prose": "The @when at-rule is a conditional group rule that generalizes the individual conditional group rules such as @media and @supports. It is defined as:",
+      "href": "https://drafts.csswg.org/css-conditional-5/#at-ruledef-when",
+      "descriptors": [],
+      "syntax": "@when <boolean-condition> { <rule-list> }",
+      "extended": []
     }
   ],
   "functions": [
     {
-      "name": "light-dark()",
-      "href": "https://drafts.csswg.org/css-color-5/#funcdef-light-dark",
-      "syntax": "light-dark( <color>, <color> )",
+      "for": ["grid-template-columns", "grid-template-rows"],
+      "name": "fit-content()",
+      "href": "https://drafts.csswg.org/css-grid-2/#funcdef-grid-template-columns-fit-content",
+      "syntax": "fit-content( <length-percentage> )",
       "extended": []
     },
     {
-      "name": "linear-gradient()",
-      "prose": "The linear-gradient() notation specifies a linear gradient in CSS. Its syntax is as follows:",
-      "href": "https://drafts.csswg.org/css-images-3/#funcdef-linear-gradient",
-      "syntax": "linear-gradient( [ <linear-gradient-syntax> ] )",
+      "for": [
+        "height",
+        "max-height",
+        "max-width",
+        "min-height",
+        "min-width",
+        "width"
+      ],
+      "name": "fit-content()",
+      "href": "https://drafts.csswg.org/css-sizing-3/#funcdef-width-fit-content",
+      "syntax": "fit-content(<length-percentage [0,∞]>)",
+      "extended": []
+    },
+    {
+      "for": ["filter"],
+      "name": "grayscale()",
+      "href": "https://drafts.fxtf.org/filter-effects-1/#funcdef-filter-grayscale",
+      "syntax": "grayscale( [ <number> | <percentage> ]? )",
+      "extended": []
+    },
+    {
+      "name": "hdr-color()",
+      "href": "https://drafts.csswg.org/css-color-hdr-1/#funcdef-hdr-color",
+      "syntax": "color-hdr([ <color> && <number [0,∞]>? ]#{2})",
+      "extended": []
+    },
+    {
+      "name": "hsl()",
+      "href": "https://drafts.csswg.org/css-color-4/#funcdef-hsl",
+      "syntax": "[ <legacy-hsl-syntax> | <modern-hsl-syntax> ]",
+      "extended": []
+    },
+    {
+      "name": "hsla()",
+      "href": "https://drafts.csswg.org/css-color-4/#funcdef-hsla",
+      "syntax": "[ <legacy-hsla-syntax> | <modern-hsla-syntax> ]",
       "extended": []
     }
   ],
   "properties": [
     {
-      "name": "border-style",
-      "href": "https://drafts.csswg.org/css-backgrounds-3/#propdef-border-style",
-      "initial": "see individual properties",
-      "appliesTo": "all elements except ruby base containers and ruby annotation containers",
-      "inherited": "no",
-      "percentages": "N/A",
-      "computedValue": "see individual properties",
-      "canonicalOrder": "per grammar",
-      "animationType": "see individual properties",
-      "styleDeclaration": ["border-style", "borderStyle"],
-      "syntax": "<line-style>{1,4}",
-      "extended": []
-    },
-    {
-      "name": "border-top-left-radius",
-      "href": "https://drafts.csswg.org/css-borders-4/#propdef-border-top-left-radius",
-      "initial": "0",
-      "appliesTo": "all elements (but see prose)",
-      "inherited": "no",
-      "percentages": "Refer to corresponding dimension of the border box.",
-      "computedValue": "pair of computed <length-percentage> values",
-      "canonicalOrder": "per grammar",
-      "animationType": "by computed value",
-      "logicalPropertyGroup": "border-radius",
-      "styleDeclaration": ["border-top-left-radius", "borderTopLeftRadius"],
-      "syntax": "<length-percentage [0,∞]>{1,2}",
-      "extended": []
-    },
-    {
-      "name": "voice-volume",
-      "href": "https://drafts.csswg.org/css-speech-1/#propdef-voice-volume",
-      "initial": "medium",
+      "name": "-webkit-text-fill-color",
+      "href": "https://compat.spec.whatwg.org/#propdef--webkit-text-fill-color",
+      "initial": "currentcolor",
       "appliesTo": "all elements",
       "inherited": "yes",
       "percentages": "N/A",
-      "computedValue": "silent, or a keyword value and optionally also a decibel offset (if not zero)",
+      "computedValue": "an RGBA color",
       "canonicalOrder": "per grammar",
-      "styleDeclaration": ["voice-volume", "voiceVolume"],
-      "syntax": "silent | [[x-soft | soft | medium | loud | x-loud] || <decibel>]",
+      "animationType": "by computed value type",
+      "media": "visual",
+      "styleDeclaration": [
+        "-webkit-text-fill-color",
+        "WebkitTextFillColor",
+        "webkitTextFillColor"
+      ],
+      "syntax": "<color>",
+      "extended": []
+    },
+    {
+      "name": "align-items",
+      "href": "https://drafts.csswg.org/css-align-3/#propdef-align-items",
+      "initial": "normal",
+      "appliesTo": "all elements",
+      "inherited": "no",
+      "percentages": "n/a",
+      "computedValue": "specified keyword(s)",
+      "canonicalOrder": "per grammar",
+      "animationType": "discrete",
+      "styleDeclaration": ["align-items", "alignItems"],
+      "syntax": "normal | stretch | <baseline-position> | [ <overflow-position>? <self-position> ] | anchor-center | dialog",
+      "extended": ["https://drafts.csswg.org/css-anchor-position-1/"]
+    },
+    {
+      "name": "align-self",
+      "href": "https://drafts.csswg.org/css-align-3/#propdef-align-self",
+      "initial": "auto",
+      "appliesTo": "flex items, grid items, and absolutely-positioned boxes",
+      "inherited": "no",
+      "percentages": "n/a",
+      "computedValue": "specified keyword(s)",
+      "canonicalOrder": "per grammar",
+      "animationType": "discrete",
+      "styleDeclaration": ["align-self", "alignSelf"],
+      "syntax": "auto | normal | stretch | <baseline-position> | <overflow-position>? <self-position> | anchor-center | dialog",
+      "extended": ["https://drafts.csswg.org/css-anchor-position-1/"]
+    },
+    {
+      "name": "alignment-baseline",
+      "href": "https://drafts.csswg.org/css-inline-3/#propdef-alignment-baseline",
+      "initial": "baseline",
+      "appliesTo": "inline-level boxes, flex items, grid items, table cells, and SVG text content elements",
+      "inherited": "no",
+      "percentages": "N/A",
+      "computedValue": "specified keyword",
+      "canonicalOrder": "per grammar",
+      "animationType": "discrete",
+      "styleDeclaration": ["alignment-baseline", "alignmentBaseline"],
+      "syntax": "baseline | text-bottom | alphabetic | ideographic | middle | central | mathematical | text-top",
+      "extended": []
+    },
+    {
+      "name": "all",
+      "href": "https://drafts.csswg.org/css-cascade-5/#propdef-all",
+      "initial": "see individual properties",
+      "appliesTo": "see individual properties",
+      "inherited": "see individual properties",
+      "percentages": "see individual properties",
+      "computedValue": "see individual properties",
+      "animationType": "see individual properties",
+      "canonicalOrder": "per grammar",
+      "styleDeclaration": ["all"],
+      "syntax": "initial | inherit | unset | revert | revert-layer",
+      "extended": []
+    },
+    {
+      "name": "anchor-name",
+      "href": "https://drafts.csswg.org/css-anchor-position-1/#propdef-anchor-name",
+      "initial": "none",
+      "appliesTo": "all elements that generate a principal box",
+      "inherited": "no",
+      "percentages": "n/a",
+      "computedValue": "as specified",
+      "canonicalOrder": "per grammar",
+      "animationType": "discrete",
+      "styleDeclaration": ["anchor-name", "anchorName"],
+      "syntax": "none | <dashed-ident>#",
       "extended": []
     }
   ],
   "selectors": [
     {
-      "name": ":focus-visible",
-      "prose": "While the :focus pseudo-class always matches the currently-focused element, UAs only sometimes visibly indicate focus (such as by drawing a “focus ring”), instead using a variety of heuristics to visibly indicate the focus only when it would be most helpful to the user. The :focus-visible pseudo-class matches a focused element (or pseudo-element) in these situations only, allowing authors to change the appearance of the focus indicator without changing when a focus indicator appears.",
-      "href": "https://drafts.csswg.org/selectors-4/#focus-visible-pseudo",
-      "syntax": ":focus-visible",
+      "name": "::after",
+      "prose": "Represents a styleable child pseudo-element immediately after the originating element’s actual content.",
+      "href": "https://drafts.csswg.org/css-pseudo-4/#selectordef-after",
+      "syntax": "::after",
       "extended": []
     },
     {
-      "name": ":focus-within",
-      "prose": "The :focus-within pseudo-class applies to any element (or pseudo-element) for which the :focus pseudo-class applies, as well as to an element (or pseudo-element) whose descendant in the flat tree (including non-element nodes, such as text nodes) matches the conditions for matching :focus.",
-      "href": "https://drafts.csswg.org/selectors-4/#focus-within-pseudo",
-      "syntax": ":focus-within",
+      "name": "::backdrop",
+      "prose": "Each element rendered in the top layer has a ::backdrop pseudo-element, for which it is the originating element.",
+      "href": "https://drafts.csswg.org/css-position-4/#selectordef-backdrop",
+      "syntax": "::backdrop",
+      "extended": []
+    },
+    {
+      "name": "::before",
+      "prose": "Represents a styleable child pseudo-element immediately before the originating element’s actual content.",
+      "href": "https://drafts.csswg.org/css-pseudo-4/#selectordef-before",
+      "syntax": "::before",
+      "extended": []
+    },
+    {
+      "name": "::checkmark",
+      "prose": "The ::checkmark pseudo-element represents an indicator of whether the item is checked, and is present on checkboxes, radios, and option elements.",
+      "href": "https://drafts.csswg.org/css-forms-1/#selectordef-checkmark",
+      "syntax": "::checkmark",
+      "extended": []
+    },
+    {
+      "name": "::clear-icon",
+      "prose": "The ::clear-icon pseudo-element represents the portion of the input that allows the user to clear the input when clicked if provided by the user agent. With appearance: textfield, the user agent must not generate this part.",
+      "href": "https://drafts.csswg.org/css-forms-1/#selectordef-clear-icon",
+      "syntax": "::clear-icon",
+      "extended": []
+    },
+    {
+      "name": "::color-swatch",
+      "prose": "The ::color-swatch pseudo-element represents the portion of the control that displays the chosen color value.",
+      "href": "https://drafts.csswg.org/css-forms-1/#selectordef-color-swatch",
+      "syntax": "::color-swatch",
+      "extended": []
+    },
+    {
+      "name": "::column",
+      "prose": "The ::column pseudo-element represents the individual columns in a multi-column container. It only exists on multi-column containers.",
+      "href": "https://drafts.csswg.org/css-multicol-2/#selectordef-column",
+      "syntax": "::column",
       "extended": []
     }
   ],
   "types": [
     {
-      "name": "bg-image",
-      "href": "https://drafts.csswg.org/css-backgrounds-3/#typedef-bg-image",
-      "syntax": "<image> | none",
+      "name": "absolute-size",
+      "href": "https://drafts.csswg.org/css2/#value-def-absolute-size",
       "extended": []
     },
     {
-      "for": ["voice-volume"],
-      "name": "decibel",
-      "prose": "The <decibel> type denotes a dimension with a \"dB\" (decibel unit) unit identifier. Decibels represent the ratio of the squares of the new signal amplitude a1 and the current amplitude a0, as per the following logarithmic equation: volume(dB) = 20 × log10(a1 / a0).",
-      "href": "https://drafts.csswg.org/css-speech-1/#typedef-voice-volume-decibel",
+      "for": ["voice-family"],
+      "name": "age",
+      "prose": "Possible values are child, young and old, indicating the preferred age category to match during voice selection.",
+      "href": "https://drafts.csswg.org/css-speech-1/#typedef-voice-family-age",
+      "extended": []
+    },
+    {
+      "for": ["<color>"],
+      "name": "alpha-value",
+      "href": "https://drafts.csswg.org/css-color-4/#typedef-color-alpha-value",
+      "syntax": "<number> | <percentage>",
       "extended": []
     }
   ]

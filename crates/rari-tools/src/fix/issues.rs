@@ -15,17 +15,8 @@ struct OLCMapper {
 }
 
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
-    let file = page.full_path().to_string_lossy();
-    let span = span!(
-        Level::ERROR,
-        "page",
-        locale = page.locale().as_url_str(),
-        slug = page.slug(),
-        file = file.as_ref()
-    );
-    let enter = span.enter();
     let _ = page.build()?;
-    drop(enter);
+
     let mut issues = {
         let m = IN_MEMORY.get_events();
         let (_, req_issues) = m
@@ -59,11 +50,128 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     Ok(issues)
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct SearchReplaceWithOffset {
+    /// Byte offset in the source where the search string begins
+    offset: usize,
+    /// Text to find at the specified offset
+    search: String,
+    /// Text to replace the search string with
+    replace: String,
+}
+
+/// Converts issues into offset-based search/replace suggestions
+pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWithOffset> {
+    let mut suggestions = issues
+        .iter()
+        .filter_map(|dissue| {
+            let offset = actual_offset(raw, dissue);
+            if let DIssue::BrokenLink {
+                display_issue,
+                href: Some(href),
+            } = dissue
+                && let Some(suggestion) = display_issue.suggestion.as_deref()
+            {
+                Some(SearchReplaceWithOffset {
+                    offset: offset - href.len(),
+                    search: href.into(),
+                    replace: suggestion.into(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    suggestions.sort_by(|a, b| a.offset.cmp(&b.offset));
+    suggestions.dedup();
+
+    suggestions
+}
+
+/// Applies search/replace suggestions to raw content, returning the modified text
+pub fn apply_suggestions(
+    raw: &str,
+    suggestions: &[SearchReplaceWithOffset],
+) -> Result<String, ToolError> {
+    let mut result = Vec::new();
+    let mut current_offset = 0;
+
+    for suggestion in suggestions {
+        // Skip this suggestion if it overlaps with previously applied region
+        if suggestion.offset < current_offset {
+            tracing::warn!(
+                "Cannot apply suggestion ('{}' -> '{}'), because it overlaps with another suggestion.",
+                suggestion.search,
+                suggestion.replace
+            );
+            continue;
+        }
+
+        // Add the unchanged portion before this suggestion
+        if suggestion.offset > current_offset {
+            result.push(&raw[current_offset..suggestion.offset]);
+        }
+
+        // Validate that the search string matches what's actually in the raw content
+        let end_offset = suggestion.offset + suggestion.search.len();
+        if end_offset > raw.len() {
+            tracing::warn!(
+                "Cannot apply suggestion ('{}' -> '{}'), because its offset ({}-{}) exceeds raw content length {}",
+                suggestion.search,
+                suggestion.replace,
+                suggestion.offset,
+                end_offset,
+                raw.len()
+            );
+            continue;
+        }
+
+        let actual_content = &raw[suggestion.offset..end_offset];
+        if actual_content != suggestion.search {
+            tracing::warn!(
+                "Cannot apply suggestion ('{}' -> '{}'), because actual content at offset {} is '{}'",
+                suggestion.search,
+                suggestion.replace,
+                suggestion.offset,
+                actual_content
+            );
+            continue;
+        }
+
+        // Add the suggestion
+        result.push(&suggestion.replace);
+
+        // Update current offset to the end of the replaced region
+        current_offset = end_offset;
+    }
+
+    // Add any remaining content after the last suggestion
+    if current_offset < raw.len() {
+        result.push(&raw[current_offset..]);
+    }
+
+    Ok(result.join(""))
+}
+
 pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
+    let span = span!(
+        Level::ERROR,
+        "page",
+        locale = page.locale().as_url_str(),
+        slug = page.slug(),
+        file = page.full_path().to_string_lossy().as_ref()
+    );
+    let enter = span.enter();
+
     let issues = get_fixable_issues(page)?;
 
     let raw = page.raw_content();
-    let fixed = fix_issues(raw, &issues)?;
+
+    let suggestions = collect_suggestions(raw, &issues);
+
+    let fixed = apply_suggestions(raw, &suggestions)?;
+    drop(enter);
     let is_fixed = fixed != raw;
     if is_fixed {
         tracing::info!("updating {}", page.full_path().display());
@@ -72,18 +180,6 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
         buffed.write_all(fixed.as_bytes())?;
     }
     Ok(is_fixed)
-}
-
-pub fn fix_issues(raw: &str, issues: &[DIssue]) -> Result<String, ToolError> {
-    let (olc, mut fixed) =
-        issues
-            .iter()
-            .fold((OLCMapper::default(), vec![]), |(olc, mut acc), dissue| {
-                let olc = fix_issue(&mut acc, dissue, raw, olc);
-                (olc, acc)
-            });
-    fixed.push(&raw[olc.offset..]);
-    Ok(fixed.join(""))
 }
 
 fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) -> Option<usize> {
@@ -117,39 +213,155 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
     offset
 }
 
-fn fix_issue<'a>(
-    acc: &mut Vec<&'a str>,
-    dissue: &'a DIssue,
-    raw: &'a str,
-    olc: OLCMapper,
-) -> OLCMapper {
+pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
+    let olc = OLCMapper::default();
     let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
     let new_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
     if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
-        #[allow(clippy::single_match)]
-        match dissue {
-            DIssue::BrokenLink {
-                display_issue,
-                href: Some(href),
-            } => {
-                if let Some(start) = raw[offset..].find(href) {
-                    let href_offset = offset + start;
+        if let DIssue::BrokenLink {
+            display_issue: _,
+            href: Some(href),
+        } = dissue
+            && let Some(start) = raw[offset..].find(href)
+        {
+            let href_offset = offset + start;
 
-                    if href_offset > olc.offset {
-                        acc.push(&raw[olc.offset..href_offset]);
-                    }
-                    let fix = display_issue.suggestion.as_deref().unwrap_or_default();
-                    let new_offset = href_offset + href.len();
-                    acc.push(fix);
-                    return OLCMapper {
-                        offset: new_offset,
-                        line: new_line,
-                        column: new_column + start + href.len(),
-                    };
-                }
-            }
-            _ => {}
+            let actual_offset = href_offset + href.len();
+
+            return actual_offset;
         }
+        return offset;
     }
-    olc
+
+    0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rari_doc::issues::{DisplayIssue, IssueType};
+
+    #[test]
+    fn test_apply_suggestions_with_duplicate_offsets() {
+        let raw = "[Box Alignment][box-alignment]\n\
+                   [Box Alignment][box-alignment]\n\
+                   \n\
+                   [box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n";
+
+        let suggestions = vec![
+            SearchReplaceWithOffset {
+                offset: 80,
+                search: "/en-US/docs/Web/CSS/CSS_box_alignment".to_string(),
+                replace: "/en-US/docs/Web/CSS/Guides/Box_alignment".to_string(),
+            },
+            SearchReplaceWithOffset {
+                offset: 80,
+                search: "/en-US/docs/Web/CSS/CSS_box_alignment".to_string(),
+                replace: "/en-US/docs/Web/CSS/Guides/Box_alignment".to_string(),
+            },
+        ];
+
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+
+        let expected = "[Box Alignment][box-alignment]\n\
+                        [Box Alignment][box-alignment]\n\
+                        \n\
+                        [box-alignment]: /en-US/docs/Web/CSS/Guides/Box_alignment\n";
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_collect_suggestions_with_duplicate_broken_links() {
+        let raw = "---\n\
+title: CSS layout cookbook\n\
+short-title: Layout cookbook\n\
+slug: Web/CSS/How_to/Layout_cookbook\n\
+page-type: landing-page\n\
+sidebar: cssref\n\
+---\n\
+[Box Alignment][box-alignment]\n\
+[Flexbox][flexbox] [Box Alignment][box-alignment]\n\
+\n\
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n\
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n";
+
+        let issues = vec![
+            DIssue::BrokenLink {
+                display_issue: DisplayIssue {
+                    id: 1,
+                    explanation: Some("/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string()),
+                    suggestion: Some("/en-US/docs/Web/CSS/Guides/Box_alignment".to_string()),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(9),
+                    column: Some(1),
+                    end_line: Some(9),
+                    end_column: Some(30),
+                    source_context: Some("\n[Box Alignment][box-alignment]\n^\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n".to_string()),
+                    filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
+                    name: IssueType::RedirectedLink,
+                },
+                href: Some("/en-US/docs/Web/CSS/CSS_box_alignment".to_string()),
+            },
+            DIssue::BrokenLink {
+                display_issue: DisplayIssue {
+                    id: 2,
+                    explanation: Some("/en-US/docs/Web/CSS/CSS_flexible_box_layout is a redirect".to_string()),
+                    suggestion: Some("/en-US/docs/Web/CSS/Guides/Flexible_box_layout".to_string()),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(10),
+                    column: Some(1),
+                    end_line: Some(10),
+                    end_column: Some(30),
+                    source_context: Some("\n[Box Alignment][box-alignment]\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n^\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n".to_string()),
+                    filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
+                    name: IssueType::RedirectedLink,
+                },
+                href: Some("/en-US/docs/Web/CSS/CSS_flexible_box_layout".to_string()),
+            },
+            DIssue::BrokenLink {
+                display_issue: DisplayIssue {
+                    id: 3,
+                    explanation: Some("/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string()),
+                    suggestion: Some("/en-US/docs/Web/CSS/Guides/Box_alignment".to_string()),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(10),
+                    column: Some(20),
+                    end_line: Some(10),
+                    end_column: Some(49),
+                    source_context: Some("\n[Box Alignment][box-alignment]\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n-------------------^\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n".to_string()),
+                    filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
+                    name: IssueType::RedirectedLink,
+                },
+                href: Some("/en-US/docs/Web/CSS/CSS_box_alignment".to_string()),
+            },
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        // Both issues should produce suggestions with the same offset (80)
+        // since they both reference the same link definition on line 4
+        assert_eq!(suggestions.len(), 2);
+        assert_eq!(suggestions[0].offset, 234);
+        assert_eq!(
+            suggestions[0].search,
+            "/en-US/docs/Web/CSS/CSS_flexible_box_layout"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "/en-US/docs/Web/CSS/Guides/Flexible_box_layout"
+        );
+        assert_eq!(suggestions[1].offset, 295);
+        assert_eq!(
+            suggestions[1].search,
+            "/en-US/docs/Web/CSS/CSS_box_alignment"
+        );
+        assert_eq!(
+            suggestions[1].replace,
+            "/en-US/docs/Web/CSS/Guides/Box_alignment"
+        );
+    }
 }
