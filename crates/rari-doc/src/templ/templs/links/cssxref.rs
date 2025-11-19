@@ -18,16 +18,30 @@ use crate::templ::api::RariApi;
 /// * `anchor` - Optional anchor/fragment to append to the URL
 ///
 /// # Examples
-/// * `{{CSSxRef("color")}}` -> links to CSS color property
+/// * `{{CSSxRef("color")}}` -> links to CSS property at `/Web/CSS/Reference/Properties/color`
 /// * `{{CSSxRef("background-color", "background color")}}` -> custom display text
-/// * `{{CSSxRef("calc()", "", "#syntax")}}` -> links to calc() function with anchor
-/// * `{{CSSxRef("<color>")}}` -> links to color data type
+/// * `{{CSSxRef("calc()", "", "#syntax")}}` -> links to calc() function with anchor at `/Web/CSS/Reference/Values/calc`
+/// * `{{CSSxRef("&lt;color&gt;")}}` -> links to color data type at `/Web/CSS/Reference/Values/color_value`
+/// * `{{CSSxRef(":hover")}}` -> links to pseudo-class at `/Web/CSS/Reference/Selectors/:hover`
+/// * `{{CSSxRef("@media")}}` -> links to at-rule at `/Web/CSS/Reference/At-rules/@media`
+/// * `{{CSSxRef("@media/color")}}` -> links to color media feature at `/Web/CSS/Reference/At-rules/@media/color`
+///
+/// # URL Structure
+/// The macro generates URLs based on the new CSS reference organization:
+/// - Data types (starting with `<` or `&lt;`): `/Web/CSS/Reference/Values/{slug}`
+/// - Pseudo-classes/elements (starting with `:`): `/Web/CSS/Reference/Selectors/{slug}`
+/// - At-rules (starting with `@`): `/Web/CSS/Reference/At-rules/{slug}`
+/// - Functions (ending with `()`): `/Web/CSS/Reference/Values/{slug}`
+/// - Properties: `/Web/CSS/Reference/Properties/{slug}` (checked first)
+/// - Other values: `/Web/CSS/Reference/Values/{slug}` (fallback)
+/// - If page not found in new structure: fallback to `/Web/CSS/{slug}`
 ///
 /// # Special handling
-/// - Functions automatically get `()` appended if not present
-/// - Data types get wrapped in `<>` brackets if not present
+/// - Functions automatically get `()` appended to display text if not present
+/// - Data types get wrapped in `<>` brackets in display text if not present
 /// - Handles HTML entity encoding (`&lt;` and `&gt;`)
-/// - Maps special cases like `<color>` to `color_value`
+/// - Maps special cases like `<color>` to `color_value`, `:host()` to `:host_function`
+/// - Checks if pages exist at expected URLs and falls back to legacy structure if needed
 #[rari_f(register = "crate::Templ")]
 pub fn cssxref(
     name: String,
