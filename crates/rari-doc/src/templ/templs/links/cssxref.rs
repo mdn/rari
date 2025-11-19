@@ -49,6 +49,8 @@ pub fn cssxref_internal(
         .unwrap_or(name);
     let decoded_maybe_display_name = html_escape::decode_html_entities(maybe_display_name);
     let encoded_maybe_display_name = html_escape::encode_text(decoded_maybe_display_name.as_ref());
+
+    // Determine the original name for classification
     let mut slug = name
         .strip_prefix("&lt;")
         .unwrap_or(name.strip_prefix('<').unwrap_or(name));
@@ -57,6 +59,7 @@ pub fn cssxref_internal(
         .unwrap_or(slug.strip_suffix('>').unwrap_or(slug));
     slug = slug.strip_suffix("()").unwrap_or(slug);
 
+    // Apply special case mappings
     let slug = match name {
         "&lt;color&gt;" | "<color>" => "color_value",
         "&lt;flex&gt;" | "<flex>" => "flex_value",
@@ -67,11 +70,33 @@ pub fn cssxref_internal(
         _ => slug,
     };
 
-    let url = format!(
-        "/{}/docs/Web/CSS/{slug}{}",
-        locale.as_url_str(),
-        anchor.unwrap_or_default()
-    );
+    let base_url = format!("/{}/docs/Web/CSS/Reference/", locale.as_url_str());
+    // Determine the URL path based on the new structure
+    let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
+        // Types go under Web/CSS/Reference/Values
+        format!("Values/{slug}")
+    } else if name.ends_with("()") {
+        // Functions go under Web/CSS/Reference/Values
+        format!("Values/{slug}")
+    } else if name.starts_with('@') {
+        // At-rules go under Web/CSS/Reference/At-rules
+        format!("At-rules/{slug}")
+    } else if name.starts_with(':') {
+        // Pseudo-classes and pseudo-elements go under Web/CSS/Reference/Selectors
+        format!("Selectors/{slug}")
+    } else {
+        // Everything else: check Properties first, then Values
+        let url_path = format!("Properties/{slug}");
+        let url = format!("{}{}", &base_url, &url_path);
+        if RariApi::get_page_nowarn(&url).is_ok() {
+            url_path
+        } else {
+            // Fall back to Values
+            format!("Values/{slug}")
+        }
+    };
+
+    let url = format!("{}{}{}", &base_url, &url_path, anchor.unwrap_or_default());
 
     let display_name = if display_name.is_some() {
         encoded_maybe_display_name.to_string()
