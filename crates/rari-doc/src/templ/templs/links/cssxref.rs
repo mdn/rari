@@ -99,17 +99,19 @@ pub fn cssxref_internal(
         // Functions go under Web/CSS/Reference/Values
         format!("Reference/Values/{slug}")
     } else {
-        // Everything else: check Properties first, then Values
+        // Everything else: check Properties first
         let url_path = format!("Reference/Properties/{slug}");
         let url = format!("{}{}", &base_url, &url_path);
         if RariApi::get_page_nowarn(&url).is_ok() {
             url_path
         } else {
+            // Fallback to Values
             format!("Reference/Values/{slug}")
         }
     };
 
     if RariApi::get_page_nowarn(&format!("{}{}", &base_url, &url_path)).is_err() {
+        // Fall back to Web/CSS
         url_path = slug.to_string();
     }
 
