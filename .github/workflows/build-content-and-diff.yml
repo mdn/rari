@@ -1,0 +1,64 @@
+name: Build Content and Diff
+
+on:
+  pull_request:
+
+# No GITHUB_TOKEN permissions, as we don't use it.
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-diff:
+    runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+
+    steps:
+      - name: Checkout mdn/content
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: mdn/content
+          path: content
+          persist-credentials: false
+
+      - name: Checkout mdn/rari (main branch)
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: mdn/rari
+          ref: main
+          path: rari-main
+          persist-credentials: false
+
+      - name: Checkout mdn/rari (PR)
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          path: rari-pr
+          persist-credentials: false
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@9a1d20035bdbcbc899baabe1e402e85bc33639bc # 1.90
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
+
+      - name: Build with main branch
+        working-directory: rari-main
+        run: BUILD_OUT_ROOT=/tmp/rari/main/ CONTENT_ROOT=../content/files cargo run --release build
+
+      - name: Build with PR branch
+        working-directory: rari-pr
+        run: BUILD_OUT_ROOT=/tmp/rari/pr/ CONTENT_ROOT=../content/files cargo run --release build
+
+      - name: Generate diff report
+        working-directory: rari-pr
+        run: cargo run -p diff-test diff --html --value --out diff.html --verbose /tmp/rari/main /tmp/rari/pr
+
+      - name: Upload diff report
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: build-diff-report
+          path: rari-pr/diff.html
+          if-no-files-found: error
