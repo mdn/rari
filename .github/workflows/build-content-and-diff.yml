@@ -9,8 +9,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-# No GITHUB_TOKEN permissions, as we don't use it.
-permissions: {}
+permissions: {} # No GITHUB_TOKEN permissions, as we only use it to increase API limit.
 
 env:
   BUILD_MAIN: ${{ github.workspace }}/build-main
@@ -57,12 +56,14 @@ jobs:
         working-directory: rari-main
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_MAIN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo run --release build
 
       - name: Build with PR branch
         working-directory: rari-pr
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_PR }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo run --release build
 
       - name: Generate diff report
