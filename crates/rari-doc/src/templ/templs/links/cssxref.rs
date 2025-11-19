@@ -75,15 +75,15 @@ pub fn cssxref_internal(
     let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
         // Types go under Web/CSS/Reference/Values
         format!("Values/{slug}")
-    } else if name.ends_with("()") {
-        // Functions go under Web/CSS/Reference/Values
-        format!("Values/{slug}")
-    } else if name.starts_with('@') {
-        // At-rules go under Web/CSS/Reference/At-rules
-        format!("At-rules/{slug}")
     } else if name.starts_with(':') {
         // Pseudo-classes and pseudo-elements go under Web/CSS/Reference/Selectors
         format!("Selectors/{slug}")
+    } else if name.starts_with('@') {
+        // At-rules go under Web/CSS/Reference/At-rules
+        format!("At-rules/{slug}")
+    } else if name.ends_with("()") {
+        // Functions go under Web/CSS/Reference/Values
+        format!("Values/{slug}")
     } else {
         // Everything else: check Properties first, then Values
         let url_path = format!("Properties/{slug}");
