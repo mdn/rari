@@ -16,30 +16,71 @@ use serde::Serialize;
 use crate::error::SyntaxError;
 use crate::syntax_provider::SyntaxProvider;
 
+/// Loads WebrefCss data with automatic regeneration on parse failure.
+/// If the cached JSON cannot be parsed (e.g., due to format changes),
+/// automatically regenerates it from source data.
+#[cfg(any(feature = "doctest", test))]
+fn load_webref_css_with_fallback(
+    package_path: &std::path::Path,
+    json_path: &std::path::Path,
+) -> WebrefCss {
+    // Try to load and parse existing cache
+    if let Ok(json_str) = fs::read_to_string(json_path) {
+        if let Ok(webref_css) = serde_json::from_str::<WebrefCss>(&json_str) {
+            return webref_css;
+        }
+        // Parse failed - probably outdated format
+        tracing::warn!("webref_css.json has incompatible format, regenerating");
+    }
+
+    // Regenerate from source
+    rari_deps::webref_css::update_webref_css(package_path)
+        .expect("Failed to regenerate webref_css.json");
+
+    // Load freshly generated cache
+    let json_str =
+        fs::read_to_string(json_path).expect("Failed to read regenerated webref_css.json");
+    serde_json::from_str(&json_str).expect("Failed to parse regenerated webref_css.json")
+}
+
+/// Production mode fallback - provides clear error message
+#[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
+fn load_webref_css_with_fallback(json_path: &std::path::Path) -> WebrefCss {
+    // Try to load and parse existing cache
+    if let Ok(json_str) = fs::read_to_string(json_path) {
+        if let Ok(webref_css) = serde_json::from_str::<WebrefCss>(&json_str) {
+            return webref_css;
+        }
+        tracing::warn!("webref_css.json has incompatible format");
+    }
+
+    panic!(
+        "webref_css.json is missing or has incompatible format. \
+         Please run rari without --skip-updates to regenerate CSS data."
+    );
+}
+
 static CSS_REF: LazyLock<WebrefCss> = LazyLock::new(|| {
     #[cfg(any(feature = "doctest", test))]
     {
         let package_path = std::path::Path::new("package");
-        rari_deps::webref_css::update_webref_css(package_path).unwrap();
-        let json_str = fs::read_to_string(
-            package_path
-                .join("@webref")
-                .join("css")
-                .join("webref_css.json"),
-        )
-        .expect("no data dir");
-        serde_json::from_str(&json_str).expect("Failed to parse JSON")
+        let json_path = package_path
+            .join("@webref")
+            .join("css")
+            .join("webref_css.json");
+        load_webref_css_with_fallback(package_path, &json_path)
     }
     #[cfg(all(not(feature = "rari"), not(any(feature = "doctest", test))))]
     {
+        // Embedded mode - can't regenerate, so just parse with clear error
         let webref_css: &str = include_str!("../@webref/css/webref_css.json");
-        serde_json::from_str(webref_css).expect("Failed to parse JSON")
+        serde_json::from_str(webref_css)
+            .expect("Failed to parse embedded webref_css.json - rebuild required")
     }
     #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
     {
-        let json_str = fs::read_to_string(data_dir().join("@webref/css").join("webref_css.json"))
-            .expect("no data dir");
-        serde_json::from_str(&json_str).expect("Failed to parse JSON")
+        let json_path = data_dir().join("@webref/css").join("webref_css.json");
+        load_webref_css_with_fallback(&json_path)
     }
 });
 
