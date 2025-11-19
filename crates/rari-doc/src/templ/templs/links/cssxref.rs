@@ -70,31 +70,34 @@ pub fn cssxref_internal(
         _ => slug,
     };
 
-    let base_url = format!("/{}/docs/Web/CSS/Reference/", locale.as_url_str());
+    let base_url = format!("/{}/docs/Web/CSS/", locale.as_url_str());
     // Determine the URL path based on the new structure
-    let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
+    let mut url_path = if name.starts_with("&lt;") || name.starts_with('<') {
         // Types go under Web/CSS/Reference/Values
-        format!("Values/{slug}")
+        format!("Reference/Values/{slug}")
     } else if name.starts_with(':') {
         // Pseudo-classes and pseudo-elements go under Web/CSS/Reference/Selectors
-        format!("Selectors/{slug}")
+        format!("Reference/Selectors/{slug}")
     } else if name.starts_with('@') {
         // At-rules go under Web/CSS/Reference/At-rules
-        format!("At-rules/{slug}")
+        format!("Reference/At-rules/{slug}")
     } else if name.ends_with("()") {
         // Functions go under Web/CSS/Reference/Values
-        format!("Values/{slug}")
+        format!("Reference/Values/{slug}")
     } else {
         // Everything else: check Properties first, then Values
-        let url_path = format!("Properties/{slug}");
+        let url_path = format!("Reference/Properties/{slug}");
         let url = format!("{}{}", &base_url, &url_path);
         if RariApi::get_page_nowarn(&url).is_ok() {
             url_path
         } else {
-            // Fall back to Values
-            format!("Values/{slug}")
+            format!("Reference/Values/{slug}")
         }
     };
+
+    if RariApi::get_page_nowarn(&format!("{}{}", &base_url, &url_path)).is_err() {
+        url_path = slug.to_string();
+    }
 
     let url = format!("{}{}{}", &base_url, &url_path, anchor.unwrap_or_default());
 
