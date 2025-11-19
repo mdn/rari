@@ -7,6 +7,10 @@ on:
 permissions: {}
 
 env:
+  BUILD_MAIN: ${{ github.workspace }}/build-main
+  BUILD_PR: ${{ github.workspace }}/build-pr
+  CONTENT_ROOT: ${{ github.workspace }}/content/files
+  DIFF: ${{ github.workspace }}/diff.html
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -27,7 +31,6 @@ jobs:
       - name: Checkout mdn/rari (main branch)
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          repository: mdn/rari
           ref: main
           path: rari-main
           persist-credentials: false
@@ -46,19 +49,23 @@ jobs:
 
       - name: Build with main branch
         working-directory: rari-main
-        run: BUILD_OUT_ROOT=/tmp/rari/main/ CONTENT_ROOT=../content/files cargo run --release build
+        env:
+          BUILD_OUT_ROOT: ${{ env.BUILD_MAIN }}
+        run: cargo run --release build
 
       - name: Build with PR branch
         working-directory: rari-pr
-        run: BUILD_OUT_ROOT=/tmp/rari/pr/ CONTENT_ROOT=../content/files cargo run --release build
+        env:
+          BUILD_OUT_ROOT: ${{ env.BUILD_PR }}
+        run: cargo run --release build
 
       - name: Generate diff report
         working-directory: rari-pr
-        run: cargo run -p diff-test diff --html --value --out diff.html --verbose /tmp/rari/main /tmp/rari/pr
+        run: cargo run -p diff-test diff --html --value --out "$DIFF" --verbose "$BUILD_MAIN" "$BUILD_PR"
 
       - name: Upload diff report
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: build-diff-report
-          path: rari-pr/diff.html
+          path: ${{ env.DIFF }}
           if-no-files-found: error
