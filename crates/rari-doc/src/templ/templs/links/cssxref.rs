@@ -18,16 +18,30 @@ use crate::templ::api::RariApi;
 /// * `anchor` - Optional anchor/fragment to append to the URL
 ///
 /// # Examples
-/// * `{{CSSxRef("color")}}` -> links to CSS color property
+/// * `{{CSSxRef("color")}}` -> links to CSS property at `/Web/CSS/Reference/Properties/color`
 /// * `{{CSSxRef("background-color", "background color")}}` -> custom display text
-/// * `{{CSSxRef("calc()", "", "#syntax")}}` -> links to calc() function with anchor
-/// * `{{CSSxRef("<color>")}}` -> links to color data type
+/// * `{{CSSxRef("calc()", "", "#syntax")}}` -> links to calc() function with anchor at `/Web/CSS/Reference/Values/calc`
+/// * `{{CSSxRef("&lt;color&gt;")}}` -> links to color data type at `/Web/CSS/Reference/Values/color_value`
+/// * `{{CSSxRef(":hover")}}` -> links to pseudo-class at `/Web/CSS/Reference/Selectors/:hover`
+/// * `{{CSSxRef("@media")}}` -> links to at-rule at `/Web/CSS/Reference/At-rules/@media`
+/// * `{{CSSxRef("@media/color")}}` -> links to color media feature at `/Web/CSS/Reference/At-rules/@media/color`
+///
+/// # URL Structure
+/// The macro generates URLs based on the new CSS reference organization:
+/// - Data types (starting with `<` or `&lt;`): `/Web/CSS/Reference/Values/{slug}`
+/// - Pseudo-classes/elements (starting with `:`): `/Web/CSS/Reference/Selectors/{slug}`
+/// - At-rules (starting with `@`): `/Web/CSS/Reference/At-rules/{slug}`
+/// - Functions (ending with `()`): `/Web/CSS/Reference/Values/{slug}`
+/// - Properties: `/Web/CSS/Reference/Properties/{slug}` (checked first)
+/// - Other values: `/Web/CSS/Reference/Values/{slug}` (fallback)
+/// - If page not found in new structure: fallback to `/Web/CSS/{slug}`
 ///
 /// # Special handling
-/// - Functions automatically get `()` appended if not present
-/// - Data types get wrapped in `<>` brackets if not present
+/// - Functions automatically get `()` appended to display text if not present
+/// - Data types get wrapped in `<>` brackets in display text if not present
 /// - Handles HTML entity encoding (`&lt;` and `&gt;`)
-/// - Maps special cases like `<color>` to `color_value`
+/// - Maps special cases like `<color>` to `color_value`, `:host()` to `:host_function`
+/// - Checks if pages exist at expected URLs and falls back to legacy structure if needed
 #[rari_f(register = "crate::Templ")]
 pub fn cssxref(
     name: String,
@@ -49,6 +63,8 @@ pub fn cssxref_internal(
         .unwrap_or(name);
     let decoded_maybe_display_name = html_escape::decode_html_entities(maybe_display_name);
     let encoded_maybe_display_name = html_escape::encode_text(decoded_maybe_display_name.as_ref());
+
+    // Determine the original name for classification
     let mut slug = name
         .strip_prefix("&lt;")
         .unwrap_or(name.strip_prefix('<').unwrap_or(name));
@@ -57,6 +73,7 @@ pub fn cssxref_internal(
         .unwrap_or(slug.strip_suffix('>').unwrap_or(slug));
     slug = slug.strip_suffix("()").unwrap_or(slug);
 
+    // Apply special case mappings
     let slug = match name {
         "&lt;color&gt;" | "<color>" => "color_value",
         "&lt;flex&gt;" | "<flex>" => "flex_value",
@@ -67,11 +84,38 @@ pub fn cssxref_internal(
         _ => slug,
     };
 
-    let url = format!(
-        "/{}/docs/Web/CSS/{slug}{}",
-        locale.as_url_str(),
-        anchor.unwrap_or_default()
-    );
+    let base_url = format!("/{}/docs/Web/CSS/", locale.as_url_str());
+    // Determine the URL path based on the new structure
+    let mut url_path = if name.starts_with("&lt;") || name.starts_with('<') {
+        // Types go under Web/CSS/Reference/Values
+        format!("Reference/Values/{slug}")
+    } else if name.starts_with(':') {
+        // Pseudo-classes and pseudo-elements go under Web/CSS/Reference/Selectors
+        format!("Reference/Selectors/{slug}")
+    } else if name.starts_with('@') {
+        // At-rules go under Web/CSS/Reference/At-rules
+        format!("Reference/At-rules/{slug}")
+    } else if name.ends_with("()") {
+        // Functions go under Web/CSS/Reference/Values
+        format!("Reference/Values/{slug}")
+    } else {
+        // Everything else: check Properties first
+        let url_path = format!("Reference/Properties/{slug}");
+        let url = format!("{}{}", &base_url, &url_path);
+        if RariApi::get_page_nowarn(&url).is_ok() {
+            url_path
+        } else {
+            // Fallback to Values
+            format!("Reference/Values/{slug}")
+        }
+    };
+
+    if RariApi::get_page_nowarn(&format!("{}{}", &base_url, &url_path)).is_err() {
+        // Fall back to Web/CSS
+        url_path = slug.to_string();
+    }
+
+    let url = format!("{}{}{}", &base_url, &url_path, anchor.unwrap_or_default());
 
     let display_name = if display_name.is_some() {
         encoded_maybe_display_name.to_string()
