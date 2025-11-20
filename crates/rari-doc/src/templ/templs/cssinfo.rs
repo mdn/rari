@@ -16,13 +16,21 @@ pub fn cssinfo() -> Result<String, DocError> {
         .next()
         .map(str::to_lowercase)
         .unwrap_or_default();
-    let at_rule = env.slug.strip_prefix("Web/CSS/").and_then(|at_rule| {
-        if at_rule.starts_with('@') {
-            Some(&at_rule[..at_rule.find('/').unwrap_or(at_rule.len())])
-        } else {
-            None
-        }
-    });
+
+    let at_rule = env
+        .slug
+        .strip_prefix("Web/CSS/Reference/At-rules/")
+        .and_then(|at_rule| {
+            println!("At1-rule: {}", at_rule);
+            if at_rule.starts_with('@') {
+                Some(&at_rule[..at_rule.find('/').unwrap_or(at_rule.len())])
+            } else {
+                None
+            }
+        });
+
+    println!("At2-rule: {:?}", at_rule);
+
     let data = mdn_data_files();
     let css_info_data = if let Some(at_rule) = at_rule {
         &data.css_at_rules.get(at_rule).unwrap_or(&Value::Null)["descriptors"][&name]
