@@ -42,7 +42,7 @@ jobs:
           HEAD_REF: ${{ github.head_ref || github.ref_name }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          if [[ "$HEAD_REF" == release-please-* ]]; then
+          if [[ "$HEAD_REF" == release-please--* ]]; then
             # Extract previous version from PR body (format: compare/v0.2.1...v0.2.2)
             PREV_VERSION=$(echo "$PR_BODY" | grep -o 'compare/v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -n1 | sed 's|compare/||')
             if [[ -n "$PREV_VERSION" ]]; then
