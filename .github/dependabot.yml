@@ -20,6 +20,8 @@ updates:
     directory: /rari-npm
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     groups:
       npm-prod:
         dependency-type: production
