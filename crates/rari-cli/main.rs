@@ -240,13 +240,13 @@ enum Cache {
 }
 
 /// Delete cache files for all dependencies to force fresh updates
-fn clear_dependency_caches(base_path: &Path) {
-    fn remove_cache_files_recursive(dir: &Path) {
+fn clear_dependencies_last_checked(base_path: &Path) {
+    fn remove_last_checked_files(dir: &Path) {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
-                    remove_cache_files_recursive(&path);
+                    remove_last_checked_files(&path);
                 } else if path.file_name().and_then(|n| n.to_str()) == Some("last_check.json") {
                     if let Err(e) = fs::remove_file(&path) {
                         tracing::warn!("Failed to remove cache file {}: {}", path.display(), e);
@@ -259,7 +259,7 @@ fn clear_dependency_caches(base_path: &Path) {
     }
 
     if base_path.exists() {
-        remove_cache_files_recursive(base_path);
+        remove_last_checked_files(base_path);
     }
 }
 
@@ -311,7 +311,7 @@ fn main() -> Result<(), Error> {
 
     if cli.force_updates {
         tracing::info!("Forcing update of all dependencies...");
-        clear_dependency_caches(rari_types::globals::data_dir());
+        clear_dependencies_last_checked(rari_types::globals::data_dir());
     }
 
     if !cli.skip_updates {
