@@ -7,6 +7,7 @@ use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_types::globals::{content_root, content_translated_root};
 use rari_types::locale::Locale;
+use tracing::warn;
 
 use crate::error::ToolError;
 use crate::redirects::{self, redirects_path};
@@ -45,7 +46,10 @@ pub(crate) fn read_all_doc_pages() -> Result<HashMap<(Locale, Cow<'static, str>)
 pub(crate) fn get_redirects_map(locale: Locale) -> HashMap<String, String> {
     let redirects_path = redirects_path(locale).unwrap();
     let mut redirects = HashMap::new();
-    redirects.extend(redirects::read_redirects_raw(&redirects_path).unwrap());
+    match redirects::read_redirects_raw(&redirects_path) {
+        Ok(raw_redirects) => redirects.extend(raw_redirects),
+        Err(e) => warn!("Could not read redirects for {}: {}", locale, e),
+    }
     redirects
 }
 
