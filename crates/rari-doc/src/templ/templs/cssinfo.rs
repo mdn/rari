@@ -21,15 +21,12 @@ pub fn cssinfo() -> Result<String, DocError> {
         .slug
         .strip_prefix("Web/CSS/Reference/At-rules/")
         .and_then(|at_rule| {
-            println!("At1-rule: {}", at_rule);
             if at_rule.starts_with('@') {
                 Some(&at_rule[..at_rule.find('/').unwrap_or(at_rule.len())])
             } else {
                 None
             }
         });
-
-    println!("At2-rule: {:?}", at_rule);
 
     let data = mdn_data_files();
     let css_info_data = if let Some(at_rule) = at_rule {
