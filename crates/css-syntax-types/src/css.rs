@@ -120,19 +120,18 @@ pub struct Property {
         default
     )]
     pub extended_spec_links: Vec<SpecLink>,
-    // "animationType",
-    // "appliesTo",
-    // "canonicalOrder",
-    // "computedValue",
-    // "extended",
-    // "href",
-    // "inherited",
-    // "initial",
-    // "logicalPropertyGroup",
-    // "name",
-    // "percentages",
-    // "styleDeclaration",
-    // "syntax"
+
+    // Formal definition values
+    #[serde(skip_serializing_if = "Option::is_none", rename = "animationType")]
+    pub animation_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "appliesTo")]
+    pub applies_to: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inherited: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "computedValue")]
+    pub computed_value: Option<String>,
 }
 impl From<&Property> for Property {
     fn from(value: &Property) -> Self {
