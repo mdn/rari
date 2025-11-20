@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2](https://github.com/mdn/rari/compare/v0.2.1...v0.2.2) (2025-11-20)
+
+
+### Features
+
+* **cli:** add --force-updates option ([#381](https://github.com/mdn/rari/issues/381)) ([4bbcf79](https://github.com/mdn/rari/commit/4bbcf79e06d2ef5def4dc55fe51c37c45d12bd95))
+* **cssxref:** migrate to new CSS url structure ([#382](https://github.com/mdn/rari/issues/382)) ([0ec5233](https://github.com/mdn/rari/commit/0ec52334a58ad78695bcea31cfa5574703c7b00b))
+
+
+### Bug Fixes
+
+* **css-syntax:** use extended spec links if available ([#375](https://github.com/mdn/rari/issues/375)) ([df5f813](https://github.com/mdn/rari/commit/df5f8135f795160c8229e8f13fdb3cf0d91d59fd))
+* **cssinfo:** follow the css reorg ([#385](https://github.com/mdn/rari/issues/385)) ([4b3f190](https://github.com/mdn/rari/commit/4b3f19057b6edf7d7ff51b6c71cd8441ed960e5d))
+* **doc:** add tracing context to `build_doc()` ([#371](https://github.com/mdn/rari/issues/371)) ([ce04c82](https://github.com/mdn/rari/commit/ce04c823c8a2c56f3c35eda050fe79d349224cd5))
+* **fix-flaws:** apply suggestions in order ([#378](https://github.com/mdn/rari/issues/378)) ([6ac3c03](https://github.com/mdn/rari/commit/6ac3c035df42777cb7478409a4742e29e5c2567a))
+* **tools:** skip missing redirect files ([#379](https://github.com/mdn/rari/issues/379)) ([744c998](https://github.com/mdn/rari/commit/744c99826f114cc34daf59d9d85516efc9015bb0))
+
 ## [0.2.1](https://github.com/mdn/rari/compare/v0.2.0...v0.2.1) (2025-11-06)
 
 
