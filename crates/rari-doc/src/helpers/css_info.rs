@@ -152,10 +152,6 @@ pub fn write_computed_output(
         return Ok(());
     }
     let data = &css_info_data[property];
-    println!(
-        "write_computed_output property data: {} => {:?}",
-        property, data
-    );
     match data {
         Value::Null => {
             //write_missing(out, locale)?;

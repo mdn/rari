@@ -130,6 +130,8 @@ pub struct Property {
     pub applies_to: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inherited: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub percentages: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "computedValue")]
     pub computed_value: Option<String>,
 }
@@ -172,6 +174,8 @@ pub struct AtRuleDescriptor {
     pub r#type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "computedValue")]
+    pub computed_value: Option<String>,
 }
 impl From<&AtRuleDescriptor> for AtRuleDescriptor {
     fn from(value: &AtRuleDescriptor) -> Self {
