@@ -357,7 +357,7 @@ fn adjust_output<'a>(url: Cow<'a, str>, label: Cow<'a, str>) -> (Cow<'a, str>, C
         )),
 
         // Shapes
-        "inset()" | "polygon()" | "circle()" | "ellipse()" => Cow::Owned(concat_strs!(
+        "inset()" | "polygon()" | "circle()" | "ellipse()" | "shape()" => Cow::Owned(concat_strs!(
             "Reference/Values/basic-shape#",
             label.as_ref()
         )),
