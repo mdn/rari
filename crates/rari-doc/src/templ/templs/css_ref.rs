@@ -7,10 +7,9 @@ use itertools::Itertools;
 use rari_templ_func::rari_f;
 use rari_utils::concat_strs;
 use regex::Regex;
-use serde_json::Value;
 
 use crate::error::DocError;
-use crate::helpers::css_info::mdn_data_files;
+use crate::helpers::css_info::css_ref_data;
 use crate::templ::api::RariApi;
 
 static SYNTAX_RE: LazyLock<Regex> =
@@ -32,172 +31,178 @@ fn items_from_syntax(syntax: &str) -> Vec<Cow<'_, str>> {
         .collect()
 }
 
+static SKIPPED_ENTRIES: &[&str] = &[
+    "(-token",
+    ")-token",
+    "[-token",
+    "]-token",
+    "{-token",
+    "}-token",
+    "CDC-token",
+    "CDO-token",
+    " ",
+    "&",
+    "+",
+    "",
+    "||",
+    "~",
+    ":after",
+    ":before",
+    ":first-letter",
+    ":first-line",
+];
+
 #[rari_f(register = "crate::Templ")]
 pub fn css_ref() -> Result<String, DocError> {
-    let data = mdn_data_files();
-
     let mut index = BTreeMap::<char, HashMap<Cow<'static, str>, Cow<'static, str>>>::new();
 
-    for (prop_name, prop) in &data.css_properties {
-        if !matches!(prop["status"].as_str(), Some("experimental" | "standard")) {
+    let prop_data = css_ref_data().properties.get("__global_scope__").unwrap();
+    for (prop_name, prop) in prop_data {
+        // Skip properties with legacy aliases, usually `-webkit-*` props
+        if prop.legacy_alias_of.is_some() {
             continue;
         }
         let initial = initial_letter(prop_name);
         let entry = index.entry(initial).or_default();
-        let (url, label) = adjust_output(Cow::Borrowed(prop_name), Cow::Borrowed(prop_name));
+        let (url, label) = adjust_output(
+            Cow::Owned(concat_strs!("Reference/Properties/", prop_name)),
+            Cow::Borrowed(prop_name),
+        );
+        println!("============ CSSREF prop entry {url} {label}");
         entry.entry(url).or_insert(label);
     }
 
-    for (type_name, typ) in &data.css_types {
-        if !matches!(typ["status"].as_str(), Some("experimental" | "standard")) {
-            continue;
-        }
+    let type_data = css_ref_data().types.get("__global_scope__").unwrap();
+    for type_name in type_data.keys() {
         let initial = initial_letter(type_name);
         let entry = index.entry(initial).or_default();
 
-        let url_path: Cow<'static, str> = match type_name.as_str() {
-            "color" | "flex" | "position" => Cow::Owned(concat_strs!(type_name.as_str(), "_value")),
-            _ => Cow::Borrowed(type_name),
-        };
+        if SKIPPED_ENTRIES.contains(&type_name.as_str()) {
+            continue;
+        }
         let label = if type_name.starts_with('<') {
             Cow::Borrowed(type_name.as_str())
         } else {
             Cow::Owned(concat_strs!("<", type_name, ">"))
         };
-        let (url, label) = adjust_output(url_path, label);
+        let (url, label) = adjust_output(
+            Cow::Owned(concat_strs!("Reference/Values/", type_name)),
+            label,
+        );
+        println!("============ CSSREF type entry {url} {label}");
         entry.entry(url).or_insert(label);
     }
 
-    for (syntax_name, syntax) in &data.css_syntaxes {
-        if let Some(url_path) = syntax_name.strip_suffix("()") {
-            let initial = initial_letter(url_path);
-            let entry = index.entry(initial).or_default();
-
-            let (url, label) = adjust_output(Cow::Borrowed(url_path), Cow::Borrowed(syntax_name));
-            entry.entry(url).or_insert(label);
-        }
-        if let Value::String(syntax) = &syntax["syntax"] {
-            for syntax_item in items_from_syntax(syntax) {
-                if data.css_syntaxes.contains_key(syntax_item.as_ref()) {
-                    continue;
-                }
-
-                let initial = initial_letter(&syntax_item);
-                let entry = index.entry(initial).or_default();
-
-                let url_path = syntax_item
-                    .strip_suffix("()")
-                    .map(|s| Cow::Owned(s.to_string()))
-                    .unwrap_or(syntax_item.clone());
-                let label = syntax_item.clone();
-                let (url, label) = adjust_output(url_path, label);
-                entry.entry(url).or_insert(label);
-            }
-        }
-    }
-
-    for (at_rule_name, rule) in &data.css_at_rules {
-        if !matches!(rule["status"].as_str(), Some("experimental" | "standard")) {
-            continue;
-        }
-
+    let atrule_data = css_ref_data().atrules.get("__global_scope__").unwrap();
+    for (at_rule_name, rule) in atrule_data {
         let initial = initial_letter(at_rule_name);
         let entry = index.entry(initial).or_default();
-        let (url, label) = adjust_output(Cow::Borrowed(at_rule_name), Cow::Borrowed(at_rule_name));
+        let (url, label) = adjust_output(
+            Cow::Owned(concat_strs!("Reference/At-rules/", at_rule_name)),
+            Cow::Borrowed(at_rule_name),
+        );
         entry.entry(url).or_insert(label);
 
-        if let Value::String(syntax) = &rule["syntax"] {
+        // main at rule
+        if let Some(syntax) = &rule.syntax {
             for syntax_item in items_from_syntax(syntax) {
                 if &syntax_item == at_rule_name {
+                    println!(
+                        "============ CSSREF Skipping self-reference {syntax_item} | {at_rule_name}"
+                    );
                     continue;
                 }
                 let initial = initial_letter(&syntax_item);
                 let entry = index.entry(initial).or_default();
 
                 let url_path = Cow::Owned(concat_strs!(
+                    "Reference/At-rules/",
                     at_rule_name.as_str(),
                     "/",
                     syntax_item.as_ref()
                 ));
                 let label = Cow::Owned(concat_strs!(syntax_item.as_ref(), " (", at_rule_name, ")"));
                 let (url, label) = adjust_output(url_path, label);
+                println!("============ CSSREF atrule  entry {url} {label}");
+
                 entry.entry(url).or_insert(label);
             }
         }
 
-        if let Value::Object(descriptors) = &rule["descriptors"] {
-            for (d_name, descriptor) in descriptors {
-                if !matches!(
-                    descriptor["status"].as_str(),
-                    Some("experimental" | "standard")
-                ) {
-                    continue;
-                }
+        // at rule descriptors
+        for (d_name, descriptor) in &rule.descriptors {
+            let initial = initial_letter(d_name);
+            let entry = index.entry(initial).or_default();
 
-                let initial = initial_letter(d_name);
-                let entry = index.entry(initial).or_default();
+            let url_path = Cow::Owned(concat_strs!(
+                "Reference/At-rules/",
+                at_rule_name,
+                "/",
+                &d_name
+            ));
+            let label = Cow::Owned(concat_strs!(&d_name, " (", at_rule_name, ")"));
+            let (url, label) = adjust_output(url_path, label);
+            entry.entry(url).or_insert(label);
 
-                let url_path = Cow::Owned(concat_strs!(at_rule_name.as_str(), "/", d_name));
-                let label = Cow::Owned(concat_strs!(d_name, " (", at_rule_name, ")"));
-                let (url, label) = adjust_output(url_path, label);
-                entry.entry(url).or_insert(label);
+            if let Some(syntax) = &descriptor.syntax {
+                for syntax_item in items_from_syntax(syntax) {
+                    let initial = initial_letter(&syntax_item);
+                    let entry = index.entry(initial).or_default();
 
-                if let Value::String(syntax) = &descriptor["syntax"] {
-                    for syntax_item in items_from_syntax(syntax) {
-                        let initial = initial_letter(&syntax_item);
-                        let entry = index.entry(initial).or_default();
-
-                        let url_path = Cow::Owned(concat_strs!(
-                            at_rule_name.as_str(),
-                            "/",
-                            d_name,
-                            "#",
-                            syntax_item.as_ref()
-                        ));
-                        let (url, label) = adjust_output(url_path, syntax_item);
-                        entry.entry(url).or_insert(label);
+                    if SKIPPED_ENTRIES.contains(&d_name.as_str()) {
+                        continue;
                     }
+                    let url_path = Cow::Owned(concat_strs!(
+                        "Reference/At-rules/",
+                        at_rule_name,
+                        "/",
+                        &d_name,
+                        "#",
+                        syntax_item.as_ref()
+                    ));
+                    let (url, label) = adjust_output(url_path, syntax_item);
+                    println!(
+                        "============ CSSREF atrule descriptor entry {url} {label} | {d_name}"
+                    );
+                    entry.entry(url).or_insert(label);
                 }
             }
         }
     }
 
-    for (selector_name, selector) in &data.css_seclectors {
-        if !matches!(
-            selector["status"].as_str(),
-            Some("experimental" | "standard")
-        ) {
-            continue;
-        }
-
+    let selector_data = css_ref_data().selectors.get("__global_scope__").unwrap();
+    for selector_name in selector_data.keys() {
         // Exclude basic selectors
         if selector_name.contains(' ') {
+            continue;
+        }
+        if SKIPPED_ENTRIES.contains(&selector_name.as_str()) {
             continue;
         }
 
         let initial = initial_letter(selector_name);
         let entry = index.entry(initial).or_default();
-        let (url, label) =
-            adjust_output(Cow::Borrowed(selector_name), Cow::Borrowed(selector_name));
+        let (url, label) = adjust_output(
+            Cow::Owned(concat_strs!("Reference/Selectors/", selector_name)),
+            Cow::Borrowed(selector_name),
+        );
+        println!("============ CSSREF selector {url} {label}");
         entry.entry(url).or_insert(label);
     }
 
-    for (unit_name, unit) in &data.css_units {
-        if !matches!(unit["status"].as_str(), Some("experimental" | "standard")) {
+    let function_data = css_ref_data().functions.get("__global_scope__").unwrap();
+    for function_name in function_data.keys() {
+        if SKIPPED_ENTRIES.contains(&function_name.as_str()) {
             continue;
         }
-        let initial = initial_letter(unit_name);
+
+        let initial = initial_letter(function_name);
         let entry = index.entry(initial).or_default();
-        let unit_name = match unit["groups"][1].as_str().unwrap_or("---") {
-            "CSS Lengths" => Cow::Owned(concat_strs!("length#", unit_name)),
-            "CSS Angles" => Cow::Owned(concat_strs!("angle#", unit_name)),
-            "CSS Flexible Lengths" => Cow::Owned(concat_strs!("flex_value#", unit_name)),
-            "CSS Frequencies" => Cow::Owned(concat_strs!("frequency#", unit_name)),
-            "CSS Times" => Cow::Owned(concat_strs!("time#", unit_name)),
-            "CSS Resolutions" => Cow::Owned(concat_strs!("resolution#", unit_name)),
-            _ => Cow::Borrowed(unit_name.as_str()),
-        };
-        let (url, label) = adjust_output(unit_name.clone(), unit_name);
+        let (url, label) = adjust_output(
+            Cow::Owned(concat_strs!("Reference/Values/", function_name)),
+            Cow::Borrowed(function_name),
+        );
+        println!("============ CSSREF function {url} {label}");
         entry.entry(url).or_insert(label);
     }
 
@@ -208,7 +213,7 @@ pub fn css_ref() -> Result<String, DocError> {
         ('I', "initial", "initial"),
         ('R', "revert", "revert"),
         ('U', "unset", "unset"),
-        ('V', "var", "var()"),
+        // ('V', "var", "var()"),
     ] {
         index
             .entry(letter)
@@ -279,19 +284,33 @@ fn adjust_output<'a>(url: Cow<'a, str>, label: Cow<'a, str>) -> (Cow<'a, str>, C
     };
 
     let url = match label.as_ref() {
+        // webkit stuff https://compat.spec.whatwg.org/#propdef--webkit-box-align
+        "-webkit-box-align" => Cow::from("Reference/Properties/align-items"),
+        "-webkit-box-flex" => Cow::from("Reference/Properties/flex-grow"),
+        "-webkit-box-ordinal-group" => Cow::from("Reference/Properties/order"),
+        "-webkit-box-orient" => Cow::from("Reference/Properties/flex-direction"),
+        "-webkit-box-pack" => Cow::from("Reference/Properties/justify-content"),
+        // https://compat.spec.whatwg.org/#at-ruledef--webkit-keyframes
+        "@-webkit-keyframes" => Cow::from("Reference/At-rules/@keyframes"),
+        // https://drafts.csswg.org/css-overflow-4/#propdef--webkit-line-clamp
+        "-webkit-line-clamp" => Cow::from("Reference/Properties/line-clamp"),
+        // https://drafts.csswg.org/css-ui-4/#propdef--webkit-user-select
+        "-webkit-user-select" => Cow::from("Reference/Properties/user-select"),
+
         // Font-feature-values
         "@annotation" | "@character-variant" | "@historical-forms" | "@ornaments" | "@styleset"
-        | "@stylistic" | "@swash" => {
-            Cow::Owned(concat_strs!("@font-feature-values#", label.as_ref()))
-        }
+        | "@stylistic" | "@swash" => Cow::Owned(concat_strs!(
+            "Reference/At-rules/@font-feature-values#",
+            label.as_ref()
+        )),
 
         // Font-variant-alternates
-        "annotation()"
-        | "character-variant()"
-        | "ornaments()"
-        | "styleset()"
-        | "stylistic()"
-        | "swash()" => Cow::Owned(concat_strs!("@font-variant-alternates#", label.as_ref())),
+        // "annotation()"
+        // | "character-variant()"
+        // | "ornaments()"
+        // | "styleset()"
+        // | "stylistic()"
+        // | "swash()" => Cow::Owned(concat_strs!("@font-variant-alternates#", label.as_ref())),
 
         // Image
         "image()" => Cow::Borrowed("image#The_image()_functional_notation"),
@@ -301,16 +320,19 @@ fn adjust_output<'a>(url: Cow<'a, str>, label: Cow<'a, str>) -> (Cow<'a, str>, C
 
         // Filter
         "blur()" | "brightness()" | "contrast()" | "drop-shadow()" | "grayscale()"
-        | "hue-rotate()" | "invert()" | "opacity()" | "saturate()" | "sepia()" => Cow::Owned(
-            concat_strs!("filter-function/", label.trim_end_matches("()")),
-        ),
+        | "hue-rotate()" | "invert()" | "opacity()" | "saturate()" | "sepia()" => {
+            Cow::Owned(concat_strs!(
+                "Reference/Values/filter-function/",
+                label.trim_end_matches("()")
+            ))
+        }
 
         // Transforms
         "matrix()" | "matrix3d()" | "perspective()" | "rotate()" | "rotate3d()" | "rotateX()"
         | "rotateY()" | "rotateZ()" | "scale()" | "scale3d()" | "scaleX()" | "scaleY()"
         | "scaleZ()" | "skew()" | "skewX()" | "skewY()" | "translate()" | "translate3d()"
         | "translateX()" | "translateY()" | "translateZ()" => Cow::Owned(concat_strs!(
-            "transform-function/",
+            "Reference/Values/transform-function/",
             label.trim_end_matches("()")
         )),
 
@@ -318,7 +340,10 @@ fn adjust_output<'a>(url: Cow<'a, str>, label: Cow<'a, str>) -> (Cow<'a, str>, C
         "rgba()" => return (Cow::Borrowed("color_value/rgb"), label),
         "hsla()" => return (Cow::Borrowed("color_value/hsl"), label),
         "rgb()" | "hsl()" | "hwb()" | "lab()" | "lch()" | "light-dark()" | "oklab()"
-        | "oklch()" => Cow::Owned(concat_strs!("color_value/", label.trim_end_matches("()"))),
+        | "oklch()" => Cow::Owned(concat_strs!(
+            "Reference/Values/color_value/",
+            label.trim_end_matches("()")
+        )),
 
         // Gradients
         "conic-gradient()"
@@ -326,15 +351,17 @@ fn adjust_output<'a>(url: Cow<'a, str>, label: Cow<'a, str>) -> (Cow<'a, str>, C
         | "radial-gradient()"
         | "repeating-conic-gradient()"
         | "repeating-linear-gradient()"
-        | "repeating-radial-gradient()" => {
-            Cow::Owned(concat_strs!("gradient/", label.trim_end_matches("()")))
-        }
+        | "repeating-radial-gradient()" => Cow::Owned(concat_strs!(
+            "Reference/Values/gradient/",
+            label.trim_end_matches("()")
+        )),
 
         // Shapes
-        "inset()" | "polygon()" | "circle()" | "ellipse()" => {
-            Cow::Owned(concat_strs!("basic-shape#", label.as_ref()))
-        }
-        "rect()" => Cow::Owned(concat_strs!("shape#", label.as_ref())),
+        "inset()" | "polygon()" | "circle()" | "ellipse()" => Cow::Owned(concat_strs!(
+            "Reference/Values/basic-shape#",
+            label.as_ref()
+        )),
+        "rect()" => Cow::Owned(concat_strs!("Reference/Values/shape#", label.as_ref())),
 
         // @page
         "@top-left-corner"
@@ -352,23 +379,23 @@ fn adjust_output<'a>(url: Cow<'a, str>, label: Cow<'a, str>) -> (Cow<'a, str>, C
         | "@left-bottom"
         | "@right-top"
         | "@right-middle"
-        | "@right-bottom" => Cow::Borrowed("@page#page-margin-box-type"),
+        | "@right-bottom" => Cow::Borrowed("Reference/At-rules/@page#page-margin-box-type"),
 
         // Easing functions
-        "cubic-bezier()" => Cow::Borrowed("easing-function#cubic_bézier_easing_function"),
-        "linear()" => Cow::Borrowed("easing-function#linear_easing_function"),
-        "steps()" => Cow::Borrowed("easing-function#steps_easing_function"),
+        "cubic-bezier()" => {
+            Cow::Borrowed("Reference/Values/easing-function#cubic_bézier_easing_function")
+        }
+        "linear()" => Cow::Borrowed("Reference/Values/easing-function#linear_easing_function"),
+        "steps()" => Cow::Borrowed("Reference/Values/easing-function#steps_easing_function"),
 
         // Alternate name
-        "word-wrap" => Cow::Borrowed("overflow-wrap"),
-        "line-clamp" => Cow::Borrowed("-webkit-line-clamp"),
+        "word-wrap" => Cow::Borrowed("Reference/Properties/overflow-wrap"),
 
         // Misc
-        "view()" => Cow::Borrowed("animation-timeline/view"),
-        ":host()" => Cow::Borrowed(":host_function"),
-        "format()" => Cow::Borrowed("@font-face/src#format()"),
-        "url()" => Cow::Borrowed("url#The_url()_functional_notation"),
-
+        "view()" => Cow::Borrowed("Reference/Values/animation-timeline/view"),
+        ":host()" => Cow::Borrowed("Reference/Selectors/:host_function"),
+        "format()" => Cow::Borrowed("Reference/At-rules/@font-face/src#format()"),
+        // "url()" => Cow::Borrowed("url#The_url()_functional_notation"),
         _ => url,
     };
     (url, label)
