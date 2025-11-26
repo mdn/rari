@@ -44,7 +44,19 @@ pub fn byte_to_char_column(line: &str, byte_offset: usize) -> usize {
         return line.chars().count();
     }
 
-    line[..byte_offset].chars().count()
+    // If byte_offset is not on a char boundary, adjust to the start of the character
+    let adjusted_offset = if !line.is_char_boundary(byte_offset) {
+        // Move backward to find the nearest char boundary
+        let mut offset = byte_offset;
+        while offset > 0 && !line.is_char_boundary(offset) {
+            offset -= 1;
+        }
+        offset
+    } else {
+        byte_offset
+    };
+
+    line[..adjusted_offset].chars().count()
 }
 
 /// Convert a character position within a line to a byte offset.
@@ -169,6 +181,20 @@ mod tests {
         assert_eq!(byte_to_char_column(line, 0), 0); // 'C'
         assert_eq!(byte_to_char_column(line, 3), 3); // 'é' starts at byte 3
         assert_eq!(byte_to_char_column(line, 5), 4); // After 'é'
+    }
+
+    #[test]
+    fn test_byte_to_char_invalid_boundary() {
+        // Test with byte offset in the middle of a multi-byte character
+        let line = "Café"; // é is 2 bytes at positions 3-4
+        // Byte 4 is in the middle of é - should adjust to byte 3
+        assert_eq!(byte_to_char_column(line, 4), 3); // Should return position of 'é'
+
+        let line2 = "🔥"; // 4-byte emoji
+        // Bytes 1, 2, 3 are in the middle of the emoji
+        assert_eq!(byte_to_char_column(line2, 1), 0); // Should return start
+        assert_eq!(byte_to_char_column(line2, 2), 0); // Should return start
+        assert_eq!(byte_to_char_column(line2, 3), 0); // Should return start
     }
 
     #[test]
