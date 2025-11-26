@@ -15,7 +15,7 @@ permissions: {} # No GITHUB_TOKEN permissions, as we only use it to increase API
 
 env:
   CONTENT_ROOT: ${{ github.workspace }}/content/files
-  TRANSLATED_CONTENT_ROOT: ${{ github.workspace }}/translated-content/files
+  CONTENT_TRANSLATED_ROOT: ${{ github.workspace }}/translated-content/files
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -57,3 +57,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo run --release content fix-flaws
+
+      - name: Show content changes
+        working-directory: content
+        run: git diff --color=always --word-diff
+
+      - name: Show translated-content changes
+        working-directory: translated-content
+        run: git diff --color=always --word-diff
