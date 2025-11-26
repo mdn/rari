@@ -78,10 +78,15 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
             } = dissue
                 && let Some(suggestion) = display_issue.suggestion.as_deref()
             {
+                // The href and suggestion from HTML may contain HTML entities (&#x27; for ', &lt; for <, etc.)
+                // Decode them to match the raw markdown content
+                let decoded_href = html_escape::decode_html_entities(href);
+                let decoded_suggestion = html_escape::decode_html_entities(suggestion);
+
                 // actual_offset returns the END of the href
                 // We need to find the START by searching backward for the href
                 // Estimate the start position and use rfind() to locate it precisely
-                let mut search_start = offset_end.saturating_sub(href.len());
+                let mut search_start = offset_end.saturating_sub(decoded_href.len());
 
                 // Ensure search_start is on a char boundary
                 while search_start > 0 && !raw.is_char_boundary(search_start) {
@@ -95,23 +100,25 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                     offset_end_adjusted += 1;
                 }
 
-                if let Some(relative_pos) = raw[search_start..offset_end_adjusted].rfind(href) {
+                if let Some(relative_pos) =
+                    raw[search_start..offset_end_adjusted].rfind(decoded_href.as_ref())
+                {
                     let href_start = search_start + relative_pos;
 
                     // Verify this is the correct match (approximately - offset_end might have been adjusted)
-                    let href_end = href_start + href.len();
+                    let href_end = href_start + decoded_href.len();
                     if (href_end == offset_end || href_end == offset_end_adjusted)
-                        && &raw[href_start..href_end] == href
+                        && &raw[href_start..href_end] == decoded_href.as_ref()
                     {
                         Some(SearchReplaceWithOffset {
                             offset: href_start,
-                            search: href.into(),
-                            replace: suggestion.into(),
+                            search: decoded_href.into(),
+                            replace: decoded_suggestion.into(),
                         })
                     } else {
                         tracing::warn!(
                             "Could not find href '{}' at expected position (end: {}, adjusted: {})",
-                            href,
+                            decoded_href,
                             offset_end,
                             offset_end_adjusted
                         );
@@ -124,7 +131,7 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                     let context = &raw[context_start..context_end];
                     tracing::warn!(
                         "Could not locate href '{}' before offset {} (searched region: {:?})",
-                        href,
+                        decoded_href,
                         offset_end,
                         context
                     );
@@ -320,13 +327,16 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
             display_issue: _,
             href: Some(href),
         } = dissue
-            && let Some(start) = raw[offset..].find(href)
         {
-            let href_offset = offset + start;
+            // Decode HTML entities in href to match raw markdown content
+            let decoded_href = html_escape::decode_html_entities(href);
+            if let Some(start) = raw[offset..].find(decoded_href.as_ref()) {
+                let href_offset = offset + start;
 
-            let actual_offset = href_offset + href.len();
+                let actual_offset = href_offset + decoded_href.len();
 
-            return actual_offset;
+                return actual_offset;
+            }
         }
         return offset;
     }
@@ -554,5 +564,114 @@ Café 🔥 [Link](/en-US/docs/old)\n";
 
         let result = apply_suggestions(raw, &suggestions).unwrap();
         assert_eq!(result, "été [link](new)");
+    }
+
+    #[test]
+    fn test_fix_link_with_html_entities() {
+        // Test that HTML entities in hrefs are properly decoded when searching the raw markdown
+        // This happens when hrefs come from HTML output with entities like &#x27; (apostrophe)
+        let raw = "---\n\
+title: Test\n\
+---\n\
+[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)\n";
+
+        // The href in the issue contains HTML entities (as it comes from HTML output)
+        // but the raw markdown contains literal characters
+        let issues = vec![DIssue::BrokenLink {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some("Redirect detected".to_string()),
+                suggestion: Some("/fr/docs/Web/SVG/Attribute#evenements".to_string()),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(4),   // 1-based line number
+                column: Some(8), // 1-based CHARACTER position
+                end_line: Some(4),
+                end_column: Some(54),
+                source_context: None,
+                filepath: Some("/path/to/test.md".to_string()),
+                name: IssueType::RedirectedLink,
+            },
+            // href contains HTML entities (&#x27; for apostrophe, é is already UTF-8)
+            href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(
+            suggestions.len(),
+            1,
+            "Should find the href despite HTML entities"
+        );
+        // Line 0: "---" = 3 + 1 newline = 4
+        // Line 1: "title: Test" = 11 + 1 newline = 12
+        // Line 2: "---" = 3 + 1 newline = 4
+        // Line 3: "[Link](" = 7 bytes
+        // Total: 4 + 12 + 4 + 7 = 27 bytes
+        let expected_offset = 27; // Start of the href in bytes
+        assert_eq!(suggestions[0].offset, expected_offset);
+        // Both search and replace should be DECODED (with literal apostrophes)
+        assert_eq!(
+            suggestions[0].search,
+            "/fr/docs/Web/SVG/Attribute#attributs_d'événement"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "/fr/docs/Web/SVG/Attribute#evenements"
+        );
+    }
+
+    #[test]
+    fn test_fix_link_with_html_entities_in_both() {
+        // Test where BOTH href and suggestion contain HTML entities
+        let raw = "---\n\
+title: Test\n\
+---\n\
+[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)\n";
+
+        let issues = vec![DIssue::BrokenLink {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some("Redirect detected".to_string()),
+                // Suggestion ALSO has HTML entities (this can happen in real redirects)
+                suggestion: Some(
+                    "/fr/docs/Web/SVG/Reference/Attribute#attributs_d&#x27;événement_globaux"
+                        .to_string(),
+                ),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(4),
+                column: Some(8),
+                end_line: Some(4),
+                end_column: Some(54),
+                source_context: None,
+                filepath: Some("/path/to/test.md".to_string()),
+                name: IssueType::RedirectedLink,
+            },
+            href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(suggestions.len(), 1);
+        // Both search and replace should be decoded to literal characters
+        assert_eq!(
+            suggestions[0].search,
+            "/fr/docs/Web/SVG/Attribute#attributs_d'événement"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "/fr/docs/Web/SVG/Reference/Attribute#attributs_d'événement_globaux"
+        );
+
+        // Apply the suggestion and verify the result
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            "---\n\
+title: Test\n\
+---\n\
+[Link](/fr/docs/Web/SVG/Reference/Attribute#attributs_d'événement_globaux)\n"
+        );
     }
 }

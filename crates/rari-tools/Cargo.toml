@@ -28,6 +28,7 @@ pretty_yaml.workspace = true
 yaml_parser.workspace = true
 const_format.workspace = true
 dialoguer.workspace = true
+html-escape.workspace = true
 
 csv = "1"
 
