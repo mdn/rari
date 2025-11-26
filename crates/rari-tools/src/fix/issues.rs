@@ -80,8 +80,8 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
             {
                 // actual_offset returns the END of the href
                 // We need to find the START by searching backward for the href
-                // Use the byte length as an estimate, but verify by searching
-                let mut search_start = offset_end.saturating_sub(href.len() + 10); // Add margin for safety
+                // Estimate the start position and use rfind() to locate it precisely
+                let mut search_start = offset_end.saturating_sub(href.len());
 
                 // Ensure search_start is on a char boundary
                 while search_start > 0 && !raw.is_char_boundary(search_start) {
@@ -118,10 +118,15 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                         None
                     }
                 } else {
+                    // Show context around the offset for debugging
+                    let context_start = search_start;
+                    let context_end = offset_end_adjusted.min(raw.len());
+                    let context = &raw[context_start..context_end];
                     tracing::warn!(
-                        "Could not locate href '{}' before offset {}",
+                        "Could not locate href '{}' before offset {} (searched region: {:?})",
                         href,
-                        offset_end
+                        offset_end,
+                        context
                     );
                     None
                 }
