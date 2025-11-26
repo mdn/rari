@@ -293,18 +293,19 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
         None
     };
     // Verify the calculated offset is on a UTF-8 character boundary
-    if let Some(mut offset_value) = offset {
-        if offset_value < input.len() && !input.is_char_boundary(offset_value) {
-            tracing::warn!(
-                "calculated offset {} is not on char boundary - adjusting (this may indicate a bug)",
-                offset_value
-            );
-            // Move backwards to the nearest char boundary
-            while offset_value > 0 && !input.is_char_boundary(offset_value) {
-                offset_value -= 1;
-            }
-            return Some(offset_value);
+    if let Some(mut offset_value) = offset
+        && offset_value < input.len()
+        && !input.is_char_boundary(offset_value)
+    {
+        tracing::warn!(
+            "calculated offset {} is not on char boundary - adjusting (this may indicate a bug)",
+            offset_value
+        );
+        // Move backwards to the nearest char boundary
+        while offset_value > 0 && !input.is_char_boundary(offset_value) {
+            offset_value -= 1;
         }
+        return Some(offset_value);
     }
     offset
 }

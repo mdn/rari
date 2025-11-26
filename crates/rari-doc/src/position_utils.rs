@@ -83,14 +83,12 @@ pub fn byte_to_char_column(line: &str, byte_offset: usize) -> usize {
 /// ```
 pub fn char_to_byte_column(line: &str, char_offset: usize) -> usize {
     let mut byte_pos = 0;
-    let mut char_count = 0;
 
-    for ch in line.chars() {
+    for (char_count, ch) in line.chars().enumerate() {
         if char_count >= char_offset {
             return byte_pos;
         }
         byte_pos += ch.len_utf8();
-        char_count += 1;
     }
 
     byte_pos
