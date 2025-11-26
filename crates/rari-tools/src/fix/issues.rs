@@ -7,10 +7,16 @@ use tracing::{Level, span};
 
 use crate::error::ToolError;
 
+/// Offset-Line-Column mapper for tracking position during offset calculations.
+///
+/// All values use byte-based measurements for internal processing.
 #[derive(Default, Debug, Clone, Copy)]
 struct OLCMapper {
+    /// Byte offset from start of content
     offset: usize,
+    /// Line number (0-based)
     line: usize,
+    /// Column in BYTES from start of line (0-based)
     column: usize,
 }
 
@@ -204,10 +210,18 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
         tracing::warn!("skipping issues");
         None
     };
-    if let Some(offset) = offset {
-        let mut index = offset;
-        while !input.is_char_boundary(index) {
-            index -= 1;
+    // Verify the calculated offset is on a UTF-8 character boundary
+    if let Some(mut offset_value) = offset {
+        if offset_value < input.len() && !input.is_char_boundary(offset_value) {
+            tracing::warn!(
+                "calculated offset {} is not on char boundary - adjusting (this may indicate a bug)",
+                offset_value
+            );
+            // Move backwards to the nearest char boundary
+            while offset_value > 0 && !input.is_char_boundary(offset_value) {
+                offset_value -= 1;
+            }
+            return Some(offset_value);
         }
     }
     offset
@@ -216,7 +230,16 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
 pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     let olc = OLCMapper::default();
     let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
-    let new_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
+    // DisplayIssue.column is in CHARACTERS (1-based), need to convert to BYTES (0-based) for calc_offset
+    let char_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
+
+    // Convert character column to byte column
+    let new_column = if let Some(line_content) = raw.lines().nth(new_line) {
+        use rari_doc::position_utils::char_to_byte_column;
+        char_to_byte_column(line_content, char_column)
+    } else {
+        char_column // Fallback: use as-is if line not found
+    };
     if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
         if let DIssue::BrokenLink {
             display_issue: _,
@@ -363,5 +386,57 @@ sidebar: cssref\n\
             suggestions[1].replace,
             "/en-US/docs/Web/CSS/Guides/Box_alignment"
         );
+    }
+
+    #[test]
+    fn test_fix_link_with_multibyte_chars() {
+        // Test that link fixing works correctly with multi-byte UTF-8 characters
+        // "Café" has é which is 2 bytes, and "🔥" is 4 bytes
+        let raw = "---\n\
+title: Test\n\
+---\n\
+Café 🔥 [Link](/en-US/docs/old)\n";
+
+        // The link starts at:
+        // Line 3 (0-indexed): "Café 🔥 [Link](/en-US/docs/old)"
+        // "Café " = 4 chars, 6 bytes (C=1, a=1, f=1, é=2, space=1)
+        // "🔥 " = 2 chars, 5 bytes (emoji=4, space=1)
+        // "[Link]" starts at char 6, byte 11
+
+        // Create an issue with CHARACTER positions (as DisplayIssue now uses)
+        let issues = vec![DIssue::BrokenLink {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some("/en-US/docs/old is a redirect".to_string()),
+                suggestion: Some("/en-US/docs/new".to_string()),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(4),    // 1-based line number
+                column: Some(13), // 1-based CHARACTER position of '/' in the URL
+                end_line: Some(4),
+                end_column: Some(29), // End of URL in characters
+                source_context: None,
+                filepath: Some("/path/to/test.md".to_string()),
+                name: IssueType::RedirectedLink,
+            },
+            href: Some("/en-US/docs/old".to_string()),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(suggestions.len(), 1);
+        // The byte offset should be calculated correctly despite multi-byte chars
+        // Line 0: "---" = 3 + 1 newline = 4
+        // Line 1: "title: Test" = 11 + 1 newline = 12
+        // Line 2: "---" = 3 + 1 newline = 4
+        // Line 3: "Café 🔥 [Link](" = 18 bytes (Café=5, space=1, 🔥=4, space=1, [Link](=7)
+        // Total: 4 + 12 + 4 + 18 = 38 bytes
+        let expected_offset = 38; // Start of "/en-US/docs/old" in bytes
+        assert_eq!(
+            suggestions[0].offset, expected_offset,
+            "Offset should account for multi-byte characters"
+        );
+        assert_eq!(suggestions[0].search, "/en-US/docs/old");
+        assert_eq!(suggestions[0].replace, "/en-US/docs/new");
     }
 }
