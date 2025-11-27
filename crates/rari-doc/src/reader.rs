@@ -9,7 +9,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rari_types::globals::settings;
-use tracing::error;
+use tracing::{Level, error, span};
 
 use crate::error::DocError;
 use crate::pages::page::PageReader;
@@ -61,8 +61,14 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
                 if let Ok(f) = result
                     && f.file_type().map(|ft| ft.is_file()).unwrap_or(false)
                 {
+                    let span = span!(
+                        Level::ERROR,
+                        "page",
+                        file = f.path().to_string_lossy().as_ref(),
+                    );
+                    let enter = span.enter();
                     let p = f.into_path();
-                    match T::read(p, None) {
+                    match T::read(&p, None) {
                         Ok(doc) => {
                             if let Err(e) = tx.send(Ok(doc)) {
                                 error!("{e}");
@@ -74,6 +80,7 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
                             //tx.send(Err(e.into())).unwrap();
                         }
                     }
+                    drop(enter);
                 }
                 ignore::WalkState::Continue
             })
