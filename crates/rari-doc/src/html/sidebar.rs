@@ -274,7 +274,9 @@ impl MetaSidebar {
         let mut out = String::new();
         out.push_str("<ol>");
         for entry in &self.entries {
-            entry.render(&mut out, locale, slug, &self.l10n)?;
+            // Ignore error to avoid empty sidebar.
+            // Doc errors like PageNotFound will show up as flaws.
+            let _ = entry.render(&mut out, locale, slug, &self.l10n);
         }
         out.push_str("</ol>");
         Ok(out)
