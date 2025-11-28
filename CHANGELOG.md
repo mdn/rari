@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4](https://github.com/mdn/rari/compare/v0.2.3...v0.2.4) (2025-11-28)
+
+
+### Bug Fixes
+
+* **doc:** add tracing context to parallel read ([#399](https://github.com/mdn/rari/issues/399)) ([c9c4687](https://github.com/mdn/rari/commit/c9c46871bebea181cbfd0f9d901f0211e1f08d32))
+
+
+### Miscellaneous
+
+* **types:** remove legacy_live_samples_base_url from settings ([#400](https://github.com/mdn/rari/issues/400)) ([d93013f](https://github.com/mdn/rari/commit/d93013f65a9c2f58e97147516099a789a1e77abe))
+
 ## [0.2.3](https://github.com/mdn/rari/compare/v0.2.2...v0.2.3) (2025-11-27)
 
 
