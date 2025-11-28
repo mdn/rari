@@ -72,9 +72,11 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                 let ident = &mac.ident;
                 let name = ident.to_ascii_lowercase();
                 let line = i64::try_from(mac.pos.0 + offset).unwrap_or(-1);
+                // mac.pos.1 is in bytes from tree-sitter
                 let col = i64::try_from(mac.pos.1).unwrap_or(-1);
-                let end_col = i64::try_from(mac.pos.1 + input[mac.start..mac.end].chars().count())
-                    .unwrap_or(-1);
+                // Calculate end_col in bytes: start byte + length of macro in bytes
+                let macro_byte_len = mac.end - mac.start;
+                let end_col = i64::try_from(mac.pos.1 + macro_byte_len).unwrap_or(-1);
                 let span = span!(
                     Level::ERROR,
                     "templ",
