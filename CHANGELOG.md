@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3](https://github.com/mdn/rari/compare/v0.2.2...v0.2.3) (2025-11-27)
+
+
+### Bug Fixes
+
+* **sidebar:** skip missing pages ([#397](https://github.com/mdn/rari/issues/397)) ([acddbfc](https://github.com/mdn/rari/commit/acddbfc0250278293d016f1df315d94e4224b6c4))
+
 ## [0.2.2](https://github.com/mdn/rari/compare/v0.2.1...v0.2.2) (2025-11-20)
 
 
