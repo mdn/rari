@@ -66,7 +66,7 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
                         "page",
                         file = f.path().to_string_lossy().as_ref(),
                     );
-                    let enter = span.enter();
+                    let _enter = span.enter();
                     let p = f.into_path();
                     match T::read(&p, None) {
                         Ok(doc) => {
@@ -80,7 +80,6 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
                             //tx.send(Err(e.into())).unwrap();
                         }
                     }
-                    drop(enter);
                 }
                 ignore::WalkState::Continue
             })
