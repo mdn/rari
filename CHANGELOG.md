@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5](https://github.com/mdn/rari/compare/v0.2.4...v0.2.5) (2025-12-02)
+
+
+### Miscellaneous
+
+* **deps:** bump percent-encoding from 2.3.1 to 2.3.2 ([#404](https://github.com/mdn/rari/issues/404)) ([86610ce](https://github.com/mdn/rari/commit/86610ce622ed60f05ed2aadab5bfb28efb766401))
+* **deps:** bump quote from 1.0.40 to 1.0.42 ([#402](https://github.com/mdn/rari/issues/402)) ([0fc0d30](https://github.com/mdn/rari/commit/0fc0d30868eb4a5a80c56a91662219b090a9093b))
+* **deps:** bump rayon from 1.10.0 to 1.11.0 ([#403](https://github.com/mdn/rari/issues/403)) ([f1b26e5](https://github.com/mdn/rari/commit/f1b26e55b7843b56f5590193e1644c951548c413))
+* **deps:** bump tower-http from 0.6.6 to 0.6.7 ([#406](https://github.com/mdn/rari/issues/406)) ([9304c98](https://github.com/mdn/rari/commit/9304c98844f7fa6350dbb03e03242265e3121031))
+
+## [0.2.4](https://github.com/mdn/rari/compare/v0.2.3...v0.2.4) (2025-11-28)
+
+
+### Bug Fixes
+
+* **doc:** add tracing context to parallel read ([#399](https://github.com/mdn/rari/issues/399)) ([c9c4687](https://github.com/mdn/rari/commit/c9c46871bebea181cbfd0f9d901f0211e1f08d32))
+
+
+### Miscellaneous
+
+* **types:** remove legacy_live_samples_base_url from settings ([#400](https://github.com/mdn/rari/issues/400)) ([d93013f](https://github.com/mdn/rari/commit/d93013f65a9c2f58e97147516099a789a1e77abe))
+
+## [0.2.3](https://github.com/mdn/rari/compare/v0.2.2...v0.2.3) (2025-11-27)
+
+
+### Bug Fixes
+
+* **sidebar:** skip missing pages ([#397](https://github.com/mdn/rari/issues/397)) ([acddbfc](https://github.com/mdn/rari/commit/acddbfc0250278293d016f1df315d94e4224b6c4))
+
+## [0.2.2](https://github.com/mdn/rari/compare/v0.2.1...v0.2.2) (2025-11-20)
+
+
+### Features
+
+* **cli:** add --force-updates option ([#381](https://github.com/mdn/rari/issues/381)) ([4bbcf79](https://github.com/mdn/rari/commit/4bbcf79e06d2ef5def4dc55fe51c37c45d12bd95))
+* **cssxref:** migrate to new CSS url structure ([#382](https://github.com/mdn/rari/issues/382)) ([0ec5233](https://github.com/mdn/rari/commit/0ec52334a58ad78695bcea31cfa5574703c7b00b))
+
+
+### Bug Fixes
+
+* **css-syntax:** use extended spec links if available ([#375](https://github.com/mdn/rari/issues/375)) ([df5f813](https://github.com/mdn/rari/commit/df5f8135f795160c8229e8f13fdb3cf0d91d59fd))
+* **cssinfo:** follow the css reorg ([#385](https://github.com/mdn/rari/issues/385)) ([4b3f190](https://github.com/mdn/rari/commit/4b3f19057b6edf7d7ff51b6c71cd8441ed960e5d))
+* **doc:** add tracing context to `build_doc()` ([#371](https://github.com/mdn/rari/issues/371)) ([ce04c82](https://github.com/mdn/rari/commit/ce04c823c8a2c56f3c35eda050fe79d349224cd5))
+* **fix-flaws:** apply suggestions in order ([#378](https://github.com/mdn/rari/issues/378)) ([6ac3c03](https://github.com/mdn/rari/commit/6ac3c035df42777cb7478409a4742e29e5c2567a))
+* **tools:** skip missing redirect files ([#379](https://github.com/mdn/rari/issues/379)) ([744c998](https://github.com/mdn/rari/commit/744c99826f114cc34daf59d9d85516efc9015bb0))
+
 ## [0.2.1](https://github.com/mdn/rari/compare/v0.2.0...v0.2.1) (2025-11-06)
 
 

@@ -1,0 +1,78 @@
+name: Build Content and Diff
+
+on:
+  pull_request:
+    paths:
+      - '**/*.rs'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {} # No GITHUB_TOKEN permissions, as we only use it to increase API limit.
+
+env:
+  BUILD_MAIN: ${{ github.workspace }}/build-main
+  BUILD_PR: ${{ github.workspace }}/build-pr
+  CONTENT_ROOT: ${{ github.workspace }}/content/files
+  DIFF: ${{ github.workspace }}/diff.html
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-diff:
+    runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+
+    steps:
+      - name: Checkout mdn/content
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          repository: mdn/content
+          path: content
+          persist-credentials: false
+
+      - name: Checkout mdn/rari (main branch)
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          ref: main
+          path: rari-main
+          persist-credentials: false
+
+      - name: Checkout mdn/rari (PR)
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          path: rari-pr
+          persist-credentials: false
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@9a1d20035bdbcbc899baabe1e402e85bc33639bc # 1.90
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
+
+      - name: Build with main branch
+        working-directory: rari-main
+        env:
+          BUILD_OUT_ROOT: ${{ env.BUILD_MAIN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo run --release build
+
+      - name: Build with PR branch
+        working-directory: rari-pr
+        env:
+          BUILD_OUT_ROOT: ${{ env.BUILD_PR }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo run --release build
+
+      - name: Generate diff report
+        working-directory: rari-pr
+        run: cargo run -p diff-test diff --html --value --out "$DIFF" --verbose "$BUILD_MAIN" "$BUILD_PR"
+
+      - name: Upload diff report
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: build-diff-report
+          path: ${{ env.DIFF }}
+          if-no-files-found: error
