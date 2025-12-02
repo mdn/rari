@@ -337,7 +337,7 @@ impl SyntaxRenderer<'_> {
                 if name.starts_with("<'") && name.ends_with("'>") {
                     let slug = &name[2..name.len() - 2];
                     format!(
-                        r#"<a href="/{}/docs/Web/CSS/{slug}"><span class="token property">{encoded}</span></a>"#,
+                        r#"<a href="/{}/docs/Web/CSS/Reference/Properties/{slug}"><span class="token property">{encoded}</span></a>"#,
                         self.locale_str
                     )
                 } else {
@@ -362,12 +362,10 @@ impl SyntaxRenderer<'_> {
                             opts: None,
                         })))
                 {
-                    // FIXME: this should have the class type but to be compatible we use property
                     format!(r#"<span class="token property">{encoded}</span>"#,)
                 } else {
-                    // FIXME: this should have the class type but to be compatible we use property
                     format!(
-                        r#"<a href="/{}/docs/Web/CSS/{slug}"><span class="token property">{encoded}</span></a>"#,
+                        r#"<a href="/{}/docs/Web/CSS/Reference/Values/{slug}"><span class="token property">{encoded}</span></a>"#,
                         self.locale_str
                     )
                 }

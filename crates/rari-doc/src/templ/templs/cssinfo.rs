@@ -63,27 +63,6 @@ pub fn cssinfo() -> Result<String, DocError> {
         _ => (),
     }
 
-    // =========================
-
-    // let data = mdn_data_files();
-    // let css_info_data = if let Some(at_rule) = at_rule {
-    //     &data.css_at_rules.get(at_rule).unwrap_or(&Value::Null)["descriptors"][&name]
-    // } else {
-    //     data.css_properties.get(&name).unwrap_or(&Value::Null)
-    // };
-    // let props = css_info_properties(at_rule, env.locale, css_info_data)?;
-
-    // if props.is_empty() {
-    //     write_missing(&mut out, env.locale)?;
-    //     return Ok(out);
-    // }
-    // out.push_str(r#"<table class="properties"><tbody>"#);
-    // for (name, label) in props {
-    //     write!(&mut out, r#"<tr><th scope="row">{label}</th><td>"#)?;
-    //     write_computed_output(env, &mut out, env.locale, css_info_data, name, at_rule)?;
-    //     write!(&mut out, r#"</td></tr>"#)?;
-    // }
-    // out.push_str(r#"</tbody></table>"#);
     Ok(out)
 }
 

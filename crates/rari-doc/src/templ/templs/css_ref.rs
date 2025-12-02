@@ -19,10 +19,10 @@ pub fn css_ref() -> Result<String, DocError> {
         SubPagesSorter::IgnoringCSSPrefixes,
     )?;
 
-    println!(
-        "pages: {:#?}",
-        pages.iter().map(|page| page.title()).collect::<Vec<_>>()
-    );
+    // println!(
+    //     "pages: {:#?}",
+    //     pages.iter().map(|page| page.title()).collect::<Vec<_>>()
+    // );
 
     let mut index = BTreeMap::<char, HashMap<Cow<'static, str>, Cow<'static, str>>>::new();
 
@@ -32,7 +32,7 @@ pub fn css_ref() -> Result<String, DocError> {
         let initial = initial_letter(page.title());
         let entry = index.entry(initial).or_default();
         let (url, label) = adjust_output(Cow::Borrowed(page.url()), Cow::Borrowed(page.title()));
-        println!("============ CSSREF prop entry {url} {label}");
+        // println!("============ CSSREF prop entry {url} {label}");
         entry.entry(url).or_insert(label);
     }
 
@@ -225,7 +225,7 @@ pub fn css_ref() -> Result<String, DocError> {
                     Some(&html_escape::encode_text(&label)),
                     true,
                     None,
-                    false,
+                    true,
                 )?,
                 "</li>",
             ]);

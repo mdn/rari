@@ -291,8 +291,7 @@ fn add_additional_applies_to<'a>(
         .filter_map(Value::as_str)
         .filter(|element| *element != "::placeholder" && !element.is_empty())
         .map(|element| {
-            // TODO
-            cssxref_internal(element, None, None, locale, "TODO").unwrap_or_else(|e| e.to_string())
+            cssxref_internal(element, None, None, locale).unwrap_or_else(|e| e.to_string())
         })
         .collect::<Vec<_>>();
 
