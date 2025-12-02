@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5](https://github.com/mdn/rari/compare/v0.2.4...v0.2.5) (2025-12-02)
+
+
+### Miscellaneous
+
+* **deps:** bump percent-encoding from 2.3.1 to 2.3.2 ([#404](https://github.com/mdn/rari/issues/404)) ([86610ce](https://github.com/mdn/rari/commit/86610ce622ed60f05ed2aadab5bfb28efb766401))
+* **deps:** bump quote from 1.0.40 to 1.0.42 ([#402](https://github.com/mdn/rari/issues/402)) ([0fc0d30](https://github.com/mdn/rari/commit/0fc0d30868eb4a5a80c56a91662219b090a9093b))
+* **deps:** bump rayon from 1.10.0 to 1.11.0 ([#403](https://github.com/mdn/rari/issues/403)) ([f1b26e5](https://github.com/mdn/rari/commit/f1b26e55b7843b56f5590193e1644c951548c413))
+* **deps:** bump tower-http from 0.6.6 to 0.6.7 ([#406](https://github.com/mdn/rari/issues/406)) ([9304c98](https://github.com/mdn/rari/commit/9304c98844f7fa6350dbb03e03242265e3121031))
+
 ## [0.2.4](https://github.com/mdn/rari/compare/v0.2.3...v0.2.4) (2025-11-28)
 
 
