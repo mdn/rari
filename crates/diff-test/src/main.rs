@@ -161,6 +161,8 @@ struct BuildArgs {
     verbose: bool,
     #[arg(long)]
     sidebars: bool,
+    #[arg(long)]
+    terminal: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -346,25 +348,30 @@ fn full_diff(
                     rhs = fmt_html(&html_minifier::minify(rhs_t).unwrap());
                 }
                 if lhs != rhs {
-                    diff.insert(
-                        key,
-                        ansi_to_html::convert(&if args.fast {
-                            diff_lines(&lhs, &rhs).to_string()
-                        } else {
-                            diff_words(&lhs, &rhs).to_string()
-                        })
-                        .unwrap(),
-                    );
+                    let diff_str = if args.fast {
+                        diff_lines(&lhs, &rhs).to_string()
+                    } else {
+                        diff_words(&lhs, &rhs).to_string()
+                    };
+                    let diff_output = if args.terminal {
+                        diff_str
+                    } else {
+                        ansi_to_html::convert(&diff_str).unwrap()
+                    };
+                    diff.insert(key, diff_output);
                 }
             }
             (lhs, rhs) => {
                 let lhs = lhs.to_string();
                 let rhs = rhs.to_string();
                 if lhs != rhs {
-                    diff.insert(
-                        key,
-                        ansi_to_html::convert(&diff_words(&lhs, &rhs).to_string()).unwrap(),
-                    );
+                    let diff_str = diff_words(&lhs, &rhs).to_string();
+                    let diff_output = if args.terminal {
+                        diff_str
+                    } else {
+                        ansi_to_html::convert(&diff_str).unwrap()
+                    };
+                    diff.insert(key, diff_output);
                 }
             }
         }
@@ -500,6 +507,75 @@ fn main() -> Result<(), anyhow::Error> {
                 let mut file = File::create(&arg.out)?;
 
                 file.write_all(out.into_iter().collect::<String>().as_bytes())?;
+            }
+            if arg.terminal {
+                let diffs: Vec<_> = a
+                    .par_iter()
+                    .filter_map(|(k, v)| {
+                        if b.get(k) == Some(v) {
+                            // Only increment counter if html/csv didn't already do it
+                            if !arg.html && !arg.csv {
+                                same.fetch_add(1, Relaxed);
+                            }
+                            return None;
+                        }
+
+                        let left = v;
+                        let right = b.get(k).unwrap_or(&Value::Null);
+                        let mut diff = BTreeMap::new();
+                        full_diff(left, right, k, &[], &mut diff, arg);
+                        if !diff.is_empty() {
+                            Some((k.clone(), diff))
+                        } else {
+                            // Only increment counter if html/csv didn't already do it
+                            if !arg.html && !arg.csv {
+                                same.fetch_add(1, Relaxed);
+                            }
+                            None
+                        }
+                    })
+                    .collect();
+
+                // Group
+                let grouped: BTreeMap<String, Vec<_>> =
+                    diffs
+                        .into_iter()
+                        .fold(BTreeMap::new(), |mut acc, (file, diff)| {
+                            let p = file.splitn(4, '/').collect::<Vec<_>>();
+                            let cat: String = match &p[..] {
+                                ["docs", "web", cat, ..] => format!("docs/web/{cat}"),
+                                ["docs", cat, ..] => format!("docs/{cat}"),
+                                [cat, ..] => cat.to_string(),
+                                [] => "".to_string(),
+                            };
+                            acc.entry(cat).or_default().push((file, diff));
+                            acc
+                        });
+
+                // Print to terminal
+                for (section, files) in grouped {
+                    eprintln!("\n{}", "=".repeat(80));
+                    eprintln!("{} ({} files)", section, files.len());
+                    eprintln!("{}", "=".repeat(80));
+
+                    for (file, diffs) in files {
+                        println!("\n{}", file);
+                        println!("{}", "-".repeat(80));
+                        for (key, diff_str) in diffs {
+                            println!("  {}", key);
+                            if arg.value {
+                                // For --value mode, show the raw diff output
+                                println!("{}", diff_str);
+                            } else {
+                                // Indent the diff output for better readability
+                                for line in diff_str.lines() {
+                                    println!("    {}", line);
+                                }
+                            }
+                            println!();
+                        }
+                    }
+                }
             }
 
             println!(
