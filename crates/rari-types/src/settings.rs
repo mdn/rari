@@ -72,7 +72,6 @@ pub struct Settings {
     pub cache_content: bool,
     pub base_url: String,
     pub live_samples_base_url: String,
-    pub legacy_live_samples_base_url: String,
     pub interactive_examples_base_url: String,
     pub additional_locales_for_generics_and_spas: Vec<Locale>,
     pub reader_ignores_gitignore: bool,
