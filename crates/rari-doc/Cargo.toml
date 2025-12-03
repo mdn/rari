@@ -59,6 +59,8 @@ unescaper = "0.1"
 
 
 css-syntax = { path = "../css-syntax", features = ["rari"] }
+css-syntax-types = { path = "../css-syntax-types" }
+
 
 [dev-dependencies]
 rari-types = { path = "../rari-types", features = ["testing"] }
