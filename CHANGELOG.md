@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6](https://github.com/mdn/rari/compare/v0.2.5...v0.2.6) (2025-12-03)
+
+
+### Bug Fixes
+
+* **fix-flaws:** handle UTF-8 characters and HTML entities ([#395](https://github.com/mdn/rari/issues/395)) ([63e2439](https://github.com/mdn/rari/commit/63e2439440222bcc10e5d00cd88cdca0284d7479))
+
+
+### Miscellaneous
+
+* **deps:** bump the npm-prod group in /rari-npm with 3 updates ([#389](https://github.com/mdn/rari/issues/389)) ([1e5f609](https://github.com/mdn/rari/commit/1e5f609e89972084e0fa4638902430bae0508a8e))
+
 ## [0.2.5](https://github.com/mdn/rari/compare/v0.2.4...v0.2.5) (2025-12-02)
 
 
