@@ -3,6 +3,7 @@ use std::io::{BufWriter, Write};
 
 use rari_doc::issues::{DIssue, IN_MEMORY};
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
+use rari_doc::position_utils::char_to_byte_column;
 use tracing::{Level, span};
 
 use crate::error::ToolError;
@@ -318,7 +319,6 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
 
     // Convert character column to byte column
     let new_column = if let Some(line_content) = raw.lines().nth(new_line) {
-        use rari_doc::position_utils::char_to_byte_column;
         char_to_byte_column(line_content, char_column)
     } else {
         char_column // Fallback: use as-is if line not found
