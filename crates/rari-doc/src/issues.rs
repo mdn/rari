@@ -265,6 +265,7 @@ pub struct DisplayIssue {
 pub enum IssueType {
     TemplRedirectedLink,
     TemplBrokenLink,
+    TemplIllCasedLink,
     TemplInvalidArg,
     RedirectedLink,
     BrokenLink,
@@ -280,6 +281,7 @@ impl FromStr for IssueType {
         Ok(match s {
             "templ-redirected-link" => Self::TemplRedirectedLink,
             "templ-broken-link" => Self::TemplBrokenLink,
+            "templ-ill-cased-link" => Self::TemplIllCasedLink,
             "templ-invalid-arg" => Self::TemplInvalidArg,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
@@ -474,6 +476,19 @@ impl DIssue {
                     di.fixable = Some(false);
                     di.explanation = Some(format!(
                         "Macro produces link {} which is a redirect",
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: additional.remove("templ"),
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::TemplIllCasedLink => {
+                    di.fixed = false;
+                    di.fixable = Some(false);
+                    di.explanation = Some(format!(
+                        "{} is ill cased",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {

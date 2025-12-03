@@ -58,7 +58,7 @@ impl RariApi {
                         LinkWarn::All if ill_cased => {
                             let ic = get_issue_counter();
                             tracing::warn!(
-                                source = "ill-cased-link",
+                                source = "templ-ill-cased-link",
                                 ic = ic,
                                 url = url,
                                 redirect = redirect.as_ref()
