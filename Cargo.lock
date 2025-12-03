@@ -553,14 +553,14 @@ dependencies = [
 
 [[package]]
 name = "css-definition-syntax"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "thiserror 2.0.12",
 ]
 
 [[package]]
 name = "css-syntax"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "anyhow",
  "css-definition-syntax",
@@ -578,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "css-syntax-types"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "regress",
  "serde",
@@ -782,7 +782,7 @@ dependencies = [
 
 [[package]]
 name = "diff-test"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "ansi-to-html",
  "anyhow",
@@ -2036,7 +2036,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2124,9 +2124,9 @@ checksum = "df94ce210e5bc13cb6651479fa48d14f601d9858cfe0467f43ae157023b938d3"
 
 [[package]]
 name = "percent-encoding"
-version = "2.3.1"
+version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
+checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "phf"
@@ -2372,9 +2372,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.40"
+version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
+checksum = "a338cc41d27e6cc6dce6cefc13a0729dfbb81c262b1f519331575dd80ef3067f"
 dependencies = [
  "proc-macro2",
 ]
@@ -2434,7 +2434,7 @@ dependencies = [
 
 [[package]]
 name = "rari"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "anyhow",
  "axum",
@@ -2464,7 +2464,7 @@ dependencies = [
 
 [[package]]
 name = "rari-data"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "chrono",
  "indexmap",
@@ -2479,7 +2479,7 @@ dependencies = [
 
 [[package]]
 name = "rari-deps"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "chrono",
  "css-syntax-types",
@@ -2500,7 +2500,7 @@ dependencies = [
 
 [[package]]
 name = "rari-doc"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "chrono",
  "constcat",
@@ -2554,14 +2554,14 @@ dependencies = [
 
 [[package]]
 name = "rari-linter"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "thiserror 2.0.12",
 ]
 
 [[package]]
 name = "rari-lsp"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -2583,7 +2583,7 @@ dependencies = [
 
 [[package]]
 name = "rari-md"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "anyhow",
  "base64",
@@ -2596,7 +2596,7 @@ dependencies = [
 
 [[package]]
 name = "rari-sitemap"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "chrono",
  "flate2",
@@ -2610,7 +2610,7 @@ dependencies = [
 
 [[package]]
 name = "rari-templ-func"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "anyhow",
  "darling",
@@ -2621,7 +2621,7 @@ dependencies = [
 
 [[package]]
 name = "rari-tools"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "assert-json-diff",
  "chrono",
@@ -2629,6 +2629,7 @@ dependencies = [
  "csv",
  "dialoguer",
  "fake",
+ "html-escape",
  "indoc",
  "pretty_yaml",
  "rand 0.9.1",
@@ -2650,7 +2651,7 @@ dependencies = [
 
 [[package]]
 name = "rari-types"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "chrono",
  "config",
@@ -2672,7 +2673,7 @@ dependencies = [
 
 [[package]]
 name = "rari-utils"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "serde",
  "serde_json",
@@ -2682,9 +2683,9 @@ dependencies = [
 
 [[package]]
 name = "rayon"
-version = "1.10.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b418a60154510ca1a002a752ca9714984e21e4241e804d32555251faf8b78ffa"
+checksum = "368f01d005bf8fd9b1206fb6fa653e6c4a81ceb1466406b81792d87c5677a58f"
 dependencies = [
  "either",
  "rayon-core",
@@ -2692,9 +2693,9 @@ dependencies = [
 
 [[package]]
 name = "rayon-core"
-version = "1.12.1"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1465873a3dfdaa8ae7cb14b4383657caab0b3e8a0aa9ae8e04b044854c8dfce2"
+checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
@@ -3748,9 +3749,9 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.6.6"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adc82fd73de2a9722ac5da747f12383d2bfdb93591ee6c58486e0097890f05f2"
+checksum = "9cf146f99d442e8e68e585f5d798ccd3cad9a7835b917e09728880a862706456"
 dependencies = [
  "bitflags 2.9.1",
  "bytes",

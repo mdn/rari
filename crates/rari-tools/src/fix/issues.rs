@@ -3,14 +3,21 @@ use std::io::{BufWriter, Write};
 
 use rari_doc::issues::{DIssue, IN_MEMORY};
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
+use rari_doc::position_utils::char_to_byte_column;
 use tracing::{Level, span};
 
 use crate::error::ToolError;
 
+/// Offset-Line-Column mapper for tracking position during offset calculations.
+///
+/// All values use byte-based measurements for internal processing.
 #[derive(Default, Debug, Clone, Copy)]
 struct OLCMapper {
+    /// Byte offset from start of content
     offset: usize,
+    /// Line number (0-based)
     line: usize,
+    /// Column in BYTES from start of line (0-based)
     column: usize,
 }
 
@@ -65,18 +72,72 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
     let mut suggestions = issues
         .iter()
         .filter_map(|dissue| {
-            let offset = actual_offset(raw, dissue);
+            let offset_end = actual_offset(raw, dissue);
             if let DIssue::BrokenLink {
                 display_issue,
                 href: Some(href),
             } = dissue
                 && let Some(suggestion) = display_issue.suggestion.as_deref()
             {
-                Some(SearchReplaceWithOffset {
-                    offset: offset - href.len(),
-                    search: href.into(),
-                    replace: suggestion.into(),
-                })
+                // The href and suggestion from HTML may contain HTML entities (&#x27; for ', &lt; for <, etc.)
+                // Decode them to match the raw markdown content
+                let decoded_href = html_escape::decode_html_entities(href);
+                let decoded_suggestion = html_escape::decode_html_entities(suggestion);
+
+                // actual_offset returns the END of the href
+                // We need to find the START by searching backward for the href
+                // Estimate the start position and use rfind() to locate it precisely
+                let mut search_start = offset_end.saturating_sub(decoded_href.len());
+
+                // Ensure search_start is on a char boundary
+                while search_start > 0 && !raw.is_char_boundary(search_start) {
+                    search_start -= 1;
+                }
+
+                // Ensure offset_end is on a char boundary
+                let mut offset_end_adjusted = offset_end;
+                while offset_end_adjusted < raw.len() && !raw.is_char_boundary(offset_end_adjusted)
+                {
+                    offset_end_adjusted += 1;
+                }
+
+                if let Some(relative_pos) =
+                    raw[search_start..offset_end_adjusted].rfind(decoded_href.as_ref())
+                {
+                    let href_start = search_start + relative_pos;
+
+                    // Verify this is the correct match (approximately - offset_end might have been adjusted)
+                    let href_end = href_start + decoded_href.len();
+                    if (href_end == offset_end || href_end == offset_end_adjusted)
+                        && &raw[href_start..href_end] == decoded_href.as_ref()
+                    {
+                        Some(SearchReplaceWithOffset {
+                            offset: href_start,
+                            search: decoded_href.into(),
+                            replace: decoded_suggestion.into(),
+                        })
+                    } else {
+                        tracing::warn!(
+                            "Could not find href '{}' at expected position (end: {}, adjusted: {})",
+                            decoded_href,
+                            offset_end,
+                            offset_end_adjusted
+                        );
+                        None
+                    }
+                } else {
+                    // Show context around the offset for debugging
+                    let context_start = search_start;
+                    let context_end = offset_end_adjusted.min(raw.len());
+                    let context = &raw[context_start..context_end];
+                    tracing::warn!(
+                        "Could not locate href '{}' before offset {} (searched region: {:?})",
+                        decoded_href,
+                        offset_end,
+                        context
+                    );
+                    None
+                }
             } else {
                 None
             }
@@ -98,8 +159,25 @@ pub fn apply_suggestions(
     let mut current_offset = 0;
 
     for suggestion in suggestions {
+        // Ensure suggestion.offset is on a character boundary
+        let suggestion_offset = if raw.is_char_boundary(suggestion.offset) {
+            suggestion.offset
+        } else {
+            // Adjust to the nearest valid character boundary (previous char start)
+            let mut offset = suggestion.offset;
+            while offset > 0 && !raw.is_char_boundary(offset) {
+                offset -= 1;
+            }
+            tracing::warn!(
+                "Adjusted suggestion offset from {} to {} (not on char boundary)",
+                suggestion.offset,
+                offset
+            );
+            offset
+        };
+
         // Skip this suggestion if it overlaps with previously applied region
-        if suggestion.offset < current_offset {
+        if suggestion_offset < current_offset {
             tracing::warn!(
                 "Cannot apply suggestion ('{}' -> '{}'), because it overlaps with another suggestion.",
                 suggestion.search,
@@ -109,31 +187,42 @@ pub fn apply_suggestions(
         }
 
         // Add the unchanged portion before this suggestion
-        if suggestion.offset > current_offset {
-            result.push(&raw[current_offset..suggestion.offset]);
+        if suggestion_offset > current_offset {
+            result.push(&raw[current_offset..suggestion_offset]);
         }
 
         // Validate that the search string matches what's actually in the raw content
-        let end_offset = suggestion.offset + suggestion.search.len();
+        let end_offset = suggestion_offset + suggestion.search.len();
         if end_offset > raw.len() {
             tracing::warn!(
                 "Cannot apply suggestion ('{}' -> '{}'), because its offset ({}-{}) exceeds raw content length {}",
                 suggestion.search,
                 suggestion.replace,
-                suggestion.offset,
+                suggestion_offset,
                 end_offset,
                 raw.len()
             );
             continue;
         }
 
-        let actual_content = &raw[suggestion.offset..end_offset];
+        // Ensure end_offset is on a character boundary
+        if !raw.is_char_boundary(end_offset) {
+            tracing::warn!(
+                "Cannot apply suggestion ('{}' -> '{}'), because end_offset {} is not on a char boundary",
+                suggestion.search,
+                suggestion.replace,
+                end_offset
+            );
+            continue;
+        }
+
+        let actual_content = &raw[suggestion_offset..end_offset];
         if actual_content != suggestion.search {
             tracing::warn!(
                 "Cannot apply suggestion ('{}' -> '{}'), because actual content at offset {} is '{}'",
                 suggestion.search,
                 suggestion.replace,
-                suggestion.offset,
+                suggestion_offset,
                 actual_content
             );
             continue;
@@ -204,11 +293,20 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
         tracing::warn!("skipping issues");
         None
     };
-    if let Some(offset) = offset {
-        let mut index = offset;
-        while !input.is_char_boundary(index) {
-            index -= 1;
+    // Verify the calculated offset is on a UTF-8 character boundary
+    if let Some(mut offset_value) = offset
+        && offset_value < input.len()
+        && !input.is_char_boundary(offset_value)
+    {
+        tracing::warn!(
+            "calculated offset {} is not on char boundary - adjusting (this may indicate a bug)",
+            offset_value
+        );
+        // Move backwards to the nearest char boundary
+        while offset_value > 0 && !input.is_char_boundary(offset_value) {
+            offset_value -= 1;
         }
+        return Some(offset_value);
     }
     offset
 }
@@ -216,19 +314,30 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
 pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     let olc = OLCMapper::default();
     let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
-    let new_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
+    // DisplayIssue.column is in CHARACTERS (1-based), need to convert to BYTES (0-based) for calc_offset
+    let char_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
+
+    // Convert character column to byte column
+    let new_column = if let Some(line_content) = raw.lines().nth(new_line) {
+        char_to_byte_column(line_content, char_column)
+    } else {
+        char_column // Fallback: use as-is if line not found
+    };
     if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
         if let DIssue::BrokenLink {
             display_issue: _,
             href: Some(href),
         } = dissue
-            && let Some(start) = raw[offset..].find(href)
         {
-            let href_offset = offset + start;
+            // Decode HTML entities in href to match raw markdown content
+            let decoded_href = html_escape::decode_html_entities(href);
+            if let Some(start) = raw[offset..].find(decoded_href.as_ref()) {
+                let href_offset = offset + start;
 
-            let actual_offset = href_offset + href.len();
+                let actual_offset = href_offset + decoded_href.len();
 
-            return actual_offset;
+                return actual_offset;
+            }
         }
         return offset;
     }
@@ -362,6 +471,208 @@ sidebar: cssref\n\
         assert_eq!(
             suggestions[1].replace,
             "/en-US/docs/Web/CSS/Guides/Box_alignment"
+        );
+    }
+
+    #[test]
+    fn test_fix_link_with_multibyte_chars() {
+        // Test that link fixing works correctly with multi-byte UTF-8 characters
+        // "Café" has é which is 2 bytes, and "🔥" is 4 bytes
+        let raw = "---\n\
+title: Test\n\
+---\n\
+Café 🔥 [Link](/en-US/docs/old)\n";
+
+        // The link starts at:
+        // Line 3 (0-indexed): "Café 🔥 [Link](/en-US/docs/old)"
+        // "Café " = 4 chars, 6 bytes (C=1, a=1, f=1, é=2, space=1)
+        // "🔥 " = 2 chars, 5 bytes (emoji=4, space=1)
+        // "[Link]" starts at char 6, byte 11
+
+        // Create an issue with CHARACTER positions (as DisplayIssue now uses)
+        let issues = vec![DIssue::BrokenLink {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some("/en-US/docs/old is a redirect".to_string()),
+                suggestion: Some("/en-US/docs/new".to_string()),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(4),    // 1-based line number
+                column: Some(13), // 1-based CHARACTER position of '/' in the URL
+                end_line: Some(4),
+                end_column: Some(29), // End of URL in characters
+                source_context: None,
+                filepath: Some("/path/to/test.md".to_string()),
+                name: IssueType::RedirectedLink,
+            },
+            href: Some("/en-US/docs/old".to_string()),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(suggestions.len(), 1);
+        // The byte offset should be calculated correctly despite multi-byte chars
+        // Line 0: "---" = 3 + 1 newline = 4
+        // Line 1: "title: Test" = 11 + 1 newline = 12
+        // Line 2: "---" = 3 + 1 newline = 4
+        // Line 3: "Café 🔥 [Link](" = 18 bytes (Café=5, space=1, 🔥=4, space=1, [Link](=7)
+        // Total: 4 + 12 + 4 + 18 = 38 bytes
+        let expected_offset = 38; // Start of "/en-US/docs/old" in bytes
+        assert_eq!(
+            suggestions[0].offset, expected_offset,
+            "Offset should account for multi-byte characters"
+        );
+        assert_eq!(suggestions[0].search, "/en-US/docs/old");
+        assert_eq!(suggestions[0].replace, "/en-US/docs/new");
+    }
+
+    #[test]
+    fn test_apply_suggestions_with_invalid_char_boundary() {
+        // Test that apply_suggestions handles offsets that aren't on character boundaries
+        // This can happen when offset calculation results in a byte offset in the middle of a multi-byte char
+        let raw = "Café [link](url)";
+        // "Café" = C(1) + a(1) + f(1) + é(2 bytes at positions 3-4) = 5 bytes total
+        // If we mistakenly calculate offset as 4, that's in the middle of 'é'
+
+        let suggestions = vec![SearchReplaceWithOffset {
+            offset: 4, // This is NOT on a char boundary (inside 'é' which spans bytes 3-4)
+            search: " ".to_string(), // The space after "Café"
+            replace: "_".to_string(),
+        }];
+
+        // This should not panic, but should adjust the offset to a valid boundary
+        let result = apply_suggestions(raw, &suggestions);
+
+        // The function should handle the invalid offset gracefully
+        // It will adjust to byte 3 (start of 'é') and fail to find the search string there
+        // So the suggestion won't be applied, but it shouldn't panic
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_apply_suggestions_multibyte_replacement() {
+        // Test a complete flow with multi-byte characters
+        let raw = "été [link](old)";
+        // "été " = é(2) + t(1) + é(2) + space(1) = 6 bytes
+        // "[link]" = 6 bytes, "(" = 1 byte
+        // So "old" starts at byte 13
+
+        let suggestions = vec![SearchReplaceWithOffset {
+            offset: 13,
+            search: "old".to_string(),
+            replace: "new".to_string(),
+        }];
+
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(result, "été [link](new)");
+    }
+
+    #[test]
+    fn test_fix_link_with_html_entities() {
+        // Test that HTML entities in hrefs are properly decoded when searching the raw markdown
+        // This happens when hrefs come from HTML output with entities like &#x27; (apostrophe)
+        let raw = "---\n\
+title: Test\n\
+---\n\
+[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)\n";
+
+        // The href in the issue contains HTML entities (as it comes from HTML output)
+        // but the raw markdown contains literal characters
+        let issues = vec![DIssue::BrokenLink {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some("Redirect detected".to_string()),
+                suggestion: Some("/fr/docs/Web/SVG/Attribute#evenements".to_string()),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(4),   // 1-based line number
+                column: Some(8), // 1-based CHARACTER position
+                end_line: Some(4),
+                end_column: Some(54),
+                source_context: None,
+                filepath: Some("/path/to/test.md".to_string()),
+                name: IssueType::RedirectedLink,
+            },
+            // href contains HTML entities (&#x27; for apostrophe, é is already UTF-8)
+            href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(
+            suggestions.len(),
+            1,
+            "Should find the href despite HTML entities"
+        );
+        // Line 0: "---" = 3 + 1 newline = 4
+        // Line 1: "title: Test" = 11 + 1 newline = 12
+        // Line 2: "---" = 3 + 1 newline = 4
+        // Line 3: "[Link](" = 7 bytes
+        // Total: 4 + 12 + 4 + 7 = 27 bytes
+        let expected_offset = 27; // Start of the href in bytes
+        assert_eq!(suggestions[0].offset, expected_offset);
+        // Both search and replace should be DECODED (with literal apostrophes)
+        assert_eq!(
+            suggestions[0].search,
+            "/fr/docs/Web/SVG/Attribute#attributs_d'événement"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "/fr/docs/Web/SVG/Attribute#evenements"
+        );
+    }
+
+    #[test]
+    fn test_fix_link_with_html_entities_in_both() {
+        // Test where BOTH href and suggestion contain HTML entities
+        let raw = "---\n\
+title: Test\n\
+---\n\
+[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)\n";
+
+        let issues = vec![DIssue::BrokenLink {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some("Redirect detected".to_string()),
+                // Suggestion ALSO has HTML entities (this can happen in real redirects)
+                suggestion: Some(
+                    "/fr/docs/Web/SVG/Reference/Attribute#attributs_d&#x27;événement_globaux"
+                        .to_string(),
+                ),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(4),
+                column: Some(8),
+                end_line: Some(4),
+                end_column: Some(54),
+                source_context: None,
+                filepath: Some("/path/to/test.md".to_string()),
+                name: IssueType::RedirectedLink,
+            },
+            href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(suggestions.len(), 1);
+        // Both search and replace should be decoded to literal characters
+        assert_eq!(
+            suggestions[0].search,
+            "/fr/docs/Web/SVG/Attribute#attributs_d'événement"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "/fr/docs/Web/SVG/Reference/Attribute#attributs_d'événement_globaux"
+        );
+
+        // Apply the suggestion and verify the result
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            "---\n\
+title: Test\n\
+---\n\
+[Link](/fr/docs/Web/SVG/Reference/Attribute#attributs_d'événement_globaux)\n"
         );
     }
 }
