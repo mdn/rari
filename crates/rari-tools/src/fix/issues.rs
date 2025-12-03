@@ -73,21 +73,49 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
         .iter()
         .filter_map(|dissue| {
             let offset_end = actual_offset(raw, dissue);
-            if let DIssue::BrokenLink {
-                display_issue,
-                href: Some(href),
-            } = dissue
-                && let Some(suggestion) = display_issue.suggestion.as_deref()
-            {
+            let (display_issue, href, source_slug) = match dissue {
+                DIssue::BrokenLink {
+                    display_issue,
+                    href: Some(href),
+                    source_slug,
+                } => (display_issue, href, source_slug),
+                DIssue::Macros {
+                    display_issue,
+                    href: Some(href),
+                    source_slug,
+                    ..
+                } => (display_issue, href, source_slug),
+                _ => return None,
+            };
+            if let Some(suggestion) = display_issue.suggestion.as_deref() {
                 // The href and suggestion from HTML may contain HTML entities (&#x27; for ', &lt; for <, etc.)
                 // Decode them to match the raw markdown content
                 let decoded_href = html_escape::decode_html_entities(href);
                 let decoded_suggestion = html_escape::decode_html_entities(suggestion);
 
+                // If source_slug is present, use it for searching instead of the full href
+                // This handles template-generated links where the markdown contains only the slug
+                let (search_text, replace_text) = if let Some(slug) = source_slug {
+                    // For template links: search for the slug, replace with the corrected slug
+                    // Extract the slug part from the suggestion (strip locale prefix if present)
+                    let corrected_slug = if let Some(stripped) = decoded_suggestion.strip_prefix("/") {
+                        // Remove locale and /docs/ prefix: /fr/docs/Web/... -> Web/...
+                        stripped.split_once("/docs/")
+                            .map(|(_, rest)| rest)
+                            .unwrap_or(stripped)
+                    } else {
+                        decoded_suggestion.as_ref()
+                    };
+                    (slug.as_str(), corrected_slug)
+                } else {
+                    // For regular links: search for full href
+                    (decoded_href.as_ref(), decoded_suggestion.as_ref())
+                };
+
                 // actual_offset returns the END of the href
-                // We need to find the START by searching backward for the href
+                // We need to find the START by searching backward for the text
                 // Estimate the start position and use rfind() to locate it precisely
-                let mut search_start = offset_end.saturating_sub(decoded_href.len());
+                let mut search_start = offset_end.saturating_sub(search_text.len());
 
                 // Ensure search_start is on a char boundary
                 while search_start > 0 && !raw.is_char_boundary(search_start) {
@@ -102,24 +130,24 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                 }
 
                 if let Some(relative_pos) =
-                    raw[search_start..offset_end_adjusted].rfind(decoded_href.as_ref())
+                    raw[search_start..offset_end_adjusted].rfind(search_text)
                 {
                     let href_start = search_start + relative_pos;
 
                     // Verify this is the correct match (approximately - offset_end might have been adjusted)
-                    let href_end = href_start + decoded_href.len();
+                    let href_end = href_start + search_text.len();
                     if (href_end == offset_end || href_end == offset_end_adjusted)
-                        && &raw[href_start..href_end] == decoded_href.as_ref()
+                        && &raw[href_start..href_end] == search_text
                     {
                         Some(SearchReplaceWithOffset {
                             offset: href_start,
-                            search: decoded_href.into(),
-                            replace: decoded_suggestion.into(),
+                            search: search_text.to_string(),
+                            replace: replace_text.to_string(),
                         })
                     } else {
                         tracing::warn!(
-                            "Could not find href '{}' at expected position (end: {}, adjusted: {})",
-                            decoded_href,
+                            "Could not find text '{}' at expected position (end: {}, adjusted: {})",
+                            search_text,
                             offset_end,
                             offset_end_adjusted
                         );
@@ -131,8 +159,8 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                     let context_end = offset_end_adjusted.min(raw.len());
                     let context = &raw[context_start..context_end];
                     tracing::warn!(
-                        "Could not locate href '{}' before offset {} (searched region: {:?})",
-                        decoded_href,
+                        "Could not locate text '{}' before offset {} (searched region: {:?})",
+                        search_text,
                         offset_end,
                         context
                     );
@@ -324,20 +352,29 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
         char_column // Fallback: use as-is if line not found
     };
     if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
-        if let DIssue::BrokenLink {
-            display_issue: _,
-            href: Some(href),
-        } = dissue
-        {
-            // Decode HTML entities in href to match raw markdown content
-            let decoded_href = html_escape::decode_html_entities(href);
-            if let Some(start) = raw[offset..].find(decoded_href.as_ref()) {
-                let href_offset = offset + start;
+        let (href, source_slug) = match dissue {
+            DIssue::BrokenLink {
+                href: Some(href),
+                source_slug,
+                ..
+            } => (href, source_slug),
+            DIssue::Macros {
+                href: Some(href),
+                source_slug,
+                ..
+            } => (href, source_slug),
+            _ => return offset,
+        };
 
-                let actual_offset = href_offset + decoded_href.len();
+        // If source_slug is present, search for that instead of the full href
+        let search_text = source_slug.as_deref().unwrap_or(href);
 
-                return actual_offset;
-            }
+        // Decode HTML entities to match raw markdown content
+        let decoded_text = html_escape::decode_html_entities(search_text);
+        if let Some(start) = raw[offset..].find(decoded_text.as_ref()) {
+            let text_offset = offset + start;
+            let actual_offset = text_offset + decoded_text.len();
+            return actual_offset;
         }
         return offset;
     }
@@ -412,7 +449,7 @@ sidebar: cssref\n\
                     name: IssueType::RedirectedLink,
                 },
                 href: Some("/en-US/docs/Web/CSS/CSS_box_alignment".to_string()),
-            },
+                source_slug: None,            },
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 2,
@@ -429,7 +466,7 @@ sidebar: cssref\n\
                     name: IssueType::RedirectedLink,
                 },
                 href: Some("/en-US/docs/Web/CSS/CSS_flexible_box_layout".to_string()),
-            },
+                source_slug: None,            },
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 3,
@@ -446,7 +483,7 @@ sidebar: cssref\n\
                     name: IssueType::RedirectedLink,
                 },
                 href: Some("/en-US/docs/Web/CSS/CSS_box_alignment".to_string()),
-            },
+                source_slug: None,            },
         ];
 
         let suggestions = collect_suggestions(raw, &issues);
@@ -506,7 +543,7 @@ Café 🔥 [Link](/en-US/docs/old)\n";
                 name: IssueType::RedirectedLink,
             },
             href: Some("/en-US/docs/old".to_string()),
-        }];
+                source_slug: None,        }];
 
         let suggestions = collect_suggestions(raw, &issues);
 
@@ -595,7 +632,7 @@ title: Test\n\
             },
             // href contains HTML entities (&#x27; for apostrophe, é is already UTF-8)
             href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
-        }];
+                source_slug: None,        }];
 
         let suggestions = collect_suggestions(raw, &issues);
 
@@ -650,7 +687,7 @@ title: Test\n\
                 name: IssueType::RedirectedLink,
             },
             href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
-        }];
+                source_slug: None,        }];
 
         let suggestions = collect_suggestions(raw, &issues);
 

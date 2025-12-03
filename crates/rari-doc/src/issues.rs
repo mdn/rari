@@ -298,6 +298,8 @@ pub enum DIssue {
         #[serde(flatten)]
         display_issue: DisplayIssue,
         href: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        source_slug: Option<String>,
     },
     Macros {
         #[serde(flatten)]
@@ -305,6 +307,8 @@ pub enum DIssue {
         #[serde(rename = "macroName")]
         macro_name: Option<String>,
         href: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        source_slug: Option<String>,
     },
     Unknown {
         #[serde(flatten)]
@@ -421,6 +425,7 @@ impl DIssue {
                     }
                 }
             }
+            let source_slug = additional.remove("source_slug");
             let dissue = match di.name {
                 IssueType::IllCasedLink => {
                     di.fixed = false;
@@ -432,6 +437,7 @@ impl DIssue {
                     DIssue::BrokenLink {
                         display_issue: di,
                         href: additional.remove("url"),
+                        source_slug: source_slug.clone(),
                     }
                 }
                 IssueType::RedirectedLink => {
@@ -444,6 +450,7 @@ impl DIssue {
                     DIssue::BrokenLink {
                         display_issue: di,
                         href: additional.remove("url"),
+                        source_slug: source_slug.clone(),
                     }
                 }
                 IssueType::BrokenLink => {
@@ -456,6 +463,7 @@ impl DIssue {
                     DIssue::BrokenLink {
                         display_issue: di,
                         href: additional.remove("url"),
+                        source_slug: source_slug.clone(),
                     }
                 }
                 IssueType::TemplBrokenLink => {
@@ -469,11 +477,12 @@ impl DIssue {
                         display_issue: di,
                         macro_name: additional.remove("templ"),
                         href: additional.remove("url"),
+                        source_slug: source_slug.clone(),
                     }
                 }
                 IssueType::TemplRedirectedLink => {
                     di.fixed = false;
-                    di.fixable = Some(false);
+                    di.fixable = Some(true);
                     di.explanation = Some(format!(
                         "Macro produces link {} which is a redirect",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
@@ -482,11 +491,12 @@ impl DIssue {
                         display_issue: di,
                         macro_name: additional.remove("templ"),
                         href: additional.remove("url"),
+                        source_slug: source_slug.clone(),
                     }
                 }
                 IssueType::TemplIllCasedLink => {
                     di.fixed = false;
-                    di.fixable = Some(false);
+                    di.fixable = Some(true);
                     di.explanation = Some(format!(
                         "{} is ill cased",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
@@ -495,6 +505,7 @@ impl DIssue {
                         display_issue: di,
                         macro_name: additional.remove("templ"),
                         href: additional.remove("url"),
+                        source_slug: source_slug.clone(),
                     }
                 }
                 IssueType::TemplInvalidArg => {
@@ -507,6 +518,7 @@ impl DIssue {
                         display_issue: di,
                         macro_name: additional.remove("templ"),
                         href: None,
+                        source_slug: None,
                     }
                 }
                 _ => {

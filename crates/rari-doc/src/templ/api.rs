@@ -28,18 +28,22 @@ impl RariApi {
         &settings().live_samples_base_url
     }
     pub fn get_page_nowarn(url: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, LinkWarn::No)
+        RariApi::get_page_internal(url, LinkWarn::No, None)
     }
 
     pub fn get_page_ignore_case(url: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, LinkWarn::IgnoreCase)
+        RariApi::get_page_internal(url, LinkWarn::IgnoreCase, None)
     }
 
     pub fn get_page(url: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, LinkWarn::All)
+        RariApi::get_page_internal(url, LinkWarn::All, None)
     }
 
-    fn get_page_internal(url: &str, warn: LinkWarn) -> Result<Page, DocError> {
+    pub fn get_page_with_source_slug(url: &str, source_slug: &str) -> Result<Page, DocError> {
+        RariApi::get_page_internal(url, LinkWarn::All, Some(source_slug))
+    }
+
+    fn get_page_internal(url: &str, warn: LinkWarn, source_slug: Option<&str>) -> Result<Page, DocError> {
         let redirect = resolve_redirect(url);
         let url = match redirect.as_ref() {
             Some(redirect) => {
@@ -48,21 +52,41 @@ impl RariApi {
                     match warn {
                         LinkWarn::All | LinkWarn::IgnoreCase if !ill_cased => {
                             let ic = get_issue_counter();
-                            tracing::warn!(
-                                source = "templ-redirected-link",
-                                ic = ic,
-                                url = url,
-                                href = redirect.as_ref()
-                            );
+                            if let Some(slug) = source_slug {
+                                tracing::warn!(
+                                    source = "templ-redirected-link",
+                                    ic = ic,
+                                    url = url,
+                                    href = redirect.as_ref(),
+                                    source_slug = slug,
+                                );
+                            } else {
+                                tracing::warn!(
+                                    source = "templ-redirected-link",
+                                    ic = ic,
+                                    url = url,
+                                    href = redirect.as_ref()
+                                );
+                            }
                         }
                         LinkWarn::All if ill_cased => {
                             let ic = get_issue_counter();
-                            tracing::warn!(
-                                source = "templ-ill-cased-link",
-                                ic = ic,
-                                url = url,
-                                redirect = redirect.as_ref()
-                            );
+                            if let Some(slug) = source_slug {
+                                tracing::warn!(
+                                    source = "templ-ill-cased-link",
+                                    ic = ic,
+                                    url = url,
+                                    redirect = redirect.as_ref(),
+                                    source_slug = slug,
+                                );
+                            } else {
+                                tracing::warn!(
+                                    source = "templ-ill-cased-link",
+                                    ic = ic,
+                                    url = url,
+                                    redirect = redirect.as_ref()
+                                );
+                            }
                         }
                         _ => {}
                     }
