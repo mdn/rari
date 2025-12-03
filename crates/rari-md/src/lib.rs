@@ -114,6 +114,27 @@ mod test {
     }
 
     #[test]
+    fn test_comrak_sourcepos_multibyte() -> Result<(), anyhow::Error> {
+        // Test to verify Comrak's sourcepos uses BYTES (1-based) for column positions
+        // 🔥 emoji is 4 bytes but 1 character
+        let input = "🔥 [link](url)";
+        let html = m2h(input, Locale::EnUs)?;
+
+        // Expected: "1:6" means position 6 (1-based) = byte offset 5 (0-based)
+        // 🔥 (4 bytes) + space (1 byte) = 5 bytes before "[link]" starts
+        // If it were CHARACTERS: would be "1:3" (emoji=1 char + space=1 char = 2 chars before link)
+
+        // Verify Comrak uses byte-based columns (1-based)
+        assert!(
+            html.contains("data-sourcepos=\"1:6-1:16\""),
+            "Comrak should use byte positions (1-based). Got: {}",
+            html
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn line_break() -> Result<(), anyhow::Error> {
         let out = m2h("- {{foo}}\n  - : bar", Locale::EnUs)?;
         assert_eq!(

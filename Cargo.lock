@@ -2629,6 +2629,7 @@ dependencies = [
  "csv",
  "dialoguer",
  "fake",
+ "html-escape",
  "indoc",
  "pretty_yaml",
  "rand 0.9.1",
