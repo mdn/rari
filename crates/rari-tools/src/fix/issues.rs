@@ -36,9 +36,9 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
                 let display_issue = dissue.display_issue();
                 if display_issue.suggestion.is_some()
                     && display_issue.fixable.unwrap_or_default()
-                    && display_issue.column.is_some()
                     && display_issue.line.is_some()
                 {
+                    // Column is optional - if missing, we'll search from line start
                     Some(dissue)
                 } else {
                     None
@@ -98,14 +98,16 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                 let (search_text, replace_text) = if let Some(slug) = source_slug {
                     // For template links: search for the slug, replace with the corrected slug
                     // Extract the slug part from the suggestion (strip locale prefix if present)
-                    let corrected_slug = if let Some(stripped) = decoded_suggestion.strip_prefix("/") {
-                        // Remove locale and /docs/ prefix: /fr/docs/Web/... -> Web/...
-                        stripped.split_once("/docs/")
-                            .map(|(_, rest)| rest)
-                            .unwrap_or(stripped)
-                    } else {
-                        decoded_suggestion.as_ref()
-                    };
+                    let corrected_slug =
+                        if let Some(stripped) = decoded_suggestion.strip_prefix("/") {
+                            // Remove locale and /docs/ prefix: /fr/docs/Web/... -> Web/...
+                            stripped
+                                .split_once("/docs/")
+                                .map(|(_, rest)| rest)
+                                .unwrap_or(stripped)
+                        } else {
+                            decoded_suggestion.as_ref()
+                        };
                     (slug.as_str(), corrected_slug)
                 } else {
                     // For regular links: search for full href
@@ -340,43 +342,76 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
 }
 
 pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
-    let olc = OLCMapper::default();
-    let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
-    // DisplayIssue.column is in CHARACTERS (1-based), need to convert to BYTES (0-based) for calc_offset
-    let char_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
-
-    // Convert character column to byte column
-    let new_column = if let Some(line_content) = raw.lines().nth(new_line) {
-        char_to_byte_column(line_content, char_column)
-    } else {
-        char_column // Fallback: use as-is if line not found
+    let (href, source_slug) = match dissue {
+        DIssue::BrokenLink {
+            href: Some(href),
+            source_slug,
+            ..
+        } => (href, source_slug),
+        DIssue::Macros {
+            href: Some(href),
+            source_slug,
+            ..
+        } => (href, source_slug),
+        _ => return 0,
     };
-    if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
-        let (href, source_slug) = match dissue {
-            DIssue::BrokenLink {
-                href: Some(href),
-                source_slug,
-                ..
-            } => (href, source_slug),
-            DIssue::Macros {
-                href: Some(href),
-                source_slug,
-                ..
-            } => (href, source_slug),
-            _ => return offset,
+
+    // If source_slug is present, search for that instead of the full href
+    let search_text = source_slug.as_deref().unwrap_or(href);
+    let decoded_text = html_escape::decode_html_entities(search_text);
+
+    // Try to get line and column information
+    let line_num = dissue.display_issue().line;
+    let col_num = dissue.display_issue().column;
+
+    // If we have a line number, search from the start of that line
+    if let Some(line) = line_num {
+        let line_idx = (line as usize).saturating_sub(1);
+        let line_start_offset: usize = raw.lines().take(line_idx).map(|l| l.len() + 1).sum();
+
+        tracing::debug!(
+            "Searching for '{}' from line {} (offset {})",
+            decoded_text,
+            line,
+            line_start_offset
+        );
+
+        // Search from the line start
+        if let Some(start) = raw[line_start_offset..].find(decoded_text.as_ref()) {
+            let text_offset = line_start_offset + start;
+            tracing::debug!("Found at offset {}", text_offset);
+            return text_offset + decoded_text.len();
+        } else {
+            tracing::warn!(
+                "Could not find '{}' starting from line {} (offset {})",
+                decoded_text,
+                line,
+                line_start_offset
+            );
+        }
+    }
+
+    // Fallback: if we have column info, try the precise offset calculation
+    if let Some(line) = line_num
+        && let Some(col) = col_num
+    {
+        let olc = OLCMapper::default();
+        let new_line = line as usize - 1;
+        let char_column = col as usize - 1;
+
+        let new_column = if let Some(line_content) = raw.lines().nth(new_line) {
+            char_to_byte_column(line_content, char_column)
+        } else {
+            char_column
         };
 
-        // If source_slug is present, search for that instead of the full href
-        let search_text = source_slug.as_deref().unwrap_or(href);
-
-        // Decode HTML entities to match raw markdown content
-        let decoded_text = html_escape::decode_html_entities(search_text);
-        if let Some(start) = raw[offset..].find(decoded_text.as_ref()) {
-            let text_offset = offset + start;
-            let actual_offset = text_offset + decoded_text.len();
-            return actual_offset;
+        if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
+            if let Some(start) = raw[offset..].find(decoded_text.as_ref()) {
+                let text_offset = offset + start;
+                return text_offset + decoded_text.len();
+            }
+            return offset;
         }
-        return offset;
     }
 
     0
@@ -543,7 +578,8 @@ Café 🔥 [Link](/en-US/docs/old)\n";
                 name: IssueType::RedirectedLink,
             },
             href: Some("/en-US/docs/old".to_string()),
-                source_slug: None,        }];
+            source_slug: None,
+        }];
 
         let suggestions = collect_suggestions(raw, &issues);
 
@@ -632,7 +668,8 @@ title: Test\n\
             },
             // href contains HTML entities (&#x27; for apostrophe, é is already UTF-8)
             href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
-                source_slug: None,        }];
+            source_slug: None,
+        }];
 
         let suggestions = collect_suggestions(raw, &issues);
 
@@ -687,7 +724,8 @@ title: Test\n\
                 name: IssueType::RedirectedLink,
             },
             href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
-                source_slug: None,        }];
+            source_slug: None,
+        }];
 
         let suggestions = collect_suggestions(raw, &issues);
 

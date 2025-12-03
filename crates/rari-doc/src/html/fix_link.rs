@@ -35,7 +35,15 @@ pub fn check_and_fix_link(
     }
     if original_href.starts_with('/') || original_href.starts_with("https://developer.mozilla.org")
     {
-        handle_internal_link(&original_href, el, page, data_issues, templ_link, auto_link, source_slug)
+        handle_internal_link(
+            &original_href,
+            el,
+            page,
+            data_issues,
+            templ_link,
+            auto_link,
+            source_slug,
+        )
     } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
         handle_external_link(el)
     } else {
@@ -242,7 +250,12 @@ pub fn handle_internal_link(
                 let ic = get_issue_counter();
                 if remove_href {
                     if let Some(ref slug) = source_slug {
-                        tracing::warn!(source = "broken-link", ic = ic, url = original_href, source_slug = slug.as_str());
+                        tracing::warn!(
+                            source = "broken-link",
+                            ic = ic,
+                            url = original_href,
+                            source_slug = slug.as_str()
+                        );
                     } else {
                         tracing::warn!(source = "broken-link", ic = ic, url = original_href);
                     }

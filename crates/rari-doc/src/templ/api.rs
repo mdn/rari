@@ -43,7 +43,11 @@ impl RariApi {
         RariApi::get_page_internal(url, LinkWarn::All, Some(source_slug))
     }
 
-    fn get_page_internal(url: &str, warn: LinkWarn, source_slug: Option<&str>) -> Result<Page, DocError> {
+    fn get_page_internal(
+        url: &str,
+        warn: LinkWarn,
+        source_slug: Option<&str>,
+    ) -> Result<Page, DocError> {
         let redirect = resolve_redirect(url);
         let url = match redirect.as_ref() {
             Some(redirect) => {
