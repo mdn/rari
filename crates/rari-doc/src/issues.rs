@@ -471,7 +471,7 @@ impl DIssue {
                 }
                 IssueType::TemplRedirectedLink => {
                     di.fixed = false;
-                    di.fixable = Some(true);
+                    di.fixable = Some(false);
                     di.explanation = Some(format!(
                         "Macro produces link {} which is a redirect",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
