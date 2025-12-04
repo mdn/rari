@@ -38,6 +38,7 @@ pub fn cssinfo() -> Result<String, DocError> {
             CssType::AtRuleDescriptor(at_rule.unwrap_or_default(), slug_rev_iter.next().unwrap())
         }
         rari_types::fm_types::PageType::CssProperty => CssType::Property(&name),
+        rari_types::fm_types::PageType::CssShorthandProperty => CssType::Property(&name),
         _ => {
             tracing::error!(
                 "cssinfo is only valid on properties and at rule descriptors: {}",
