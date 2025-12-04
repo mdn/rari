@@ -3,25 +3,10 @@ use std::io::{BufWriter, Write};
 
 use rari_doc::issues::{DIssue, IN_MEMORY};
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
-use rari_doc::position_utils::{
-    Direction, adjust_to_char_boundary, calculate_line_start_offset, char_to_byte_column,
-};
+use rari_doc::position_utils::{Direction, adjust_to_char_boundary, calculate_line_start_offset};
 use tracing::{Level, span};
 
 use crate::error::ToolError;
-
-/// Offset-Line-Column mapper for tracking position during offset calculations.
-///
-/// All values use byte-based measurements for internal processing.
-#[derive(Default, Debug, Clone, Copy)]
-struct OLCMapper {
-    /// Byte offset from start of content
-    offset: usize,
-    /// Line number (0-based)
-    line: usize,
-    /// Column in BYTES from start of line (0-based)
-    column: usize,
-}
 
 /// Extracts the slug from an href by stripping the leading slash and /docs/ prefix.
 /// Returns the slug portion, or the original stripped string if no /docs/ is found.
@@ -98,7 +83,10 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     };
     issues.sort_by(|a, b| {
         if a.display_issue().line == b.display_issue().line {
-            a.display_issue().column.cmp(&b.display_issue().column)
+            // Treat None as Some(1) for consistent ordering (columns are 1-based)
+            let col_a = a.display_issue().column.or(Some(1));
+            let col_b = b.display_issue().column.or(Some(1));
+            col_a.cmp(&col_b)
         } else {
             a.display_issue().line.cmp(&b.display_issue().line)
         }
@@ -335,40 +323,6 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
     Ok(is_fixed)
 }
 
-fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) -> Option<usize> {
-    let OLCMapper {
-        offset,
-        line,
-        column,
-    } = olc;
-    let lines = new_line - line;
-
-    let offset = if new_line > line {
-        let begin_of_line = calculate_line_start_offset(&input[offset..], lines);
-        let new_column_offset = new_column;
-        Some(offset + begin_of_line + new_column_offset)
-    } else if new_line == line && new_column > column {
-        Some(offset + (new_column - column))
-    } else {
-        tracing::warn!("skipping issues");
-        None
-    };
-    // Verify the calculated offset is on a UTF-8 character boundary
-    if let Some(offset_value) = offset
-        && offset_value < input.len()
-        && !input.is_char_boundary(offset_value)
-    {
-        let adjusted = adjust_to_char_boundary(input, offset_value, Direction::Backward);
-        tracing::warn!(
-            "calculated offset {} is not on char boundary - adjusting to {} (this may indicate a bug)",
-            offset_value,
-            adjusted
-        );
-        return Some(adjusted);
-    }
-    offset
-}
-
 pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     let href = match dissue {
         DIssue::BrokenLink {
@@ -383,72 +337,25 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     // Try to find the href in the markdown. First try the full href, then fallback to slug.
     let decoded_href = html_escape::decode_html_entities(href);
 
-    // Try to get line and column information
+    // Get line information from the issue
+    // Note: Column information refers to rendered HTML positions, not markdown source positions,
+    // so we search from the line start instead. Column is still useful for ordering issues.
     let line_num = dissue.display_issue().line;
-    let col_num = dissue.display_issue().column;
-
-    // If we have a line number, search from the start of that line
     if let Some(line) = line_num {
         let line_idx = (line as usize).saturating_sub(1);
         let line_start_offset = calculate_line_start_offset(raw, line_idx);
 
         // Try searching for the full href first, fallback to slug
-        if let Some((offset, found_text)) =
+        if let Some((offset, _found_text)) =
             search_with_slug_fallback(&decoded_href, |search_text| {
                 if let Some(start) = raw[line_start_offset..].find(search_text) {
                     let text_offset = line_start_offset + start;
-                    tracing::debug!("Found '{}' at offset {}", search_text, text_offset);
                     Some(text_offset + search_text.len())
                 } else {
                     None
                 }
             })
         {
-            if found_text != decoded_href.as_ref() {
-                tracing::debug!(
-                    "Full href not found, trying slug '{}' from line {} (offset {})",
-                    found_text,
-                    line,
-                    line_start_offset
-                );
-            }
-            return offset;
-        }
-
-        tracing::warn!(
-            "Could not find '{}' starting from line {} (offset {})",
-            decoded_href,
-            line,
-            line_start_offset
-        );
-    }
-
-    // Fallback: if we have column info, try the precise offset calculation
-    if let Some(line) = line_num
-        && let Some(col) = col_num
-    {
-        let olc = OLCMapper::default();
-        let new_line = line as usize - 1;
-        let char_column = col as usize - 1;
-
-        let new_column = if let Some(line_content) = raw.lines().nth(new_line) {
-            char_to_byte_column(line_content, char_column)
-        } else {
-            char_column
-        };
-
-        if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
-            // Try full href first, then fallback to slug
-            if let Some((result, _found_text)) =
-                search_with_slug_fallback(&decoded_href, |search_text| {
-                    raw[offset..].find(search_text).map(|start| {
-                        let text_offset = offset + start;
-                        text_offset + search_text.len()
-                    })
-                })
-            {
-                return result;
-            }
             return offset;
         }
     }
