@@ -949,4 +949,107 @@ slug: Web/JavaScript/Guide/Indexed_collections\n\
 Some content here.\n"
         );
     }
+
+    #[test]
+    fn test_slug_fallback_with_no_column() {
+        // Test slug fallback when column is None (template at beginning of line)
+        // This is common when {{PreviousNext}} starts at column 1
+        let raw = "---\n\
+title: Indexed collections\n\
+slug: Web/JavaScript/Guide/Indexed_collections\n\
+---\n\
+{{PreviousNext(\"Web/JavaScript/Guide/Regular_Expressions\", \"Web/JavaScript/Guide/Keyed_Collections\")}}\n\
+\n\
+Some content here.\n";
+
+        // When the template is at the beginning of the line, column might be None
+        let issues = vec![
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 1,
+                    explanation: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Regular_Expressions should be /en-US/docs/Web/JavaScript/Guide/Regular_expressions"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Regular_expressions".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None, // No column information
+                    end_line: Some(5),
+                    end_column: Some(60),
+                    source_context: None,
+                    filepath: Some("/path/to/indexed_collections/index.md".to_string()),
+                    name: IssueType::TemplIllCasedLink,
+                },
+                macro_name: Some("PreviousNext".to_string()),
+                href: Some("/en-US/docs/Web/JavaScript/Guide/Regular_Expressions".to_string()),
+            },
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 2,
+                    explanation: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Keyed_Collections should be /en-US/docs/Web/JavaScript/Guide/Keyed_collections"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Keyed_collections".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None, // No column information
+                    end_line: Some(5),
+                    end_column: Some(118),
+                    source_context: None,
+                    filepath: Some("/path/to/indexed_collections/index.md".to_string()),
+                    name: IssueType::TemplIllCasedLink,
+                },
+                macro_name: Some("PreviousNext".to_string()),
+                href: Some("/en-US/docs/Web/JavaScript/Guide/Keyed_Collections".to_string()),
+            },
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        // Should still find both slugs using line-based search
+        assert_eq!(suggestions.len(), 2);
+
+        // First suggestion: should fall back to slug and fix casing
+        assert_eq!(
+            suggestions[0].search,
+            "Web/JavaScript/Guide/Regular_Expressions",
+            "Should use slug for search even without column info"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "Web/JavaScript/Guide/Regular_expressions",
+            "Should use slug for replacement even without column info"
+        );
+
+        // Second suggestion
+        assert_eq!(
+            suggestions[1].search,
+            "Web/JavaScript/Guide/Keyed_Collections"
+        );
+        assert_eq!(
+            suggestions[1].replace,
+            "Web/JavaScript/Guide/Keyed_collections"
+        );
+
+        // Apply the suggestions and verify the result
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            "---\n\
+title: Indexed collections\n\
+slug: Web/JavaScript/Guide/Indexed_collections\n\
+---\n\
+{{PreviousNext(\"Web/JavaScript/Guide/Regular_expressions\", \"Web/JavaScript/Guide/Keyed_collections\")}}\n\
+\n\
+Some content here.\n"
+        );
+    }
 }
