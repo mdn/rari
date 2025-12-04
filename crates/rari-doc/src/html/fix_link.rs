@@ -22,9 +22,9 @@ pub fn check_and_fix_link(
         el.remove_attribute("data-templ-link");
     }
 
-    let source_slug = el.get_attribute("data-source-slug");
-    if source_slug.is_some() {
-        el.remove_attribute("data-source-slug");
+    let original_slug = el.get_attribute("data-original-slug");
+    if original_slug.is_some() {
+        el.remove_attribute("data-original-slug");
     }
 
     let original_href = el.get_attribute("href").expect("href was required");
@@ -42,7 +42,7 @@ pub fn check_and_fix_link(
             data_issues,
             templ_link,
             auto_link,
-            source_slug,
+            original_slug,
         )
     } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
         handle_external_link(el)
@@ -73,7 +73,7 @@ pub fn handle_internal_link(
     data_issues: bool,
     templ_link: bool,
     auto_link: bool,
-    source_slug: Option<String>,
+    original_slug: Option<String>,
 ) -> HandlerResult {
     // Strip prefix for curriculum links.
     let original_href = if page.page_type() == PageType::Curriculum || auto_link {
@@ -196,7 +196,7 @@ pub fn handle_internal_link(
                             end_line = end_line,
                             end_col = end_col,
                             url = original_href,
-                            source_slug = source_slug,
+                            slug = original_slug,
                         );
                     } else {
                         let source = if original_href.to_lowercase() == resolved_href.to_lowercase()
@@ -214,7 +214,7 @@ pub fn handle_internal_link(
                             end_col = end_col,
                             url = original_href,
                             redirect = resolved_href,
-                            source_slug = source_slug,
+                            slug = original_slug,
                         );
                     }
                     if data_issues {
@@ -228,7 +228,7 @@ pub fn handle_internal_link(
                         source = "broken-link",
                         ic = ic,
                         url = original_href,
-                        source_slug = source_slug,
+                        slug = original_slug,
                     );
                 } else {
                     let source = if original_href.to_lowercase() == resolved_href.to_lowercase() {
@@ -241,7 +241,7 @@ pub fn handle_internal_link(
                         ic = ic,
                         url = original_href,
                         redirect = resolved_href,
-                        source_slug = source_slug,
+                        slug = original_slug,
                     );
                 }
                 if data_issues {

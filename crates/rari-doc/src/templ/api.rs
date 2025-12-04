@@ -39,15 +39,11 @@ impl RariApi {
         RariApi::get_page_internal(url, LinkWarn::All, None)
     }
 
-    pub fn get_page_with_source_slug(url: &str, source_slug: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, LinkWarn::All, Some(source_slug))
+    pub fn get_page_with_slug(url: &str, slug: &str) -> Result<Page, DocError> {
+        RariApi::get_page_internal(url, LinkWarn::All, Some(slug))
     }
 
-    fn get_page_internal(
-        url: &str,
-        warn: LinkWarn,
-        source_slug: Option<&str>,
-    ) -> Result<Page, DocError> {
+    fn get_page_internal(url: &str, warn: LinkWarn, slug: Option<&str>) -> Result<Page, DocError> {
         let redirect = resolve_redirect(url);
         let url = match redirect.as_ref() {
             Some(redirect) => {
@@ -61,7 +57,7 @@ impl RariApi {
                                 ic = ic,
                                 url = url,
                                 href = redirect.as_ref(),
-                                source_slug = source_slug,
+                                slug = slug,
                             );
                         }
                         LinkWarn::All if ill_cased => {
@@ -71,7 +67,7 @@ impl RariApi {
                                 ic = ic,
                                 url = url,
                                 redirect = redirect.as_ref(),
-                                source_slug = source_slug,
+                                slug = slug,
                             );
                         }
                         _ => {}

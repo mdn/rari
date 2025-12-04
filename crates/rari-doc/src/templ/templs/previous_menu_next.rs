@@ -52,53 +52,32 @@ fn previous_next_menu_internal(
     if let Some(prev) = prev
         && !prev.is_empty()
     {
-        let source_slug = prev.clone();
+        let slug = prev.clone();
         let url = concat_strs!("/", locale.as_url_str(), "/docs/", prev.as_str());
-        let page = RariApi::get_page_with_source_slug(&url, &source_slug)?;
+        let page = RariApi::get_page_with_slug(&url, &slug)?;
         let title = l10n_json_data("Template", "previous", locale)?;
-        generate_link(
-            &mut out,
-            page.slug(),
-            locale,
-            title,
-            "prev",
-            Some(&source_slug),
-        )?;
+        generate_link(&mut out, page.slug(), locale, title, "prev", Some(&slug))?;
     }
     if let Some(menu) = menu
         && !menu.is_empty()
     {
-        let source_slug = menu.clone();
+        let slug = menu.clone();
         let url = concat_strs!("/", locale.as_url_str(), "/docs/", menu.as_str());
-        let page = RariApi::get_page_with_source_slug(&url, &source_slug)?;
+        let page = RariApi::get_page_with_slug(&url, &slug)?;
         let title = concat_strs!(
             l10n_json_data("Template", "prev_next_menu", locale)?,
             page.title()
         );
-        generate_link(
-            &mut out,
-            page.slug(),
-            locale,
-            &title,
-            "menu",
-            Some(&source_slug),
-        )?;
+        generate_link(&mut out, page.slug(), locale, &title, "menu", Some(&slug))?;
     }
     if let Some(next) = next
         && !next.is_empty()
     {
-        let source_slug = next.clone();
+        let slug = next.clone();
         let url = concat_strs!("/", locale.as_url_str(), "/docs/", next.as_str());
-        let page = RariApi::get_page_with_source_slug(&url, &source_slug)?;
+        let page = RariApi::get_page_with_slug(&url, &slug)?;
         let title = l10n_json_data("Template", "next", locale)?;
-        generate_link(
-            &mut out,
-            page.slug(),
-            locale,
-            title,
-            "next",
-            Some(&source_slug),
-        )?;
+        generate_link(&mut out, page.slug(), locale, title, "next", Some(&slug))?;
     }
     out.push_str("</ul>");
     Ok(out)
@@ -110,12 +89,12 @@ fn generate_link(
     locale: Locale,
     title: &str,
     class: &str,
-    source_slug: Option<&str>,
+    original_slug: Option<&str>,
 ) -> Result<(), DocError> {
     out.extend([r#"<li class="#, class, r#"><a data-templ-link"#]);
-    if let Some(source_slug) = source_slug {
-        out.push_str(r#" data-source-slug=""#);
-        out.push_str(&html_escape::encode_double_quoted_attribute(source_slug));
+    if let Some(slug) = original_slug {
+        out.push_str(r#" data-original-slug=""#);
+        out.push_str(&html_escape::encode_double_quoted_attribute(slug));
         out.push('"');
     }
     out.extend([
