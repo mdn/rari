@@ -28,22 +28,18 @@ impl RariApi {
         &settings().live_samples_base_url
     }
     pub fn get_page_nowarn(url: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, LinkWarn::No, None)
+        RariApi::get_page_internal(url, LinkWarn::No)
     }
 
     pub fn get_page_ignore_case(url: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, LinkWarn::IgnoreCase, None)
+        RariApi::get_page_internal(url, LinkWarn::IgnoreCase)
     }
 
     pub fn get_page(url: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, LinkWarn::All, None)
+        RariApi::get_page_internal(url, LinkWarn::All)
     }
 
-    pub fn get_page_with_slug(url: &str, slug: &str) -> Result<Page, DocError> {
-        RariApi::get_page_internal(url, LinkWarn::All, Some(slug))
-    }
-
-    fn get_page_internal(url: &str, warn: LinkWarn, slug: Option<&str>) -> Result<Page, DocError> {
+    fn get_page_internal(url: &str, warn: LinkWarn) -> Result<Page, DocError> {
         let redirect = resolve_redirect(url);
         let url = match redirect.as_ref() {
             Some(redirect) => {
@@ -56,8 +52,7 @@ impl RariApi {
                                 source = "templ-redirected-link",
                                 ic = ic,
                                 url = url,
-                                href = redirect.as_ref(),
-                                slug = slug,
+                                href = redirect.as_ref()
                             );
                         }
                         LinkWarn::All if ill_cased => {
@@ -66,8 +61,7 @@ impl RariApi {
                                 source = "templ-ill-cased-link",
                                 ic = ic,
                                 url = url,
-                                redirect = redirect.as_ref(),
-                                slug = slug,
+                                redirect = redirect.as_ref()
                             );
                         }
                         _ => {}

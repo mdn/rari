@@ -73,18 +73,16 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
         .iter()
         .filter_map(|dissue| {
             let offset_end = actual_offset(raw, dissue);
-            let (display_issue, href, slug) = match dissue {
+            let (display_issue, href) = match dissue {
                 DIssue::BrokenLink {
                     display_issue,
                     href: Some(href),
-                    slug,
-                } => (display_issue, href, slug),
+                } => (display_issue, href),
                 DIssue::Macros {
                     display_issue,
                     href: Some(href),
-                    slug,
                     ..
-                } => (display_issue, href, slug),
+                } => (display_issue, href),
                 _ => return None,
             };
             if let Some(suggestion) = display_issue.suggestion.as_deref() {
@@ -93,36 +91,11 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                 let decoded_href = html_escape::decode_html_entities(href);
                 let decoded_suggestion = html_escape::decode_html_entities(suggestion);
 
-                // If slug is present, use it for searching instead of the full href
-                // This handles template-generated links where the markdown contains only the slug
-                let (search_text, replace_text) = if let Some(slug) = slug {
-                    // For template links: search for the slug, replace with the corrected slug
-                    // Extract the slug part from the suggestion (strip locale prefix if present)
-                    let corrected_slug =
-                        if let Some(stripped) = decoded_suggestion.strip_prefix("/") {
-                            // Remove locale and /docs/ prefix: /fr/docs/Web/... -> Web/...
-                            stripped
-                                .split_once("/docs/")
-                                .map(|(_, rest)| rest)
-                                .unwrap_or(stripped)
-                        } else {
-                            decoded_suggestion.as_ref()
-                        };
-                    (slug.as_str(), corrected_slug)
-                } else {
-                    // For regular links: search for full href
-                    (decoded_href.as_ref(), decoded_suggestion.as_ref())
-                };
+                // Try to find the href in the markdown. First try the full href, then fallback to slug.
+                // This handles template-generated links where the markdown contains only the slug.
 
                 // actual_offset returns the END of the href
                 // We need to find the START by searching backward for the text
-                // Estimate the start position and use rfind() to locate it precisely
-                let mut search_start = offset_end.saturating_sub(search_text.len());
-
-                // Ensure search_start is on a char boundary
-                while search_start > 0 && !raw.is_char_boundary(search_start) {
-                    search_start -= 1;
-                }
 
                 // Ensure offset_end is on a char boundary
                 let mut offset_end_adjusted = offset_end;
@@ -131,38 +104,82 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                     offset_end_adjusted += 1;
                 }
 
-                if let Some(relative_pos) =
-                    raw[search_start..offset_end_adjusted].rfind(search_text)
-                {
-                    let href_start = search_start + relative_pos;
+                // Try 1: Search for the full href
+                let try_search = |search_text: &str| -> Option<usize> {
+                    let mut search_start = offset_end.saturating_sub(search_text.len());
 
-                    // Verify this is the correct match (approximately - offset_end might have been adjusted)
-                    let href_end = href_start + search_text.len();
-                    if (href_end == offset_end || href_end == offset_end_adjusted)
-                        && &raw[href_start..href_end] == search_text
+                    // Ensure search_start is on a char boundary
+                    while search_start > 0 && !raw.is_char_boundary(search_start) {
+                        search_start -= 1;
+                    }
+
+                    if let Some(relative_pos) =
+                        raw[search_start..offset_end_adjusted].rfind(search_text)
                     {
-                        Some(SearchReplaceWithOffset {
-                            offset: href_start,
-                            search: search_text.to_string(),
-                            replace: replace_text.to_string(),
-                        })
+                        let href_start = search_start + relative_pos;
+                        let href_end = href_start + search_text.len();
+
+                        // Verify this is the correct match
+                        if (href_end == offset_end || href_end == offset_end_adjusted)
+                            && &raw[href_start..href_end] == search_text
+                        {
+                            return Some(href_start);
+                        }
+                    }
+                    None
+                };
+
+                // Try finding the full href first
+                let result = if let Some(href_start) = try_search(decoded_href.as_ref()) {
+                    // Found full href: use full suggestion as replacement
+                    Some((
+                        href_start,
+                        decoded_href.to_string(),
+                        decoded_suggestion.to_string(),
+                    ))
+                } else if let Some(stripped) = decoded_href.strip_prefix("/") {
+                    // Fallback: Try extracting and searching for just the slug
+                    // Template links often only have the slug in markdown (e.g., "Web/API/Foo")
+                    let slug = stripped
+                        .split_once("/docs/")
+                        .map(|(_, rest)| rest)
+                        .unwrap_or(stripped);
+
+                    if let Some(href_start) = try_search(slug) {
+                        // Found slug: extract slug from suggestion too
+                        let corrected_slug =
+                            if let Some(stripped_sugg) = decoded_suggestion.strip_prefix("/") {
+                                stripped_sugg
+                                    .split_once("/docs/")
+                                    .map(|(_, rest)| rest)
+                                    .unwrap_or(stripped_sugg)
+                                    .to_string()
+                            } else {
+                                decoded_suggestion.to_string()
+                            };
+                        Some((href_start, slug.to_string(), corrected_slug))
                     } else {
-                        tracing::warn!(
-                            "Could not find text '{}' at expected position (end: {}, adjusted: {})",
-                            search_text,
-                            offset_end,
-                            offset_end_adjusted
-                        );
                         None
                     }
                 } else {
+                    None
+                };
+
+                if let Some((href_start, search_text, replace_text)) = result {
+                    Some(SearchReplaceWithOffset {
+                        offset: href_start,
+                        search: search_text,
+                        replace: replace_text,
+                    })
+                } else {
                     // Show context around the offset for debugging
+                    let search_start = offset_end.saturating_sub(decoded_href.len());
                     let context_start = search_start;
                     let context_end = offset_end_adjusted.min(raw.len());
                     let context = &raw[context_start..context_end];
                     tracing::warn!(
-                        "Could not locate text '{}' before offset {} (searched region: {:?})",
-                        search_text,
+                        "Could not locate '{}' before offset {} (searched region: {:?})",
+                        decoded_href,
                         offset_end,
                         context
                     );
@@ -342,23 +359,18 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
 }
 
 pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
-    let (href, slug) = match dissue {
+    let href = match dissue {
         DIssue::BrokenLink {
-            href: Some(href),
-            slug,
-            ..
-        } => (href, slug),
+            href: Some(href), ..
+        } => href,
         DIssue::Macros {
-            href: Some(href),
-            slug,
-            ..
-        } => (href, slug),
+            href: Some(href), ..
+        } => href,
         _ => return 0,
     };
 
-    // If slug is present, search for that instead of the full href
-    let search_text = slug.as_deref().unwrap_or(href);
-    let decoded_text = html_escape::decode_html_entities(search_text);
+    // Try to find the href in the markdown. First try the full href, then fallback to slug.
+    let decoded_href = html_escape::decode_html_entities(href);
 
     // Try to get line and column information
     let line_num = dissue.display_issue().line;
@@ -369,26 +381,44 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
         let line_idx = (line as usize).saturating_sub(1);
         let line_start_offset: usize = raw.lines().take(line_idx).map(|l| l.len() + 1).sum();
 
-        tracing::debug!(
-            "Searching for '{}' from line {} (offset {})",
-            decoded_text,
+        // Try searching for the full href first
+        let try_find = |search_text: &str| -> Option<usize> {
+            if let Some(start) = raw[line_start_offset..].find(search_text) {
+                let text_offset = line_start_offset + start;
+                tracing::debug!("Found '{}' at offset {}", search_text, text_offset);
+                Some(text_offset + search_text.len())
+            } else {
+                None
+            }
+        };
+
+        if let Some(offset) = try_find(decoded_href.as_ref()).or_else(|| {
+            // Fallback: Try extracting and searching for just the slug
+            if let Some(stripped) = decoded_href.strip_prefix("/") {
+                let slug = stripped
+                    .split_once("/docs/")
+                    .map(|(_, rest)| rest)
+                    .unwrap_or(stripped);
+                tracing::debug!(
+                    "Full href not found, trying slug '{}' from line {} (offset {})",
+                    slug,
+                    line,
+                    line_start_offset
+                );
+                try_find(slug)
+            } else {
+                None
+            }
+        }) {
+            return offset;
+        }
+
+        tracing::warn!(
+            "Could not find '{}' starting from line {} (offset {})",
+            decoded_href,
             line,
             line_start_offset
         );
-
-        // Search from the line start
-        if let Some(start) = raw[line_start_offset..].find(decoded_text.as_ref()) {
-            let text_offset = line_start_offset + start;
-            tracing::debug!("Found at offset {}", text_offset);
-            return text_offset + decoded_text.len();
-        } else {
-            tracing::warn!(
-                "Could not find '{}' starting from line {} (offset {})",
-                decoded_text,
-                line,
-                line_start_offset
-            );
-        }
     }
 
     // Fallback: if we have column info, try the precise offset calculation
@@ -406,9 +436,23 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
         };
 
         if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
-            if let Some(start) = raw[offset..].find(decoded_text.as_ref()) {
-                let text_offset = offset + start;
-                return text_offset + decoded_text.len();
+            // Try full href first, then fallback to slug
+            let found = [decoded_href.as_ref()]
+                .into_iter()
+                .chain(
+                    decoded_href
+                        .strip_prefix("/")
+                        .and_then(|s| s.split_once("/docs/").map(|(_, rest)| rest)),
+                )
+                .find_map(|search_text| {
+                    raw[offset..].find(search_text).map(|start| {
+                        let text_offset = offset + start;
+                        text_offset + search_text.len()
+                    })
+                });
+
+            if let Some(result) = found {
+                return result;
             }
             return offset;
         }
@@ -484,7 +528,7 @@ sidebar: cssref\n\
                     name: IssueType::RedirectedLink,
                 },
                 href: Some("/en-US/docs/Web/CSS/CSS_box_alignment".to_string()),
-                slug: None,            },
+            },
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 2,
@@ -501,7 +545,7 @@ sidebar: cssref\n\
                     name: IssueType::RedirectedLink,
                 },
                 href: Some("/en-US/docs/Web/CSS/CSS_flexible_box_layout".to_string()),
-                slug: None,            },
+            },
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 3,
@@ -518,7 +562,7 @@ sidebar: cssref\n\
                     name: IssueType::RedirectedLink,
                 },
                 href: Some("/en-US/docs/Web/CSS/CSS_box_alignment".to_string()),
-                slug: None,            },
+            },
         ];
 
         let suggestions = collect_suggestions(raw, &issues);
@@ -578,7 +622,6 @@ Café 🔥 [Link](/en-US/docs/old)\n";
                 name: IssueType::RedirectedLink,
             },
             href: Some("/en-US/docs/old".to_string()),
-            slug: None,
         }];
 
         let suggestions = collect_suggestions(raw, &issues);
@@ -668,7 +711,6 @@ title: Test\n\
             },
             // href contains HTML entities (&#x27; for apostrophe, é is already UTF-8)
             href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
-            slug: None,
         }];
 
         let suggestions = collect_suggestions(raw, &issues);
@@ -724,7 +766,6 @@ title: Test\n\
                 name: IssueType::RedirectedLink,
             },
             href: Some("/fr/docs/Web/SVG/Attribute#attributs_d&#x27;événement".to_string()),
-            slug: None,
         }];
 
         let suggestions = collect_suggestions(raw, &issues);
