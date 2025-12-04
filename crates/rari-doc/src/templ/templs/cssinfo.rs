@@ -6,7 +6,8 @@ use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::helpers::css_info::{
-    css_computed, css_inherited, css_initial, css_ref_data, get_css_l10n_for_locale,
+    css_animation_type, css_applies_to, css_computed, css_inherited, css_initial,
+    css_l10n_for_value, css_percentages, css_ref_data, css_related_at_rule,
 };
 use crate::templ::api::RariApi;
 use css_syntax_types::{AtRuleDescriptor, Property};
@@ -118,7 +119,7 @@ fn render_formal_at_rule_descriptor_def(
     out.push_str(r#"<table class="properties"><tbody>"#);
 
     {
-        let label = get_css_l10n_for_locale("relatedAtRule", locale);
+        let label = css_related_at_rule(locale)?;
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(
             out,
@@ -132,7 +133,7 @@ fn render_formal_at_rule_descriptor_def(
 
     if let Some(value) = &at_rule_descriptor.initial {
         let label = css_initial(locale)?;
-        let value = get_css_l10n_for_locale(value, locale);
+        let value = css_l10n_for_value(value, locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "<code>{value}</code>")?;
         write!(out, r#"</td></tr>"#)?;
@@ -140,13 +141,13 @@ fn render_formal_at_rule_descriptor_def(
 
     if let Some(value) = &at_rule_descriptor.computed_value {
         let label = css_computed(locale)?;
-        let value = get_css_l10n_for_locale(value, locale);
+        let value = css_l10n_for_value(value, locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "{value}")?;
         write!(out, r#"</td></tr>"#)?;
     } else {
         let label = css_computed(locale)?;
-        let value = get_css_l10n_for_locale("as specified", locale);
+        let value = css_l10n_for_value("as specified", locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "{value}")?;
         write!(out, r#"</td></tr>"#)?;
@@ -165,15 +166,15 @@ fn render_formal_property_def(
 
     if let Some(value) = &property.initial {
         let label = css_initial(locale)?;
-        let value = get_css_l10n_for_locale(value, locale);
+        let value = css_l10n_for_value(value, locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "<code>{value}</code>")?;
         write!(out, r#"</td></tr>"#)?;
     }
 
     if let Some(value) = &property.applies_to {
-        let label = get_css_l10n_for_locale("appliesTo", locale);
-        let value = get_css_l10n_for_locale(value, locale);
+        let label = css_applies_to(locale)?;
+        let value = css_l10n_for_value(value, locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "{value}")?;
         write!(out, r#"</td></tr>"#)?;
@@ -181,7 +182,7 @@ fn render_formal_property_def(
 
     if let Some(value) = &property.inherited {
         let label = css_inherited(locale)?;
-        let value = get_css_l10n_for_locale(value, locale);
+        let value = css_l10n_for_value(value, locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "{value}")?;
         write!(out, r#"</td></tr>"#)?;
@@ -189,7 +190,7 @@ fn render_formal_property_def(
 
     if let Some(value) = &property.computed_value {
         let label = css_computed(locale)?;
-        let value = get_css_l10n_for_locale(value, locale);
+        let value = css_l10n_for_value(value, locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "{value}")?;
         write!(out, r#"</td></tr>"#)?;
@@ -198,24 +199,24 @@ fn render_formal_property_def(
     if let Some(value) = &property.percentages
         && value.to_lowercase() != "n/a"
     {
-        let label = get_css_l10n_for_locale("percentages", locale);
-        let value = get_css_l10n_for_locale(value, locale);
+        let label = css_percentages(locale)?;
+        let value = css_l10n_for_value(value, locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "{value}")?;
         write!(out, r#"</td></tr>"#)?;
     }
 
     if let Some(value) = &property.animation_type {
-        let label = get_css_l10n_for_locale("animationType", locale);
+        let label = css_animation_type(locale)?;
         let label = RariApi::link(
             "Web/CSS/Guides/Animations/Animatable_properties",
             Some(locale),
-            Some(label),
+            Some(&label),
             false,
             None,
             false,
         )?;
-        let value = get_css_l10n_for_locale(value, locale);
+        let value = css_l10n_for_value(value, locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "{value}")?;
         write!(out, r#"</td></tr>"#)?;
