@@ -82,6 +82,37 @@ fn adjust_to_char_boundary(text: &str, offset: usize, direction: Direction) -> u
     }
 }
 
+/// Searches for an href in text, trying the full href first, then falling back to just the slug.
+///
+/// This handles template-generated links where the markdown contains only the slug portion
+/// (e.g., "Web/API/Foo") rather than the full href ("/en-US/docs/Web/API/Foo").
+///
+/// # Arguments
+/// * `href` - The full href to search for
+/// * `search_fn` - Function that searches for text and returns an offset if found
+///
+/// # Returns
+/// Tuple of (found_offset, text_that_was_found) if successful, None otherwise
+fn search_with_slug_fallback<F>(href: &str, mut search_fn: F) -> Option<(usize, String)>
+where
+    F: FnMut(&str) -> Option<usize>,
+{
+    // Try full href first
+    if let Some(offset) = search_fn(href) {
+        return Some((offset, href.to_string()));
+    }
+
+    // Fallback: try just the slug
+    if href.starts_with("/") {
+        let slug = extract_slug_from_href(href);
+        if let Some(offset) = search_fn(slug) {
+            return Some((offset, slug.to_string()));
+        }
+    }
+
+    None
+}
+
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     let _ = page.build()?;
 
@@ -186,30 +217,18 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                     None
                 };
 
-                // Try finding the full href first
-                let result = if let Some(href_start) = try_search(decoded_href.as_ref()) {
-                    // Found full href: use full suggestion as replacement
-                    Some((
-                        href_start,
-                        decoded_href.to_string(),
-                        decoded_suggestion.to_string(),
-                    ))
-                } else if decoded_href.starts_with("/") {
-                    // Fallback: Try extracting and searching for just the slug
-                    // Template links often only have the slug in markdown (e.g., "Web/API/Foo")
-                    let slug = extract_slug_from_href(&decoded_href);
-
-                    if let Some(href_start) = try_search(slug) {
-                        // Found slug: extract slug from suggestion too
-                        let corrected_slug =
-                            extract_slug_from_href(&decoded_suggestion).to_string();
-                        Some((href_start, slug.to_string(), corrected_slug))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
+                // Try finding the full href first, fallback to slug
+                let result = search_with_slug_fallback(&decoded_href, try_search).map(
+                    |(href_start, search_text)| {
+                        // If we found the full href, use full suggestion; if slug, extract slug from suggestion
+                        let replace_text = if search_text == decoded_href.as_ref() {
+                            decoded_suggestion.to_string()
+                        } else {
+                            extract_slug_from_href(&decoded_suggestion).to_string()
+                        };
+                        (href_start, search_text, replace_text)
+                    },
+                );
 
                 if let Some((href_start, search_text, replace_text)) = result {
                     Some(SearchReplaceWithOffset {
@@ -419,32 +438,26 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
         let line_idx = (line as usize).saturating_sub(1);
         let line_start_offset: usize = raw.lines().take(line_idx).map(|l| l.len() + 1).sum();
 
-        // Try searching for the full href first
-        let try_find = |search_text: &str| -> Option<usize> {
-            if let Some(start) = raw[line_start_offset..].find(search_text) {
-                let text_offset = line_start_offset + start;
-                tracing::debug!("Found '{}' at offset {}", search_text, text_offset);
-                Some(text_offset + search_text.len())
-            } else {
-                None
-            }
-        };
-
-        if let Some(offset) = try_find(decoded_href.as_ref()).or_else(|| {
-            // Fallback: Try extracting and searching for just the slug
-            if decoded_href.starts_with("/") {
-                let slug = extract_slug_from_href(&decoded_href);
+        // Try searching for the full href first, fallback to slug
+        if let Some((offset, found_text)) =
+            search_with_slug_fallback(&decoded_href, |search_text| {
+                if let Some(start) = raw[line_start_offset..].find(search_text) {
+                    let text_offset = line_start_offset + start;
+                    tracing::debug!("Found '{}' at offset {}", search_text, text_offset);
+                    Some(text_offset + search_text.len())
+                } else {
+                    None
+                }
+            })
+        {
+            if found_text != decoded_href.as_ref() {
                 tracing::debug!(
                     "Full href not found, trying slug '{}' from line {} (offset {})",
-                    slug,
+                    found_text,
                     line,
                     line_start_offset
                 );
-                try_find(slug)
-            } else {
-                None
             }
-        }) {
             return offset;
         }
 
@@ -472,22 +485,14 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
 
         if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
             // Try full href first, then fallback to slug
-            let slug = if decoded_href.starts_with("/") {
-                Some(extract_slug_from_href(&decoded_href))
-            } else {
-                None
-            };
-            let found = [decoded_href.as_ref()]
-                .into_iter()
-                .chain(slug)
-                .find_map(|search_text| {
+            if let Some((result, _found_text)) =
+                search_with_slug_fallback(&decoded_href, |search_text| {
                     raw[offset..].find(search_text).map(|start| {
                         let text_offset = offset + start;
                         text_offset + search_text.len()
                     })
-                });
-
-            if let Some(result) = found {
+                })
+            {
                 return result;
             }
             return offset;
