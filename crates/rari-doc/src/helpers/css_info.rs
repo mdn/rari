@@ -14,7 +14,6 @@ use super::l10n::l10n_json_data;
 use crate::error::DocError;
 use crate::templ::api::RariApi;
 use crate::templ::render::render_and_decode_ref;
-use crate::templ::templs::links::cssxref::cssxref_internal;
 
 pub static CSS_REF: OnceLock<WebrefCss> = OnceLock::new();
 
@@ -142,13 +141,9 @@ pub fn css_info_properties(
 }
 
 pub fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
-    l10n_json_data(
-        "CSSFormalDefinitions",
-        key,
-        locale,
-    )
-    .inspect_err(|e| tracing::warn!("Localized value for formal definition is missing in content/files/jsondata/L10n-CSSFormalDefinitions.json: {} ({})", key, e))
-    .unwrap_or(key)
+    l10n_json_data("CSSFormalDefinitions", key, locale)
+        // .inspect_err(|e| tracing::warn!("Localized value for formal definition is missing in content/files/jsondata/L10n-CSSFormalDefinitions.json: {} ({})", key, e))
+        .unwrap_or(key)
 }
 
 pub fn write_computed_output(
@@ -193,10 +188,7 @@ pub fn write_computed_output(
                         Cow::Borrowed(localized)
                     })
                     .join(get_css_l10n_for_locale("listSeparator", locale));
-                out.push_str(&render_and_decode_ref(
-                    env,
-                    &add_additional_applies_to(&parsed, property, css_info_data, locale),
-                )?);
+                out.push_str(&render_and_decode_ref(env, &parsed)?);
                 return Ok(());
             } else if s.starts_with('\'') && s.ends_with('\'') {
                 println!(
@@ -222,10 +214,7 @@ pub fn write_computed_output(
                     .split(", ")
                     .map(|keyword| get_css_l10n_for_locale(keyword, locale))
                     .join(", ");
-                out.push_str(&render_and_decode_ref(
-                    env,
-                    &add_additional_applies_to(&replaced_keywords, property, css_info_data, locale),
-                )?);
+                out.push_str(&render_and_decode_ref(env, &replaced_keywords)?);
                 return Ok(());
             }
         }
@@ -261,10 +250,7 @@ pub fn write_computed_output(
         }
         Value::Object(_) => {
             if let Some(localized) = get_for_locale(locale, data).as_str() {
-                out.push_str(&render_and_decode_ref(
-                    env,
-                    &add_additional_applies_to(localized, property, css_info_data, locale),
-                )?);
+                out.push_str(&render_and_decode_ref(env, localized)?);
             } else {
                 write_missing(out, locale)?;
             }
@@ -274,45 +260,45 @@ pub fn write_computed_output(
     Ok(())
 }
 
-fn add_additional_applies_to<'a>(
-    output: &'a str,
-    property: &str,
-    css_info_data: &Value,
-    locale: Locale,
-) -> Cow<'a, str> {
-    if property != "appliesto" || !css_info_data["alsoAppliesTo"].is_array() {
-        return Cow::Borrowed(output);
-    }
+// fn add_additional_applies_to<'a>(
+//     output: &'a str,
+//     property: &str,
+//     css_info_data: &Value,
+//     locale: Locale,
+// ) -> Cow<'a, str> {
+//     if property != "appliesto" || !css_info_data["alsoAppliesTo"].is_array() {
+//         return Cow::Borrowed(output);
+//     }
 
-    let also_applies_to = &css_info_data["alsoAppliesTo"].as_array().unwrap();
+//     let also_applies_to = &css_info_data["alsoAppliesTo"].as_array().unwrap();
 
-    let also_applies_to = also_applies_to
-        .iter()
-        .filter_map(Value::as_str)
-        .filter(|element| *element != "::placeholder" && !element.is_empty())
-        .map(|element| {
-            cssxref_internal(element, None, None, locale).unwrap_or_else(|e| e.to_string())
-        })
-        .collect::<Vec<_>>();
+//     let also_applies_to = also_applies_to
+//         .iter()
+//         .filter_map(Value::as_str)
+//         .filter(|element| *element != "::placeholder" && !element.is_empty())
+//         .map(|element| {
+//             cssxref_internal(element, None, None, locale).unwrap_or_else(|e| e.to_string())
+//         })
+//         .collect::<Vec<_>>();
 
-    if also_applies_to.is_empty() {
-        return Cow::Borrowed(output);
-    }
+//     if also_applies_to.is_empty() {
+//         return Cow::Borrowed(output);
+//     }
 
-    let mut additional_applies_to = String::new();
-    for (i, additional) in also_applies_to.iter().enumerate() {
-        additional_applies_to.push_str(additional.as_str());
-        if also_applies_to.len() - i > 2 {
-            additional_applies_to.push_str(get_css_l10n_for_locale("listSeparator", locale));
-        } else if also_applies_to.len() - i > 1 {
-            additional_applies_to.push_str(get_css_l10n_for_locale("andInEnumeration", locale));
-        }
-    }
-    Cow::Owned(remove_me_replace_placeholder(
-        get_css_l10n_for_locale("applyingToMultiple", locale),
-        &[output, &additional_applies_to],
-    ))
-}
+//     let mut additional_applies_to = String::new();
+//     for (i, additional) in also_applies_to.iter().enumerate() {
+//         additional_applies_to.push_str(additional.as_str());
+//         if also_applies_to.len() - i > 2 {
+//             additional_applies_to.push_str(get_css_l10n_for_locale("listSeparator", locale));
+//         } else if also_applies_to.len() - i > 1 {
+//             additional_applies_to.push_str(get_css_l10n_for_locale("andInEnumeration", locale));
+//         }
+//     }
+//     Cow::Owned(remove_me_replace_placeholder(
+//         get_css_l10n_for_locale("applyingToMultiple", locale),
+//         &[output, &additional_applies_to],
+//     ))
+// }
 
 // pub fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
 //     if let Some(data) = mdn_data_files().css_l10n.get(key) {
@@ -338,7 +324,7 @@ pub fn get_for_locale(locale: Locale, lookup: &Value) -> &Value {
 pub fn css_computed(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_csscomputed", locale)?;
     RariApi::link(
-        "/Web/CSS/CSS_cascade/Value_processing#computed_value",
+        "/Web/CSS/Guides/Cascade/Property_value_processing#computed_value",
         Some(locale),
         Some(copy),
         false,
@@ -350,7 +336,7 @@ pub fn css_computed(locale: Locale) -> Result<String, DocError> {
 pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinherited", locale)?;
     RariApi::link(
-        "/Web/CSS/CSS_cascade/Inheritance",
+        "/Web/CSS/Guides/Cascade/Inheritance",
         Some(locale),
         Some(copy),
         false,
@@ -362,7 +348,7 @@ pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
 pub fn css_initial(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinitial", locale)?;
     RariApi::link(
-        "/Web/CSS/CSS_cascade/Value_processing#initial_value",
+        "/Web/CSS/Guides/Cascade/Property_value_processing",
         Some(locale),
         Some(copy),
         false,
