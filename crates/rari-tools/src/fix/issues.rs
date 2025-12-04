@@ -38,6 +38,50 @@ fn extract_slug_from_href(href: &str) -> &str {
     }
 }
 
+/// Direction to adjust when seeking a character boundary
+#[derive(Debug, Clone, Copy)]
+enum Direction {
+    Forward,
+    Backward,
+}
+
+/// Adjusts an offset to the nearest UTF-8 character boundary.
+///
+/// If the offset is already on a character boundary, returns it unchanged.
+/// Otherwise, adjusts forward (for Forward) or backward (for Backward) to find
+/// the nearest valid boundary.
+///
+/// # Arguments
+/// * `text` - The text containing the offset
+/// * `offset` - The byte offset to adjust
+/// * `direction` - Which direction to adjust if not on a boundary
+fn adjust_to_char_boundary(text: &str, offset: usize, direction: Direction) -> usize {
+    if offset >= text.len() {
+        return text.len();
+    }
+
+    if text.is_char_boundary(offset) {
+        return offset;
+    }
+
+    match direction {
+        Direction::Forward => {
+            let mut adjusted = offset;
+            while adjusted < text.len() && !text.is_char_boundary(adjusted) {
+                adjusted += 1;
+            }
+            adjusted
+        }
+        Direction::Backward => {
+            let mut adjusted = offset;
+            while adjusted > 0 && !text.is_char_boundary(adjusted) {
+                adjusted -= 1;
+            }
+            adjusted
+        }
+    }
+}
+
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     let _ = page.build()?;
 
@@ -115,20 +159,16 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                 // We need to find the START by searching backward for the text
 
                 // Ensure offset_end is on a char boundary
-                let mut offset_end_adjusted = offset_end;
-                while offset_end_adjusted < raw.len() && !raw.is_char_boundary(offset_end_adjusted)
-                {
-                    offset_end_adjusted += 1;
-                }
+                let offset_end_adjusted =
+                    adjust_to_char_boundary(raw, offset_end, Direction::Forward);
 
                 // Try 1: Search for the full href
                 let try_search = |search_text: &str| -> Option<usize> {
-                    let mut search_start = offset_end.saturating_sub(search_text.len());
+                    let search_start = offset_end.saturating_sub(search_text.len());
 
                     // Ensure search_start is on a char boundary
-                    while search_start > 0 && !raw.is_char_boundary(search_start) {
-                        search_start -= 1;
-                    }
+                    let search_start =
+                        adjust_to_char_boundary(raw, search_start, Direction::Backward);
 
                     if let Some(relative_pos) =
                         raw[search_start..offset_end_adjusted].rfind(search_text)
@@ -213,21 +253,15 @@ pub fn apply_suggestions(
 
     for suggestion in suggestions {
         // Ensure suggestion.offset is on a character boundary
-        let suggestion_offset = if raw.is_char_boundary(suggestion.offset) {
-            suggestion.offset
-        } else {
-            // Adjust to the nearest valid character boundary (previous char start)
-            let mut offset = suggestion.offset;
-            while offset > 0 && !raw.is_char_boundary(offset) {
-                offset -= 1;
-            }
+        let suggestion_offset =
+            adjust_to_char_boundary(raw, suggestion.offset, Direction::Backward);
+        if suggestion_offset != suggestion.offset {
             tracing::warn!(
                 "Adjusted suggestion offset from {} to {} (not on char boundary)",
                 suggestion.offset,
-                offset
+                suggestion_offset
             );
-            offset
-        };
+        }
 
         // Skip this suggestion if it overlaps with previously applied region
         if suggestion_offset < current_offset {
@@ -347,19 +381,17 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
         None
     };
     // Verify the calculated offset is on a UTF-8 character boundary
-    if let Some(mut offset_value) = offset
+    if let Some(offset_value) = offset
         && offset_value < input.len()
         && !input.is_char_boundary(offset_value)
     {
+        let adjusted = adjust_to_char_boundary(input, offset_value, Direction::Backward);
         tracing::warn!(
-            "calculated offset {} is not on char boundary - adjusting (this may indicate a bug)",
-            offset_value
+            "calculated offset {} is not on char boundary - adjusting to {} (this may indicate a bug)",
+            offset_value,
+            adjusted
         );
-        // Move backwards to the nearest char boundary
-        while offset_value > 0 && !input.is_char_boundary(offset_value) {
-            offset_value -= 1;
-        }
-        return Some(offset_value);
+        return Some(adjusted);
     }
     offset
 }
