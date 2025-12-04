@@ -1,6 +1,6 @@
 [package]
 name = "rari-tools"
-version = "0.2.5"
+version = "0.2.6"
 edition.workspace = true
 authors = [
   "Andi Pieper <apieper@mozilla.com>",
@@ -28,6 +28,7 @@ pretty_yaml.workspace = true
 yaml_parser.workspace = true
 const_format.workspace = true
 dialoguer.workspace = true
+html-escape.workspace = true
 
 csv = "1"
 
