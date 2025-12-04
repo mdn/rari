@@ -949,6 +949,72 @@ Some content here.\n"
     }
 
     #[test]
+    fn test_template_redirected_link() {
+        // Test that redirected links in templates can be fixed
+        // This is for TemplRedirectedLink (not just TemplIllCasedLink)
+        let raw = "---\n\
+title: Indexed collections\n\
+slug: Web/JavaScript/Guide/Indexed_collections\n\
+---\n\
+{{PreviousNext(\"Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges\", \"Web/JavaScript/Guide/Keyed_collections\")}}\n\
+\n\
+Some content here.\n";
+
+        // The first parameter is a redirect (not just ill-cased)
+        let issues = vec![DIssue::Macros {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some(
+                    "Macro produces link /fr/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges which is a redirect"
+                        .to_string(),
+                ),
+                suggestion: Some(
+                    "/fr/docs/Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences"
+                        .to_string(),
+                ),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(5),
+                column: Some(1), // Only knows the line, not the specific parameter
+                end_line: Some(5),
+                end_column: Some(1),
+                source_context: None,
+                filepath: Some("/path/to/indexed_collections/index.md".to_string()),
+                name: IssueType::TemplRedirectedLink,
+            },
+            macro_name: Some("PreviousNext".to_string()),
+            href: Some("/fr/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges".to_string()),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        // Should find the slug and suggest the fix
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(
+            suggestions[0].search, "Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges",
+            "Should use slug for search"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences",
+            "Should use slug for replacement with the actual redirect target"
+        );
+
+        // Apply the suggestion and verify the result
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            "---\n\
+title: Indexed collections\n\
+slug: Web/JavaScript/Guide/Indexed_collections\n\
+---\n\
+{{PreviousNext(\"Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences\", \"Web/JavaScript/Guide/Keyed_collections\")}}\n\
+\n\
+Some content here.\n"
+        );
+    }
+
+    #[test]
     fn test_slug_fallback_with_no_column() {
         // Test slug fallback when column is None (template at beginning of line)
         // This is common when {{PreviousNext}} starts at column 1
