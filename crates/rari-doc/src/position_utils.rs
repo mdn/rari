@@ -17,6 +17,102 @@
 //! - The emoji itself is 4 bytes long but counts as 1 character
 //! - The space after it is at byte offset 10 but character position 7
 
+/// Direction to adjust when seeking a character boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    /// Move forward (toward the end of the string) to find a boundary
+    Forward,
+    /// Move backward (toward the start of the string) to find a boundary
+    Backward,
+}
+
+/// Adjusts an offset to the nearest UTF-8 character boundary.
+///
+/// If the offset is already on a character boundary, returns it unchanged.
+/// Otherwise, adjusts forward (for Forward) or backward (for Backward) to find
+/// the nearest valid boundary.
+///
+/// # Arguments
+///
+/// * `text` - The text containing the offset
+/// * `offset` - The byte offset to adjust
+/// * `direction` - Which direction to adjust if not on a boundary
+///
+/// # Returns
+///
+/// The adjusted offset that is guaranteed to be on a UTF-8 character boundary.
+///
+/// # Examples
+///
+/// ```
+/// use rari_doc::position_utils::{adjust_to_char_boundary, Direction};
+///
+/// let text = "Café"; // é is 2 bytes at positions 3-4
+///
+/// // Offset 3 is on a boundary (start of 'é')
+/// assert_eq!(adjust_to_char_boundary(text, 3, Direction::Backward), 3);
+///
+/// // Offset 4 is in the middle of 'é'
+/// assert_eq!(adjust_to_char_boundary(text, 4, Direction::Backward), 3); // Adjusts to start of 'é'
+/// assert_eq!(adjust_to_char_boundary(text, 4, Direction::Forward), 5);  // Adjusts to end (past 'é')
+/// ```
+pub fn adjust_to_char_boundary(text: &str, offset: usize, direction: Direction) -> usize {
+    if offset >= text.len() {
+        return text.len();
+    }
+
+    if text.is_char_boundary(offset) {
+        return offset;
+    }
+
+    match direction {
+        Direction::Forward => {
+            let mut adjusted = offset;
+            while adjusted < text.len() && !text.is_char_boundary(adjusted) {
+                adjusted += 1;
+            }
+            adjusted
+        }
+        Direction::Backward => {
+            let mut adjusted = offset;
+            while adjusted > 0 && !text.is_char_boundary(adjusted) {
+                adjusted -= 1;
+            }
+            adjusted
+        }
+    }
+}
+
+/// Calculates the byte offset where a line starts in the text.
+///
+/// Each line includes its content plus the newline character (counted as +1).
+///
+/// # Arguments
+///
+/// * `text` - The text to search in
+/// * `line_idx` - The 0-based line index
+///
+/// # Returns
+///
+/// The byte offset where the line begins (0 for the first line).
+///
+/// # Examples
+///
+/// ```
+/// use rari_doc::position_utils::calculate_line_start_offset;
+///
+/// let text = "First\nSecond\nThird";
+/// assert_eq!(calculate_line_start_offset(text, 0), 0);  // "First" starts at byte 0
+/// assert_eq!(calculate_line_start_offset(text, 1), 6);  // "Second" starts at byte 6 (5 + 1 newline)
+/// assert_eq!(calculate_line_start_offset(text, 2), 13); // "Third" starts at byte 13 (6 + 6 + 1 newline)
+/// ```
+pub fn calculate_line_start_offset(text: &str, line_idx: usize) -> usize {
+    text.lines()
+        .take(line_idx)
+        .map(|line| line.len() + 1) // +1 for newline character
+        .sum()
+}
+
 /// Convert a byte offset within a line to a character position.
 ///
 /// # Arguments
