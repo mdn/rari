@@ -56,41 +56,23 @@ impl RariApi {
                     match warn {
                         LinkWarn::All | LinkWarn::IgnoreCase if !ill_cased => {
                             let ic = get_issue_counter();
-                            if let Some(slug) = source_slug {
-                                tracing::warn!(
-                                    source = "templ-redirected-link",
-                                    ic = ic,
-                                    url = url,
-                                    href = redirect.as_ref(),
-                                    source_slug = slug,
-                                );
-                            } else {
-                                tracing::warn!(
-                                    source = "templ-redirected-link",
-                                    ic = ic,
-                                    url = url,
-                                    href = redirect.as_ref()
-                                );
-                            }
+                            tracing::warn!(
+                                source = "templ-redirected-link",
+                                ic = ic,
+                                url = url,
+                                href = redirect.as_ref(),
+                                source_slug = source_slug,
+                            );
                         }
                         LinkWarn::All if ill_cased => {
                             let ic = get_issue_counter();
-                            if let Some(slug) = source_slug {
-                                tracing::warn!(
-                                    source = "templ-ill-cased-link",
-                                    ic = ic,
-                                    url = url,
-                                    redirect = redirect.as_ref(),
-                                    source_slug = slug,
-                                );
-                            } else {
-                                tracing::warn!(
-                                    source = "templ-ill-cased-link",
-                                    ic = ic,
-                                    url = url,
-                                    redirect = redirect.as_ref()
-                                );
-                            }
+                            tracing::warn!(
+                                source = "templ-ill-cased-link",
+                                ic = ic,
+                                url = url,
+                                redirect = redirect.as_ref(),
+                                source_slug = source_slug,
+                            );
                         }
                         _ => {}
                     }

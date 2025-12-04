@@ -188,28 +188,16 @@ pub fn handle_internal_link(
                         .unwrap_or((-1, -1));
                     let ic = get_issue_counter();
                     if remove_href {
-                        if let Some(ref slug) = source_slug {
-                            tracing::warn!(
-                                source = "broken-link",
-                                ic = ic,
-                                line = line,
-                                col = col,
-                                end_line = end_line,
-                                end_col = end_col,
-                                url = original_href,
-                                source_slug = slug.as_str(),
-                            );
-                        } else {
-                            tracing::warn!(
-                                source = "broken-link",
-                                ic = ic,
-                                line = line,
-                                col = col,
-                                end_line = end_line,
-                                end_col = end_col,
-                                url = original_href,
-                            );
-                        }
+                        tracing::warn!(
+                            source = "broken-link",
+                            ic = ic,
+                            line = line,
+                            col = col,
+                            end_line = end_line,
+                            end_col = end_col,
+                            url = original_href,
+                            source_slug = source_slug,
+                        );
                     } else {
                         let source = if original_href.to_lowercase() == resolved_href.to_lowercase()
                         {
@@ -217,30 +205,17 @@ pub fn handle_internal_link(
                         } else {
                             "redirected-link"
                         };
-                        if let Some(ref slug) = source_slug {
-                            tracing::warn!(
-                                source = source,
-                                ic = ic,
-                                line = line,
-                                col = col,
-                                end_line = end_line,
-                                end_col = end_col,
-                                url = original_href,
-                                redirect = resolved_href,
-                                source_slug = slug.as_str(),
-                            );
-                        } else {
-                            tracing::warn!(
-                                source = source,
-                                ic = ic,
-                                line = line,
-                                col = col,
-                                end_line = end_line,
-                                end_col = end_col,
-                                url = original_href,
-                                redirect = resolved_href
-                            );
-                        }
+                        tracing::warn!(
+                            source = source,
+                            ic = ic,
+                            line = line,
+                            col = col,
+                            end_line = end_line,
+                            end_col = end_col,
+                            url = original_href,
+                            redirect = resolved_href,
+                            source_slug = source_slug,
+                        );
                     }
                     if data_issues {
                         el.set_attribute("data-flaw", &ic.to_string())?;
@@ -249,38 +224,25 @@ pub fn handle_internal_link(
             } else {
                 let ic = get_issue_counter();
                 if remove_href {
-                    if let Some(ref slug) = source_slug {
-                        tracing::warn!(
-                            source = "broken-link",
-                            ic = ic,
-                            url = original_href,
-                            source_slug = slug.as_str()
-                        );
-                    } else {
-                        tracing::warn!(source = "broken-link", ic = ic, url = original_href);
-                    }
+                    tracing::warn!(
+                        source = "broken-link",
+                        ic = ic,
+                        url = original_href,
+                        source_slug = source_slug,
+                    );
                 } else {
                     let source = if original_href.to_lowercase() == resolved_href.to_lowercase() {
                         "ill-cased-link"
                     } else {
                         "redirected-link"
                     };
-                    if let Some(ref slug) = source_slug {
-                        tracing::warn!(
-                            source = source,
-                            ic = ic,
-                            url = original_href,
-                            redirect = resolved_href,
-                            source_slug = slug.as_str(),
-                        );
-                    } else {
-                        tracing::warn!(
-                            source = source,
-                            ic = ic,
-                            url = original_href,
-                            redirect = resolved_href
-                        );
-                    }
+                    tracing::warn!(
+                        source = source,
+                        ic = ic,
+                        url = original_href,
+                        redirect = resolved_href,
+                        source_slug = source_slug,
+                    );
                 }
                 if data_issues {
                     el.set_attribute("data-flaw", &ic.to_string())?;
