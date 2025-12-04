@@ -3,7 +3,7 @@ name: Build Content and Diff
 on:
   pull_request:
     paths:
-      - '**/*.rs'
+      - "**/*.rs"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -20,7 +20,7 @@ env:
 
 jobs:
   build-and-diff:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-dex-builder
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
