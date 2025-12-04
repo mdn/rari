@@ -20,7 +20,7 @@ env:
 
 jobs:
   build-and-diff:
-    runs-on: ubuntu-latest-dex-builder
+    runs-on: ubuntu-latest
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
