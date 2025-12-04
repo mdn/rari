@@ -348,12 +348,8 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
         // Try searching for the full href first, fallback to slug
         if let Some((offset, _found_text)) =
             search_with_slug_fallback(&decoded_href, |search_text| {
-                if let Some(start) = raw[line_start_offset..].find(search_text) {
-                    let text_offset = line_start_offset + start;
-                    Some(text_offset + search_text.len())
-                } else {
-                    None
-                }
+                find_non_prefix_match(raw, line_start_offset, search_text)
+                    .map(|start| start + search_text.len())
             })
         {
             return offset;
@@ -361,6 +357,47 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     }
 
     0
+}
+
+/// Finds a match for search_text that is NOT a prefix of a longer string.
+/// Checks that the match is followed by a delimiter (like ", /, ), or end of string),
+/// not by alphanumeric or / characters.
+fn find_non_prefix_match(raw: &str, line_start_offset: usize, search_text: &str) -> Option<usize> {
+    let line_content = &raw[line_start_offset..];
+    let mut search_pos = 0;
+
+    while let Some(rel_pos) = line_content[search_pos..].find(search_text) {
+        let abs_pos = search_pos + rel_pos;
+        let match_end = abs_pos + search_text.len();
+
+        // Check what comes after the match
+        let is_complete_match = if match_end < line_content.len() {
+            let next_char = line_content[match_end..].chars().next();
+            match next_char {
+                // These delimiters indicate a complete match (not a prefix)
+                Some('"') | Some('\'') | Some(',') | Some(')') | Some(' ') | Some('\t')
+                | Some('\n') => true,
+                // A forward slash means this is a prefix of a longer path
+                Some('/') => false,
+                // Alphanumeric means it's part of a longer string
+                Some(c) if c.is_alphanumeric() => false,
+                // Other characters are treated as delimiters
+                _ => true,
+            }
+        } else {
+            // At end of line - this is a complete match
+            true
+        };
+
+        if is_complete_match {
+            return Some(line_start_offset + abs_pos);
+        }
+
+        // Continue searching after this position
+        search_pos = abs_pos + 1;
+    }
+
+    None
 }
 
 #[cfg(test)]
@@ -857,6 +894,149 @@ title: Indexed collections\n\
 slug: Web/JavaScript/Guide/Indexed_collections\n\
 ---\n\
 {{PreviousNext(\"Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences\", \"Web/JavaScript/Guide/Keyed_collections\")}}\n\
+\n\
+Some content here.\n"
+        );
+    }
+
+    #[test]
+    fn test_previousmenunext_with_shared_prefix() {
+        // Test the exact case from the user's example where all three parameters
+        // share a common prefix: "Learn/CSS/Styling_text"
+        let raw = "---\n\
+title: Styling lists\n\
+slug: Learn_web_development/Core/Text_styling/Styling_lists\n\
+---\n\
+{{PreviousMenuNext(\"Learn/CSS/Styling_text/Fundamentals\", \"Learn/CSS/Styling_text/Styling_links\", \"Learn/CSS/Styling_text\")}}\n\
+\n\
+Some content here.\n";
+
+        let issues = vec![
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 1,
+                    explanation: Some(
+                        "/en-US/docs/Learn/CSS/Styling_text/Fundamentals should be /en-US/docs/Learn_web_development/Core/Text_styling/Fundamentals"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Learn_web_development/Core/Text_styling/Fundamentals".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None,
+                    end_line: Some(5),
+                    end_column: None,
+                    source_context: None,
+                    filepath: Some("/path/to/styling_lists/index.md".to_string()),
+                    name: IssueType::TemplRedirectedLink,
+                },
+                macro_name: Some("PreviousMenuNext".to_string()),
+                href: Some("/en-US/docs/Learn/CSS/Styling_text/Fundamentals".to_string()),
+            },
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 2,
+                    explanation: Some(
+                        "/en-US/docs/Learn/CSS/Styling_text/Styling_links should be /en-US/docs/Learn_web_development/Core/Text_styling/Styling_links"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Learn_web_development/Core/Text_styling/Styling_links".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None,
+                    end_line: Some(5),
+                    end_column: None,
+                    source_context: None,
+                    filepath: Some("/path/to/styling_lists/index.md".to_string()),
+                    name: IssueType::TemplRedirectedLink,
+                },
+                macro_name: Some("PreviousMenuNext".to_string()),
+                href: Some("/en-US/docs/Learn/CSS/Styling_text/Styling_links".to_string()),
+            },
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 3,
+                    explanation: Some(
+                        "/en-US/docs/Learn/CSS/Styling_text should be /en-US/docs/Learn_web_development/Core/Text_styling"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Learn_web_development/Core/Text_styling".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None,
+                    end_line: Some(5),
+                    end_column: None,
+                    source_context: None,
+                    filepath: Some("/path/to/styling_lists/index.md".to_string()),
+                    name: IssueType::TemplRedirectedLink,
+                },
+                macro_name: Some("PreviousMenuNext".to_string()),
+                href: Some("/en-US/docs/Learn/CSS/Styling_text".to_string()),
+            },
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        // Should find all three parameters with DIFFERENT offsets
+        assert_eq!(suggestions.len(), 3, "Should have 3 distinct suggestions");
+
+        // Verify the offsets are different (not all pointing to the first occurrence)
+        let offsets: Vec<usize> = suggestions.iter().map(|s| s.offset).collect();
+        let unique_offsets: std::collections::HashSet<_> = offsets.iter().collect();
+        assert_eq!(
+            unique_offsets.len(),
+            3,
+            "All three suggestions should have unique offsets, got: {:?}",
+            offsets
+        );
+
+        // First parameter (longest path with /Fundamentals)
+        assert_eq!(
+            suggestions[0].search, "Learn/CSS/Styling_text/Fundamentals",
+            "First should be the first parameter"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "Learn_web_development/Core/Text_styling/Fundamentals"
+        );
+
+        // Second parameter (has /Styling_links)
+        assert_eq!(
+            suggestions[1].search, "Learn/CSS/Styling_text/Styling_links",
+            "Second should be the second parameter"
+        );
+        assert_eq!(
+            suggestions[1].replace,
+            "Learn_web_development/Core/Text_styling/Styling_links"
+        );
+
+        // Third parameter (shortest, just the base path)
+        assert_eq!(
+            suggestions[2].search, "Learn/CSS/Styling_text",
+            "Third should be the third parameter"
+        );
+        assert_eq!(
+            suggestions[2].replace,
+            "Learn_web_development/Core/Text_styling"
+        );
+
+        // Apply the suggestions and verify the result
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            "---\n\
+title: Styling lists\n\
+slug: Learn_web_development/Core/Text_styling/Styling_lists\n\
+---\n\
+{{PreviousMenuNext(\"Learn_web_development/Core/Text_styling/Fundamentals\", \"Learn_web_development/Core/Text_styling/Styling_links\", \"Learn_web_development/Core/Text_styling\")}}\n\
 \n\
 Some content here.\n"
         );
