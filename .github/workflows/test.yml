@@ -16,12 +16,15 @@ env:
   CONTENT_ROOT: ${{ github.workspace }}/content/files
   CONTENT_TRANSLATED_ROOT: ${{ github.workspace }}/translated-content/files
   CARGO_TERM_COLOR: always
-  RUSTC_WRAPPER: "sccache"
-  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_GHA_ENABLED: "true"
+
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
@@ -38,6 +41,11 @@ jobs:
   fmt:
     needs: build
     runs-on: ubuntu-latest
+    
+    env:
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_GHA_ENABLED: "true"
+
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
@@ -56,6 +64,11 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
+    
+    env:
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_GHA_ENABLED: "true"
+
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
@@ -73,7 +86,6 @@ jobs:
         run: cargo test --verbose --workspace --doc --features doctest --no-fail-fast
 
   clippy:
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
@@ -84,9 +96,6 @@ jobs:
         with:
           components: clippy
 
-      - name: sccache-cache
-        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
-
       - name: Run clippy
         run: cargo clippy --all-features --workspace -- -Dwarnings
 
@@ -94,6 +103,10 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    
+    env:
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_GHA_ENABLED: "true"
 
     steps:
       - name: Checkout mdn/rari
@@ -126,7 +139,7 @@ jobs:
         working-directory: rari
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run --release content fix-flaws
+        run: cargo run content fix-flaws
 
       - name: Show content changes
         working-directory: content
