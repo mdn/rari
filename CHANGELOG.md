@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7](https://github.com/mdn/rari/compare/v0.2.6...v0.2.7) (2025-12-04)
+
+
+### Features
+
+* **fix-flaws:** fix slugs in macro parameters ([#413](https://github.com/mdn/rari/issues/413)) ([a21dd87](https://github.com/mdn/rari/commit/a21dd875771e5873cf5c4fe0b4bc42362437dbb1))
+
+
+### Miscellaneous
+
+* **deps:** bump js-yaml from 4.1.0 to 4.1.1 in /rari-npm ([#409](https://github.com/mdn/rari/issues/409)) ([c21a01c](https://github.com/mdn/rari/commit/c21a01c1466778ad8a1b9a26664afa0da6fbf646))
+* **doc:** remove EmbedInteractiveExample macro ([#411](https://github.com/mdn/rari/issues/411)) ([fd707ee](https://github.com/mdn/rari/commit/fd707ee460428bbe745e53aabe29d710cd9d6f80))
+
 ## [0.2.6](https://github.com/mdn/rari/compare/v0.2.5...v0.2.6) (2025-12-03)
 
 
