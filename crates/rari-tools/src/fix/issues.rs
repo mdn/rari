@@ -916,13 +916,11 @@ Some content here.\n";
 
         // First suggestion: should fall back to slug and fix casing
         assert_eq!(
-            suggestions[0].search,
-            "Web/JavaScript/Guide/Regular_Expressions",
+            suggestions[0].search, "Web/JavaScript/Guide/Regular_Expressions",
             "Should use slug (not full href) for search"
         );
         assert_eq!(
-            suggestions[0].replace,
-            "Web/JavaScript/Guide/Regular_expressions",
+            suggestions[0].replace, "Web/JavaScript/Guide/Regular_expressions",
             "Should use slug (not full href) for replacement"
         );
 
@@ -1019,13 +1017,11 @@ Some content here.\n";
 
         // First suggestion: should fall back to slug and fix casing
         assert_eq!(
-            suggestions[0].search,
-            "Web/JavaScript/Guide/Regular_Expressions",
+            suggestions[0].search, "Web/JavaScript/Guide/Regular_Expressions",
             "Should use slug for search even without column info"
         );
         assert_eq!(
-            suggestions[0].replace,
-            "Web/JavaScript/Guide/Regular_expressions",
+            suggestions[0].replace, "Web/JavaScript/Guide/Regular_expressions",
             "Should use slug for replacement even without column info"
         );
 
