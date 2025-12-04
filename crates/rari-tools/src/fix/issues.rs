@@ -3,7 +3,9 @@ use std::io::{BufWriter, Write};
 
 use rari_doc::issues::{DIssue, IN_MEMORY};
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
-use rari_doc::position_utils::char_to_byte_column;
+use rari_doc::position_utils::{
+    Direction, adjust_to_char_boundary, calculate_line_start_offset, char_to_byte_column,
+};
 use tracing::{Level, span};
 
 use crate::error::ToolError;
@@ -38,50 +40,6 @@ fn extract_slug_from_href(href: &str) -> &str {
     }
 }
 
-/// Direction to adjust when seeking a character boundary
-#[derive(Debug, Clone, Copy)]
-enum Direction {
-    Forward,
-    Backward,
-}
-
-/// Adjusts an offset to the nearest UTF-8 character boundary.
-///
-/// If the offset is already on a character boundary, returns it unchanged.
-/// Otherwise, adjusts forward (for Forward) or backward (for Backward) to find
-/// the nearest valid boundary.
-///
-/// # Arguments
-/// * `text` - The text containing the offset
-/// * `offset` - The byte offset to adjust
-/// * `direction` - Which direction to adjust if not on a boundary
-fn adjust_to_char_boundary(text: &str, offset: usize, direction: Direction) -> usize {
-    if offset >= text.len() {
-        return text.len();
-    }
-
-    if text.is_char_boundary(offset) {
-        return offset;
-    }
-
-    match direction {
-        Direction::Forward => {
-            let mut adjusted = offset;
-            while adjusted < text.len() && !text.is_char_boundary(adjusted) {
-                adjusted += 1;
-            }
-            adjusted
-        }
-        Direction::Backward => {
-            let mut adjusted = offset;
-            while adjusted > 0 && !text.is_char_boundary(adjusted) {
-                adjusted -= 1;
-            }
-            adjusted
-        }
-    }
-}
-
 /// Searches for an href in text, trying the full href first, then falling back to just the slug.
 ///
 /// This handles template-generated links where the markdown contains only the slug portion
@@ -111,23 +69,6 @@ where
     }
 
     None
-}
-
-/// Calculates the byte offset where a line starts in the text.
-///
-/// Each line includes its content plus the newline character (counted as +1).
-///
-/// # Arguments
-/// * `text` - The text to search in
-/// * `line_idx` - The 0-based line index
-///
-/// # Returns
-/// The byte offset where the line begins (0 for the first line)
-fn calculate_line_start_offset(text: &str, line_idx: usize) -> usize {
-    text.lines()
-        .take(line_idx)
-        .map(|line| line.len() + 1) // +1 for newline character
-        .sum()
 }
 
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
