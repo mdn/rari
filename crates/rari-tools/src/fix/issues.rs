@@ -113,6 +113,23 @@ where
     None
 }
 
+/// Calculates the byte offset where a line starts in the text.
+///
+/// Each line includes its content plus the newline character (counted as +1).
+///
+/// # Arguments
+/// * `text` - The text to search in
+/// * `line_idx` - The 0-based line index
+///
+/// # Returns
+/// The byte offset where the line begins (0 for the first line)
+fn calculate_line_start_offset(text: &str, line_idx: usize) -> usize {
+    text.lines()
+        .take(line_idx)
+        .map(|line| line.len() + 1) // +1 for newline character
+        .sum()
+}
+
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     let _ = page.build()?;
 
@@ -386,11 +403,7 @@ fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) 
     let lines = new_line - line;
 
     let offset = if new_line > line {
-        let begin_of_line = input[offset..]
-            .lines()
-            .take(lines)
-            .map(|line| line.len() + 1)
-            .sum::<usize>();
+        let begin_of_line = calculate_line_start_offset(&input[offset..], lines);
         let new_column_offset = new_column;
         Some(offset + begin_of_line + new_column_offset)
     } else if new_line == line && new_column > column {
@@ -436,7 +449,7 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     // If we have a line number, search from the start of that line
     if let Some(line) = line_num {
         let line_idx = (line as usize).saturating_sub(1);
-        let line_start_offset: usize = raw.lines().take(line_idx).map(|l| l.len() + 1).sum();
+        let line_start_offset = calculate_line_start_offset(raw, line_idx);
 
         // Try searching for the full href first, fallback to slug
         if let Some((offset, found_text)) =
