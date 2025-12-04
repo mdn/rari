@@ -407,10 +407,11 @@ mod tests {
 
     #[test]
     fn test_apply_suggestions_with_duplicate_offsets() {
-        let raw = "[Box Alignment][box-alignment]\n\
-                   [Box Alignment][box-alignment]\n\
-                   \n\
-                   [box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n";
+        let raw = r#"[Box Alignment][box-alignment]
+[Box Alignment][box-alignment]
+
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment
+"#;
 
         let suggestions = vec![
             SearchReplaceWithOffset {
@@ -427,34 +428,38 @@ mod tests {
 
         let result = apply_suggestions(raw, &suggestions).unwrap();
 
-        let expected = "[Box Alignment][box-alignment]\n\
-                        [Box Alignment][box-alignment]\n\
-                        \n\
-                        [box-alignment]: /en-US/docs/Web/CSS/Guides/Box_alignment\n";
+        let expected = r#"[Box Alignment][box-alignment]
+[Box Alignment][box-alignment]
+
+[box-alignment]: /en-US/docs/Web/CSS/Guides/Box_alignment
+"#;
 
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_collect_suggestions_with_duplicate_broken_links() {
-        let raw = "---\n\
-title: CSS layout cookbook\n\
-short-title: Layout cookbook\n\
-slug: Web/CSS/How_to/Layout_cookbook\n\
-page-type: landing-page\n\
-sidebar: cssref\n\
----\n\
-[Box Alignment][box-alignment]\n\
-[Flexbox][flexbox] [Box Alignment][box-alignment]\n\
-\n\
-[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n\
-[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n";
+        let raw = r#"---
+title: CSS layout cookbook
+short-title: Layout cookbook
+slug: Web/CSS/How_to/Layout_cookbook
+page-type: landing-page
+sidebar: cssref
+---
+[Box Alignment][box-alignment]
+[Flexbox][flexbox] [Box Alignment][box-alignment]
+
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment
+"#;
 
         let issues = vec![
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 1,
-                    explanation: Some("/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string()),
+                    explanation: Some(
+                        "/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string(),
+                    ),
                     suggestion: Some("/en-US/docs/Web/CSS/Guides/Box_alignment".to_string()),
                     fixable: Some(true),
                     fixed: false,
@@ -462,7 +467,16 @@ sidebar: cssref\n\
                     column: Some(1),
                     end_line: Some(9),
                     end_column: Some(30),
-                    source_context: Some("\n[Box Alignment][box-alignment]\n^\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n".to_string()),
+                    source_context: Some(
+                        r#"
+[Box Alignment][box-alignment]
+^
+[Flexbox][flexbox] [Box Alignment][box-alignment]
+
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout
+"#
+                        .to_string(),
+                    ),
                     filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
                     name: IssueType::RedirectedLink,
                 },
@@ -471,7 +485,9 @@ sidebar: cssref\n\
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 2,
-                    explanation: Some("/en-US/docs/Web/CSS/CSS_flexible_box_layout is a redirect".to_string()),
+                    explanation: Some(
+                        "/en-US/docs/Web/CSS/CSS_flexible_box_layout is a redirect".to_string(),
+                    ),
                     suggestion: Some("/en-US/docs/Web/CSS/Guides/Flexible_box_layout".to_string()),
                     fixable: Some(true),
                     fixed: false,
@@ -479,7 +495,17 @@ sidebar: cssref\n\
                     column: Some(1),
                     end_line: Some(10),
                     end_column: Some(30),
-                    source_context: Some("\n[Box Alignment][box-alignment]\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n^\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n".to_string()),
+                    source_context: Some(
+                        r#"
+[Box Alignment][box-alignment]
+[Flexbox][flexbox] [Box Alignment][box-alignment]
+^
+
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment
+"#
+                        .to_string(),
+                    ),
                     filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
                     name: IssueType::RedirectedLink,
                 },
@@ -488,7 +514,9 @@ sidebar: cssref\n\
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 3,
-                    explanation: Some("/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string()),
+                    explanation: Some(
+                        "/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string(),
+                    ),
                     suggestion: Some("/en-US/docs/Web/CSS/Guides/Box_alignment".to_string()),
                     fixable: Some(true),
                     fixed: false,
@@ -496,7 +524,17 @@ sidebar: cssref\n\
                     column: Some(20),
                     end_line: Some(10),
                     end_column: Some(49),
-                    source_context: Some("\n[Box Alignment][box-alignment]\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n-------------------^\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n".to_string()),
+                    source_context: Some(
+                        r#"
+[Box Alignment][box-alignment]
+[Flexbox][flexbox] [Box Alignment][box-alignment]
+-------------------^
+
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment
+"#
+                        .to_string(),
+                    ),
                     filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
                     name: IssueType::RedirectedLink,
                 },
@@ -533,10 +571,11 @@ sidebar: cssref\n\
     fn test_fix_link_with_multibyte_chars() {
         // Test that link fixing works correctly with multi-byte UTF-8 characters
         // "Café" has é which is 2 bytes, and "🔥" is 4 bytes
-        let raw = "---\n\
-title: Test\n\
----\n\
-Café 🔥 [Link](/en-US/docs/old)\n";
+        let raw = r#"---
+title: Test
+---
+Café 🔥 [Link](/en-US/docs/old)
+"#;
 
         // The link starts at:
         // Line 3 (0-indexed): "Café 🔥 [Link](/en-US/docs/old)"
@@ -626,10 +665,11 @@ Café 🔥 [Link](/en-US/docs/old)\n";
     fn test_fix_link_with_html_entities() {
         // Test that HTML entities in hrefs are properly decoded when searching the raw markdown
         // This happens when hrefs come from HTML output with entities like &#x27; (apostrophe)
-        let raw = "---\n\
-title: Test\n\
----\n\
-[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)\n";
+        let raw = r#"---
+title: Test
+---
+[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)
+"#;
 
         // The href in the issue contains HTML entities (as it comes from HTML output)
         // but the raw markdown contains literal characters
@@ -680,10 +720,11 @@ title: Test\n\
     #[test]
     fn test_fix_link_with_html_entities_in_both() {
         // Test where BOTH href and suggestion contain HTML entities
-        let raw = "---\n\
-title: Test\n\
----\n\
-[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)\n";
+        let raw = r#"---
+title: Test
+---
+[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)
+"#;
 
         let issues = vec![DIssue::BrokenLink {
             display_issue: DisplayIssue {
@@ -724,10 +765,11 @@ title: Test\n\
         let result = apply_suggestions(raw, &suggestions).unwrap();
         assert_eq!(
             result,
-            "---\n\
-title: Test\n\
----\n\
-[Link](/fr/docs/Web/SVG/Reference/Attribute#attributs_d'événement_globaux)\n"
+            r#"---
+title: Test
+---
+[Link](/fr/docs/Web/SVG/Reference/Attribute#attributs_d'événement_globaux)
+"#
         );
     }
 
@@ -735,13 +777,14 @@ title: Test\n\
     fn test_slug_fallback_in_template() {
         // Test that slug fallback works when templates contain slugs instead of full hrefs
         // This is common in templates like {{PreviousNext("slug1", "slug2")}}
-        let raw = "---\n\
-title: Indexed collections\n\
-slug: Web/JavaScript/Guide/Indexed_collections\n\
----\n\
-{{PreviousNext(\"Web/JavaScript/Guide/Regular_Expressions\", \"Web/JavaScript/Guide/Keyed_Collections\")}}\n\
-\n\
-Some content here.\n";
+        let raw = r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_Expressions", "Web/JavaScript/Guide/Keyed_Collections")}}
+
+Some content here.
+"#;
 
         // The issue contains a full href (as it comes from the rendered HTML)
         // but the raw markdown only contains the slug
@@ -823,13 +866,14 @@ Some content here.\n";
         let result = apply_suggestions(raw, &suggestions).unwrap();
         assert_eq!(
             result,
-            "---\n\
-title: Indexed collections\n\
-slug: Web/JavaScript/Guide/Indexed_collections\n\
----\n\
-{{PreviousNext(\"Web/JavaScript/Guide/Regular_expressions\", \"Web/JavaScript/Guide/Keyed_collections\")}}\n\
-\n\
-Some content here.\n"
+            r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_expressions", "Web/JavaScript/Guide/Keyed_collections")}}
+
+Some content here.
+"#
         );
     }
 
@@ -837,13 +881,14 @@ Some content here.\n"
     fn test_template_redirected_link() {
         // Test that redirected links in templates can be fixed
         // This is for TemplRedirectedLink (not just TemplIllCasedLink)
-        let raw = "---\n\
-title: Indexed collections\n\
-slug: Web/JavaScript/Guide/Indexed_collections\n\
----\n\
-{{PreviousNext(\"Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges\", \"Web/JavaScript/Guide/Keyed_collections\")}}\n\
-\n\
-Some content here.\n";
+        let raw = r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges", "Web/JavaScript/Guide/Keyed_collections")}}
+
+Some content here.
+"#;
 
         // The first parameter is a redirect (not just ill-cased)
         let issues = vec![DIssue::Macros {
@@ -889,13 +934,14 @@ Some content here.\n";
         let result = apply_suggestions(raw, &suggestions).unwrap();
         assert_eq!(
             result,
-            "---\n\
-title: Indexed collections\n\
-slug: Web/JavaScript/Guide/Indexed_collections\n\
----\n\
-{{PreviousNext(\"Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences\", \"Web/JavaScript/Guide/Keyed_collections\")}}\n\
-\n\
-Some content here.\n"
+            r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences", "Web/JavaScript/Guide/Keyed_collections")}}
+
+Some content here.
+"#
         );
     }
 
@@ -903,13 +949,14 @@ Some content here.\n"
     fn test_previousmenunext_with_shared_prefix() {
         // Test the exact case from the user's example where all three parameters
         // share a common prefix: "Learn/CSS/Styling_text"
-        let raw = "---\n\
-title: Styling lists\n\
-slug: Learn_web_development/Core/Text_styling/Styling_lists\n\
----\n\
-{{PreviousMenuNext(\"Learn/CSS/Styling_text/Fundamentals\", \"Learn/CSS/Styling_text/Styling_links\", \"Learn/CSS/Styling_text\")}}\n\
-\n\
-Some content here.\n";
+        let raw = r#"---
+title: Styling lists
+slug: Learn_web_development/Core/Text_styling/Styling_lists
+---
+{{PreviousMenuNext("Learn/CSS/Styling_text/Fundamentals", "Learn/CSS/Styling_text/Styling_links", "Learn/CSS/Styling_text")}}
+
+Some content here.
+"#;
 
         let issues = vec![
             DIssue::Macros {
@@ -1032,13 +1079,14 @@ Some content here.\n";
         let result = apply_suggestions(raw, &suggestions).unwrap();
         assert_eq!(
             result,
-            "---\n\
-title: Styling lists\n\
-slug: Learn_web_development/Core/Text_styling/Styling_lists\n\
----\n\
-{{PreviousMenuNext(\"Learn_web_development/Core/Text_styling/Fundamentals\", \"Learn_web_development/Core/Text_styling/Styling_links\", \"Learn_web_development/Core/Text_styling\")}}\n\
-\n\
-Some content here.\n"
+            r#"---
+title: Styling lists
+slug: Learn_web_development/Core/Text_styling/Styling_lists
+---
+{{PreviousMenuNext("Learn_web_development/Core/Text_styling/Fundamentals", "Learn_web_development/Core/Text_styling/Styling_links", "Learn_web_development/Core/Text_styling")}}
+
+Some content here.
+"#
         );
     }
 
@@ -1046,13 +1094,14 @@ Some content here.\n"
     fn test_slug_fallback_with_no_column() {
         // Test slug fallback when column is None (template at beginning of line)
         // This is common when {{PreviousNext}} starts at column 1
-        let raw = "---\n\
-title: Indexed collections\n\
-slug: Web/JavaScript/Guide/Indexed_collections\n\
----\n\
-{{PreviousNext(\"Web/JavaScript/Guide/Regular_Expressions\", \"Web/JavaScript/Guide/Keyed_Collections\")}}\n\
-\n\
-Some content here.\n";
+        let raw = r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_Expressions", "Web/JavaScript/Guide/Keyed_Collections")}}
+
+Some content here.
+"#;
 
         // When the template is at the beginning of the line, column might be None
         let issues = vec![
@@ -1133,13 +1182,14 @@ Some content here.\n";
         let result = apply_suggestions(raw, &suggestions).unwrap();
         assert_eq!(
             result,
-            "---\n\
-title: Indexed collections\n\
-slug: Web/JavaScript/Guide/Indexed_collections\n\
----\n\
-{{PreviousNext(\"Web/JavaScript/Guide/Regular_expressions\", \"Web/JavaScript/Guide/Keyed_collections\")}}\n\
-\n\
-Some content here.\n"
+            r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_expressions", "Web/JavaScript/Guide/Keyed_collections")}}
+
+Some content here.
+"#
         );
     }
 }
