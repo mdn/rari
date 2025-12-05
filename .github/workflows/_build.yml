@@ -128,39 +128,6 @@ jobs:
           cp target/release/rari ../content/node_modules/@mdn/rari/bin/
           rm -rf target
 
-      - name: Build content (rari)
-        working-directory: mdn/content
-        env:
-          CONTENT_ROOT: ${{ github.workspace }}/mdn/content/files
-          CONTENT_TRANSLATED_ROOT: ${{ github.workspace }}/mdn/translated-content/files
-          CONTRIBUTOR_SPOTLIGHT_ROOT: ${{ github.workspace }}/mdn/mdn-contributor-spotlight/contributors
-#          BLOG_ROOT: ${{ steps.privileged.outputs.BLOG_ROOT }}
-          CURRICULUM_ROOT: ${{ github.workspace }}/mdn/curriculum
-          GENERIC_CONTENT_ROOT: ${{ github.workspace }}/mdn/generic-content/files
-
-          # rari
-          ADDITIONAL_LOCALES_FOR_GENERICS_AND_SPAS: de
-
-          FRED_GLEAN_ENABLED: true
-          FRED_GLEAN_CHANNEL: review
-          FRED_PLAYGROUND_BASE_HOST: mdnyalp.dev
-          FRED_ROBOTS_GLOBAL_ALLOW: false
-          FRED_BCD_BASE_URL: https://bcd.developer.allizom.org
-          FRED_OBSERVATORY_API_URL: https://observatory-api.mdn.allizom.net
-          REACT_APP_FXA_SETTINGS_URL: https://accounts.stage.mozaws.net/settings/
-          REACT_APP_MDN_PLUS_SUBSCRIBE_URL_SP3_BASE: https://payments-next.allizom.org
-          REACT_APP_MDN_PLUS_5M_SP3_ID: mdnplus5mstage
-          REACT_APP_MDN_PLUS_5Y_SP3_ID: mdnplus5ystage
-          REACT_APP_MDN_PLUS_10M_SP3_ID: mdnsupporter10mstage
-          REACT_APP_MDN_PLUS_10Y_SP3_ID: mdnsupporter10ystage
-          REACT_APP_GLEAN_CHANNEL: review
-          REACT_APP_GLEAN_ENABLED: true
-          REACT_APP_UPDATES_BASE_URL: https://updates.developer.allizom.org
-
-          # Increase GitHub API rate limit.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx rari build
-
       - name: Build content (fred)
         working-directory: mdn/content
         env:
