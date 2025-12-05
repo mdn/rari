@@ -3,22 +3,57 @@ use std::io::{BufWriter, Write};
 
 use rari_doc::issues::{DIssue, IN_MEMORY};
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
-use rari_doc::position_utils::char_to_byte_column;
+use rari_doc::position_utils::{Direction, adjust_to_char_boundary, calculate_line_start_offset};
 use tracing::{Level, span};
 
 use crate::error::ToolError;
 
-/// Offset-Line-Column mapper for tracking position during offset calculations.
+/// Extracts the slug from an href by stripping the leading slash and /docs/ prefix.
+/// Returns the slug portion, or the original stripped string if no /docs/ is found.
 ///
-/// All values use byte-based measurements for internal processing.
-#[derive(Default, Debug, Clone, Copy)]
-struct OLCMapper {
-    /// Byte offset from start of content
-    offset: usize,
-    /// Line number (0-based)
-    line: usize,
-    /// Column in BYTES from start of line (0-based)
-    column: usize,
+/// Examples:
+/// - "/en-US/docs/Web/API/Foo" → "Web/API/Foo"
+/// - "/Web/API/Foo" → "Web/API/Foo"
+fn extract_slug_from_href(href: &str) -> &str {
+    if let Some(stripped) = href.strip_prefix("/") {
+        stripped
+            .split_once("/docs/")
+            .map(|(_, rest)| rest)
+            .unwrap_or(stripped)
+    } else {
+        href
+    }
+}
+
+/// Searches for an href in text, trying the full href first, then falling back to just the slug.
+///
+/// This handles template-generated links where the markdown contains only the slug portion
+/// (e.g., "Web/API/Foo") rather than the full href ("/en-US/docs/Web/API/Foo").
+///
+/// # Arguments
+/// * `href` - The full href to search for
+/// * `search_fn` - Function that searches for text and returns an offset if found
+///
+/// # Returns
+/// Tuple of (found_offset, text_that_was_found) if successful, None otherwise
+fn search_with_slug_fallback<F>(href: &str, mut search_fn: F) -> Option<(usize, String)>
+where
+    F: FnMut(&str) -> Option<usize>,
+{
+    // Try full href first
+    if let Some(offset) = search_fn(href) {
+        return Some((offset, href.to_string()));
+    }
+
+    // Fallback: try just the slug
+    if href.starts_with("/") {
+        let slug = extract_slug_from_href(href);
+        if let Some(offset) = search_fn(slug) {
+            return Some((offset, slug.to_string()));
+        }
+    }
+
+    None
 }
 
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
@@ -36,9 +71,9 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
                 let display_issue = dissue.display_issue();
                 if display_issue.suggestion.is_some()
                     && display_issue.fixable.unwrap_or_default()
-                    && display_issue.column.is_some()
                     && display_issue.line.is_some()
                 {
+                    // Column is optional - if missing, we'll search from line start
                     Some(dissue)
                 } else {
                     None
@@ -48,7 +83,10 @@ pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     };
     issues.sort_by(|a, b| {
         if a.display_issue().line == b.display_issue().line {
-            a.display_issue().column.cmp(&b.display_issue().column)
+            // Treat None as Some(1) for consistent ordering (columns are 1-based)
+            let col_a = a.display_issue().column.or(Some(1));
+            let col_b = b.display_issue().column.or(Some(1));
+            col_a.cmp(&col_b)
         } else {
             a.display_issue().line.cmp(&b.display_issue().line)
         }
@@ -73,65 +111,85 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
         .iter()
         .filter_map(|dissue| {
             let offset_end = actual_offset(raw, dissue);
-            if let DIssue::BrokenLink {
-                display_issue,
-                href: Some(href),
-            } = dissue
-                && let Some(suggestion) = display_issue.suggestion.as_deref()
-            {
+            let (display_issue, href) = match dissue {
+                DIssue::BrokenLink {
+                    display_issue,
+                    href: Some(href),
+                } => (display_issue, href),
+                DIssue::Macros {
+                    display_issue,
+                    href: Some(href),
+                    ..
+                } => (display_issue, href),
+                _ => return None,
+            };
+            if let Some(suggestion) = display_issue.suggestion.as_deref() {
                 // The href and suggestion from HTML may contain HTML entities (&#x27; for ', &lt; for <, etc.)
                 // Decode them to match the raw markdown content
                 let decoded_href = html_escape::decode_html_entities(href);
                 let decoded_suggestion = html_escape::decode_html_entities(suggestion);
 
-                // actual_offset returns the END of the href
-                // We need to find the START by searching backward for the href
-                // Estimate the start position and use rfind() to locate it precisely
-                let mut search_start = offset_end.saturating_sub(decoded_href.len());
+                // Try to find the href in the markdown. First try the full href, then fallback to slug.
+                // This handles template-generated links where the markdown contains only the slug.
 
-                // Ensure search_start is on a char boundary
-                while search_start > 0 && !raw.is_char_boundary(search_start) {
-                    search_start -= 1;
-                }
+                // actual_offset returns the END of the href
+                // We need to find the START by searching backward for the text
 
                 // Ensure offset_end is on a char boundary
-                let mut offset_end_adjusted = offset_end;
-                while offset_end_adjusted < raw.len() && !raw.is_char_boundary(offset_end_adjusted)
-                {
-                    offset_end_adjusted += 1;
-                }
+                let offset_end_adjusted =
+                    adjust_to_char_boundary(raw, offset_end, Direction::Forward);
 
-                if let Some(relative_pos) =
-                    raw[search_start..offset_end_adjusted].rfind(decoded_href.as_ref())
-                {
-                    let href_start = search_start + relative_pos;
+                // Try 1: Search for the full href
+                let try_search = |search_text: &str| -> Option<usize> {
+                    let search_start = offset_end.saturating_sub(search_text.len());
 
-                    // Verify this is the correct match (approximately - offset_end might have been adjusted)
-                    let href_end = href_start + decoded_href.len();
-                    if (href_end == offset_end || href_end == offset_end_adjusted)
-                        && &raw[href_start..href_end] == decoded_href.as_ref()
+                    // Ensure search_start is on a char boundary
+                    let search_start =
+                        adjust_to_char_boundary(raw, search_start, Direction::Backward);
+
+                    if let Some(relative_pos) =
+                        raw[search_start..offset_end_adjusted].rfind(search_text)
                     {
-                        Some(SearchReplaceWithOffset {
-                            offset: href_start,
-                            search: decoded_href.into(),
-                            replace: decoded_suggestion.into(),
-                        })
-                    } else {
-                        tracing::warn!(
-                            "Could not find href '{}' at expected position (end: {}, adjusted: {})",
-                            decoded_href,
-                            offset_end,
-                            offset_end_adjusted
-                        );
-                        None
+                        let href_start = search_start + relative_pos;
+                        let href_end = href_start + search_text.len();
+
+                        // Verify this is the correct match
+                        if (href_end == offset_end || href_end == offset_end_adjusted)
+                            && &raw[href_start..href_end] == search_text
+                        {
+                            return Some(href_start);
+                        }
                     }
+                    None
+                };
+
+                // Try finding the full href first, fallback to slug
+                let result = search_with_slug_fallback(&decoded_href, try_search).map(
+                    |(href_start, search_text)| {
+                        // If we found the full href, use full suggestion; if slug, extract slug from suggestion
+                        let replace_text = if search_text == decoded_href.as_ref() {
+                            decoded_suggestion.to_string()
+                        } else {
+                            extract_slug_from_href(&decoded_suggestion).to_string()
+                        };
+                        (href_start, search_text, replace_text)
+                    },
+                );
+
+                if let Some((href_start, search_text, replace_text)) = result {
+                    Some(SearchReplaceWithOffset {
+                        offset: href_start,
+                        search: search_text,
+                        replace: replace_text,
+                    })
                 } else {
                     // Show context around the offset for debugging
+                    let search_start = offset_end.saturating_sub(decoded_href.len());
                     let context_start = search_start;
                     let context_end = offset_end_adjusted.min(raw.len());
                     let context = &raw[context_start..context_end];
                     tracing::warn!(
-                        "Could not locate href '{}' before offset {} (searched region: {:?})",
+                        "Could not locate '{}' before offset {} (searched region: {:?})",
                         decoded_href,
                         offset_end,
                         context
@@ -160,21 +218,15 @@ pub fn apply_suggestions(
 
     for suggestion in suggestions {
         // Ensure suggestion.offset is on a character boundary
-        let suggestion_offset = if raw.is_char_boundary(suggestion.offset) {
-            suggestion.offset
-        } else {
-            // Adjust to the nearest valid character boundary (previous char start)
-            let mut offset = suggestion.offset;
-            while offset > 0 && !raw.is_char_boundary(offset) {
-                offset -= 1;
-            }
+        let suggestion_offset =
+            adjust_to_char_boundary(raw, suggestion.offset, Direction::Backward);
+        if suggestion_offset != suggestion.offset {
             tracing::warn!(
                 "Adjusted suggestion offset from {} to {} (not on char boundary)",
                 suggestion.offset,
-                offset
+                suggestion_offset
             );
-            offset
-        };
+        }
 
         // Skip this suggestion if it overlaps with previously applied region
         if suggestion_offset < current_offset {
@@ -271,78 +323,81 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
     Ok(is_fixed)
 }
 
-fn calc_offset(input: &str, olc: OLCMapper, new_line: usize, new_column: usize) -> Option<usize> {
-    let OLCMapper {
-        offset,
-        line,
-        column,
-    } = olc;
-    let lines = new_line - line;
-
-    let offset = if new_line > line {
-        let begin_of_line = input[offset..]
-            .lines()
-            .take(lines)
-            .map(|line| line.len() + 1)
-            .sum::<usize>();
-        let new_column_offset = new_column;
-        Some(offset + begin_of_line + new_column_offset)
-    } else if new_line == line && new_column > column {
-        Some(offset + (new_column - column))
-    } else {
-        tracing::warn!("skipping issues");
-        None
-    };
-    // Verify the calculated offset is on a UTF-8 character boundary
-    if let Some(mut offset_value) = offset
-        && offset_value < input.len()
-        && !input.is_char_boundary(offset_value)
-    {
-        tracing::warn!(
-            "calculated offset {} is not on char boundary - adjusting (this may indicate a bug)",
-            offset_value
-        );
-        // Move backwards to the nearest char boundary
-        while offset_value > 0 && !input.is_char_boundary(offset_value) {
-            offset_value -= 1;
-        }
-        return Some(offset_value);
-    }
-    offset
-}
-
 pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
-    let olc = OLCMapper::default();
-    let new_line = dissue.display_issue().line.unwrap_or_default() as usize - 1;
-    // DisplayIssue.column is in CHARACTERS (1-based), need to convert to BYTES (0-based) for calc_offset
-    let char_column = dissue.display_issue().column.unwrap_or_default() as usize - 1;
-
-    // Convert character column to byte column
-    let new_column = if let Some(line_content) = raw.lines().nth(new_line) {
-        char_to_byte_column(line_content, char_column)
-    } else {
-        char_column // Fallback: use as-is if line not found
+    let href = match dissue {
+        DIssue::BrokenLink {
+            href: Some(href), ..
+        } => href,
+        DIssue::Macros {
+            href: Some(href), ..
+        } => href,
+        _ => return 0,
     };
-    if let Some(offset) = calc_offset(raw, olc, new_line, new_column) {
-        if let DIssue::BrokenLink {
-            display_issue: _,
-            href: Some(href),
-        } = dissue
+
+    // Try to find the href in the markdown. First try the full href, then fallback to slug.
+    let decoded_href = html_escape::decode_html_entities(href);
+
+    // Get line information from the issue
+    // Note: Column information refers to rendered HTML positions, not markdown source positions,
+    // so we search from the line start instead. Column is still useful for ordering issues.
+    let line_num = dissue.display_issue().line;
+    if let Some(line) = line_num {
+        let line_idx = (line as usize).saturating_sub(1);
+        let line_start_offset = calculate_line_start_offset(raw, line_idx);
+
+        // Try searching for the full href first, fallback to slug
+        if let Some((offset, _found_text)) =
+            search_with_slug_fallback(&decoded_href, |search_text| {
+                find_non_prefix_match(raw, line_start_offset, search_text)
+                    .map(|start| start + search_text.len())
+            })
         {
-            // Decode HTML entities in href to match raw markdown content
-            let decoded_href = html_escape::decode_html_entities(href);
-            if let Some(start) = raw[offset..].find(decoded_href.as_ref()) {
-                let href_offset = offset + start;
-
-                let actual_offset = href_offset + decoded_href.len();
-
-                return actual_offset;
-            }
+            return offset;
         }
-        return offset;
     }
 
     0
+}
+
+/// Finds a match for search_text that is NOT a prefix of a longer string.
+/// Checks that the match is followed by a delimiter (like ", /, ), or end of string),
+/// not by alphanumeric or / characters.
+fn find_non_prefix_match(raw: &str, line_start_offset: usize, search_text: &str) -> Option<usize> {
+    let line_content = &raw[line_start_offset..];
+    let mut search_pos = 0;
+
+    while let Some(rel_pos) = line_content[search_pos..].find(search_text) {
+        let abs_pos = search_pos + rel_pos;
+        let match_end = abs_pos + search_text.len();
+
+        // Check what comes after the match
+        let is_complete_match = if match_end < line_content.len() {
+            let next_char = line_content[match_end..].chars().next();
+            match next_char {
+                // These delimiters indicate a complete match (not a prefix)
+                Some('"') | Some('\'') | Some(',') | Some(')') | Some(' ') | Some('\t')
+                | Some('\n') => true,
+                // A forward slash means this is a prefix of a longer path
+                Some('/') => false,
+                // Alphanumeric means it's part of a longer string
+                Some(c) if c.is_alphanumeric() => false,
+                // Other characters are treated as delimiters
+                _ => true,
+            }
+        } else {
+            // At end of line - this is a complete match
+            true
+        };
+
+        if is_complete_match {
+            return Some(line_start_offset + abs_pos);
+        }
+
+        // Continue searching after this position
+        search_pos = abs_pos + 1;
+    }
+
+    None
 }
 
 #[cfg(test)]
@@ -352,10 +407,11 @@ mod tests {
 
     #[test]
     fn test_apply_suggestions_with_duplicate_offsets() {
-        let raw = "[Box Alignment][box-alignment]\n\
-                   [Box Alignment][box-alignment]\n\
-                   \n\
-                   [box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n";
+        let raw = r#"[Box Alignment][box-alignment]
+[Box Alignment][box-alignment]
+
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment
+"#;
 
         let suggestions = vec![
             SearchReplaceWithOffset {
@@ -372,34 +428,38 @@ mod tests {
 
         let result = apply_suggestions(raw, &suggestions).unwrap();
 
-        let expected = "[Box Alignment][box-alignment]\n\
-                        [Box Alignment][box-alignment]\n\
-                        \n\
-                        [box-alignment]: /en-US/docs/Web/CSS/Guides/Box_alignment\n";
+        let expected = r#"[Box Alignment][box-alignment]
+[Box Alignment][box-alignment]
+
+[box-alignment]: /en-US/docs/Web/CSS/Guides/Box_alignment
+"#;
 
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_collect_suggestions_with_duplicate_broken_links() {
-        let raw = "---\n\
-title: CSS layout cookbook\n\
-short-title: Layout cookbook\n\
-slug: Web/CSS/How_to/Layout_cookbook\n\
-page-type: landing-page\n\
-sidebar: cssref\n\
----\n\
-[Box Alignment][box-alignment]\n\
-[Flexbox][flexbox] [Box Alignment][box-alignment]\n\
-\n\
-[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n\
-[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n";
+        let raw = r#"---
+title: CSS layout cookbook
+short-title: Layout cookbook
+slug: Web/CSS/How_to/Layout_cookbook
+page-type: landing-page
+sidebar: cssref
+---
+[Box Alignment][box-alignment]
+[Flexbox][flexbox] [Box Alignment][box-alignment]
+
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment
+"#;
 
         let issues = vec![
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 1,
-                    explanation: Some("/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string()),
+                    explanation: Some(
+                        "/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string(),
+                    ),
                     suggestion: Some("/en-US/docs/Web/CSS/Guides/Box_alignment".to_string()),
                     fixable: Some(true),
                     fixed: false,
@@ -407,7 +467,16 @@ sidebar: cssref\n\
                     column: Some(1),
                     end_line: Some(9),
                     end_column: Some(30),
-                    source_context: Some("\n[Box Alignment][box-alignment]\n^\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n".to_string()),
+                    source_context: Some(
+                        r#"
+[Box Alignment][box-alignment]
+^
+[Flexbox][flexbox] [Box Alignment][box-alignment]
+
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout
+"#
+                        .to_string(),
+                    ),
                     filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
                     name: IssueType::RedirectedLink,
                 },
@@ -416,7 +485,9 @@ sidebar: cssref\n\
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 2,
-                    explanation: Some("/en-US/docs/Web/CSS/CSS_flexible_box_layout is a redirect".to_string()),
+                    explanation: Some(
+                        "/en-US/docs/Web/CSS/CSS_flexible_box_layout is a redirect".to_string(),
+                    ),
                     suggestion: Some("/en-US/docs/Web/CSS/Guides/Flexible_box_layout".to_string()),
                     fixable: Some(true),
                     fixed: false,
@@ -424,7 +495,17 @@ sidebar: cssref\n\
                     column: Some(1),
                     end_line: Some(10),
                     end_column: Some(30),
-                    source_context: Some("\n[Box Alignment][box-alignment]\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n^\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n".to_string()),
+                    source_context: Some(
+                        r#"
+[Box Alignment][box-alignment]
+[Flexbox][flexbox] [Box Alignment][box-alignment]
+^
+
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment
+"#
+                        .to_string(),
+                    ),
                     filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
                     name: IssueType::RedirectedLink,
                 },
@@ -433,7 +514,9 @@ sidebar: cssref\n\
             DIssue::BrokenLink {
                 display_issue: DisplayIssue {
                     id: 3,
-                    explanation: Some("/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string()),
+                    explanation: Some(
+                        "/en-US/docs/Web/CSS/CSS_box_alignment is a redirect".to_string(),
+                    ),
                     suggestion: Some("/en-US/docs/Web/CSS/Guides/Box_alignment".to_string()),
                     fixable: Some(true),
                     fixed: false,
@@ -441,7 +524,17 @@ sidebar: cssref\n\
                     column: Some(20),
                     end_line: Some(10),
                     end_column: Some(49),
-                    source_context: Some("\n[Box Alignment][box-alignment]\n[Flexbox][flexbox] [Box Alignment][box-alignment]\n-------------------^\n\n[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout\n[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment\n".to_string()),
+                    source_context: Some(
+                        r#"
+[Box Alignment][box-alignment]
+[Flexbox][flexbox] [Box Alignment][box-alignment]
+-------------------^
+
+[flexbox]: /en-US/docs/Web/CSS/CSS_flexible_box_layout
+[box-alignment]: /en-US/docs/Web/CSS/CSS_box_alignment
+"#
+                        .to_string(),
+                    ),
                     filepath: Some("/path/to/layout_cookbook/index.md".to_string()),
                     name: IssueType::RedirectedLink,
                 },
@@ -478,10 +571,11 @@ sidebar: cssref\n\
     fn test_fix_link_with_multibyte_chars() {
         // Test that link fixing works correctly with multi-byte UTF-8 characters
         // "Café" has é which is 2 bytes, and "🔥" is 4 bytes
-        let raw = "---\n\
-title: Test\n\
----\n\
-Café 🔥 [Link](/en-US/docs/old)\n";
+        let raw = r#"---
+title: Test
+---
+Café 🔥 [Link](/en-US/docs/old)
+"#;
 
         // The link starts at:
         // Line 3 (0-indexed): "Café 🔥 [Link](/en-US/docs/old)"
@@ -571,10 +665,11 @@ Café 🔥 [Link](/en-US/docs/old)\n";
     fn test_fix_link_with_html_entities() {
         // Test that HTML entities in hrefs are properly decoded when searching the raw markdown
         // This happens when hrefs come from HTML output with entities like &#x27; (apostrophe)
-        let raw = "---\n\
-title: Test\n\
----\n\
-[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)\n";
+        let raw = r#"---
+title: Test
+---
+[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)
+"#;
 
         // The href in the issue contains HTML entities (as it comes from HTML output)
         // but the raw markdown contains literal characters
@@ -625,10 +720,11 @@ title: Test\n\
     #[test]
     fn test_fix_link_with_html_entities_in_both() {
         // Test where BOTH href and suggestion contain HTML entities
-        let raw = "---\n\
-title: Test\n\
----\n\
-[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)\n";
+        let raw = r#"---
+title: Test
+---
+[Link](/fr/docs/Web/SVG/Attribute#attributs_d'événement)
+"#;
 
         let issues = vec![DIssue::BrokenLink {
             display_issue: DisplayIssue {
@@ -669,10 +765,431 @@ title: Test\n\
         let result = apply_suggestions(raw, &suggestions).unwrap();
         assert_eq!(
             result,
-            "---\n\
-title: Test\n\
----\n\
-[Link](/fr/docs/Web/SVG/Reference/Attribute#attributs_d'événement_globaux)\n"
+            r#"---
+title: Test
+---
+[Link](/fr/docs/Web/SVG/Reference/Attribute#attributs_d'événement_globaux)
+"#
+        );
+    }
+
+    #[test]
+    fn test_slug_fallback_in_template() {
+        // Test that slug fallback works when templates contain slugs instead of full hrefs
+        // This is common in templates like {{PreviousNext("slug1", "slug2")}}
+        let raw = r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_Expressions", "Web/JavaScript/Guide/Keyed_Collections")}}
+
+Some content here.
+"#;
+
+        // The issue contains a full href (as it comes from the rendered HTML)
+        // but the raw markdown only contains the slug
+        let issues = vec![
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 1,
+                    explanation: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Regular_Expressions should be /en-US/docs/Web/JavaScript/Guide/Regular_expressions"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Regular_expressions".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: Some(17),
+                    end_line: Some(5),
+                    end_column: Some(77),
+                    source_context: None,
+                    filepath: Some("/path/to/indexed_collections/index.md".to_string()),
+                    name: IssueType::TemplIllCasedLink,
+                },
+                macro_name: Some("PreviousNext".to_string()),
+                href: Some("/en-US/docs/Web/JavaScript/Guide/Regular_Expressions".to_string()),
+            },
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 2,
+                    explanation: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Keyed_Collections should be /en-US/docs/Web/JavaScript/Guide/Keyed_collections"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Keyed_collections".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: Some(81),
+                    end_line: Some(5),
+                    end_column: Some(139),
+                    source_context: None,
+                    filepath: Some("/path/to/indexed_collections/index.md".to_string()),
+                    name: IssueType::TemplIllCasedLink,
+                },
+                macro_name: Some("PreviousNext".to_string()),
+                href: Some("/en-US/docs/Web/JavaScript/Guide/Keyed_Collections".to_string()),
+            },
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        // Should find both slugs and suggest fixes
+        assert_eq!(suggestions.len(), 2);
+
+        // First suggestion: should fall back to slug and fix casing
+        assert_eq!(
+            suggestions[0].search, "Web/JavaScript/Guide/Regular_Expressions",
+            "Should use slug (not full href) for search"
+        );
+        assert_eq!(
+            suggestions[0].replace, "Web/JavaScript/Guide/Regular_expressions",
+            "Should use slug (not full href) for replacement"
+        );
+
+        // Second suggestion
+        assert_eq!(
+            suggestions[1].search,
+            "Web/JavaScript/Guide/Keyed_Collections"
+        );
+        assert_eq!(
+            suggestions[1].replace,
+            "Web/JavaScript/Guide/Keyed_collections"
+        );
+
+        // Apply the suggestions and verify the result
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_expressions", "Web/JavaScript/Guide/Keyed_collections")}}
+
+Some content here.
+"#
+        );
+    }
+
+    #[test]
+    fn test_template_redirected_link() {
+        // Test that redirected links in templates can be fixed
+        // This is for TemplRedirectedLink (not just TemplIllCasedLink)
+        let raw = r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges", "Web/JavaScript/Guide/Keyed_collections")}}
+
+Some content here.
+"#;
+
+        // The first parameter is a redirect (not just ill-cased)
+        let issues = vec![DIssue::Macros {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some(
+                    "Macro produces link /fr/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges which is a redirect"
+                        .to_string(),
+                ),
+                suggestion: Some(
+                    "/fr/docs/Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences"
+                        .to_string(),
+                ),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(5),
+                column: Some(1), // Only knows the line, not the specific parameter
+                end_line: Some(5),
+                end_column: Some(1),
+                source_context: None,
+                filepath: Some("/path/to/indexed_collections/index.md".to_string()),
+                name: IssueType::TemplRedirectedLink,
+            },
+            macro_name: Some("PreviousNext".to_string()),
+            href: Some("/fr/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges".to_string()),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        // Should find the slug and suggest the fix
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(
+            suggestions[0].search, "Web/JavaScript/Guide/Regular_Expressions/Groups_and_Ranges",
+            "Should use slug for search"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences",
+            "Should use slug for replacement with the actual redirect target"
+        );
+
+        // Apply the suggestion and verify the result
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences", "Web/JavaScript/Guide/Keyed_collections")}}
+
+Some content here.
+"#
+        );
+    }
+
+    #[test]
+    fn test_previousmenunext_with_shared_prefix() {
+        // Test the exact case from the user's example where all three parameters
+        // share a common prefix: "Learn/CSS/Styling_text"
+        let raw = r#"---
+title: Styling lists
+slug: Learn_web_development/Core/Text_styling/Styling_lists
+---
+{{PreviousMenuNext("Learn/CSS/Styling_text/Fundamentals", "Learn/CSS/Styling_text/Styling_links", "Learn/CSS/Styling_text")}}
+
+Some content here.
+"#;
+
+        let issues = vec![
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 1,
+                    explanation: Some(
+                        "/en-US/docs/Learn/CSS/Styling_text/Fundamentals should be /en-US/docs/Learn_web_development/Core/Text_styling/Fundamentals"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Learn_web_development/Core/Text_styling/Fundamentals".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None,
+                    end_line: Some(5),
+                    end_column: None,
+                    source_context: None,
+                    filepath: Some("/path/to/styling_lists/index.md".to_string()),
+                    name: IssueType::TemplRedirectedLink,
+                },
+                macro_name: Some("PreviousMenuNext".to_string()),
+                href: Some("/en-US/docs/Learn/CSS/Styling_text/Fundamentals".to_string()),
+            },
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 2,
+                    explanation: Some(
+                        "/en-US/docs/Learn/CSS/Styling_text/Styling_links should be /en-US/docs/Learn_web_development/Core/Text_styling/Styling_links"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Learn_web_development/Core/Text_styling/Styling_links".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None,
+                    end_line: Some(5),
+                    end_column: None,
+                    source_context: None,
+                    filepath: Some("/path/to/styling_lists/index.md".to_string()),
+                    name: IssueType::TemplRedirectedLink,
+                },
+                macro_name: Some("PreviousMenuNext".to_string()),
+                href: Some("/en-US/docs/Learn/CSS/Styling_text/Styling_links".to_string()),
+            },
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 3,
+                    explanation: Some(
+                        "/en-US/docs/Learn/CSS/Styling_text should be /en-US/docs/Learn_web_development/Core/Text_styling"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Learn_web_development/Core/Text_styling".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None,
+                    end_line: Some(5),
+                    end_column: None,
+                    source_context: None,
+                    filepath: Some("/path/to/styling_lists/index.md".to_string()),
+                    name: IssueType::TemplRedirectedLink,
+                },
+                macro_name: Some("PreviousMenuNext".to_string()),
+                href: Some("/en-US/docs/Learn/CSS/Styling_text".to_string()),
+            },
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        // Should find all three parameters with DIFFERENT offsets
+        assert_eq!(suggestions.len(), 3, "Should have 3 distinct suggestions");
+
+        // Verify the offsets are different (not all pointing to the first occurrence)
+        let offsets: Vec<usize> = suggestions.iter().map(|s| s.offset).collect();
+        let unique_offsets: std::collections::HashSet<_> = offsets.iter().collect();
+        assert_eq!(
+            unique_offsets.len(),
+            3,
+            "All three suggestions should have unique offsets, got: {:?}",
+            offsets
+        );
+
+        // First parameter (longest path with /Fundamentals)
+        assert_eq!(
+            suggestions[0].search, "Learn/CSS/Styling_text/Fundamentals",
+            "First should be the first parameter"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "Learn_web_development/Core/Text_styling/Fundamentals"
+        );
+
+        // Second parameter (has /Styling_links)
+        assert_eq!(
+            suggestions[1].search, "Learn/CSS/Styling_text/Styling_links",
+            "Second should be the second parameter"
+        );
+        assert_eq!(
+            suggestions[1].replace,
+            "Learn_web_development/Core/Text_styling/Styling_links"
+        );
+
+        // Third parameter (shortest, just the base path)
+        assert_eq!(
+            suggestions[2].search, "Learn/CSS/Styling_text",
+            "Third should be the third parameter"
+        );
+        assert_eq!(
+            suggestions[2].replace,
+            "Learn_web_development/Core/Text_styling"
+        );
+
+        // Apply the suggestions and verify the result
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            r#"---
+title: Styling lists
+slug: Learn_web_development/Core/Text_styling/Styling_lists
+---
+{{PreviousMenuNext("Learn_web_development/Core/Text_styling/Fundamentals", "Learn_web_development/Core/Text_styling/Styling_links", "Learn_web_development/Core/Text_styling")}}
+
+Some content here.
+"#
+        );
+    }
+
+    #[test]
+    fn test_slug_fallback_with_no_column() {
+        // Test slug fallback when column is None (template at beginning of line)
+        // This is common when {{PreviousNext}} starts at column 1
+        let raw = r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_Expressions", "Web/JavaScript/Guide/Keyed_Collections")}}
+
+Some content here.
+"#;
+
+        // When the template is at the beginning of the line, column might be None
+        let issues = vec![
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 1,
+                    explanation: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Regular_Expressions should be /en-US/docs/Web/JavaScript/Guide/Regular_expressions"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Regular_expressions".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None, // No column information
+                    end_line: Some(5),
+                    end_column: Some(60),
+                    source_context: None,
+                    filepath: Some("/path/to/indexed_collections/index.md".to_string()),
+                    name: IssueType::TemplIllCasedLink,
+                },
+                macro_name: Some("PreviousNext".to_string()),
+                href: Some("/en-US/docs/Web/JavaScript/Guide/Regular_Expressions".to_string()),
+            },
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 2,
+                    explanation: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Keyed_Collections should be /en-US/docs/Web/JavaScript/Guide/Keyed_collections"
+                            .to_string(),
+                    ),
+                    suggestion: Some(
+                        "/en-US/docs/Web/JavaScript/Guide/Keyed_collections".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None, // No column information
+                    end_line: Some(5),
+                    end_column: Some(118),
+                    source_context: None,
+                    filepath: Some("/path/to/indexed_collections/index.md".to_string()),
+                    name: IssueType::TemplIllCasedLink,
+                },
+                macro_name: Some("PreviousNext".to_string()),
+                href: Some("/en-US/docs/Web/JavaScript/Guide/Keyed_Collections".to_string()),
+            },
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        // Should still find both slugs using line-based search
+        assert_eq!(suggestions.len(), 2);
+
+        // First suggestion: should fall back to slug and fix casing
+        assert_eq!(
+            suggestions[0].search, "Web/JavaScript/Guide/Regular_Expressions",
+            "Should use slug for search even without column info"
+        );
+        assert_eq!(
+            suggestions[0].replace, "Web/JavaScript/Guide/Regular_expressions",
+            "Should use slug for replacement even without column info"
+        );
+
+        // Second suggestion
+        assert_eq!(
+            suggestions[1].search,
+            "Web/JavaScript/Guide/Keyed_Collections"
+        );
+        assert_eq!(
+            suggestions[1].replace,
+            "Web/JavaScript/Guide/Keyed_collections"
+        );
+
+        // Apply the suggestions and verify the result
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            r#"---
+title: Indexed collections
+slug: Web/JavaScript/Guide/Indexed_collections
+---
+{{PreviousNext("Web/JavaScript/Guide/Regular_expressions", "Web/JavaScript/Guide/Keyed_collections")}}
+
+Some content here.
+"#
         );
     }
 }
