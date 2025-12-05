@@ -1,0 +1,32 @@
+name: Main Review Companion
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Authenticate with GCP.
+  id-token: write
+
+jobs:
+  build:
+    if: |
+      github.repository_owner == 'mdn' &&
+      (github.event_name == 'schedule' || github.secret_source == 'Actions')
+    uses: ./.github/workflows/_build.yml
+    secrets: inherit
+    with:
+      partial: false
+
+  deploy:
+    needs: build
+    uses: ./.github/workflows/_deploy.yml
+    secrets: inherit
+    with:
+      prefix: rari
+      build-artifact-name: ${{ needs.build.outputs.artifact-name }}
