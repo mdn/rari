@@ -87,6 +87,18 @@ jobs:
           path: mdn/mdn-contributor-spotlight
           persist-credentials: false
 
+      - name: Setup Node
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version-file: mdn/content/.nvmrc
+          cache: npm
+
+      - name: Install (content)
+        working-directory: mdn/content
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm ci
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@9a1d20035bdbcbc899baabe1e402e85bc33639bc # 1.90
 
