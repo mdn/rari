@@ -22,6 +22,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+
     outputs:
       artifact-name: ${{ steps.set-artifact-name.outputs.name }}
 
@@ -104,13 +108,10 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
-        env:
-          SCCACHE_GHA_ENABLED: "true"
 
       - name: Build (rari)
         working-directory: mdn/rari
         env:
-          RUSTC_WRAPPER: sccache
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           cargo build --release
