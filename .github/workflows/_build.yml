@@ -235,6 +235,7 @@ jobs:
               -o -path '*/en-us/web/javascript/reference/index.md' \
               -o -path '*/en-us/web/javascript/reference/operators/index.md' \
               -o -path '*/en-us/web/javascript/reference/statements/index.md' \
+              -o -path '*/en-us/web/performance/index.md' \
             >> "$FILE_LIST"
 
             FILE_LIST="--file-list $FILE_LIST"
