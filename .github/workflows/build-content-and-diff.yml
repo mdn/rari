@@ -3,7 +3,7 @@ name: Build Content and Diff
 on:
   pull_request:
     paths:
-      - '**/*.rs'
+      - "**/*.rs"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
