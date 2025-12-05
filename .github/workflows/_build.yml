@@ -96,6 +96,7 @@ jobs:
         with:
           node-version-file: mdn/content/.nvmrc
           cache: npm
+          cache-dependency-path: mdn/content/package-lock.json
 
       - name: Install (content)
         working-directory: mdn/content
