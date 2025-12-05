@@ -1,6 +1,7 @@
 use std::fmt::Write;
 
 use css_syntax::syntax::CssType;
+use css_syntax_types::{AtRuleDescriptor, Property};
 use rari_templ_func::rari_f;
 use rari_types::locale::Locale;
 
@@ -9,8 +10,6 @@ use crate::helpers::css_info::{
     css_animation_type, css_applies_to, css_computed, css_inherited, css_initial,
     css_l10n_for_value, css_percentages, css_ref_data, css_related_at_rule,
 };
-use crate::templ::api::RariApi;
-use css_syntax_types::{AtRuleDescriptor, Property};
 
 #[rari_f(register = "crate::Templ")]
 pub fn cssinfo() -> Result<String, DocError> {
@@ -41,11 +40,17 @@ pub fn cssinfo() -> Result<String, DocError> {
         rari_types::fm_types::PageType::CssProperty => CssType::Property(&name),
         rari_types::fm_types::PageType::CssShorthandProperty => CssType::Property(&name),
         _ => {
-            tracing::error!(
-                "cssinfo is only valid on properties and at rule descriptors: {}",
-                env.slug
-            );
-            return Err(DocError::CssPageTypeRequired);
+            // do not report errors in orphaned / conflicting pages
+            if !env.slug.starts_with("orphaned") && !env.slug.starts_with("conflicting") {
+                tracing::error!(
+                    "cssinfo is only valid on properties and at rule descriptors: {} {:#?}",
+                    env.slug,
+                    env
+                );
+                // get the page type from the en-us counterpart
+                return Err(DocError::CssPageTypeRequired);
+            }
+            return Ok(Default::default());
         }
     };
 
@@ -208,14 +213,6 @@ fn render_formal_property_def(
 
     if let Some(value) = &property.animation_type {
         let label = css_animation_type(locale)?;
-        let label = RariApi::link(
-            "Web/CSS/Guides/Animations/Animatable_properties",
-            Some(locale),
-            Some(&label),
-            false,
-            None,
-            false,
-        )?;
         let value = css_l10n_for_value(value, locale);
         write!(out, r#"<tr><th scope="row">{label}</th><td>"#)?;
         write!(out, "{value}")?;
