@@ -4,10 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - '**/*.rs'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
 
 permissions:
   contents: read
