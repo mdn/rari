@@ -426,7 +426,7 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(true);
                     di.explanation = Some(format!(
-                        "{} is ill cased",
+                        "Link {} is ill cased",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::BrokenLink {
@@ -438,7 +438,7 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(true);
                     di.explanation = Some(format!(
-                        "{} is a redirect",
+                        "Link {} is a redirect",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::BrokenLink {
@@ -450,7 +450,7 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(false);
                     di.explanation = Some(format!(
-                        "Can't resolve {}",
+                        "Link {} doesn't resolve",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::BrokenLink {
@@ -459,15 +459,17 @@ impl DIssue {
                     }
                 }
                 IssueType::TemplBrokenLink => {
+                    let macro_name = additional.remove("templ");
                     di.fixed = false;
                     di.fixable = Some(false);
                     di.explanation = Some(format!(
-                        "Can't resolve {}",
+                        "Macro {} produces link {} which doesn't resolve",
+                        macro_name.as_deref().unwrap_or("?"),
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name: additional.remove("templ"),
+                        macro_name,
                         href: additional.remove("url"),
                     }
                 }
@@ -476,7 +478,8 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(is_fixable_template(macro_name.as_deref()));
                     di.explanation = Some(format!(
-                        "Macro produces link {} which is a redirect",
+                        "Macro {} produces link {} which is a redirect",
+                        macro_name.as_deref().unwrap_or("?"),
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
@@ -490,7 +493,8 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(is_fixable_template(macro_name.as_deref()));
                     di.explanation = Some(format!(
-                        "{} is ill cased",
+                        "Macro {} produces link {} which is ill cased",
+                        macro_name.as_deref().unwrap_or("?"),
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
@@ -503,7 +507,8 @@ impl DIssue {
                     let macro_name = additional.remove("templ");
                     di.fixed = false;
                     di.explanation = Some(format!(
-                        "Argument ({}) is not valid.",
+                        "Macro {} received argument ({}) which is not valid.",
+                        macro_name.as_deref().unwrap_or("?"),
                         additional.get("arg").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
