@@ -224,7 +224,7 @@ jobs:
             done
           fi
 
-          npx rari build --all $FILE_LIST --templ-stats
+          npx rari build $FILE_LIST --templ-stats
 
       - name: Render content (fred)
         working-directory: mdn/content
