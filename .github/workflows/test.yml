@@ -139,7 +139,7 @@ jobs:
         working-directory: rari
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run content fix-flaws
+        run: cargo run --release content fix-flaws
 
       - name: Show content changes
         working-directory: content
