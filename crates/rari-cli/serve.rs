@@ -94,7 +94,7 @@ async fn wrapped_fix_issues(
 
 async fn get_file_handler(req: Request) -> Result<Response, AppError> {
     let url = req.uri().path();
-    tracing::info!("(asset) {}", url);
+    tracing::debug!("(asset) {}", url);
     let UrlMeta {
         page_category,
         slug,
