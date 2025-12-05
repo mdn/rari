@@ -36,13 +36,13 @@ jobs:
         uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
 
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --release --verbose
 
       - name: Upload rari binary
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: rari-binary
-          path: target/debug/rari
+          path: target/release/rari
           retention-days: 1
 
   format:
@@ -136,16 +136,16 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: rari-binary
-          path: rari/target/debug
+          path: rari/target/release
 
       - name: Make rari executable
-        run: chmod +x rari/target/debug/rari
+        run: chmod +x rari/target/release/rari
 
       - name: Run fix-flaws
         working-directory: rari
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: target/debug/rari content fix-flaws
+        run: target/release/rari content fix-flaws
 
       - name: Show content changes
         working-directory: content
