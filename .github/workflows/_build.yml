@@ -110,7 +110,7 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
 
-      - name: Build (rari)
+      - name: Build Rari
         working-directory: mdn/rari
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -119,7 +119,7 @@ jobs:
           cp target/release/rari ../content/node_modules/@mdn/rari/bin/
           rm -rf target
 
-      - name: Build (rari)
+      - name: Build content (rari)
         working-directory: mdn/content
         env:
           FRED_GLEAN_ENABLED: true
@@ -139,7 +139,7 @@ jobs:
           REACT_APP_UPDATES_BASE_URL: https://updates.developer.allizom.org
         run: npx rari build
 
-      - name: Build (fred)
+      - name: Build content (fred)
         working-directory: mdn/content
         env:
           CONTENT_ROOT: ${{ github.workspace }}/mdn/content/files
@@ -238,7 +238,7 @@ jobs:
 
           npx rari build --all $FILE_LIST --templ-stats
 
-      - name: Render (fred)
+      - name: Render content (fred)
         working-directory: mdn/content
         run: npx fred-ssr
 
