@@ -30,15 +30,15 @@ jobs:
       artifact-name: ${{ steps.set-artifact-name.outputs.name }}
 
     steps:
-#      - name: Setup privileged build
-#        id: privileged
-#        if: ${{ github.secret_source == 'Actions' }}
-#        env:
-#          BLOG_ROOT: ${{ github.workspace }}/mdn/blog/content/posts
-#          BLOG_PAGINATION: true
-#        run: |
-#          echo "BLOG_ROOT=$BLOG_ROOT" >> "$GITHUB_OUTPUT"
-#          echo "BLOG_PAGINATION=$BLOG_PAGINATION" >> "$GITHUB_OUTPUT"
+      - name: Setup privileged build
+        id: privileged
+        if: ${{ github.secret_source == 'Actions' }}
+        env:
+          BLOG_ROOT: ${{ github.workspace }}/mdn/blog/content/posts
+          BLOG_PAGINATION: true
+        run: |
+          echo "BLOG_ROOT=$BLOG_ROOT" >> "$GITHUB_OUTPUT"
+          echo "BLOG_PAGINATION=$BLOG_PAGINATION" >> "$GITHUB_OUTPUT"
 
       - name: Checkout (rari)
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
@@ -67,15 +67,15 @@ jobs:
           path: mdn/curriculum
           persist-credentials: false
 
-#      - name: Checkout (blog)
-#        if: ${{ steps.privileged.conclusion == 'success' }}
-#        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-#        with:
-#          repository: mdn/blog
-#          path: mdn/blog
-#          lfs: true
-#          token: ${{ secrets.MDN_STUDIO_PAT }}
-#          persist-credentials: false
+      - name: Checkout (blog)
+        if: ${{ steps.privileged.conclusion == 'success' }}
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          repository: mdn/blog
+          path: mdn/blog
+          lfs: true
+          token: ${{ secrets.MDN_BLOG_PAT }}
+          persist-credentials: false
 
       - name: Checkout (generic-content)
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
@@ -134,7 +134,7 @@ jobs:
           CONTENT_ROOT: ${{ github.workspace }}/mdn/content/files
           CONTENT_TRANSLATED_ROOT: ${{ github.workspace }}/mdn/translated-content/files
           CONTRIBUTOR_SPOTLIGHT_ROOT: ${{ github.workspace }}/mdn/mdn-contributor-spotlight/contributors
-#          BLOG_ROOT: ${{ steps.privileged.outputs.BLOG_ROOT }}
+          BLOG_ROOT: ${{ steps.privileged.outputs.BLOG_ROOT }}
           CURRICULUM_ROOT: ${{ github.workspace }}/mdn/curriculum
           GENERIC_CONTENT_ROOT: ${{ github.workspace }}/mdn/generic-content/files
 
@@ -143,7 +143,7 @@ jobs:
 
           ADDITIONAL_LOCALES_FOR_GENERICS_AND_SPAS: de
 
-#          BLOG_PAGINATION: ${{ steps.privileged.outputs.BLOG_PAGINATION }}
+          BLOG_PAGINATION: ${{ steps.privileged.outputs.BLOG_PAGINATION }}
 
           # Increase GitHub API limit.
           GITHUB_TOKEN: ${{ github.token }}
@@ -154,6 +154,12 @@ jobs:
           set -eo pipefail
 
           npx rari git-history
+
+          if [ -n "$BLOG_ROOT" ]; then
+            BUILD_OPTIONS="--all"
+          else
+            BUILD_OPTIONS=""
+          fi
 
           if [ "$PARTIAL_BUILD" = "true" ]; then
             # Partial build.
@@ -251,7 +257,7 @@ jobs:
             done
           fi
 
-          npx rari build $FILE_LIST --templ-stats
+          npx rari build $BUILD_OPTIONS $FILE_LIST --templ-stats
 
       - name: Render content (fred)
         working-directory: mdn/content
