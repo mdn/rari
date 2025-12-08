@@ -102,49 +102,23 @@ jobs:
       - name: Run clippy
         run: cargo clippy --all-features --workspace -- -Dwarnings
 
-  fix-flaws:
+  content:
     if: github.event_name == 'pull_request'
     needs: build
-    uses: ./.github/workflows/_run.yml
-    with:
-      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
-      command: content fix-flaws
-      translated-content: true
-      diff: true
 
-  fmt-sidebars:
-    if: github.event_name == 'pull_request'
-    needs: build
-    uses: ./.github/workflows/_run.yml
+    uses: ./.github/workflows/_test-content.yml
     with:
       rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
-      command: content fmt-sidebars
-      diff: true
 
-  sync-sidebars:
+  pr-review:
     if: github.event_name == 'pull_request'
     needs: build
-    uses: ./.github/workflows/_run.yml
-    with:
-      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
-      command: content sync-sidebars
-      diff: true
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    secrets: inherit
 
-  sync-translated-content:
-    if: github.event_name == 'pull_request'
-    needs: build
-    uses: ./.github/workflows/_run.yml
+    uses: ./.github/workflows/pr-review-companion.yml
     with:
       rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
-      command: content sync-translated-content
-      translated-content: true
-      diff: true
-
-  validate-redirects:
-    if: github.event_name == 'pull_request'
-    needs: build
-    uses: ./.github/workflows/_run.yml
-    with:
-      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
-      command: content validate-redirects
-      translated-content: true

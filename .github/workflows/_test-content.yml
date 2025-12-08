@@ -1,0 +1,49 @@
+name: Test Content
+
+on:
+  workflow_call:
+    inputs:
+      rari-binary-artifact-id:
+        description: "ID of rari binary artifact (optional)"
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  fix-flaws:
+    uses: ./.github/workflows/_run.yml
+    with:
+      rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
+      command: content fix-flaws
+      translated-content: true
+      diff: true
+
+  fmt-sidebars:
+    uses: ./.github/workflows/_run.yml
+    with:
+      rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
+      command: content fmt-sidebars
+      diff: true
+
+  sync-sidebars:
+    uses: ./.github/workflows/_run.yml
+    with:
+      rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
+      command: content sync-sidebars
+      diff: true
+
+  sync-translated-content:
+    uses: ./.github/workflows/_run.yml
+    with:
+      rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
+      command: content sync-translated-content
+      translated-content: true
+      diff: true
+
+  validate-redirects:
+    uses: ./.github/workflows/_run.yml
+    with:
+      rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
+      command: content validate-redirects
+      translated-content: true
