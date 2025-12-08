@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: mdn/content
-          path: content
+          path: mdn/content
           persist-credentials: false
 
       - name: Checkout (translated-content)
@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: mdn/translated-content
-          path: translated-content
+          path: mdn/translated-content
           persist-credentials: false
 
       - name: Download rari binary
@@ -68,7 +68,7 @@ jobs:
       - name: Run ${{ inputs.command }}
         working-directory: mdn/rari
         env:
-          CONTENT_ROOT: ${{ github.workspace }}/translated-content/files
+          CONTENT_ROOT: ${{ github.workspace }}/mdn/content/files
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: target/release/rari ${{ inputs.command }}
 
