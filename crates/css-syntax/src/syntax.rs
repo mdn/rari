@@ -346,14 +346,18 @@ impl SyntaxRenderer<'_> {
             Node::Type(typ) => {
                 let encoded = html_escape::encode_safe(name);
                 let slug = match name {
-                    "<color>" => "color_value",
-                    "<flex>" => "flex_value",
-                    "<overflow>" => "overflow_value",
-                    "<position>" => "position_value",
-                    "<position-area>" => "position-area_value",
-                    "<url>" => "url_value",
                     name if name.starts_with('<') && name.ends_with('>') => {
-                        &name[1..name.find(" [").or(name.find('[')).unwrap_or(name.len() - 1)]
+                        let ret =
+                            &name[1..name.find(" [").or(name.find('[')).unwrap_or(name.len() - 1)];
+                        match ret {
+                            "color" => "color_value",
+                            "flex" => "flex_value",
+                            "overflow" => "overflow_value",
+                            "position" => "position_value",
+                            "position-area" => "position-area_value",
+                            "url" => "url_value",
+                            _ => ret,
+                        }
                     }
                     name => &name[0..name.find(" [").or(name.find('[')).unwrap_or(name.len())],
                 };
@@ -604,6 +608,14 @@ pub fn render_formal_syntax(
             )
         }
         SyntaxInput::Css(css) => {
+            let css = match css {
+                CssType::Type("color_value") => CssType::Type("color"),
+                CssType::Type("flex_value") => CssType::Type("flex"),
+                CssType::Type("overflow_value") => CssType::Type("overflow"),
+                CssType::Type("position_value") => CssType::Type("position"),
+                CssType::Type("area_value") => CssType::Type("area"),
+                other => other,
+            };
             let syntax: SyntaxLine = get_syntax_internal(css, scope, true);
             if syntax.syntax.is_empty() {
                 return Err(SyntaxError::NoSyntaxFound);
