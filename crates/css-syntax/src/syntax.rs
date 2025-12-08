@@ -171,7 +171,6 @@ fn get_syntax_internal(typ: CssType, scope: Option<&str>, top_level: bool) -> Sy
             get_generic_syntax(trimmed, scope, &CSS_REF.properties).to_syntax_line(name)
         }
         CssType::Type(name) => {
-            let name = name.trim_end_matches("_value");
             if skip(name) && !top_level {
                 Syntax::default().to_syntax_line(format!("<{name}>"))
             } else {
@@ -348,7 +347,11 @@ impl SyntaxRenderer<'_> {
                 let encoded = html_escape::encode_safe(name);
                 let slug = match name {
                     "<color>" => "color_value",
+                    "<flex>" => "flex_value",
+                    "<overflow>" => "overflow_value",
                     "<position>" => "position_value",
+                    "<position-area>" => "position-area_value",
+                    "<url>" => "url_value",
                     name if name.starts_with('<') && name.ends_with('>') => {
                         &name[1..name.find(" [").or(name.find('[')).unwrap_or(name.len() - 1)]
                     }
