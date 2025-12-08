@@ -116,7 +116,7 @@ jobs:
       - name: Checkout mdn/rari
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          path: rari
+          path: mdn/rari
           persist-credentials: false
 
       - name: Checkout mdn/content
@@ -137,13 +137,13 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: rari-binary
-          path: rari/target/release
+          path: mdn/rari/target/release
 
       - name: Make rari executable
-        run: chmod +x rari/target/release/rari
+        run: chmod +x mdn/rari/target/release/rari
 
       - name: Run fix-flaws
-        working-directory: rari
+        working-directory: mdn/rari
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: target/release/rari content fix-flaws
