@@ -29,12 +29,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout mdn/rari
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          path: mdn/rari
-          persist-credentials: false
-
       - name: Checkout mdn/content
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
