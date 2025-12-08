@@ -154,3 +154,86 @@ jobs:
       - name: Show translated-content changes
         working-directory: translated-content
         run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
+
+  sync-translated-content:
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout mdn/rari
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          path: mdn/rari
+          persist-credentials: false
+
+      - name: Checkout mdn/content
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: mdn/content
+          path: content
+          persist-credentials: false
+
+      - name: Checkout mdn/translated-content
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: mdn/translated-content
+          path: translated-content
+          persist-credentials: false
+
+      - name: Download rari binary
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: rari-binary
+          path: mdn/rari/target/release
+
+      - name: Make rari executable
+        run: chmod +x mdn/rari/target/release/rari
+
+      - name: Run sync-translated-content
+        working-directory: mdn/rari
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: target/release/rari content sync-translated-content
+
+      - name: Show translated-content changes
+        working-directory: translated-content
+        run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
+
+  sync-sidebars:
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout mdn/rari
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          path: mdn/rari
+          persist-credentials: false
+
+      - name: Checkout mdn/content
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: mdn/content
+          path: content
+          persist-credentials: false
+
+      - name: Download rari binary
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: rari-binary
+          path: mdn/rari/target/release
+
+      - name: Make rari executable
+        run: chmod +x mdn/rari/target/release/rari
+
+      - name: Run sync-sidebars
+        working-directory: mdn/rari
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: target/release/rari content sync-sidebars
+
+      - name: Show content changes
+        working-directory: content
+        run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
