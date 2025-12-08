@@ -151,7 +151,7 @@ jobs:
           cp target/release/rari ../content/node_modules/@mdn/rari/bin/
           rm -rf target
 
-      - name: Build content (fred)
+      - name: Build content (rari)
         working-directory: mdn/content
         env:
           CONTENT_ROOT: ${{ github.workspace }}/mdn/content/files
