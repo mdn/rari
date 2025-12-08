@@ -74,10 +74,10 @@ jobs:
 
       - name: Diff content
         if: inputs.diff
-        working-directory: content
+        working-directory: mdn/content
         run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
 
       - name: Diff translated-content
         if: inputs.diff && inputs.translated-content
-        working-directory: translated-content
+        working-directory: mdn/translated-content
         run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
