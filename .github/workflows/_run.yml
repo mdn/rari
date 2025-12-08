@@ -50,7 +50,7 @@ jobs:
           artifact-ids: ${{ inputs.rari-binary-artifact-id }}
           path: mdn/rari/target/release
 
-      - name: Make rari executable
+      - name: Prepare rari binary
         run: chmod +x mdn/rari/target/release/rari
 
       - name: Run ${{ inputs.command }}
