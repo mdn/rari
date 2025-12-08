@@ -41,7 +41,7 @@ chrono = { version = "0.4", features = ["serde"] }
 scraper = { version = "0.25", features = ["deterministic"] }
 lol_html = "2"
 html-escape = "0.2"
-html5ever = "0.29"
+html5ever = "0.36"
 ego-tree = "0.10"
 rss = { version = "2", features = [], default-features = false }
 cssparser = "0.34"
