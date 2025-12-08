@@ -187,8 +187,9 @@ jobs:
         working-directory: mdn/rari
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CONTENT_TRANSLATED_ROOT: ""
-        run: target/release/rari content fmt-sidebars
+        run: |
+          unset CONTENT_TRANSLATED_ROOT
+          target/release/rari content fmt-sidebars
 
       - name: Show content changes
         working-directory: content
@@ -226,8 +227,9 @@ jobs:
         working-directory: mdn/rari
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CONTENT_TRANSLATED_ROOT: ""
-        run: target/release/rari content sync-sidebars
+        run: |
+          unset CONTENT_TRANSLATED_ROOT
+          target/release/rari content sync-sidebars
 
       - name: Show content changes
         working-directory: content
