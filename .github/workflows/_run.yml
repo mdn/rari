@@ -3,11 +3,10 @@ name: Run Reusable Workflow
 on:
   workflow_call:
     inputs:
-      rari-binary-artifact-name:
-        description: 'The name of the rari binary artifact to download'
-        required: false
+      rari-binary-artifact-id:
+        description: "ID of rari binary artifact"
+        required: true
         type: string
-        default: 'rari-binary'
       command:
         description: 'The rari command to run (e.g., content fix-flaws, content fmt-sidebars)'
         required: true
@@ -22,6 +21,8 @@ on:
         required: false
         type: boolean
         default: false
+
+permissions: {} # No GITHUB_TOKEN permissions, as we only use it to increase API limit.
 
 jobs:
   run:
@@ -52,7 +53,7 @@ jobs:
       - name: Download rari binary
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
-          name: ${{ inputs.rari-binary-artifact-name }}
+          artifact-ids: ${{ inputs.rari-binary-artifact-id }}
           path: mdn/rari/target/release
 
       - name: Make rari executable

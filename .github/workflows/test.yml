@@ -20,6 +20,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      rari-binary-artifact-id: ${{ steps.upload.outputs.artifact-id }}
 
     env:
       RUSTC_WRAPPER: sccache
@@ -38,7 +40,8 @@ jobs:
       - name: Build
         run: cargo build --release --verbose
 
-      - name: Upload rari binary
+      - name: Upload binary
+        id: upload
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: rari-binary
@@ -48,11 +51,6 @@ jobs:
   format:
     needs: build
     runs-on: ubuntu-latest
-
-    env:
-      RUSTC_WRAPPER: sccache
-      SCCACHE_GHA_ENABLED: true
-
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -61,9 +59,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@9a1d20035bdbcbc899baabe1e402e85bc33639bc # 1.90
         with:
           components: rustfmt
-
-      - name: sccache-cache
-        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
 
       - name: Run fmt
         run: cargo fmt -- --check
@@ -94,6 +89,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -111,6 +107,7 @@ jobs:
     needs: build
     uses: ./.github/workflows/_run.yml
     with:
+      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
       command: content fix-flaws
       translated-content: true
       diff: true
@@ -120,6 +117,7 @@ jobs:
     needs: build
     uses: ./.github/workflows/_run.yml
     with:
+      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
       command: content fmt-sidebars
       diff: true
 
@@ -128,6 +126,7 @@ jobs:
     needs: build
     uses: ./.github/workflows/_run.yml
     with:
+      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
       command: content sync-sidebars
       diff: true
 
@@ -136,6 +135,7 @@ jobs:
     needs: build
     uses: ./.github/workflows/_run.yml
     with:
+      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
       command: content sync-translated-content
       translated-content: true
       diff: true
@@ -145,5 +145,6 @@ jobs:
     needs: build
     uses: ./.github/workflows/_run.yml
     with:
+      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
       command: content validate-redirects
       translated-content: true
