@@ -20,6 +20,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      rari-binary-artifact-id: ${{ steps.upload.outputs.artifact-id }}
 
     env:
       RUSTC_WRAPPER: sccache
@@ -38,7 +40,8 @@ jobs:
       - name: Build
         run: cargo build --release --verbose
 
-      - name: Upload rari binary
+      - name: Upload binary
+        id: upload
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: rari-binary
@@ -48,7 +51,6 @@ jobs:
   format:
     needs: build
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -64,7 +66,7 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
-    
+
     env:
       RUSTC_WRAPPER: sccache
       SCCACHE_GHA_ENABLED: true
@@ -87,6 +89,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -108,7 +111,7 @@ jobs:
       - name: Checkout mdn/rari
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          path: rari
+          path: mdn/rari
           persist-credentials: false
 
       - name: Checkout mdn/content
@@ -128,14 +131,14 @@ jobs:
       - name: Download rari binary
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
-          name: rari-binary
-          path: rari/target/release
+          artifact-ids: ${{ needs.build.outputs.rari-binary-artifact-id }}
+          path: mdn/rari/target/release
 
       - name: Make rari executable
-        run: chmod +x rari/target/release/rari
+        run: chmod +x mdn/rari/target/release/rari
 
       - name: Run fix-flaws
-        working-directory: rari
+        working-directory: mdn/rari
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: target/release/rari content fix-flaws
@@ -147,3 +150,16 @@ jobs:
       - name: Show translated-content changes
         working-directory: translated-content
         run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
+
+  pr-review:
+    if: github.event_name == 'pull_request'
+    needs: build
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    secrets: inherit
+
+    uses: ./.github/workflows/pr-review-companion.yml
+    with:
+      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
