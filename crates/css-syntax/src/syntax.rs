@@ -767,7 +767,7 @@ mod test {
     #[test]
     fn test_get_syntax_color_type() {
         let SyntaxLine { name, syntax, .. } =
-            get_syntax_internal(CssType::Type("color_value"), None, true);
+            get_syntax_internal(CssType::Type("color"), None, true);
         assert_eq!(name, "<color>");
         assert_eq!(
             syntax,
@@ -830,7 +830,7 @@ mod test {
         };
         let SyntaxLine {
             name: _, syntax, ..
-        } = get_syntax_internal(CssType::Type("color_value"), None, true);
+        } = get_syntax_internal(CssType::Type("color"), None, true);
         if let Node::Group(group) = parse(&syntax)? {
             let rendered = renderer.render_terms(&group.terms, group.combinator)?;
             assert_eq!(
