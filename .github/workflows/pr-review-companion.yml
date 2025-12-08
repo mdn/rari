@@ -3,8 +3,8 @@ name: PR Review Companion
 on:
   workflow_call:
     inputs:
-      binary-artifact-name:
-        description: "Name of pre-built rari binary artifact (optional)"
+      rari-binary-artifact-id:
+        description: "ID of rari binary artifact (optional)"
         type: string
         default: ""
 
@@ -18,7 +18,7 @@ permissions:
 jobs:
   build-binary:
     if: |
-      inputs.binary-artifact-name == '' &&
+      inputs.rari-binary-artifact-id == '' &&
       github.repository_owner == 'mdn' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.secret_source == 'Actions'
@@ -29,7 +29,7 @@ jobs:
       RUSTC_WRAPPER: "sccache"
 
     outputs:
-      artifact-name: ${{ steps.set-artifact-name.outputs.name }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
 
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -44,14 +44,11 @@ jobs:
       - name: Build rari
         run: cargo build --release
 
-      - name: Set artifact name
-        id: set-artifact-name
-        run: echo "name=rari-binary-pr${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-
-      - name: Upload rari binary
+      - name: Upload binary
+        id: upload
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
-          name: ${{ steps.set-artifact-name.outputs.name }}
+          name: rari-binary-pr${{ github.event.pull_request.number }}
           path: target/release/rari
           retention-days: 1
 
@@ -67,7 +64,7 @@ jobs:
     secrets: inherit
     with:
       partial: true
-      binary-artifact-name: ${{ inputs.binary-artifact-name || needs.build-binary.outputs.artifact-name }}
+      rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id || needs.build-binary.outputs.artifact-id }}
 
   deploy:
     if: always() && needs.build.result == 'success'

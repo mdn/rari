@@ -20,6 +20,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      rari-binary-artifact-id: ${{ steps.upload.outputs.artifact-id }}
 
     env:
       RUSTC_WRAPPER: sccache
@@ -38,7 +40,8 @@ jobs:
       - name: Build
         run: cargo build --release --verbose
 
-      - name: Upload rari binary
+      - name: Upload binary
+        id: upload
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: rari-binary
@@ -136,7 +139,7 @@ jobs:
       - name: Download rari binary
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
-          name: rari-binary
+          artifact-ids: ${{ needs.build.outputs.rari-binary-artifact-id }}
           path: mdn/rari/target/release
 
       - name: Make rari executable
@@ -167,4 +170,4 @@ jobs:
 
     uses: ./.github/workflows/pr-review-companion.yml
     with:
-      binary-artifact-name: rari-binary
+      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
