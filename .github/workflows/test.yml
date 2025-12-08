@@ -48,7 +48,7 @@ jobs:
   format:
     needs: build
     runs-on: ubuntu-latest
-    
+
     env:
       RUSTC_WRAPPER: sccache
       SCCACHE_GHA_ENABLED: true
@@ -71,7 +71,7 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
-    
+
     env:
       RUSTC_WRAPPER: sccache
       SCCACHE_GHA_ENABLED: true
@@ -94,6 +94,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -154,3 +155,16 @@ jobs:
       - name: Show translated-content changes
         working-directory: translated-content
         run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
+
+  pr-review:
+    if: github.event_name == 'pull_request'
+    needs: build
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    secrets: inherit
+
+    uses: ./.github/workflows/pr-review-companion.yml
+    with:
+      binary-artifact-name: rari-binary

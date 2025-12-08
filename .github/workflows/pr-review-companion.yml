@@ -1,9 +1,12 @@
 name: PR Review Companion
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      binary-artifact-name:
+        description: "Name of pre-built rari binary artifact (optional)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -13,17 +16,61 @@ permissions:
   pull-requests: write
 
 jobs:
-  build:
+  build-binary:
     if: |
+      inputs.binary-artifact-name == '' &&
       github.repository_owner == 'mdn' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.secret_source == 'Actions'
+    runs-on: ubuntu-latest
+
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+
+    outputs:
+      artifact-name: ${{ steps.set-artifact-name.outputs.name }}
+
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@9a1d20035bdbcbc899baabe1e402e85bc33639bc # 1.90
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
+
+      - name: Build rari
+        run: cargo build --release
+
+      - name: Set artifact name
+        id: set-artifact-name
+        run: echo "name=rari-binary-pr${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+
+      - name: Upload rari binary
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ${{ steps.set-artifact-name.outputs.name }}
+          path: target/release/rari
+          retention-days: 1
+
+  build:
+    if: |
+      always() &&
+      (needs.build-binary.result == 'success' || needs.build-binary.result == 'skipped') &&
+      github.repository_owner == 'mdn' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.secret_source == 'Actions'
+    needs: build-binary
     uses: ./.github/workflows/_build.yml
     secrets: inherit
     with:
       partial: true
+      binary-artifact-name: ${{ inputs.binary-artifact-name || needs.build-binary.outputs.artifact-name }}
 
   deploy:
+    if: always() && needs.build.result == 'success'
     needs: build
     uses: ./.github/workflows/_deploy.yml
     secrets: inherit
@@ -33,6 +80,7 @@ jobs:
       build-artifact-name: ${{ needs.build.outputs.artifact-name }}
 
   comment:
+    if: always() && needs.deploy.result == 'success'
     needs: deploy
     runs-on: ubuntu-latest
     steps:
