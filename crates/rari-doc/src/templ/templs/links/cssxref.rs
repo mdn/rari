@@ -86,7 +86,16 @@ pub fn cssxref_internal(
     // Determine the URL path based on the new structure
     let mut url_path = if name.starts_with("&lt;") || name.starts_with('<') {
         // Types go under Web/CSS/Reference/Values
-        format!("Reference/Values/{slug}")
+        // For some, like <counter-reset> and <counter-increment>, brackets are also found on properties.
+        // So check properties first, then assume it is a value.
+        let url_path = format!("Reference/Properties/{slug}");
+        let url = format!("{}{}", &base_url, &url_path);
+        if RariApi::get_page_nowarn(&url).is_ok() {
+            url_path
+        } else {
+            // Fallback to Values
+            format!("Reference/Values/{slug}")
+        }
     } else if name.starts_with(':') {
         // Pseudo-classes and pseudo-elements go under Web/CSS/Reference/Selectors
         format!("Reference/Selectors/{slug}")
@@ -97,7 +106,7 @@ pub fn cssxref_internal(
         // Functions go under Web/CSS/Reference/Values
         format!("Reference/Values/{slug}")
     } else {
-        // Everything else: check Properties first
+        // Everything else: check Properties first, otherwise assume a value.
         let url_path = format!("Reference/Properties/{slug}");
         let url = format!("{}{}", &base_url, &url_path);
         if RariApi::get_page_nowarn(&url).is_ok() {
