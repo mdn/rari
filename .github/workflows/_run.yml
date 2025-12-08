@@ -29,14 +29,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout mdn/content
+      - name: Checkout (rari)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          path: mdn/rari
+          persist-credentials: false
+
+      - name: Checkout (content)
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: mdn/content
           path: content
           persist-credentials: false
 
-      - name: Checkout mdn/translated-content
+      - name: Checkout (translated-content)
         if: inputs.translated-content
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -53,15 +59,18 @@ jobs:
       - name: Prepare rari binary
         run: chmod +x mdn/rari/target/release/rari
 
+      - name: Setup translated-content
+        if: inputs.translated-content
+        env:
+          CONTENT_TRANSLATED_ROOT: ${{ github.workspace }}/mdn/translated-content/files
+        run: echo "CONTENT_TRANSLATED_ROOT=$CONTENT_TRANSLATED_ROOT" >> "$GITHUB_ENV"
+
       - name: Run ${{ inputs.command }}
         working-directory: mdn/rari
         env:
+          CONTENT_ROOT: ${{ github.workspace }}/translated-content/files
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "${{ inputs.translated-content }}" = "false" ]; then
-            unset CONTENT_TRANSLATED_ROOT
-          fi
-          target/release/rari ${{ inputs.command }}
+        run: target/release/rari ${{ inputs.command }}
 
       - name: Diff content
         if: inputs.diff
