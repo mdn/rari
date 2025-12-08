@@ -12,7 +12,7 @@ permissions: {}
 
 jobs:
   fix-flaws:
-    uses: ./.github/workflows/_run.yml
+    uses: ./.github/workflows/_test-content-run.yml
     with:
       rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
       command: content fix-flaws
@@ -20,21 +20,21 @@ jobs:
       diff: true
 
   fmt-sidebars:
-    uses: ./.github/workflows/_run.yml
+    uses: ./.github/workflows/_test-content-run.yml
     with:
       rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
       command: content fmt-sidebars
       diff: true
 
   sync-sidebars:
-    uses: ./.github/workflows/_run.yml
+    uses: ./.github/workflows/_test-content-run.yml
     with:
       rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
       command: content sync-sidebars
       diff: true
 
   sync-translated-content:
-    uses: ./.github/workflows/_run.yml
+    uses: ./.github/workflows/_test-content-run.yml
     with:
       rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
       command: content sync-translated-content
@@ -42,7 +42,7 @@ jobs:
       diff: true
 
   validate-redirects:
-    uses: ./.github/workflows/_run.yml
+    uses: ./.github/workflows/_test-content-run.yml
     with:
       rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
       command: content validate-redirects
