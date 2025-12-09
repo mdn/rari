@@ -15,7 +15,7 @@ url.workspace = true
 html-escape.workspace = true
 itertools.workspace = true
 rari-types = { workspace = true, optional = true }
-rari-deps = { workspace = true, optional = true }
+rari-deps = { workspace = true }
 
 css-syntax-types = { path = "../css-syntax-types" }
 css-definition-syntax = { path = "../css-definition-syntax" }
@@ -28,6 +28,6 @@ anyhow = "1"
 rari-deps.workspace = true
 
 [features]
-doctest = ["dep:rari-deps"]
+doctest = []
 default = []
 rari = ["dep:rari-types"]

@@ -1,47 +1,16 @@
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Write;
-#[cfg(any(feature = "rari", test))]
-use std::fs;
-use std::sync::LazyLock;
 
 use css_definition_syntax::generate::{self, GenerateOptions};
 use css_definition_syntax::parser::{CombinatorType, Multiplier, Node, Type, parse};
 use css_definition_syntax::walk::{WalkOptions, walk};
-use css_syntax_types::{CssValuesItem, SpecLink, WebrefCss};
-#[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
-use rari_types::globals::data_dir;
+use css_syntax_types::{CssValuesItem, SpecLink};
+use rari_deps::webref_css::css_ref_data;
 use serde::Serialize;
 
 use crate::error::SyntaxError;
 use crate::syntax_provider::SyntaxProvider;
-
-static CSS_REF: LazyLock<WebrefCss> = LazyLock::new(|| {
-    #[cfg(any(feature = "doctest", test))]
-    {
-        let package_path = std::path::Path::new("package");
-        rari_deps::webref_css::update_webref_css(package_path).unwrap();
-        let json_str = fs::read_to_string(
-            package_path
-                .join("@webref")
-                .join("css")
-                .join("webref_css.json"),
-        )
-        .expect("no data dir");
-        serde_json::from_str(&json_str).expect("Failed to parse JSON")
-    }
-    #[cfg(all(not(feature = "rari"), not(any(feature = "doctest", test))))]
-    {
-        let webref_css: &str = include_str!("../@webref/css/webref_css.json");
-        serde_json::from_str(webref_css).expect("Failed to parse JSON")
-    }
-    #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
-    {
-        let json_str = fs::read_to_string(data_dir().join("@webref/css").join("webref_css.json"))
-            .expect("no data dir");
-        serde_json::from_str(&json_str).expect("Failed to parse JSON")
-    }
-});
 
 pub type ItemAndHref = (&'static CssValuesItem, Option<&'static SpecLink>);
 
@@ -116,7 +85,7 @@ pub fn get_at_rule_descriptor_syntax(
 ) -> Syntax {
     let scopes = scope_chain(scope);
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.atrules.get(scope)
+        if let Some(scoped) = css_ref_data().atrules.get(scope)
             && let Some(at_rule) = scoped.get(at_rule_name)
             && let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name)
         {
@@ -168,21 +137,23 @@ fn get_syntax_internal(typ: CssType, scope: Option<&str>, top_level: bool) -> Sy
             let trimmed = name
                 .trim_start_matches(['<', '\''])
                 .trim_end_matches(['\'', '>']);
-            get_generic_syntax(trimmed, scope, &CSS_REF.properties).to_syntax_line(name)
+            get_generic_syntax(trimmed, scope, &css_ref_data().properties).to_syntax_line(name)
         }
         CssType::Type(name) => {
             if skip(name) && !top_level {
                 Syntax::default().to_syntax_line(format!("<{name}>"))
             } else {
-                get_generic_syntax(name, scope, &CSS_REF.types).to_syntax_line(format!("<{name}>"))
+                get_generic_syntax(name, scope, &css_ref_data().types)
+                    .to_syntax_line(format!("<{name}>"))
             }
         }
         CssType::Function(name) => {
             let name = format!("{name}()");
-            get_generic_syntax(&name, scope, &CSS_REF.functions).to_syntax_line(format!("<{name}>"))
+            get_generic_syntax(&name, scope, &css_ref_data().functions)
+                .to_syntax_line(format!("<{name}>"))
         }
         CssType::AtRule(name) => {
-            get_generic_syntax(name, scope, &CSS_REF.atrules).to_syntax_line(name)
+            get_generic_syntax(name, scope, &css_ref_data().atrules).to_syntax_line(name)
         }
         CssType::AtRuleDescriptor(name, at_rule_name) => {
             get_at_rule_descriptor_syntax(name, at_rule_name, scope).to_syntax_line(name)
@@ -741,6 +712,8 @@ fn get_nodes_for_syntaxes(
 
 #[cfg(test)]
 mod test {
+    use std::sync::LazyLock;
+
     use super::*;
 
     static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
@@ -927,14 +900,14 @@ mod test {
 
     #[test]
     fn test_get_generic_syntax() {
-        let color = get_generic_syntax("color", None, &CSS_REF.properties);
+        let color = get_generic_syntax("color", None, &css_ref_data().properties);
         assert_eq!(color.syntax, "<color>");
 
-        let border = get_generic_syntax("border", None, &CSS_REF.properties);
+        let border = get_generic_syntax("border", None, &css_ref_data().properties);
         assert_eq!(border.syntax, "<line-width> || <line-style> || <color>");
 
         let grid_template_rows =
-            get_generic_syntax("grid-template-rows", None, &CSS_REF.properties);
+            get_generic_syntax("grid-template-rows", None, &css_ref_data().properties);
         assert_eq!(
             grid_template_rows.syntax,
             "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?"
