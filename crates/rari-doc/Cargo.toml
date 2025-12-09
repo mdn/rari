@@ -11,6 +11,7 @@ rari-utils.workspace = true
 rari-types.workspace = true
 rari-md.workspace = true
 rari-data.workspace = true
+rari-deps.workspace = true
 rari-templ-func.workspace = true
 
 thiserror.workspace = true

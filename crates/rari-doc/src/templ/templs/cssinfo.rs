@@ -2,13 +2,14 @@ use std::fmt::Write;
 
 use css_syntax::syntax::CssType;
 use css_syntax_types::{AtRuleDescriptor, Property};
+use rari_deps::webref_css::css_ref_data;
 use rari_templ_func::rari_f;
 use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::helpers::css_info::{
     css_animation_type, css_applies_to, css_computed, css_inherited, css_initial,
-    css_l10n_for_value, css_percentages, css_ref_data, css_related_at_rule,
+    css_l10n_for_value, css_percentages, css_related_at_rule,
 };
 
 #[rari_f(register = "crate::Templ")]

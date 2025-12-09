@@ -2604,6 +2604,7 @@ dependencies = [
  "percent-encoding",
  "pretty_yaml",
  "rari-data",
+ "rari-deps",
  "rari-md",
  "rari-templ-func",
  "rari-types",
