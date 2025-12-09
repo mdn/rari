@@ -7,6 +7,8 @@ use crate::error::DocError;
 use crate::templ::api::RariApi;
 
 pub fn css_l10n_for_value(key: &str, locale: Locale) -> &str {
+    // If a (localized) value is not found, we emit a warning and use the key as a value here.
+    // This is different from the `l10n_json_data` call that relies on at least the default locale valueto be present.
     l10n_json_data("CSSFormalDefinitions", key, locale)
         .inspect_err(|e| tracing::warn!("Localized value for formal definition is missing in content/files/jsondata/L10n-CSSFormalDefinitions.json: {} ({})", key, e))
         .unwrap_or(key)
