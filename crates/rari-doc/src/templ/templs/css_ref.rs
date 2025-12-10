@@ -8,7 +8,7 @@ use rari_utils::concat_strs;
 
 use crate::error::DocError;
 use crate::helpers::subpages::get_sub_pages;
-use crate::pages::page::PageLike;
+use crate::pages::page::{Page, PageLike};
 use crate::templ::api::RariApi;
 
 #[rari_f(register = "crate::Templ")]
@@ -16,26 +16,10 @@ pub fn css_ref() -> Result<String, DocError> {
     let mut index = BTreeMap::<char, HashMap<&str, &str>>::new();
 
     let css_pages = get_sub_pages("/en-US/docs/Web/CSS", None, Default::default())?;
-    for page in css_pages.iter() {
-        if !matches!(
-            page.page_type(),
-            PageType::CssType
-                | PageType::CssAtRule
-                | PageType::CssKeyword
-                | PageType::CssFunction
-                | PageType::CssSelector
-                | PageType::CssProperty
-                | PageType::CssPseudoElement
-                | PageType::CssPseudoClass
-                | PageType::CssShorthandProperty
-                | PageType::CssAtRuleDescriptor
-        ) || page
-            .status()
-            .iter()
-            .any(|s| matches!(s, FeatureStatus::Deprecated | FeatureStatus::NonStandard))
-        {
-            continue;
-        }
+    for page in css_pages
+        .iter()
+        .filter(|&page| is_indexed_css_ref_page(page))
+    {
         let initial = initial_letter(page.title());
         let entry = index.entry(initial).or_default();
         let (url, label) = (page.slug(), page.title());
@@ -70,6 +54,25 @@ pub fn css_ref() -> Result<String, DocError> {
     out.push_str(r#"</div>"#);
 
     Ok(out)
+}
+
+fn is_indexed_css_ref_page(page: &Page) -> bool {
+    matches!(
+        page.page_type(),
+        PageType::CssType
+            | PageType::CssAtRule
+            | PageType::CssKeyword
+            | PageType::CssFunction
+            | PageType::CssSelector
+            | PageType::CssProperty
+            | PageType::CssPseudoElement
+            | PageType::CssPseudoClass
+            | PageType::CssShorthandProperty
+            | PageType::CssAtRuleDescriptor
+    ) && !page
+        .status()
+        .iter()
+        .any(|s| matches!(s, FeatureStatus::Deprecated | FeatureStatus::NonStandard))
 }
 
 fn compare_items(a: &str, b: &str) -> Ordering {
