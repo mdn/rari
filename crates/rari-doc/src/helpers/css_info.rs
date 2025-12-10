@@ -10,7 +10,13 @@ pub fn css_l10n_for_value(key: &str, locale: Locale) -> &str {
     // If a (localized) value is not found, we emit a warning and use the key as a value here.
     // This is different from the `l10n_json_data` call that relies on at least the default locale valueto be present.
     l10n_json_data("CSSFormalDefinitions", key, locale)
-        .inspect_err(|e| tracing::warn!("Localized value for formal definition is missing in content/files/jsondata/L10n-CSSFormalDefinitions.json: {} ({})", key, e))
+        .inspect_err({|e|
+            if locale == Locale::default() {
+                tracing::warn!("Default localized value for formal definition is missing in content/files/jsondata/L10n-CSSFormalDefinitions.json: {} ({}), locale: {}", key, e, locale.as_url_str());
+            } else {
+                tracing::info!("Localized value for formal definition is missing in content/files/jsondata/L10n-CSSFormalDefinitions.json: {} ({}), locale: {}", key, e, locale.as_url_str());
+            }
+        })
         .unwrap_or(key)
 }
 
