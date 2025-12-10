@@ -43,11 +43,11 @@ pub fn cssinfo() -> Result<String, DocError> {
             // do not report errors in orphaned / conflicting pages
             if !env.slug.starts_with("orphaned") && !env.slug.starts_with("conflicting") {
                 tracing::error!(
-                    "cssinfo is only valid on properties and at rule descriptors: {} {:#?}",
+                    "Macro cssinfo can only be used on CSS Property and At-rule descriptor pages, but {} is of type {:?} {:#?}",
                     env.slug,
+                    env.page_type,
                     env
                 );
-                // get the page type from the en-us counterpart
                 return Err(DocError::CssPageTypeRequired);
             }
             return Ok(Default::default());
