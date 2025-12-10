@@ -118,9 +118,6 @@ pub fn cssxref_internal(
         }
     };
 
-    // println!("============== name: {}", name);
-    // println!("============== url_path: {}", url_path);
-
     if RariApi::get_page_nowarn(&format!("{}{}", &base_url, &url_path)).is_err() {
         // Fall back to Web/CSS
         url_path = slug.to_string();
