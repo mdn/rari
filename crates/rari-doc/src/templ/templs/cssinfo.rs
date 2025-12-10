@@ -32,12 +32,11 @@ pub fn cssinfo() -> Result<String, DocError> {
             }
         });
 
-    let mut slug_rev_iter = env.slug.rsplitn(3, '/');
-
     let typ = match env.page_type {
-        rari_types::fm_types::PageType::CssAtRuleDescriptor => {
-            CssType::AtRuleDescriptor(at_rule.unwrap_or_default(), slug_rev_iter.next().unwrap())
-        }
+        rari_types::fm_types::PageType::CssAtRuleDescriptor => CssType::AtRuleDescriptor(
+            at_rule.unwrap_or_default(),
+            env.slug.rsplit('/').next().unwrap(),
+        ),
         rari_types::fm_types::PageType::CssProperty => CssType::Property(&name),
         rari_types::fm_types::PageType::CssShorthandProperty => CssType::Property(&name),
         _ => {
