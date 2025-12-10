@@ -38,21 +38,11 @@ fn slug_sorter(a: &Page, b: &Page) -> Ordering {
     COLLATOR.with(|c| c.compare(a.slug(), b.slug()))
 }
 
-fn ignoring_css_prefixes_sorter(a: &Page, b: &Page) -> Ordering {
+fn ignoring_non_alpha_prefixes_sorter(a: &Page, b: &Page) -> Ordering {
     COLLATOR.with(|c| {
         c.compare(
-            a.title()
-                .trim_start_matches("::")
-                .trim_start_matches(":")
-                .trim_start_matches("<")
-                .trim_start_matches("!")
-                .trim_start_matches("@"),
-            b.title()
-                .trim_start_matches("::")
-                .trim_start_matches(":")
-                .trim_start_matches("<")
-                .trim_start_matches("!")
-                .trim_start_matches("@"),
+            a.title().trim_start_matches(|c: char| !c.is_alphabetic()),
+            b.title().trim_start_matches(|c: char| !c.is_alphabetic()),
         )
     })
 }
@@ -74,7 +64,7 @@ impl SubPagesSorter {
             SubPagesSorter::ShortTitle => short_title_sorter,
             SubPagesSorter::Slug => slug_sorter,
             SubPagesSorter::TitleAPI => title_api_sorter,
-            SubPagesSorter::IgnoringCSSPrefixes => ignoring_css_prefixes_sorter,
+            SubPagesSorter::IgnoringCSSPrefixes => ignoring_non_alpha_prefixes_sorter,
         }
     }
 }

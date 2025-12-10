@@ -63,6 +63,7 @@ pub fn cssxref_internal(
         .unwrap_or(name);
     let decoded_maybe_display_name = html_escape::decode_html_entities(maybe_display_name);
     let encoded_maybe_display_name = html_escape::encode_text(decoded_maybe_display_name.as_ref());
+    // Determine the original name for classification
     let mut slug = name
         .strip_prefix("&lt;")
         .unwrap_or(name.strip_prefix('<').unwrap_or(name));
