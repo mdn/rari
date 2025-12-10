@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8](https://github.com/mdn/rari/compare/v0.2.7...v0.2.8) (2025-12-09)
+
+
+### Miscellaneous
+
+* **deps:** bump proc-macro2 from 1.0.95 to 1.0.103 ([#424](https://github.com/mdn/rari/issues/424)) ([acaa01f](https://github.com/mdn/rari/commit/acaa01fd90ce8572fade794c77dc9fd903f6efef))
+* **deps:** bump scraper from 0.23.1 to 0.25.0 ([#426](https://github.com/mdn/rari/issues/426)) ([77b0aa1](https://github.com/mdn/rari/commit/77b0aa145cd182052d041c725e5a4fafb4d5056b))
+* **deps:** bump syn from 2.0.103 to 2.0.111 ([#422](https://github.com/mdn/rari/issues/422)) ([436f4c0](https://github.com/mdn/rari/commit/436f4c003bc1aaac36322b36e52458f7ab5ef9d1))
+* **issues:** refine explanations ([#418](https://github.com/mdn/rari/issues/418)) ([3e9886c](https://github.com/mdn/rari/commit/3e9886ce51640e44ed5f499cb84eca445cfe01a7))
+
 ## [0.2.7](https://github.com/mdn/rari/compare/v0.2.6...v0.2.7) (2025-12-04)
 
 
