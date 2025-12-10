@@ -112,7 +112,10 @@ fn get_atrule_descriptor_def<'a>(
             return Ok(desc);
         }
     }
-    Err(DocError::WebrefLookupFailed)
+    Err(DocError::WebrefLookupFailed(format!(
+        "Failed to find descriptor '{}' for at-rule '{}'",
+        descriptor, at_rule
+    )))
 }
 
 pub fn get_property_def<'a>(property: &str, scope: Option<&str>) -> Result<&'a Property, DocError> {
@@ -125,7 +128,10 @@ pub fn get_property_def<'a>(property: &str, scope: Option<&str>) -> Result<&'a P
             return Ok(item);
         }
     }
-    Err(DocError::WebrefLookupFailed)
+    Err(DocError::WebrefLookupFailed(format!(
+        "Failed to find property '{}'",
+        property
+    )))
 }
 
 fn write_table_row(out: &mut String, label: &str, value: &str) -> Result<(), DocError> {
