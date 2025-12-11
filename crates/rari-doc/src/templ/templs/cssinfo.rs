@@ -82,7 +82,7 @@ pub fn cssinfo() -> Result<String, DocError> {
 
 /// Returns an optional scope string from a browser compatibility entry.
 /// Example:
-/// ```rust
+/// ```rust,ignore
 /// assert_eq!(scope_from_browser_compat(Some("css.properties.text-align")), Some("text-align"));
 /// ```
 fn scope_from_browser_compat(browser_compat: Option<&str>) -> Option<&str> {
