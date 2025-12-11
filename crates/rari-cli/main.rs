@@ -75,6 +75,8 @@ enum Commands {
     Serve(ServeArgs),
     /// Collect the git history.
     GitHistory,
+    /// Install data dependencies
+    InstallDataDependencies,
     /// Self-update rari (caution if installed from npm)
     Update(UpdateArgs),
     /// Export json schema.
@@ -309,12 +311,12 @@ fn main() -> Result<(), Error> {
         .with(memory_layer.clone().with_filter(memory_filter))
         .init();
 
-    if cli.force_updates {
+    if cli.force_updates || matches!(cli.command, Commands::InstallDataDependencies) {
         tracing::info!("Forcing update of all dependencies...");
         clear_dependencies_last_checked(rari_types::globals::data_dir());
     }
 
-    if !cli.skip_updates {
+    if !cli.skip_updates || matches!(cli.command, Commands::InstallDataDependencies) {
         rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;
         rari_deps::web_features::update_web_features(rari_types::globals::data_dir())?;
         rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;
@@ -507,6 +509,9 @@ fn main() -> Result<(), Error> {
             settings.json_live_samples = true;
             let _ = SETTINGS.set(settings);
             serve::serve()?
+        }
+        Commands::InstallDataDependencies => {
+            tracing::info!("Installed data dependencies");
         }
         Commands::Lsp => {
             let mut settings = Settings::new()?;
