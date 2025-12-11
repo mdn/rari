@@ -105,54 +105,13 @@ jobs:
       - name: Run clippy
         run: cargo clippy --all-features --workspace -- -Dwarnings
 
-  fix-flaws:
+  content:
     if: github.event_name == 'pull_request'
     needs: build
-    runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout mdn/rari
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          path: mdn/rari
-          persist-credentials: false
-
-      - name: Checkout mdn/content
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          repository: mdn/content
-          path: content
-          persist-credentials: false
-
-      - name: Checkout mdn/translated-content
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          repository: mdn/translated-content
-          path: translated-content
-          persist-credentials: false
-
-      - name: Download rari binary
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
-        with:
-          artifact-ids: ${{ needs.build.outputs.rari-binary-artifact-id }}
-          path: mdn/rari/target/release
-
-      - name: Make rari executable
-        run: chmod +x mdn/rari/target/release/rari
-
-      - name: Run fix-flaws
-        working-directory: mdn/rari
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: target/release/rari content fix-flaws
-
-      - name: Show content changes
-        working-directory: content
-        run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
-
-      - name: Show translated-content changes
-        working-directory: translated-content
-        run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
+    uses: ./.github/workflows/_test-content.yml
+    with:
+      rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
 
   pr-review:
     if: github.event_name == 'pull_request'

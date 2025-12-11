@@ -447,9 +447,9 @@ checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 
 [[package]]
 name = "const_format"
-version = "0.2.34"
+version = "0.2.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "126f97965c8ad46d6d9163268ff28432e8f6a1196a55578867832e3049df63dd"
+checksum = "7faa7469a93a566e9ccc1c73fe783b4a65c274c5ace346038dca9c39fe0030ad"
 dependencies = [
  "const_format_proc_macros",
 ]
@@ -553,14 +553,14 @@ dependencies = [
 
 [[package]]
 name = "css-definition-syntax"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "thiserror 2.0.12",
 ]
 
 [[package]]
 name = "css-syntax"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "anyhow",
  "css-definition-syntax",
@@ -578,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "css-syntax-types"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "regress",
  "serde",
@@ -816,7 +816,7 @@ dependencies = [
 
 [[package]]
 name = "diff-test"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "ansi-to-html",
  "anyhow",
@@ -2512,7 +2512,7 @@ dependencies = [
 
 [[package]]
 name = "rari"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "anyhow",
  "axum",
@@ -2542,7 +2542,7 @@ dependencies = [
 
 [[package]]
 name = "rari-data"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "chrono",
  "indexmap",
@@ -2557,7 +2557,7 @@ dependencies = [
 
 [[package]]
 name = "rari-deps"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "chrono",
  "css-syntax-types",
@@ -2578,7 +2578,7 @@ dependencies = [
 
 [[package]]
 name = "rari-doc"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "chrono",
  "constcat",
@@ -2634,14 +2634,14 @@ dependencies = [
 
 [[package]]
 name = "rari-linter"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "thiserror 2.0.12",
 ]
 
 [[package]]
 name = "rari-lsp"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -2663,7 +2663,7 @@ dependencies = [
 
 [[package]]
 name = "rari-md"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "anyhow",
  "base64",
@@ -2676,7 +2676,7 @@ dependencies = [
 
 [[package]]
 name = "rari-sitemap"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "chrono",
  "flate2",
@@ -2690,7 +2690,7 @@ dependencies = [
 
 [[package]]
 name = "rari-templ-func"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "anyhow",
  "darling",
@@ -2701,7 +2701,7 @@ dependencies = [
 
 [[package]]
 name = "rari-tools"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "assert-json-diff",
  "chrono",
@@ -2731,7 +2731,7 @@ dependencies = [
 
 [[package]]
 name = "rari-types"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "chrono",
  "config",
@@ -2753,7 +2753,7 @@ dependencies = [
 
 [[package]]
 name = "rari-utils"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "serde",
  "serde_json",
