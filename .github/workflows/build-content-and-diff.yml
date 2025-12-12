@@ -44,7 +44,7 @@ jobs:
         run: |
           if [[ "$HEAD_REF" == release-please-* ]]; then
             # Get previous version from latest GitHub release
-            PREV_VERSION=$(gh release view --json tagName -q '.tagName')
+            PREV_VERSION=$(gh release view --repo $GITHUB_REPOSITORY --json tagName -q '.tagName')
             if [[ -n "$PREV_VERSION" ]]; then
               echo "ref=$PREV_VERSION" >> $GITHUB_OUTPUT
               echo "Building release-please PR against previous release: $PREV_VERSION"
