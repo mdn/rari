@@ -143,7 +143,7 @@ pub fn write_computed_output(
         let at_rule = at_rule.ok_or(DocError::MustHaveAtRule)?;
         write!(
             out,
-            r#"<a href="/{}/docs/Web/CSS/{}"><code>{}</code></a>"#,
+            r#"<a data-templ-link href="/{}/docs/Web/CSS/{}"><code>{}</code></a>"#,
             locale.as_url_str(),
             at_rule,
             at_rule

@@ -13,7 +13,7 @@ pub fn subpageswithsummaries() -> Result<String, DocError> {
     out.push_str("<dl>");
     for page in sub_pages {
         out.extend([
-            r#"<dt class="landingPageList"><a href=""#,
+            r#"<dt class="landingPageList"><a data-templ-link href=""#,
             page.url(),
             r#"">"#,
             &html_escape::encode_safe(page.title()),

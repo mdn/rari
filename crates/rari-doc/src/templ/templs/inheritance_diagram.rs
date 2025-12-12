@@ -98,7 +98,7 @@ fn rect_with_text(
     let x = if reverse { x - rect_width } else { x };
     write!(
         out,
-        r##"<a style="text-decoration: none;" href="/{locale}/docs/Web/API/{interface_name}">
+        r##"<a data-templ-link style="text-decoration: none;" href="/{locale}/docs/Web/API/{interface_name}">
         <rect x="{x}" y="{y}" width="{rect_width}" height="25" fill="{fill}" stroke="#D4DDE4" stroke-width="2px" />
         <text x="{text_x}" y="{text_y}" font-size="10px" fill="#4D4E53" text-anchor="middle">
           {interface_name}

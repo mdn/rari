@@ -18,7 +18,7 @@ pub fn glossarydisambiguation() -> Result<String, DocError> {
     for page in pages {
         let summary = get_hacky_summary_md(&page)?;
         out.extend([
-            r#"<dt><a href=""#,
+            r#"<dt><a data-templ-link href=""#,
             page.url(),
             r#"">"#,
             &html_escape::encode_safe(page.title()),
