@@ -1,15 +1,14 @@
 use std::borrow::Cow;
 use std::fmt::Write;
+use std::fs;
 use std::sync::OnceLock;
 
-use indexmap::IndexMap;
+use css_syntax_types::WebrefCss;
 use itertools::Itertools;
 use rari_types::RariEnv;
 use rari_types::globals::data_dir;
 use rari_types::locale::Locale;
-use rari_utils::io::read_to_string;
 use serde_json::Value;
-use tracing::warn;
 
 use super::l10n::l10n_json_data;
 use crate::error::DocError;
@@ -17,57 +16,68 @@ use crate::templ::api::RariApi;
 use crate::templ::render::render_and_decode_ref;
 use crate::templ::templs::links::cssxref::cssxref_internal;
 
-// mdn/data is deprecated so we do a least effort integration here.
-#[derive(Debug, Default)]
-pub struct MDNDataFiles {
-    pub css_properties: IndexMap<String, Value>,
-    pub css_at_rules: IndexMap<String, Value>,
-    pub css_types: IndexMap<String, Value>,
-    pub css_l10n: IndexMap<String, Value>,
-    pub css_syntaxes: IndexMap<String, Value>,
-    pub css_seclectors: IndexMap<String, Value>,
-    pub css_units: IndexMap<String, Value>,
-}
+pub static CSS_REF: OnceLock<WebrefCss> = OnceLock::new();
 
-impl MDNDataFiles {
-    pub fn init() -> Result<Self, DocError> {
-        Ok(Self {
-            css_properties: serde_json::from_str(&read_to_string(
-                data_dir().join("mdn-data/package/css/properties.json"),
-            )?)?,
-            css_at_rules: serde_json::from_str(&read_to_string(
-                data_dir().join("mdn-data/package/css/at-rules.json"),
-            )?)?,
-            css_l10n: serde_json::from_str(&read_to_string(
-                data_dir().join("mdn-data/package/l10n/css.json"),
-            )?)?,
-            css_types: serde_json::from_str(&read_to_string(
-                data_dir().join("mdn-data/package/css/types.json"),
-            )?)?,
-            css_syntaxes: serde_json::from_str(&read_to_string(
-                data_dir().join("mdn-data/package/css/syntaxes.json"),
-            )?)?,
-            css_seclectors: serde_json::from_str(&read_to_string(
-                data_dir().join("mdn-data/package/css/selectors.json"),
-            )?)?,
-            css_units: serde_json::from_str(&read_to_string(
-                data_dir().join("mdn-data/package/css/units.json"),
-            )?)?,
-        })
-    }
-}
-
-pub static MDN_DATA_FILES: OnceLock<MDNDataFiles> = OnceLock::new();
-
-pub fn mdn_data_files() -> &'static MDNDataFiles {
-    MDN_DATA_FILES.get_or_init(|| match MDNDataFiles::init() {
-        Ok(data) => data,
-        Err(e) => {
-            warn!("Error loading mdn/data: {e}");
-            Default::default()
-        }
+pub fn css_ref_data() -> &'static WebrefCss {
+    CSS_REF.get_or_init(|| {
+        let json_str = fs::read_to_string(data_dir().join("@webref/css").join("webref_css.json"))
+            .expect("no data dir");
+        serde_json::from_str(&json_str).expect("Failed to parse JSON")
     })
 }
+
+// // mdn/data is deprecated so we do a least effort integration here.
+// #[derive(Debug, Default)]
+// pub struct MDNDataFiles {
+//     pub css_properties: IndexMap<String, Value>,
+//     pub css_at_rules: IndexMap<String, Value>,
+//     pub css_types: IndexMap<String, Value>,
+//     pub css_l10n: IndexMap<String, Value>,
+//     pub css_syntaxes: IndexMap<String, Value>,
+//     pub css_seclectors: IndexMap<String, Value>,
+//     pub css_units: IndexMap<String, Value>,
+// }
+
+// impl MDNDataFiles {
+//     pub fn init() -> Result<Self, DocError> {
+//         Ok(Self {
+//             css_properties: serde_json::from_str(&read_to_string(
+//                 data_dir().join("mdn-data/package/css/properties.json"),
+//             )?)?,
+//             css_at_rules: serde_json::from_str(&read_to_string(
+//                 data_dir().join("mdn-data/package/css/at-rules.json"),
+//             )?)?,
+//             css_l10n: serde_json::from_str(&read_to_string(
+//                 data_dir().join("mdn-data/package/l10n/css.json"),
+//             )?)?,
+//             css_types: serde_json::from_str(&read_to_string(
+//                 data_dir().join("mdn-data/package/css/types.json"),
+//             )?)?,
+//             css_syntaxes: serde_json::from_str(&read_to_string(
+//                 data_dir().join("mdn-data/package/css/syntaxes.json"),
+//             )?)?,
+//             css_seclectors: serde_json::from_str(&read_to_string(
+//                 data_dir().join("mdn-data/package/css/selectors.json"),
+//             )?)?,
+//             css_units: serde_json::from_str(&read_to_string(
+//                 data_dir().join("mdn-data/package/css/units.json"),
+//             )?)?,
+//         })
+//     }
+// }
+
+// pub static MDN_DATA_FILES: OnceLock<MDNDataFiles> = OnceLock::new();
+
+// pub fn mdn_data_files() -> &'static MDNDataFiles {
+//     MDN_DATA_FILES.get_or_init(|| match MDNDataFiles::init() {
+//         Ok(data) => data,
+//         Err(e) => {
+//             warn!("Error loading mdn/data: {e}");
+//             Default::default()
+//         }
+//     })
+// }
+
 pub fn css_info_properties(
     at_rule: Option<&str>,
     locale: Locale,
@@ -131,6 +141,16 @@ pub fn css_info_properties(
     Ok(out)
 }
 
+pub fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
+    l10n_json_data(
+        "CSSFormalDefinitions",
+        key,
+        locale,
+    )
+    .inspect_err(|e| tracing::warn!("Localized value for formal definition is missing in content/files/jsondata/L10n-CSSFormalDefinitions.json: {} ({})", key, e))
+    .unwrap_or(key)
+}
+
 pub fn write_computed_output(
     env: &RariEnv,
     out: &mut String,
@@ -152,9 +172,7 @@ pub fn write_computed_output(
     }
     let data = &css_info_data[property];
     match data {
-        Value::Null => {
-            //write_missing(out, locale)?;
-        }
+        Value::Null => (),
         Value::Bool(b) => out.push_str(get_css_l10n_for_locale(
             if *b { "yes" } else { "no" },
             locale,
@@ -181,12 +199,23 @@ pub fn write_computed_output(
                 )?);
                 return Ok(());
             } else if s.starts_with('\'') && s.ends_with('\'') {
-                let s_data = mdn_data_files()
-                    .css_properties
-                    .get(&s[1..s.len() - 1])
-                    .unwrap_or(&Value::Null);
-                return write_computed_output(env, out, locale, s_data, property, at_rule);
-            } else if property == "initial" && !mdn_data_files().css_l10n.contains_key(s) {
+                println!(
+                    "====================================== CSSREF SOMETHING SOMETHING QUOTES HIT: {s}"
+                );
+                // if let Ok(s_data) = get_property_def(&s[1..s.len() - 1], None) {
+                //     return write_computed_output(env, out, locale, s_data, property, at_rule);
+                // }
+
+                return Ok(());
+
+                // let s_data = css_ref()
+                //     .properties
+                //     .get(&s[1..s.len() - 1])
+                //     .unwrap_or(&Value::Null);
+                // return write_computed_output(env, out, locale, s_data, property, at_rule);
+            } else if property == "initial"
+            /* && !mdn_data_files().css_l10n.contains_key(s) */
+            {
                 return Ok(write!(out, "<code>{s}</code>")?);
             } else {
                 let replaced_keywords = s
@@ -201,29 +230,33 @@ pub fn write_computed_output(
             }
         }
         Value::Array(a) => {
-            let mut tmp = String::new();
-            tmp.push_str(get_css_l10n_for_locale("asLonghands", locale));
-            tmp.push_str("<br /><ul>");
-            for longhand in a.iter().filter_map(Value::as_str) {
-                tmp.push_str("<li>{{cssxref(\"");
-                tmp.push_str(longhand);
-                tmp.push_str("\")}}: ");
-                let longhand_data = mdn_data_files()
-                    .css_properties
-                    .get(longhand)
-                    .unwrap_or(&Value::Null);
-                if !longhand_data.is_null() {
-                    write_computed_output(env, &mut tmp, locale, longhand_data, property, at_rule)?;
-                } else {
-                    write_missing(&mut tmp, locale)?;
-                }
-                tmp.push_str("</li>")
-            }
-            tmp.push_str("</ul>");
-            out.push_str(&render_and_decode_ref(
-                env,
-                &add_additional_applies_to(&tmp, property, css_info_data, locale),
-            )?);
+            println!(
+                "====================================== CSSREF Value::Array hit: {:?}",
+                a
+            );
+            // let mut tmp = String::new();
+            // tmp.push_str(get_css_l10n_for_locale("asLonghands", locale));
+            // tmp.push_str("<br /><ul>");
+            // for longhand in a.iter().filter_map(Value::as_str) {
+            //     tmp.push_str("<li>{{cssxref(\"");
+            //     tmp.push_str(longhand);
+            //     tmp.push_str("\")}}: ");
+            //     let longhand_data = mdn_data_files()
+            //         .css_properties
+            //         .get(longhand)
+            //         .unwrap_or(&Value::Null);
+            //     if !longhand_data.is_null() {
+            //         write_computed_output(env, &mut tmp, locale, longhand_data, property, at_rule)?;
+            //     } else {
+            //         write_missing(&mut tmp, locale)?;
+            //     }
+            //     tmp.push_str("</li>")
+            // }
+            // tmp.push_str("</ul>");
+            // out.push_str(&render_and_decode_ref(
+            //     env,
+            //     &add_additional_applies_to(&tmp, property, css_info_data, locale),
+            // )?);
             return Ok(());
         }
         Value::Object(_) => {
@@ -281,15 +314,15 @@ fn add_additional_applies_to<'a>(
     ))
 }
 
-pub fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
-    if let Some(data) = mdn_data_files().css_l10n.get(key) {
-        let data = get_for_locale(locale, data);
-        if !data.is_null() {
-            return data.as_str().unwrap_or(key);
-        }
-    }
-    key
-}
+// pub fn get_css_l10n_for_locale(key: &str, locale: Locale) -> &str {
+//     if let Some(data) = mdn_data_files().css_l10n.get(key) {
+//         let data = get_for_locale(locale, data);
+//         if !data.is_null() {
+//             return data.as_str().unwrap_or(key);
+//         }
+//     }
+//     key
+// }
 
 pub fn get_for_locale(locale: Locale, lookup: &Value) -> &Value {
     let value = &lookup[locale.as_url_str()];

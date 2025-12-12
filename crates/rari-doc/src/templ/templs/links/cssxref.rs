@@ -63,8 +63,6 @@ pub fn cssxref_internal(
         .unwrap_or(name);
     let decoded_maybe_display_name = html_escape::decode_html_entities(maybe_display_name);
     let encoded_maybe_display_name = html_escape::encode_text(decoded_maybe_display_name.as_ref());
-
-    // Determine the original name for classification
     let mut slug = name
         .strip_prefix("&lt;")
         .unwrap_or(name.strip_prefix('<').unwrap_or(name));
@@ -73,7 +71,6 @@ pub fn cssxref_internal(
         .unwrap_or(slug.strip_suffix('>').unwrap_or(slug));
     slug = slug.strip_suffix("()").unwrap_or(slug);
 
-    // Apply special case mappings
     let slug = match name {
         "&lt;color&gt;" | "<color>" => "color_value",
         "&lt;flex&gt;" | "<flex>" => "flex_value",
@@ -85,6 +82,7 @@ pub fn cssxref_internal(
     };
 
     let base_url = format!("/{}/docs/Web/CSS/", locale.as_url_str());
+
     // Determine the URL path based on the new structure
     let mut url_path = if name.starts_with("&lt;") || name.starts_with('<') {
         // Types go under Web/CSS/Reference/Values
@@ -109,6 +107,9 @@ pub fn cssxref_internal(
             format!("Reference/Values/{slug}")
         }
     };
+
+    println!("============== name: {}", name);
+    println!("============== url_path: {}", url_path);
 
     if RariApi::get_page_nowarn(&format!("{}{}", &base_url, &url_path)).is_err() {
         // Fall back to Web/CSS

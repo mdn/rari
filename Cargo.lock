@@ -2584,6 +2584,7 @@ dependencies = [
  "constcat",
  "crossbeam-channel",
  "css-syntax",
+ "css-syntax-types",
  "cssparser 0.34.0",
  "dashmap",
  "ego-tree",

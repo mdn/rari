@@ -38,6 +38,25 @@ fn slug_sorter(a: &Page, b: &Page) -> Ordering {
     COLLATOR.with(|c| c.compare(a.slug(), b.slug()))
 }
 
+fn ignoring_css_prefixes_sorter(a: &Page, b: &Page) -> Ordering {
+    COLLATOR.with(|c| {
+        c.compare(
+            a.title()
+                .trim_start_matches("::")
+                .trim_start_matches(":")
+                .trim_start_matches("<")
+                .trim_start_matches("!")
+                .trim_start_matches("@"),
+            b.title()
+                .trim_start_matches("::")
+                .trim_start_matches(":")
+                .trim_start_matches("<")
+                .trim_start_matches("!")
+                .trim_start_matches("@"),
+        )
+    })
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SubPagesSorter {
     #[default]
@@ -45,6 +64,7 @@ pub enum SubPagesSorter {
     ShortTitle,
     Slug,
     TitleAPI,
+    IgnoringCSSPrefixes,
 }
 
 impl SubPagesSorter {
@@ -54,6 +74,7 @@ impl SubPagesSorter {
             SubPagesSorter::ShortTitle => short_title_sorter,
             SubPagesSorter::Slug => slug_sorter,
             SubPagesSorter::TitleAPI => title_api_sorter,
+            SubPagesSorter::IgnoringCSSPrefixes => ignoring_css_prefixes_sorter,
         }
     }
 }
