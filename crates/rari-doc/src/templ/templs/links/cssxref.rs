@@ -63,7 +63,6 @@ pub fn cssxref_internal(
         .unwrap_or(name);
     let decoded_maybe_display_name = html_escape::decode_html_entities(maybe_display_name);
     let encoded_maybe_display_name = html_escape::encode_text(decoded_maybe_display_name.as_ref());
-
     // Determine the original name for classification
     let mut slug = name
         .strip_prefix("&lt;")
@@ -73,7 +72,6 @@ pub fn cssxref_internal(
         .unwrap_or(slug.strip_suffix('>').unwrap_or(slug));
     slug = slug.strip_suffix("()").unwrap_or(slug);
 
-    // Apply special case mappings
     let slug = match name {
         "&lt;color&gt;" | "<color>" => "color_value",
         "&lt;flex&gt;" | "<flex>" => "flex_value",
@@ -85,10 +83,20 @@ pub fn cssxref_internal(
     };
 
     let base_url = format!("/{}/docs/Web/CSS/", locale.as_url_str());
+
     // Determine the URL path based on the new structure
     let mut url_path = if name.starts_with("&lt;") || name.starts_with('<') {
         // Types go under Web/CSS/Reference/Values
-        format!("Reference/Values/{slug}")
+        // For some, like <counter-reset> and <counter-increment>, brackets are also found on properties.
+        // So check properties first, then assume it is a value.
+        let url_path = format!("Reference/Properties/{slug}");
+        let url = format!("{}{}", &base_url, &url_path);
+        if RariApi::get_page_nowarn(&url).is_ok() {
+            url_path
+        } else {
+            // Fallback to Values
+            format!("Reference/Values/{slug}")
+        }
     } else if name.starts_with(':') {
         // Pseudo-classes and pseudo-elements go under Web/CSS/Reference/Selectors
         format!("Reference/Selectors/{slug}")
@@ -99,7 +107,7 @@ pub fn cssxref_internal(
         // Functions go under Web/CSS/Reference/Values
         format!("Reference/Values/{slug}")
     } else {
-        // Everything else: check Properties first
+        // Everything else: check Properties first, otherwise assume a value.
         let url_path = format!("Reference/Properties/{slug}");
         let url = format!("{}{}", &base_url, &url_path);
         if RariApi::get_page_nowarn(&url).is_ok() {

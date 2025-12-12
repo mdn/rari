@@ -1,47 +1,16 @@
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Write;
-#[cfg(any(feature = "rari", test))]
-use std::fs;
-use std::sync::LazyLock;
 
 use css_definition_syntax::generate::{self, GenerateOptions};
 use css_definition_syntax::parser::{CombinatorType, Multiplier, Node, Type, parse};
 use css_definition_syntax::walk::{WalkOptions, walk};
-use css_syntax_types::{CssValuesItem, SpecLink, WebrefCss};
-#[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
-use rari_types::globals::data_dir;
+use css_syntax_types::{CssValuesItem, SpecLink};
+use rari_deps::webref_css::css_ref_data;
 use serde::Serialize;
 
 use crate::error::SyntaxError;
 use crate::syntax_provider::SyntaxProvider;
-
-static CSS_REF: LazyLock<WebrefCss> = LazyLock::new(|| {
-    #[cfg(any(feature = "doctest", test))]
-    {
-        let package_path = std::path::Path::new("package");
-        rari_deps::webref_css::update_webref_css(package_path).unwrap();
-        let json_str = fs::read_to_string(
-            package_path
-                .join("@webref")
-                .join("css")
-                .join("webref_css.json"),
-        )
-        .expect("no data dir");
-        serde_json::from_str(&json_str).expect("Failed to parse JSON")
-    }
-    #[cfg(all(not(feature = "rari"), not(any(feature = "doctest", test))))]
-    {
-        let webref_css: &str = include_str!("../@webref/css/webref_css.json");
-        serde_json::from_str(webref_css).expect("Failed to parse JSON")
-    }
-    #[cfg(all(feature = "rari", not(any(feature = "doctest", test))))]
-    {
-        let json_str = fs::read_to_string(data_dir().join("@webref/css").join("webref_css.json"))
-            .expect("no data dir");
-        serde_json::from_str(&json_str).expect("Failed to parse JSON")
-    }
-});
 
 pub type ItemAndHref = (&'static CssValuesItem, Option<&'static SpecLink>);
 
@@ -116,7 +85,7 @@ pub fn get_at_rule_descriptor_syntax(
 ) -> Syntax {
     let scopes = scope_chain(scope);
     for scope in scopes {
-        if let Some(scoped) = CSS_REF.atrules.get(scope)
+        if let Some(scoped) = css_ref_data().atrules.get(scope)
             && let Some(at_rule) = scoped.get(at_rule_name)
             && let Some(at_rule_descriptor) = at_rule.descriptors.get(at_rule_descriptor_name)
         {
@@ -168,22 +137,23 @@ fn get_syntax_internal(typ: CssType, scope: Option<&str>, top_level: bool) -> Sy
             let trimmed = name
                 .trim_start_matches(['<', '\''])
                 .trim_end_matches(['\'', '>']);
-            get_generic_syntax(trimmed, scope, &CSS_REF.properties).to_syntax_line(name)
+            get_generic_syntax(trimmed, scope, &css_ref_data().properties).to_syntax_line(name)
         }
         CssType::Type(name) => {
-            let name = name.trim_end_matches("_value");
             if skip(name) && !top_level {
                 Syntax::default().to_syntax_line(format!("<{name}>"))
             } else {
-                get_generic_syntax(name, scope, &CSS_REF.types).to_syntax_line(format!("<{name}>"))
+                get_generic_syntax(name, scope, &css_ref_data().types)
+                    .to_syntax_line(format!("<{name}>"))
             }
         }
         CssType::Function(name) => {
             let name = format!("{name}()");
-            get_generic_syntax(&name, scope, &CSS_REF.functions).to_syntax_line(format!("<{name}>"))
+            get_generic_syntax(&name, scope, &css_ref_data().functions)
+                .to_syntax_line(format!("<{name}>"))
         }
         CssType::AtRule(name) => {
-            get_generic_syntax(name, scope, &CSS_REF.atrules).to_syntax_line(name)
+            get_generic_syntax(name, scope, &css_ref_data().atrules).to_syntax_line(name)
         }
         CssType::AtRuleDescriptor(name, at_rule_name) => {
             get_at_rule_descriptor_syntax(name, at_rule_name, scope).to_syntax_line(name)
@@ -337,7 +307,7 @@ impl SyntaxRenderer<'_> {
                 if name.starts_with("<'") && name.ends_with("'>") {
                     let slug = &name[2..name.len() - 2];
                     format!(
-                        r#"<a href="/{}/docs/Web/CSS/{slug}"><span class="token property">{encoded}</span></a>"#,
+                        r#"<a href="/{}/docs/Web/CSS/Reference/Properties/{slug}"><span class="token property">{encoded}</span></a>"#,
                         self.locale_str
                     )
                 } else {
@@ -347,10 +317,18 @@ impl SyntaxRenderer<'_> {
             Node::Type(typ) => {
                 let encoded = html_escape::encode_safe(name);
                 let slug = match name {
-                    "<color>" => "color_value",
-                    "<position>" => "position_value",
                     name if name.starts_with('<') && name.ends_with('>') => {
-                        &name[1..name.find(" [").or(name.find('[')).unwrap_or(name.len() - 1)]
+                        let ret =
+                            &name[1..name.find(" [").or(name.find('[')).unwrap_or(name.len() - 1)];
+                        match ret {
+                            "color" => "color_value",
+                            "flex" => "flex_value",
+                            "overflow" => "overflow_value",
+                            "position" => "position_value",
+                            "position-area" => "position-area_value",
+                            "url" => "url_value",
+                            _ => ret,
+                        }
                     }
                     name => &name[0..name.find(" [").or(name.find('[')).unwrap_or(name.len())],
                 };
@@ -362,12 +340,10 @@ impl SyntaxRenderer<'_> {
                             opts: None,
                         })))
                 {
-                    // FIXME: this should have the class type but to be compatible we use property
                     format!(r#"<span class="token property">{encoded}</span>"#,)
                 } else {
-                    // FIXME: this should have the class type but to be compatible we use property
                     format!(
-                        r#"<a href="/{}/docs/Web/CSS/{slug}"><span class="token property">{encoded}</span></a>"#,
+                        r#"<a href="/{}/docs/Web/CSS/Reference/Values/{slug}"><span class="token property">{encoded}</span></a>"#,
                         self.locale_str
                     )
                 }
@@ -603,6 +579,14 @@ pub fn render_formal_syntax(
             )
         }
         SyntaxInput::Css(css) => {
+            let css = match css {
+                CssType::Type("color_value") => CssType::Type("color"),
+                CssType::Type("flex_value") => CssType::Type("flex"),
+                CssType::Type("overflow_value") => CssType::Type("overflow"),
+                CssType::Type("position_value") => CssType::Type("position"),
+                CssType::Type("area_value") => CssType::Type("area"),
+                other => other,
+            };
             let syntax: SyntaxLine = get_syntax_internal(css, scope, true);
             if syntax.syntax.is_empty() {
                 return Err(SyntaxError::NoSyntaxFound);
@@ -728,6 +712,8 @@ fn get_nodes_for_syntaxes(
 
 #[cfg(test)]
 mod test {
+    use std::sync::LazyLock;
+
     use super::*;
 
     static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
@@ -766,7 +752,7 @@ mod test {
     #[test]
     fn test_get_syntax_color_type() {
         let SyntaxLine { name, syntax, .. } =
-            get_syntax_internal(CssType::Type("color_value"), None, true);
+            get_syntax_internal(CssType::Type("color"), None, true);
         assert_eq!(name, "<color>");
         assert_eq!(
             syntax,
@@ -829,12 +815,12 @@ mod test {
         };
         let SyntaxLine {
             name: _, syntax, ..
-        } = get_syntax_internal(CssType::Type("color_value"), None, true);
+        } = get_syntax_internal(CssType::Type("color"), None, true);
         if let Node::Group(group) = parse(&syntax)? {
             let rendered = renderer.render_terms(&group.terms, group.combinator)?;
             assert_eq!(
                 rendered,
-                "  <a href=\"/en-US/docs/Web/CSS/color-base\"><span class=\"token property\">&lt;color-base&gt;</span></a>        <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>        <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/contrast-color()\"><span class=\"token property\">&lt;contrast-color()&gt;</span></a>  <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/device-cmyk()\"><span class=\"token property\">&lt;device-cmyk()&gt;</span></a>     <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/light-dark()\"><span class=\"token property\">&lt;light-dark()&gt;</span></a>      <br/>"
+                "  <a href=\"/en-US/docs/Web/CSS/Reference/Values/color-base\"><span class=\"token property\">&lt;color-base&gt;</span></a>        <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>        <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/contrast-color()\"><span class=\"token property\">&lt;contrast-color()&gt;</span></a>  <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/device-cmyk()\"><span class=\"token property\">&lt;device-cmyk()&gt;</span></a>     <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/light-dark()\"><span class=\"token property\">&lt;light-dark()&gt;</span></a>      <br/>"
             );
         } else {
             panic!("no group node")
@@ -844,7 +830,7 @@ mod test {
 
     #[test]
     fn test_render_node() -> Result<(), SyntaxError> {
-        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"padding\">padding = </span><br/>  <a href=\"/en-US/docs/Web/CSS/padding-top\"><span class=\"token property\">&lt;&#x27;padding-top&#x27;&gt;</span></a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a>  <br/><br/><span class=\"token property\" id=\"&lt;padding-top&gt;\">&lt;padding-top&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/></pre><footer></footer>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"padding\">padding = </span><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Properties/padding-top\"><span class=\"token property\">&lt;&#x27;padding-top&#x27;&gt;</span></a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a>  <br/><br/><span class=\"token property\" id=\"&lt;padding-top&gt;\">&lt;padding-top&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Property("padding")),
             None,
@@ -859,7 +845,7 @@ mod test {
 
     #[test]
     fn test_render_function() -> Result<(), SyntaxError> {
-        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;hue-rotate()&gt;\">&lt;hue-rotate()&gt; = </span><br/>  <span class=\"token function\">hue-rotate(</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <a href=\"/en-US/docs/Web/CSS/Reference/Values/angle\"><span class=\"token property\">&lt;angle&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <a href=\"/en-US/docs/Web/CSS/Reference/Values/zero\"><span class=\"token property\">&lt;zero&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Function("hue-rotate")),
             Some("css.types.filter-function.hue-rotate"),
@@ -874,7 +860,7 @@ mod test {
     #[test]
     fn test_render_function_scoped() -> Result<(), SyntaxError> {
         // rect() from the clip specs
-        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/top\"><span class=\"token property\">&lt;top&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/right\"><span class=\"token property\">&lt;right&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/bottom\"><span class=\"token property\">&lt;bottom&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/left\"><span class=\"token property\">&lt;left&gt;</span></a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/Reference/Values/top\"><span class=\"token property\">&lt;top&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/Reference/Values/right\"><span class=\"token property\">&lt;right&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/Reference/Values/bottom\"><span class=\"token property\">&lt;bottom&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/Reference/Values/left\"><span class=\"token property\">&lt;left&gt;</span></a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Function("rect")),
             Some("css.properties.clip"),
@@ -886,7 +872,7 @@ mod test {
         assert_eq!(result, expected);
 
         // rect() from the shape specs
-        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <span class=\"token property\">&lt;length-percentage&gt;</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <span class=\"token keyword\">auto</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{4}</a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <span class=\"token keyword\">round</span> <a href=\"/en-US/docs/Web/CSS/border-radius\"><span class=\"token property\">&lt;&#x27;border-radius&#x27;&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/><br/><span class=\"token property\" id=\"&lt;border-radius&gt;\">&lt;border-radius&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> / <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a>  <br/></pre><footer></footer>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <span class=\"token property\">&lt;length-percentage&gt;</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a> <span class=\"token keyword\">auto</span> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{4}</a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> <span class=\"token keyword\">round</span> <a href=\"/en-US/docs/Web/CSS/Reference/Properties/border-radius\"><span class=\"token property\">&lt;&#x27;border-radius&#x27;&gt;</span></a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a> <span class=\"token function\">)</span>  <br/><br/><span class=\"token property\" id=\"&lt;length-percentage&gt;\">&lt;length-percentage&gt; = </span><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/length\"><span class=\"token property\">&lt;length&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/percentage\"><span class=\"token property\">&lt;percentage&gt;</span></a>  <br/><br/><span class=\"token property\" id=\"&lt;border-radius&gt;\">&lt;border-radius&gt; = </span><br/>  <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">[</a> / <span class=\"token property\">&lt;length-percentage [0,∞]&gt;</span><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#curly_braces\" title=\"Curly braces: encloses two integers defining the minimal and maximal numbers of occurrences of the entity, or a single integer defining the exact number required\">{1,4}</a> <a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#brackets\" title=\"Brackets: enclose several entities, combinators, and multipliers to transform them as a single component\">]</a><a href=\"/en-US/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax#question_mark\" title=\"Question mark: the entity is optional\">?</a>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Function("rect")),
             Some("css.types.basic-shape.rect"),
@@ -914,14 +900,14 @@ mod test {
 
     #[test]
     fn test_get_generic_syntax() {
-        let color = get_generic_syntax("color", None, &CSS_REF.properties);
+        let color = get_generic_syntax("color", None, &css_ref_data().properties);
         assert_eq!(color.syntax, "<color>");
 
-        let border = get_generic_syntax("border", None, &CSS_REF.properties);
+        let border = get_generic_syntax("border", None, &css_ref_data().properties);
         assert_eq!(border.syntax, "<line-width> || <line-style> || <color>");
 
         let grid_template_rows =
-            get_generic_syntax("grid-template-rows", None, &CSS_REF.properties);
+            get_generic_syntax("grid-template-rows", None, &css_ref_data().properties);
         assert_eq!(
             grid_template_rows.syntax,
             "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?"

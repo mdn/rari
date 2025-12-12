@@ -11,6 +11,7 @@ rari-utils.workspace = true
 rari-types.workspace = true
 rari-md.workspace = true
 rari-data.workspace = true
+rari-deps.workspace = true
 rari-templ-func.workspace = true
 
 thiserror.workspace = true
@@ -59,6 +60,8 @@ unescaper = "0.1"
 
 
 css-syntax = { path = "../css-syntax", features = ["rari"] }
+css-syntax-types = { path = "../css-syntax-types" }
+
 
 [dev-dependencies]
 rari-types = { path = "../rari-types", features = ["testing"] }
