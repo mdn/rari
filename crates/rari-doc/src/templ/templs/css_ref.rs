@@ -12,7 +12,7 @@ use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
 #[rari_f(register = "crate::Templ")]
-pub fn css_ref_list() -> Result<String, DocError> {
+pub fn css_ref() -> Result<String, DocError> {
     let mut index = BTreeMap::<char, HashMap<&str, &str>>::new();
 
     let css_pages = get_sub_pages("/en-US/docs/Web/CSS", None, Default::default())?;
