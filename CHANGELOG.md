@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9](https://github.com/mdn/rari/compare/v0.2.8...v0.2.9) (2025-12-12)
+
+
+### Bug Fixes
+
+* **cssxref:** Correct `fit-content()` slug and `calc()` example anchor ([#431](https://github.com/mdn/rari/issues/431)) ([174328b](https://github.com/mdn/rari/commit/174328bf63ba5b92cfb8be939b49db4a5414a6e3))
+
+
+### Miscellaneous
+
+* **csssyntax:** update "Values_and_units" urls ([#433](https://github.com/mdn/rari/issues/433)) ([6a5d47c](https://github.com/mdn/rari/commit/6a5d47c12facc85aa315492570ff07bf7aa4a3b5))
+* **deps:** bump const_format from 0.2.34 to 0.2.35 ([#425](https://github.com/mdn/rari/issues/425)) ([c00aca7](https://github.com/mdn/rari/commit/c00aca7c4fec2696a54c5c8f6639719e2fc945cb))
+
 ## [0.2.8](https://github.com/mdn/rari/compare/v0.2.7...v0.2.8) (2025-12-09)
 
 
