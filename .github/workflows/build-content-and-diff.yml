@@ -39,18 +39,18 @@ jobs:
       - name: Determine baseline ref for comparison
         id: baseline
         env:
+          GH_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.head_ref || github.ref_name }}
-          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           if [[ "$HEAD_REF" == release-please--* ]]; then
-            # Extract previous version from PR body (format: compare/v0.2.1...v0.2.2)
-            PREV_VERSION=$(echo "$PR_BODY" | grep -o 'compare/v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -n1 | sed 's|compare/||')
+            # Get previous version from latest GitHub release
+            PREV_VERSION=$(gh release view --json tagName -q '.tagName')
             if [[ -n "$PREV_VERSION" ]]; then
               echo "ref=$PREV_VERSION" >> $GITHUB_OUTPUT
               echo "Building release-please PR against previous release: $PREV_VERSION"
             else
               echo "ref=main" >> $GITHUB_OUTPUT
-              echo "Could not extract previous version, falling back to main"
+              echo "Could not determine previous version, falling back to main"
             fi
           else
             echo "ref=main" >> $GITHUB_OUTPUT
