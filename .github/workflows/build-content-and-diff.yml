@@ -42,7 +42,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.head_ref || github.ref_name }}
         run: |
-          if [[ "$HEAD_REF" == release-please--* ]]; then
+          if [[ "$HEAD_REF" == release-please-* ]]; then
             # Get previous version from latest GitHub release
             PREV_VERSION=$(gh release view --json tagName -q '.tagName')
             if [[ -n "$PREV_VERSION" ]]; then
