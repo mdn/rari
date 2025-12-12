@@ -1,0 +1,24 @@
+pre-commit:
+  parallel: true
+  commands:
+    fmt:
+      glob: "*.rs"
+      run: cargo fmt --all
+      stage_fixed: true
+
+    clippy:
+      glob: "*.rs"
+      run: cargo clippy --all-features --workspace -- -Dwarnings
+
+pre-push:
+  parallel: true
+  commands:
+    test:
+      run: cargo test --verbose --workspace --all-targets --no-fail-fast
+
+    test-doc:
+      run: cargo test --verbose --workspace --doc --features doctest --no-fail-fast
+
+output:
+  - summary
+  - failure
