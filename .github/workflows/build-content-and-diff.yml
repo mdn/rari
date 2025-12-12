@@ -36,28 +36,37 @@ jobs:
           path: content
           persist-credentials: false
 
-      - name: Determine baseline ref for comparison
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@9a1d20035bdbcbc899baabe1e402e85bc33639bc # 1.90
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
+
+      - name: Checkout mdn/rari (PR target branch)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.base_ref }}
+          path: rari-base
+          persist-credentials: false
+
+      - name: Get previous version
         id: baseline
+        if: startsWith(github.head_ref, 'release-please-')
         env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          if [[ "$HEAD_REF" == release-please-* ]]; then
-            # Get previous version from latest GitHub release
-            PREV_VERSION=$(gh release view --repo $GITHUB_REPOSITORY --json tagName -q '.tagName')
-            if [[ -n "$PREV_VERSION" ]]; then
-              echo "ref=$PREV_VERSION" >> $GITHUB_OUTPUT
-              echo "Building release-please PR against previous release: $PREV_VERSION"
-            else
-              echo "ref=main" >> $GITHUB_OUTPUT
-              echo "Could not determine previous version, falling back to main"
-            fi
+          # Get previous version branch's Cargo.toml
+          PREV_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
+          if [[ -n "$PREV_VERSION" ]]; then
+            echo "ref=v$PREV_VERSION" >> $GITHUB_OUTPUT
+            echo "Building release-please PR against previous release: v$PREV_VERSION"
           else
-            echo "ref=main" >> $GITHUB_OUTPUT
-            echo "Building regular PR against main branch"
+            echo "ref=$BASE_REF" >> $GITHUB_OUTPUT
+            echo "Could not determine previous version, falling back to $BASE_REF"
           fi
 
-      - name: Checkout mdn/rari (baseline)
+      - name: Checkout mdn/rari (previous version)
+        if: steps.baseline.outputs.ref
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           ref: ${{ steps.baseline.outputs.ref }}
@@ -69,12 +78,6 @@ jobs:
         with:
           path: rari-pr
           persist-credentials: false
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@9a1d20035bdbcbc899baabe1e402e85bc33639bc # 1.90
-
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
 
       - name: Build with main branch
         working-directory: rari-base
