@@ -3,7 +3,10 @@ name: Build Content and Diff
 on:
   pull_request:
     paths:
-      - "**/*.rs"
+      - '**/*.rs'
+      - '**/Cargo.lock'
+      - '**/Cargo.toml'
+      - '.github/workflows/build-content-and-diff.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -12,7 +15,7 @@ concurrency:
 permissions: {} # No GITHUB_TOKEN permissions, as we only use it to increase API limit.
 
 env:
-  BUILD_MAIN: ${{ github.workspace }}/build-main
+  BUILD_BASE: ${{ github.workspace }}/build-base
   BUILD_PR: ${{ github.workspace }}/build-pr
   CONTENT_ROOT: ${{ github.workspace }}/content/files
   DIFF: ${{ github.workspace }}/diff.html
@@ -26,24 +29,11 @@ jobs:
       RUSTC_WRAPPER: "sccache"
 
     steps:
-      - name: Checkout mdn/content
+      - name: Checkout (content)
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: mdn/content
           path: content
-          persist-credentials: false
-
-      - name: Checkout mdn/rari (main branch)
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          ref: main
-          path: rari-main
-          persist-credentials: false
-
-      - name: Checkout mdn/rari (PR)
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          path: rari-pr
           persist-credentials: false
 
       - name: Setup Rust
@@ -52,25 +42,49 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
 
-      - name: Build with main branch
-        working-directory: rari-main
+      - name: Checkout (rari @ base)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.base_ref }}
+          path: rari-base
+          persist-credentials: false
+
+      - name: Checkout previous release (release-please PR)
+        if: startsWith(github.head_ref, 'release-please--')
+        working-directory: rari-base
+        run: |
+          PREV_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
+          if [[ -n "$PREV_VERSION" ]]; then
+            echo "Building release-please PR against previous release: v$PREV_VERSION"
+            git fetch origin tag "v$PREV_VERSION" --no-tags
+            git checkout "v$PREV_VERSION"
+          fi
+
+      - name: Checkout (rari @ PR)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          path: rari-pr
+          persist-credentials: false
+
+      - name: Build with base
+        working-directory: rari-base
         env:
-          BUILD_OUT_ROOT: ${{ env.BUILD_MAIN }}
+          BUILD_OUT_ROOT: ${{ env.BUILD_BASE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo run --release build
 
-      - name: Build with PR branch
+      - name: Build with PR
         working-directory: rari-pr
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_PR }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo run --release build
 
-      - name: Generate diff report
+      - name: Generate diff
         working-directory: rari-pr
-        run: cargo run -p diff-test diff --fast --html --value --out "$DIFF" --verbose "$BUILD_MAIN" "$BUILD_PR"
+        run: cargo run -p diff-test diff --fast --html --value --out "$DIFF" --verbose "$BUILD_BASE" "$BUILD_PR"
 
-      - name: Upload diff report
+      - name: Upload diff
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: build-diff-report
