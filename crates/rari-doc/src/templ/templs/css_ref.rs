@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 
@@ -13,7 +14,7 @@ use crate::templ::api::RariApi;
 
 #[rari_f(register = "crate::Templ")]
 pub fn css_ref() -> Result<String, DocError> {
-    let mut index = BTreeMap::<char, HashMap<&str, &str>>::new();
+    let mut index = BTreeMap::<char, HashMap<&str, Cow<'_, str>>>::new();
 
     let css_pages = get_sub_pages("/en-US/docs/Web/CSS", None, Default::default())?;
     for page in css_pages
@@ -22,7 +23,8 @@ pub fn css_ref() -> Result<String, DocError> {
     {
         let initial = initial_letter(page.title());
         let entry = index.entry(initial).or_default();
-        let (url, label) = (page.slug(), page.title());
+        let url = page.slug();
+        let label = label_from_page(page);
         entry.entry(url).or_insert(label);
     }
 
@@ -93,4 +95,22 @@ fn initial_letter(s: &str) -> char {
         .find(|&c| c.is_ascii_alphabetic() || c == '-')
         .unwrap_or('?')
         .to_ascii_uppercase()
+}
+
+/// Returns the label for a CSS reference page.
+/// For at-rule descriptors, includes the at-rule name in parentheses
+/// (e.g., "font-family (@font-face)").
+fn label_from_page(page: &Page) -> Cow<'_, str> {
+    if page.page_type() == PageType::CssAtRuleDescriptor {
+        // Extract at-rule name from slug (e.g., "Web/CSS/@font-face/font-family" → "@font-face")
+        if let Some(at_rule) = page
+            .slug()
+            .rsplit('/')
+            .nth(1)
+            .filter(|s| s.starts_with('@'))
+        {
+            return Cow::Owned(format!("{} ({})", page.title(), at_rule));
+        }
+    }
+    Cow::Borrowed(page.title())
 }
