@@ -68,7 +68,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
         &format!(
-            "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
+            "/{}/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             env.locale.as_url_str()
         ),
         &TOOLTIPS,
@@ -84,7 +84,7 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
         env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
         &format!(
-            "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
+            "/{}/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             env.locale.as_url_str()
         ),
         &TOOLTIPS,

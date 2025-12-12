@@ -20,7 +20,7 @@ use crate::templ::api::RariApi;
 /// # Examples
 /// * `{{CSSxRef("color")}}` -> links to CSS property at `/Web/CSS/Reference/Properties/color`
 /// * `{{CSSxRef("background-color", "background color")}}` -> custom display text
-/// * `{{CSSxRef("calc()", "", "#syntax")}}` -> links to calc() function with anchor at `/Web/CSS/Reference/Values/calc`
+/// * `{{CSSxRef("calc()", "", "#syntax")}}` -> links to calc() function with anchor at `/Web/CSS/Reference/Values/calc#syntax`
 /// * `{{CSSxRef("&lt;color&gt;")}}` -> links to color data type at `/Web/CSS/Reference/Values/color_value`
 /// * `{{CSSxRef(":hover")}}` -> links to pseudo-class at `/Web/CSS/Reference/Selectors/:hover`
 /// * `{{CSSxRef("@media")}}` -> links to at-rule at `/Web/CSS/Reference/At-rules/@media`
@@ -80,7 +80,7 @@ pub fn cssxref_internal(
         "&lt;overflow&gt;" | "<overflow>" => "overflow_value",
         "&lt;position&gt;" | "<position>" => "position_value",
         ":host()" => ":host_function",
-        "fit-content()" => "fit_content_function",
+        "fit-content()" => "fit-content_function",
         _ => slug,
     };
 

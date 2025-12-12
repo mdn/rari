@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout mdn/content
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: mdn/content
           path: content
@@ -58,14 +58,14 @@ jobs:
           fi
 
       - name: Checkout mdn/rari (baseline)
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           ref: ${{ steps.baseline.outputs.ref }}
           path: rari-base
           persist-credentials: false
 
       - name: Checkout mdn/rari (PR)
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           path: rari-pr
           persist-credentials: false

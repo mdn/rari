@@ -1,6 +1,6 @@
 [package]
 name = "rari-sitemap"
-version = "0.2.6"
+version = "0.2.8"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
