@@ -52,6 +52,7 @@ jobs:
       - name: Get previous version
         id: baseline
         if: startsWith(github.head_ref, 'release-please-')
+        working-directory: rari-base
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
