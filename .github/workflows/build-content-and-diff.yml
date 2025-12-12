@@ -50,7 +50,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout previous release (release-please PR)
-        if: startsWith(github.head_ref, 'release-please-')
+        if: startsWith(github.head_ref, 'release-please--')
         working-directory: rari-base
         run: |
           PREV_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
