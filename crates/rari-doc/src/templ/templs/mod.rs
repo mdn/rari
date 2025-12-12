@@ -3,7 +3,6 @@ pub mod api_list_specs;
 pub mod badges;
 pub mod banners;
 pub mod compat;
-pub mod css_ref;
 pub mod css_ref_list;
 pub mod cssinfo;
 pub mod csssyntax;
