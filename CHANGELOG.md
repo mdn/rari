@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9](https://github.com/mdn/rari/compare/v0.2.8...v0.2.9) (2025-12-19)
+
+
+### Bug Fixes
+
+* **cssxref:** Correct `fit-content()` slug and `calc()` example anchor ([#431](https://github.com/mdn/rari/issues/431)) ([174328b](https://github.com/mdn/rari/commit/174328bf63ba5b92cfb8be939b49db4a5414a6e3))
+
+
+### Miscellaneous
+
+* **css_ref:** remove mdn-data dependency ([#434](https://github.com/mdn/rari/issues/434)) ([3ed32ac](https://github.com/mdn/rari/commit/3ed32ac66216f75eac643fbd1f08bc307337cade))
+* **csssyntax:** update "Values_and_units" urls ([#433](https://github.com/mdn/rari/issues/433)) ([6a5d47c](https://github.com/mdn/rari/commit/6a5d47c12facc85aa315492570ff07bf7aa4a3b5))
+* **deps:** bump const_format from 0.2.34 to 0.2.35 ([#425](https://github.com/mdn/rari/issues/425)) ([c00aca7](https://github.com/mdn/rari/commit/c00aca7c4fec2696a54c5c8f6639719e2fc945cb))
+* **deps:** bump cssparser from 0.34.0 to 0.36.0 ([#443](https://github.com/mdn/rari/issues/443)) ([10191ea](https://github.com/mdn/rari/commit/10191eab7edce7970c3f6d32785df3935528479e))
+* **deps:** bump inventory from 0.3.20 to 0.3.21 ([#447](https://github.com/mdn/rari/issues/447)) ([d461558](https://github.com/mdn/rari/commit/d461558b1226194ab92e693016ff1bce74a7d787))
+* **deps:** bump prettydiff from 0.8.1 to 0.9.0 ([#446](https://github.com/mdn/rari/issues/446)) ([df38812](https://github.com/mdn/rari/commit/df38812b95c96857cbdc1dd1eeb5f2339af6f52b))
+* **deps:** bump strum from 0.27.1 to 0.27.2 ([#445](https://github.com/mdn/rari/issues/445)) ([e35aab7](https://github.com/mdn/rari/commit/e35aab7c9a8963dd60d197551fd5ef9d2c4a9079))
+* **deps:** bump tree-sitter-mdn from 0.1.1 to 0.1.5 ([#444](https://github.com/mdn/rari/issues/444)) ([5df41bf](https://github.com/mdn/rari/commit/5df41bf10ee550b05240180456234ff916814270))
+* **diff-test:** print change stats ([#439](https://github.com/mdn/rari/issues/439)) ([41eb00e](https://github.com/mdn/rari/commit/41eb00e89c65567153a5f7375b0af42b0ba96124))
+
 ## [0.2.8](https://github.com/mdn/rari/compare/v0.2.7...v0.2.8) (2025-12-09)
 
 
