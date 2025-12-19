@@ -20,6 +20,7 @@ use crate::cached_readers::{CACHED_DOC_PAGE_FILES, doc_page_from_static_files};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::pages::types::utils::FmTempl;
+use crate::redirects::resolve_redirect;
 use crate::resolve::{build_url, url_to_folder_path};
 use crate::utils::{
     locale_and_typ_from_path, root_for_locale, serialize_t_or_vec, split_fm, t_or_vec,
@@ -161,7 +162,18 @@ impl Doc {
         match Doc::page_from_slug(slug, Default::default(), false) {
             Ok(Page::Doc(super_doc)) => Ok(super_doc),
             Ok(_) => Err(DocError::NotADoc),
-            Err(e) => Err(e),
+            Err(e) => {
+                // Try to follow redirects in case the en-US page was moved
+                build_url(slug, Default::default(), PageCategory::Doc)
+                    .ok()
+                    .and_then(|url| resolve_redirect(&url))
+                    .and_then(|redirect_url| Page::from_url(&redirect_url).ok())
+                    .and_then(|page| match page {
+                        Page::Doc(super_doc) => Some(super_doc),
+                        _ => None,
+                    })
+                    .ok_or(e)
+            }
         }
     }
 
