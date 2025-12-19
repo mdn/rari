@@ -21,7 +21,10 @@ pub fn handle_img(
 ) -> HandlerResult {
     if let Some(src) = el.get_attribute("src") {
         let url = base_url.parse(&src)?;
-        if url.host() == base.host() && !url.path().starts_with("/assets/") {
+        if url.host() == base.host()
+            && !url.path().starts_with("/assets/")
+            && !url.path().starts_with("/shared-assets/")
+        {
             el.set_attribute("src", url.path())?;
             // Leave dimensions alone if we have a `width` attribute
             if el.get_attribute("width").is_some() {
