@@ -157,6 +157,14 @@ impl Doc {
         meta.sidebar = super_doc.meta.sidebar.clone();
     }
 
+    fn super_doc_from_slug(slug: &str) -> Result<Arc<Doc>, DocError> {
+        match Doc::page_from_slug(slug, Default::default(), false) {
+            Ok(Page::Doc(super_doc)) => Ok(super_doc),
+            Ok(_) => Err(DocError::NotADoc),
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn is_orphaned(&self) -> bool {
         self.meta.slug.starts_with("orphaned/")
     }
@@ -182,8 +190,8 @@ impl PageReader<Page> for Doc {
         let mut doc = read_doc(&path)?;
 
         if doc.meta.locale != Default::default() && !doc.is_conflicting() && !doc.is_orphaned() {
-            match Doc::page_from_slug(&doc.meta.slug, Default::default(), false) {
-                Ok(Page::Doc(super_doc)) => {
+            match Doc::super_doc_from_slug(&doc.meta.slug) {
+                Ok(super_doc) => {
                     doc.copy_meta_from_super(&super_doc);
                 }
                 Err(DocError::PageNotFound(path, _)) => {
