@@ -11,7 +11,7 @@ use tracing::warn;
 
 static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
     let web_features =
-        WebFeatures::from_file(&data_dir().join("baseline").join("data.extended.json"));
+        WebFeatures::from_file(&data_dir().join("baseline").join("package/data.json"));
     match web_features {
         Ok(web_features) => Some(web_features),
         Err(e) => {
