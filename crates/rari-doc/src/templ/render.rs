@@ -120,13 +120,6 @@ fn encode_ref(index: usize, out: &mut String, len: usize) -> Result<(), DocError
     Ok(write!(out, "{DELIM_START}{index:x>padding$}{DELIM_END}",)?)
 }
 
-pub(crate) fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String, DocError> {
-    let Rendered {
-        content, templs, ..
-    } = render(env, input, 0)?;
-    decode_ref(&content, &templs, None)
-}
-
 pub(crate) fn decode_ref(
     input: &str,
     templs: &[String],

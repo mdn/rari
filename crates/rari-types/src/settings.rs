@@ -14,8 +14,6 @@ pub struct Deps {
     pub bcd: Option<VersionReq>,
     #[serde(alias = "browser-specs")]
     pub browser_specs: Option<VersionReq>,
-    #[serde(alias = "mdn-data")]
-    pub mdn_data: Option<VersionReq>,
     #[serde(alias = "web-features")]
     pub web_features: Option<VersionReq>,
     #[serde(alias = "web-specs")]
