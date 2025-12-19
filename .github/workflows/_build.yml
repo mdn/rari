@@ -137,6 +137,8 @@ jobs:
       - name: Build Rari
         if: inputs.rari-binary-artifact-id == ''
         working-directory: mdn/rari
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: cargo build --release
 
       - name: Prepare rari binary
@@ -162,6 +164,9 @@ jobs:
           ADDITIONAL_LOCALES_FOR_GENERICS_AND_SPAS: de
 
           BLOG_PAGINATION: ${{ steps.privileged.outputs.BLOG_PAGINATION }}
+
+          # Increase GitHub API limit.
+          GITHUB_TOKEN: ${{ github.token }}
 
           PARTIAL_BUILD: ${{ inputs.partial }}
           FILE_LIST: ${{ github.workspace }}/files.txt

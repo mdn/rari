@@ -63,6 +63,7 @@ jobs:
         working-directory: rari
         env:
           CONTENT_ROOT: ${{ github.workspace }}/content/files
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: target/release/rari ${{ inputs.command }}
 
       - name: Diff content
