@@ -111,14 +111,14 @@ jobs:
 
       - name: Download rari binary
         if: inputs.rari-binary-artifact-id != ''
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           artifact-ids: ${{ inputs.rari-binary-artifact-id }}
           path: mdn/rari/target/release
 
       - name: Cache Cargo registry
         if: inputs.rari-binary-artifact-id == ''
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: |
             ~/.cargo/registry/index/
@@ -288,7 +288,7 @@ jobs:
         run: echo "name=build-output" >> $GITHUB_OUTPUT
 
       - name: Upload build output
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ steps.set-artifact-name.outputs.name }}
           path: ${{ env.BUILD_OUT_ROOT }}
