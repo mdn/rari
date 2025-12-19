@@ -277,7 +277,7 @@ jobs:
             done
           fi
 
-          npx rari build $BUILD_OPTIONS $FILE_LIST --templ-stats
+          npx rari build $BUILD_OPTIONS $FILE_LIST --issues "$BUILD_OUT_ROOT/issues.json" --templ-stats
 
       - name: Render content (fred)
         working-directory: mdn/content
