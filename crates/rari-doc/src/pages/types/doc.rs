@@ -214,7 +214,14 @@ impl PageReader<Page> for Doc {
                         path
                     );
                 }
-                _ => {}
+                Err(err) => {
+                    tracing::error!(
+                        "Super doc not found for {}:{} {}",
+                        doc.meta.locale.as_url_str(),
+                        doc.meta.slug,
+                        err
+                    );
+                }
             }
         }
 
