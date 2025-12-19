@@ -7,15 +7,14 @@ use std::sync::LazyLock;
 
 use rari_data::baseline::{Baseline, WebFeatures};
 use rari_types::globals::data_dir;
-use tracing::warn;
+use tracing::error;
 
 static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
-    let web_features =
-        WebFeatures::from_file(&data_dir().join("baseline").join("package/data.json"));
+    let web_features = WebFeatures::from_file(&data_dir().join("web-features/package/data.json"));
     match web_features {
         Ok(web_features) => Some(web_features),
         Err(e) => {
-            warn!("{e:?}");
+            error!("Failed to load web-features data: {e:?}");
             None
         }
     }

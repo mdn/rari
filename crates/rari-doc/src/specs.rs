@@ -10,7 +10,7 @@ use rari_data::specs::{BCDSpecUrls, WebSpecs};
 use rari_types::globals::{data_dir, json_spec_data_lookup};
 use schemars::JsonSchema;
 use serde::Serialize;
-use tracing::warn;
+use tracing::error;
 
 use crate::utils::deduplicate;
 
@@ -23,7 +23,7 @@ struct SpecsData {
 static SPECS: LazyLock<SpecsData> = LazyLock::new(|| {
     let web_specs = WebSpecs::from_file(&data_dir().join("web-specs/package/index.json"))
         .map_err(|e| {
-            warn!("{e:?}");
+            error!("Failed to load web-specs data: {e:?}");
             e
         })
         .ok();
@@ -31,7 +31,7 @@ static SPECS: LazyLock<SpecsData> = LazyLock::new(|| {
         match BCDSpecUrls::from_file(&data_dir().join("@mdn/browser-compat-data/spec_urls.json")) {
             Ok(ok) => Some(ok),
             Err(e) => {
-                warn!("{e:?}");
+                error!("Failed to load BCD spec URLs: {e:?}");
                 None
             }
         };
