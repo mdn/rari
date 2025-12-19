@@ -309,10 +309,11 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.27"
+version = "1.2.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d487aa071b5f64da6f19a3e848e3578944b726ee5a4854b82172f02aa876bfdc"
+checksum = "90583009037521a116abf44494efecd645ba48b6622457080f080b85544e2215"
 dependencies = [
+ "find-msvc-tools",
  "shlex",
 ]
 
@@ -1072,6 +1073,12 @@ dependencies = [
  "libredox",
  "windows-sys 0.59.0",
 ]
+
+[[package]]
+name = "find-msvc-tools"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a3076410a55c90011c298b04d0cfa770b00fa04e1e3c97d3f6c9de105a03844"
 
 [[package]]
 name = "flate2"
@@ -3972,9 +3979,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-mdn"
-version = "0.1.1"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0d23922b0f755ba8610c832220441c47d2b5ba446d1d9c9d50931222f73c05c"
+checksum = "af8a0e7886eb722d1f7fc676e89b3c55b0e2df3c0c3677bd0ded11066eec1821"
 dependencies = [
  "cc",
  "tree-sitter-language",
