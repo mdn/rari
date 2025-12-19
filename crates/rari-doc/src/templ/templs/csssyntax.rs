@@ -48,6 +48,15 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
                 css_syntax::error::SyntaxError::NoSyntaxFound,
             ));
         }
+        _ if env.slug.starts_with("orphaned/") || env.slug.starts_with("conflicting/") => {
+            warn!(
+                "CSS syntax not available for conflicting/orphaned page: {}",
+                env.slug
+            );
+            return Err(DocError::CssSyntaxError(
+                css_syntax::error::SyntaxError::NoSyntaxFound,
+            ));
+        }
         _ => {
             error!("No Css Page: {}", env.slug);
             return Err(DocError::CssPageTypeRequired);
