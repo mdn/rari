@@ -373,7 +373,13 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
 
 fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
     let full_path = path.into();
-    let raw = read_to_string(&full_path)?;
+    let raw = read_to_string(&full_path).map_err(|e| {
+        if e.source.kind() == std::io::ErrorKind::NotFound {
+            DocError::PageNotFound(full_path.display().to_string(), PageCategory::Doc)
+        } else {
+            DocError::RariIoError(e)
+        }
+    })?;
     doc_from_raw(raw, full_path)
 }
 
