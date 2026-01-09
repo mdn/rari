@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.10](https://github.com/mdn/rari/compare/v0.2.9...v0.2.10) (2026-01-09)
+
+
+### Miscellaneous
+
+* **deps:** bump axum from 0.8.4 to 0.8.8 ([#461](https://github.com/mdn/rari/issues/461)) ([2466496](https://github.com/mdn/rari/commit/2466496c7be1d9003f46b6f75037343d0a616968))
+* **deps:** bump clap from 4.5.40 to 4.5.53 ([#463](https://github.com/mdn/rari/issues/463)) ([3d169f5](https://github.com/mdn/rari/commit/3d169f5ec42afb6e520695a5cfd51a32d3886995))
+* **deps:** bump regex from 1.11.1 to 1.12.2 ([#459](https://github.com/mdn/rari/issues/459)) ([ea78100](https://github.com/mdn/rari/commit/ea78100c03f4eb49aeb287dc91ddf0e580e794f7))
+* **deps:** bump regress from 0.10.3 to 0.10.5 ([#460](https://github.com/mdn/rari/issues/460)) ([eca660f](https://github.com/mdn/rari/commit/eca660fcbbbc067d10f17552c5652da36b16183d))
+* **deps:** bump semver from 1.0.26 to 1.0.27 ([#462](https://github.com/mdn/rari/issues/462)) ([b62846b](https://github.com/mdn/rari/commit/b62846b8b8c1cf98a19bb22d0efd37aed6510257))
+
 ## [0.2.9](https://github.com/mdn/rari/compare/v0.2.8...v0.2.9) (2025-12-19)
 
 
