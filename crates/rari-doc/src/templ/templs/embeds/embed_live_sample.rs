@@ -85,7 +85,10 @@ pub fn embedlivesample(
     out.push_str(r#"sandbox=""#);
     if let Some(sandbox) = sandbox {
         let is_sane = sandbox.split_ascii_whitespace().all(|attr| {
-            if matches!(attr, "allow-modals" | "allow-forms" | "allow-popups") {
+            if matches!(
+                attr,
+                "allow-downloads" | "allow-modals" | "allow-forms" | "allow-popups"
+            ) {
                 true
             } else {
                 let ic = get_issue_counter();
