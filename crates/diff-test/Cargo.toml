@@ -1,6 +1,6 @@
 [package]
 name = "diff-test"
-version = "0.2.8"
+version = "0.2.9"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -17,7 +17,7 @@ serde_json.workspace = true
 base64.workspace = true
 
 jsonpath_lib = "0.3"
-prettydiff = "0.8"
+prettydiff = "0.9"
 html-minifier = "5"
 ansi-to-html = "0.2"
 similar = "2"
