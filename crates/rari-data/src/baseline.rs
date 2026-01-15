@@ -138,12 +138,12 @@ impl WebFeatures {
                 .map(|sub_key| {
                     self.feature_data_by_name(&sub_key.feature)
                         .and_then(|feature| {
-                                feature
-                                    .discouraged
-                                    .is_none()
-                                    .then_some(feature.status.by_compat_key.as_ref())
-                                    .flatten()
-                            })
+                            feature
+                                .discouraged
+                                .is_none()
+                                .then_some(feature.status.by_compat_key.as_ref())
+                                .flatten()
+                        })
                         .and_then(|by_key| by_key.get(&sub_key.bcd_key))
                         .map(|status_for_key| status_for_key.baseline)
                 })
@@ -177,36 +177,36 @@ impl WebFeatures {
                 }
             };
 
-                let alternatives = match feature.discouraged.clone() {
-                    Some(discouraged) => discouraged
-                        .alternatives
-                        .iter()
-                        .filter_map(|alternative| {
-                            self.feature_data_by_name(alternative).and_then(|feature| {
-                                match get_mdn_url(alternative) {
-                                    Some(url) => Some(Alternative {
-                                        name: feature.name.clone(),
-                                        description: feature.description.clone(),
-                                        mdn_url: url.to_string(),
-                                    }),
-                                    None => {
-                                        tracing::warn!(
-                                            "Couldn't find url for {} web feature",
-                                            alternative
-                                        );
-                                        None
-                                    }
+            let alternatives = match feature.discouraged.clone() {
+                Some(discouraged) => discouraged
+                    .alternatives
+                    .iter()
+                    .filter_map(|alternative| {
+                        self.feature_data_by_name(alternative).and_then(
+                            |feature| match get_mdn_url(alternative) {
+                                Some(url) => Some(Alternative {
+                                    name: feature.name.clone(),
+                                    description: feature.description.clone(),
+                                    mdn_url: url.to_string(),
+                                }),
+                                None => {
+                                    tracing::warn!(
+                                        "Couldn't find url for {} web feature",
+                                        alternative
+                                    );
+                                    None
                                 }
-                            })
-                        })
-                        .collect(),
-                    _ => Vec::new(),
-                };
+                            },
+                        )
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
 
             return Some(Baseline {
                 support: status_for_key,
                 asterisk,
-                    alternatives,
+                alternatives,
                 feature,
             });
         }
