@@ -364,24 +364,14 @@ pub fn curriculum_files() -> Cow<'static, CurriculumFiles> {
     if cache_content() {
         Cow::Borrowed(CACHED_CURRICULUM.get_or_init(|| {
             gather_curriculum()
-                .inspect_err(|e| {
-                    // Don't warn about missing curriculum root - it's expected when curriculum is not configured
-                    if !matches!(e, DocError::NoCurriculumRoot) {
-                        warn!("{e}");
-                    }
-                })
+                .inspect_err(capture_doc_error)
                 .ok()
                 .unwrap_or_default()
         }))
     } else {
         Cow::Owned(
             gather_curriculum()
-                .inspect_err(|e| {
-                    // Don't warn about missing curriculum root - it's expected when curriculum is not configured
-                    if !matches!(e, DocError::NoCurriculumRoot) {
-                        warn!("{e}");
-                    }
-                })
+                .inspect_err(capture_doc_error)
                 .unwrap_or_default(),
         )
     }
@@ -426,17 +416,11 @@ fn gather_blog_authors() -> Result<HashMap<String, Arc<Author>>, DocError> {
 pub fn blog_files() -> Cow<'static, BlogFiles> {
     fn gather() -> BlogFiles {
         let posts = gather_blog_posts().unwrap_or_else(|e| {
-            // Don't warn about missing blog root - it's expected when blog is not configured
-            if !matches!(e, DocError::NoBlogRoot) {
-                warn!("{e}");
-            }
+            capture_doc_error(&e);
             Default::default()
         });
         let authors = gather_blog_authors().unwrap_or_else(|e| {
-            // Don't warn about missing blog root - it's expected when blog is not configured
-            if !matches!(e, DocError::NoBlogRoot) {
-                warn!("{e}");
-            }
+            capture_doc_error(&e);
             Default::default()
         });
         let mut sorted_meta = posts
@@ -601,10 +585,7 @@ fn read_generic_content_config() -> Result<GenericContentConfig, DocError> {
 pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
     fn gather() -> GenericContentConfig {
         read_generic_content_config().unwrap_or_else(|e| {
-            // Don't warn about missing generic content config - it's expected when generic content is not configured
-            if !matches!(e, DocError::NoGenericContentConfig) {
-                warn!(ignore = true, "{e}");
-            }
+            capture_doc_error(&e);
             GenericContentConfig {
                 spas: vec![(
                     "".to_string(),
@@ -630,6 +611,23 @@ pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
     }
 }
 
+/// Captures a DocError by emitting a warning.
+///
+/// Annotates warnings about missing optional content roots with `ignore = true`.
+pub fn capture_doc_error(e: &DocError) {
+    if matches!(
+        e,
+        DocError::NoBlogRoot
+            | DocError::NoContributorSpotlightRoot
+            | DocError::NoCurriculumRoot
+            | DocError::NoGenericContentConfig
+    ) {
+        warn!(ignore = true, "{e}");
+    } else {
+        warn!("{e}");
+    }
+}
+
 /// Retrieves all generic pages, using the cache if it is enabled.
 ///
 /// This function returns a `Cow<'static, UrlToPageMap>` containing the generic pages.
@@ -644,10 +642,7 @@ pub fn generic_content_config() -> Cow<'static, GenericContentConfig> {
 pub fn generic_content_files() -> Cow<'static, UrlToPageMap> {
     fn gather() -> UrlToPageMap {
         gather_generic_content().unwrap_or_else(|e| {
-            // Don't warn about missing generic content root - it's expected when generic content is not configured
-            if !matches!(e, DocError::NoGenericContentRoot) {
-                warn!(ignore = true, "{e}");
-            }
+            capture_doc_error(&e);
             Default::default()
         })
     }
@@ -672,10 +667,7 @@ pub fn generic_content_files() -> Cow<'static, UrlToPageMap> {
 pub fn contributor_spotlight_files() -> Cow<'static, UrlToPageMap> {
     fn gather() -> UrlToPageMap {
         gather_contributor_spotlight().unwrap_or_else(|e| {
-            // Don't warn about missing contributor spotlight root - it's expected when contributor spotlights are not configured
-            if !matches!(e, DocError::NoContributorSpotlightRoot) {
-                warn!("{e}");
-            }
+            capture_doc_error(&e);
             Default::default()
         })
     }
