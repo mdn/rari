@@ -1,4 +1,5 @@
 use reqwest::blocking::Response;
+use std::env;
 use url::Url;
 
 use crate::error::DepsError;
@@ -15,6 +16,10 @@ pub fn get(url: impl AsRef<str>) -> Result<Response, DepsError> {
         // Use GH_TOKEN or GITHUB_TOKEN if set to avoid rate limiting.
         if let Ok(token) = std::env::var("GH_TOKEN").or_else(|_| std::env::var("GITHUB_TOKEN")) {
             req_builder = req_builder.bearer_auth(token);
+        } else if env::var("GITHUB_ACTIONS").as_deref() == Ok("true") {
+            eprintln!(
+                "::warning::Cannot authenticate GitHub API request. (Provide GITHUB_TOKEN to get a higher rate limit.)"
+            );
         }
     }
 

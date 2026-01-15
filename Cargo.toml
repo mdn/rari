@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.2.8"
+version = "0.2.9"
 edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
@@ -100,7 +100,7 @@ tokio = "1"
 inventory = "0.3"
 tree-sitter-mdn = "0.1"
 tree-sitter = "0.23"
-darling = "0.20"
+darling = "0.23"
 quote = "1"
 
 [features]

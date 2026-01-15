@@ -1,6 +1,6 @@
 [package]
 name = "rari-doc"
-version = "0.2.8"
+version = "0.2.9"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -44,7 +44,7 @@ html-escape = "0.2"
 html5ever = "0.36"
 ego-tree = "0.10"
 rss = { version = "2", features = [], default-features = false }
-cssparser = "0.34"
+cssparser = "0.36"
 
 icu_locale_core = "2"
 ignore = "0.4"
