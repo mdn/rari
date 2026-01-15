@@ -212,8 +212,14 @@ where
         if issue.ic == -1 && !issue.ignore {
             issue.ic = get_issue_counter();
         }
+
         if !issue.ignore {
+            // Record first.
             event.record(&mut issue);
+        }
+
+        if !issue.ignore {
+            // Check again after recording.
             self.events
                 .entry(issue.file.clone())
                 .or_default()
