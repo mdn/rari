@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread::spawn;
 
-use rari_types::globals::{content_root, content_translated_root};
 use rari_types::HistoryEntry;
+use rari_types::globals::{content_root, content_translated_root};
 
 use crate::error::ToolError;
 use crate::git::exec_git;
@@ -68,15 +68,15 @@ fn modification_times(path: &Path) -> Result<(), ToolError> {
                 date = *date_data;
             }
 
-            if let Some(data) = data.get(2) {
-                if let Some(parent_hash) = data.split(' ').nth(1) {
-                    parents.insert(parent_hash, HistoryEntry::new(date, hash));
-                }
+            if let Some(data) = data.get(2)
+                && let Some(parent_hash) = data.split(' ').nth(1)
+            {
+                parents.insert(parent_hash, HistoryEntry::new(date, hash));
             }
-        } else if line.ends_with("index.md") {
-            if let Ok(rel_path) = PathBuf::from(line).strip_prefix("files") {
-                history.insert(rel_path.to_path_buf(), HistoryEntry::new(date, hash));
-            }
+        } else if line.ends_with("index.md")
+            && let Ok(rel_path) = PathBuf::from(line).strip_prefix("files")
+        {
+            history.insert(rel_path.to_path_buf(), HistoryEntry::new(date, hash));
         }
     }
 

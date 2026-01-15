@@ -3,8 +3,8 @@ use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
+use dialoguer::theme::ColorfulTheme;
 use rari_doc::error::DocError;
 use rari_doc::helpers::subpages::get_sub_pages;
 use rari_doc::pages::page::{self, Page, PageCategory, PageLike};
@@ -13,7 +13,7 @@ use rari_doc::reader::read_docs_parallel;
 use rari_doc::resolve::build_url;
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
-use rayon::iter::{once, IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator, once};
 
 use crate::error::ToolError;
 use crate::git::exec_git_with_test_fallback;
@@ -51,7 +51,9 @@ pub fn remove(
                 &redirect,
             );
         } else {
-            tracing::info!("Deleting without a redirect. Consider using the --redirect option with a related page instead.");
+            tracing::info!(
+                "Deleting without a redirect. Consider using the --redirect option with a related page instead."
+            );
         }
     }
 

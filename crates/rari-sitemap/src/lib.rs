@@ -5,8 +5,8 @@ use std::io::{BufWriter, Write as _};
 use std::path::{Path, PathBuf};
 
 use chrono::{NaiveDate, Utc};
-use flate2::write::GzEncoder;
 use flate2::Compression;
+use flate2::write::GzEncoder;
 use rari_doc::build::SitemapMeta;
 use rari_types::error::EnvError;
 use rari_types::globals::build_out_root;

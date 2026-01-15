@@ -7,7 +7,7 @@ use crate::error::DocError;
 use crate::helpers::api_inheritance::inheritance;
 use crate::helpers::json_data::json_data_group;
 use crate::helpers::l10n::l10n_json_data;
-use crate::helpers::subpages::{get_sub_pages, SubPagesSorter};
+use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::helpers::titles::api_page_title;
 use crate::html::sidebar::{
     Details, MetaChildren, MetaSidebar, SidebarMetaEntry, SidebarMetaEntryContent,
@@ -85,7 +85,7 @@ pub fn sidebar(slug: &str, group: Option<&str>, locale: Locale) -> Result<MetaSi
 
     let mut entries = vec![];
 
-    if let Some([ref overview, ..]) = web_api_groups.map(|group| group.overview.as_slice()) {
+    if let Some([overview, ..]) = web_api_groups.map(|group| group.overview.as_slice()) {
         entries.push(SidebarMetaEntry {
             section: true,
             content: SidebarMetaEntryContent::Page(Doc::page_from_slug(

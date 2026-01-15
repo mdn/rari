@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::path::Path;
 
-use lol_html::html_content::Element;
 use lol_html::HandlerResult;
+use lol_html::html_content::Element;
 use rari_types::locale::default_locale;
 use tracing::warn;
 use url::{ParseOptions, Url};
@@ -21,19 +21,21 @@ pub fn handle_img(
 ) -> HandlerResult {
     if let Some(src) = el.get_attribute("src") {
         let url = base_url.parse(&src)?;
-        if url.host() == base.host() && !url.path().starts_with("/assets/") {
+        if url.host() == base.host()
+            && !url.path().starts_with("/assets/")
+            && !url.path().starts_with("/shared-assets/")
+        {
             el.set_attribute("src", url.path())?;
             // Leave dimensions alone if we have a `width` attribute
             if el.get_attribute("width").is_some() {
                 return Ok(());
             }
             let mut file = page.full_path().parent().unwrap().join(&src);
-            if !file.try_exists().unwrap_or_default() {
-                if let Ok(en_us_page) =
+            if !file.try_exists().unwrap_or_default()
+                && let Ok(en_us_page) =
                     Page::from_url_with_locale_and_fallback(page.url(), default_locale())
-                {
-                    file = en_us_page.full_path().parent().unwrap().join(&src);
-                }
+            {
+                file = en_us_page.full_path().parent().unwrap().join(&src);
             }
             let (width, height) = img_size(el, &src, &file, data_issues)?;
             if let Some(width) = width {

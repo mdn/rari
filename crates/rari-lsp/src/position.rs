@@ -33,10 +33,11 @@ pub(crate) fn retrieve_element_at_position(
     {}
     let mut node = query_cursor.node();
 
-    if node.grammar_name() == node.kind() && node.kind().len() == 1 {
-        if let Some(parent) = node.parent() {
-            node = parent
-        }
+    if node.grammar_name() == node.kind()
+        && node.kind().len() == 1
+        && let Some(parent) = node.parent()
+    {
+        node = parent
     }
     match node.grammar_name() {
         "link_destination" => {

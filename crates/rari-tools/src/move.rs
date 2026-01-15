@@ -4,12 +4,12 @@ use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
+use dialoguer::theme::ColorfulTheme;
 use rari_doc::{
     helpers::subpages::get_sub_pages,
     pages::page::{self, Page, PageCategory, PageLike, PageWriter},
-    resolve::{build_url, url_meta_from, UrlMeta}, //  url_path_to_path_buf
+    resolve::{UrlMeta, build_url, url_meta_from}, //  url_path_to_path_buf
     utils::root_for_locale,
 };
 use rari_types::locale::Locale;
@@ -456,18 +456,26 @@ mod test {
         let _wikihistory = WikihistoryFixtures::new(&slugs, Locale::PtBr);
         let _redirects = RedirectFixtures::new(&redirects, Locale::PtBr);
         let _sidebars = SidebarFixtures::default();
+        // Create assets for the document we'll move
+        DocFixtures::create_assets("Web/API/ExampleOne", Locale::PtBr);
+        DocFixtures::create_assets("Web/API/ExampleOne/SubExampleTwo", Locale::PtBr);
 
         let root_path = root_for_locale(Locale::PtBr).unwrap();
         let should_exist = vec![
             "pt-br/web/api/other",
             "pt-br/web/api/exampleone",
+            "pt-br/web/api/exampleone/asset.txt",
             "pt-br/web/api/exampleone/subexampleone",
             "pt-br/web/api/exampleone/subexampletwo",
+            "pt-br/web/api/exampleone/subexampletwo/asset.txt",
         ];
         let should_not_exist = vec![
             "pt-br/web/api/exampleonenewlocation",
+            "pt-br/web/api/exampleonenewlocation/asset.txt",
+            "pt-br/web/api/exampleonenewlocation/assets/asset.txt",
             "pt-br/web/api/exampleonenewlocation/subexampleone",
             "pt-br/web/api/exampleonenewlocation/subexampletwo",
+            "pt-br/web/api/exampleonenewlocation/subexampletwo/asset.txt",
         ];
         check_file_existence(root_path, &should_exist, &should_not_exist);
 
@@ -502,13 +510,17 @@ mod test {
         let should_exist = vec![
             "pt-br/web/api/other",
             "pt-br/web/api/exampleonenewlocation",
+            "pt-br/web/api/exampleonenewlocation/asset.txt",
             "pt-br/web/api/exampleonenewlocation/subexampleone",
             "pt-br/web/api/exampleonenewlocation/subexampletwo",
+            "pt-br/web/api/exampleonenewlocation/subexampletwo/asset.txt",
         ];
         let should_not_exist = vec![
             "pt-br/web/api/exampleone",
+            "pt-br/web/api/exampleone/asset.txt",
             "pt-br/web/api/exampleone/subexampleone",
             "pt-br/web/api/exampleone/subexampletwo",
+            "pt-br/web/api/exampleone/subexampletwo/asset.txt",
         ];
         check_file_existence(root_path, &should_exist, &should_not_exist);
 

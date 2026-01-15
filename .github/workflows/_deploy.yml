@@ -1,0 +1,82 @@
+name: Deploy Reusable Workflow
+
+on:
+  workflow_call:
+    inputs:
+      cancel-in-progress:
+        description: "To cancel any currently running job or workflow in the same concurrency group, specify cancel-in-progress: true."
+        type: boolean
+        default: false
+      prefix:
+        description: "Deployment prefix"
+        required: true
+        type: string
+      build-artifact-name:
+        description: "Name of the build artifact to download"
+        required: true
+        type: string
+    outputs:
+      url:
+        description: "Deployment URL"
+        value: ${{ jobs.deploy.outputs.url }}
+
+permissions:
+  contents: read
+  # Authenticate with GCP.
+  id-token: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ inputs.prefix }}
+  cancel-in-progress: ${{ inputs.cancel-in-progress }}
+
+env:
+  BUILD_OUT_ROOT: ${{ github.workspace }}/mdn/fred/out
+  PREFIX: ${{ inputs.prefix }}
+
+jobs:
+  deploy:
+    if: github.repository == 'mdn/rari' && github.secret_source == 'Actions'
+    runs-on: ubuntu-latest
+
+    outputs:
+      url: ${{ steps.set-output.outputs.url }}
+
+    environment:
+      name: review
+      url: https://${{ env.PREFIX }}.${{ vars.HOST }}
+
+    steps:
+      - name: Download build output
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ inputs.build-artifact-name }}
+          path: ${{ env.BUILD_OUT_ROOT }}
+
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          token_format: access_token
+          service_account: deploy-mdn-review-content@${{ secrets.GCP_PROJECT_NAME }}.iam.gserviceaccount.com
+          workload_identity_provider: projects/${{ secrets.WIP_PROJECT_ID }}/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Upload to GCS
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
+        with:
+          path: ${{ env.BUILD_OUT_ROOT }}
+          destination: "${{ vars.GCP_BUCKET_NAME }}/${{ env.PREFIX }}"
+          resumable: false
+          headers: |-
+            cache-control: no-store
+          parent: false
+          concurrency: 500
+          process_gcloudignore: false
+
+      - name: Set deployment URL output
+        id: set-output
+        env:
+          URL: "https://${{ env.PREFIX }}.${{ vars.HOST }}/"
+        run: |
+          echo "url=$URL" >> $GITHUB_OUTPUT

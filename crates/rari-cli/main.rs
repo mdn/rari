@@ -3,23 +3,23 @@ use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::mpsc::channel;
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 use std::thread::spawn;
 
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::Verbosity;
 use dashmap::DashMap;
-use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
+use dialoguer::theme::ColorfulTheme;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas, build_top_level_meta,
 };
-use rari_doc::cached_readers::{read_and_cache_doc_pages, CACHED_DOC_PAGE_FILES};
+use rari_doc::cached_readers::{CACHED_DOC_PAGE_FILES, read_and_cache_doc_pages};
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::Page;
@@ -37,17 +37,17 @@ use rari_tools::redirects::{fix_redirects, validate_redirects};
 use rari_tools::remove::remove;
 use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
-use rari_types::globals::{build_out_root, content_root, content_translated_root, SETTINGS};
+use rari_types::globals::{SETTINGS, build_out_root, content_root, content_translated_root};
 use rari_types::locale::Locale;
 use rari_types::settings::Settings;
 use rari_utils::io::read_to_string;
 use self_update::cargo_crate_version;
 use tabwriter::TabWriter;
 use tracing::level_filters::LevelFilter;
-use tracing::{info, Level};
+use tracing::{Level, info};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{filter, Layer};
+use tracing_subscriber::{Layer, filter};
 
 mod serve;
 
@@ -58,6 +58,9 @@ struct Cli {
     /// Skip updating dependencies (bcd, webref, ...)
     #[arg(short, long, env = "RARI_SKIP_UPDATES")]
     skip_updates: bool,
+    /// Force update all dependencies, ignoring cache
+    #[arg(long, conflicts_with = "skip_updates")]
+    force_updates: bool,
     #[command(flatten)]
     verbose: Verbosity,
     #[command(subcommand)]
@@ -236,6 +239,30 @@ enum Cache {
     None,
 }
 
+/// Delete cache files for all dependencies to force fresh updates
+fn clear_dependencies_last_checked(base_path: &Path) {
+    fn remove_last_checked_files(dir: &Path) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    remove_last_checked_files(&path);
+                } else if path.file_name().and_then(|n| n.to_str()) == Some("last_check.json") {
+                    if let Err(e) = fs::remove_file(&path) {
+                        tracing::warn!("Failed to remove cache file {}: {}", path.display(), e);
+                    } else {
+                        tracing::debug!("Removed cache file: {}", path.display());
+                    }
+                }
+            }
+        }
+    }
+
+    if base_path.exists() {
+        remove_last_checked_files(base_path);
+    }
+}
+
 fn main() -> Result<(), Error> {
     if let Ok(env_file) = dotenvy::from_filename(
         env::var("DOT_FILE")
@@ -281,6 +308,11 @@ fn main() -> Result<(), Error> {
         )
         .with(memory_layer.clone().with_filter(memory_filter))
         .init();
+
+    if cli.force_updates {
+        tracing::info!("Forcing update of all dependencies...");
+        clear_dependencies_last_checked(rari_types::globals::data_dir());
+    }
 
     if !cli.skip_updates {
         rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;

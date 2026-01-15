@@ -1,16 +1,15 @@
 use std::fs;
 use std::path::PathBuf;
 
-use fake::faker::lorem::en::Paragraph;
 use fake::Fake;
+use fake::faker::lorem::en::Paragraph;
 use indoc::formatdoc;
 use rari_doc::pages::page::PageCategory;
-use rari_doc::resolve::{build_url, url_meta_from, UrlMeta};
+use rari_doc::resolve::{UrlMeta, build_url, url_meta_from};
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
 
 pub(crate) struct DocFixtures {
-    // files: Vec<String>,
     locale: Locale,
     do_not_remove: bool,
 }
@@ -109,6 +108,16 @@ impl DocFixtures {
             .join(Self::path_from_slug(current_slug.as_str(), locale))
             .join("index.md");
         path.to_string_lossy().to_string()
+    }
+
+    // Create some assets in an existing folder
+    pub fn create_assets(slug: &str, locale: Locale) {
+        let locale_root = root_for_locale(locale).unwrap();
+
+        let path = locale_root
+            .join(Self::path_from_slug(slug, locale))
+            .join("asset.txt");
+        fs::write(&path, "Asset content").unwrap();
     }
 }
 

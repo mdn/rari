@@ -9,7 +9,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rari_types::globals::settings;
-use tracing::error;
+use tracing::{Level, error, span};
 
 use crate::error::DocError;
 use crate::pages::page::PageReader;
@@ -58,20 +58,26 @@ pub fn read_docs_parallel<P: 'static + Send, T: PageReader<P>>(
             let tx = tx.clone();
             let success = &success;
             Box::new(move |result| {
-                if let Ok(f) = result {
-                    if f.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-                        let p = f.into_path();
-                        match T::read(p, None) {
-                            Ok(doc) => {
-                                if let Err(e) = tx.send(Ok(doc)) {
-                                    error!("{e}");
-                                }
-                            }
-                            Err(e) => {
+                if let Ok(f) = result
+                    && f.file_type().map(|ft| ft.is_file()).unwrap_or(false)
+                {
+                    let span = span!(
+                        Level::ERROR,
+                        "page",
+                        file = f.path().to_string_lossy().as_ref(),
+                    );
+                    let _enter = span.enter();
+                    let p = f.into_path();
+                    match T::read(&p, None) {
+                        Ok(doc) => {
+                            if let Err(e) = tx.send(Ok(doc)) {
                                 error!("{e}");
-                                success.store(false, Ordering::Relaxed);
-                                //tx.send(Err(e.into())).unwrap();
                             }
+                        }
+                        Err(e) => {
+                            error!("{e}");
+                            success.store(false, Ordering::Relaxed);
+                            //tx.send(Err(e.into())).unwrap();
                         }
                     }
                 }

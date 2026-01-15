@@ -8,23 +8,23 @@ use dashmap::DashMap;
 use indexmap::IndexMap;
 use rari_types::fm_types::PageType;
 use rari_types::globals::cache_content;
-use rari_types::locale::{default_locale, Locale};
+use rari_types::locale::{Locale, default_locale};
 use rari_types::templ::TemplType;
 use rari_types::{Arg, Quotes};
 use rari_utils::concat_strs;
 use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize, Serializer};
-use tracing::{span, Level};
+use tracing::{Level, span};
 
-use super::links::{render_link_from_page, render_link_via_page, LinkFlags, LinkModifier};
+use super::links::{LinkFlags, LinkModifier, render_link_from_page, render_link_via_page};
 use super::modifier::insert_attribute;
 use super::rewriter::post_process_html;
 use crate::cached_readers::read_sidebar;
 use crate::error::DocError;
 use crate::helpers;
 use crate::helpers::subpages::{
-    list_sub_pages_flattened_grouped_internal, list_sub_pages_flattened_internal,
-    list_sub_pages_nested_internal, ListSubPagesContext,
+    ListSubPagesContext, list_sub_pages_flattened_grouped_internal,
+    list_sub_pages_flattened_internal, list_sub_pages_nested_internal,
 };
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
@@ -80,10 +80,10 @@ fn expand_details_and_mark_current(html: &mut Html, a_selector: Selector) -> Res
             parent_id = Some(parent.id());
         }
         while let Some(parent) = next {
-            if let Node::Element(el) = parent.value() {
-                if el.name() == "details" {
-                    details.push(parent.id())
-                }
+            if let Node::Element(el) = parent.value()
+                && el.name() == "details"
+            {
+                details.push(parent.id())
             }
             next = parent.parent();
         }
@@ -154,7 +154,8 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
         };
         let span = span!(Level::ERROR, "sidebar", sidebar = name,);
         let _enter = span.enter();
-        let rendered_sidebar = match invoke(&rari_env, name, args) {
+
+        match invoke(&rari_env, name, args) {
             Ok((rendered_sidebar, TemplType::Sidebar)) => rendered_sidebar,
             Ok((_, typ)) => {
                 let span = span!(Level::ERROR, "sidebar", sidebar = name,);
@@ -168,8 +169,7 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
                 tracing::warn!("{e}");
                 Default::default()
             }
-        };
-        rendered_sidebar
+        }
     };
     postprocess_sidebar(&rendered_sidebar, doc)
 }
@@ -274,7 +274,9 @@ impl MetaSidebar {
         let mut out = String::new();
         out.push_str("<ol>");
         for entry in &self.entries {
-            entry.render(&mut out, locale, slug, &self.l10n)?;
+            // Ignore error to avoid empty sidebar.
+            // Doc errors like PageNotFound will show up as flaws.
+            let _ = entry.render(&mut out, locale, slug, &self.l10n);
         }
         out.push_str("</ol>");
         Ok(out)
@@ -308,11 +310,7 @@ const fn default_depth() -> usize {
 
 /// depth == 0 => None which means infinite otherwise Some(depth).
 const fn depth_to_option(depth: usize) -> Option<usize> {
-    if depth == 0 {
-        None
-    } else {
-        Some(depth)
-    }
+    if depth == 0 { None } else { Some(depth) }
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]

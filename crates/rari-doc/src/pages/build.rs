@@ -8,6 +8,7 @@ use rari_types::globals::{base_url, content_branch, git_history, popularities};
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use scraper::Html;
+use tracing::{Level, span};
 
 use super::json::{
     BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
@@ -23,10 +24,10 @@ use crate::helpers::parents::parents;
 use crate::helpers::title::{page_title, transform_title};
 use crate::html::banner::build_banner;
 use crate::html::bubble_up::bubble_up_curriculum_page;
-use crate::html::code::{code_blocks, Code};
+use crate::html::code::{Code, code_blocks};
 use crate::html::modifier::{add_missing_ids, insert_self_links_for_dts, remove_empty_p};
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
-use crate::html::sections::{split_sections, BuildSection, BuildSectionType, Split};
+use crate::html::sections::{BuildSection, BuildSectionType, Split, split_sections};
 use crate::html::sidebar::{
     build_sidebars, expand_details_and_mark_current_for_inline_sidebar, postprocess_sidebar,
 };
@@ -37,14 +38,14 @@ use crate::pages::templates::{
 };
 use crate::pages::types::blog::BlogPost;
 use crate::pages::types::curriculum::{
-    self, build_landing_modules, build_overview_modules, build_sidebar, curriculum_group,
-    prev_next_modules, prev_next_overview, Curriculum, Template,
+    self, Curriculum, Template, build_landing_modules, build_overview_modules, build_sidebar,
+    curriculum_group, prev_next_modules, prev_next_overview,
 };
 use crate::pages::types::doc::Doc;
 use crate::pages::types::spa::SPA;
 use crate::pages::types::utils::FmTempl;
 use crate::specs::extract_specifications;
-use crate::templ::render::{decode_ref, render, Rendered};
+use crate::templ::render::{Rendered, decode_ref, render};
 use crate::translations::other_translations;
 
 impl From<BuildSection<'_>> for Section {
@@ -128,10 +129,10 @@ impl BuildSection<'_> {
     pub fn make_toc_entry(&self, with_h3: bool) -> Option<TocEntry> {
         let id = self.id.clone();
         let text = self.heading.map(|h| h.inner_html());
-        if let (Some(id), Some(text)) = (id, text) {
-            if !self.is_h3 || with_h3 {
-                return Some(TocEntry { id, text });
-            }
+        if let (Some(id), Some(text)) = (id, text)
+            && (!self.is_h3 || with_h3)
+        {
+            return Some(TocEntry { id, text });
         }
         None
     }
@@ -218,6 +219,15 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
 }
 
 fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
+    let span = span!(
+        Level::ERROR,
+        "page",
+        locale = doc.locale().as_url_str(),
+        slug = doc.slug(),
+        file = doc.full_path().to_string_lossy().as_ref(),
+    );
+    let _enter = span.enter();
+
     let PageContent {
         body,
         toc,

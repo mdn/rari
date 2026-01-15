@@ -16,6 +16,7 @@
 //! - `html`: Manages HTML rendering and processing.
 //! - `pages`: Handles the creation and management of documentation pages.
 //! - `percent`: Utilities for percent encodings.
+//! - `position_utils`: Utilities for converting between byte offsets and character positions.
 //! - `reader`: Defines traits and implementations for reading pages.
 //! - `redirects`: Manages URL redirects within the documentation.
 //! - `resolve`: Handles path and URL resolution.
@@ -46,6 +47,7 @@ pub mod html;
 pub mod issues;
 pub mod pages;
 pub mod percent;
+pub mod position_utils;
 pub mod reader;
 pub mod redirects;
 pub mod resolve;

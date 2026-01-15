@@ -260,7 +260,7 @@ fn sync_translated_document(
 }
 
 fn write_and_move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
-    let source_path = doc.path();
+    let source_directory = doc.full_path().parent().unwrap();
     let target_directory = root_for_locale(doc.locale())?
         .join(doc.locale().as_folder_str())
         .join(url_to_folder_path(target_slug));
@@ -272,25 +272,32 @@ fn write_and_move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
     new_doc.meta.original_slug = Some(doc.slug().to_owned());
     new_doc.write()?;
 
-    // Move the file with git
-    let output = exec_git_with_test_fallback(
-        &[
-            OsStr::new("mv"),
-            source_path.as_os_str(),
-            target_directory.as_os_str(),
-        ],
-        root_for_locale(doc.locale())?,
-    );
-
-    if !output.status.success() {
-        return Err(ToolError::GitError(format!(
-            "Failed to move files: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )));
+    // Move index.md and all sibling files (assets) with git
+    for entry in std::fs::read_dir(source_directory)? {
+        let entry = entry?;
+        // Skip subdirectories
+        if entry.file_type()?.is_dir() {
+            continue;
+        }
+        let entry_path = entry.path();
+        let output = exec_git_with_test_fallback(
+            &[
+                OsStr::new("mv"),
+                entry_path.as_os_str(),
+                target_directory.as_os_str(),
+            ],
+            root_for_locale(doc.locale())?,
+        );
+        if !output.status.success() {
+            return Err(ToolError::GitError(format!(
+                "Failed to move file/directory {}: {}",
+                entry_path.display(),
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
     }
 
     // If the source directory is empty, remove it with the fs api.
-    let source_directory = doc.full_path().parent().unwrap();
     if source_directory
         .read_dir()
         .map(|mut dir| dir.next().is_none())
@@ -327,10 +334,10 @@ fn resolve<'a>(
         .unwrap_or(&en_us_url_lc);
 
     let page = Page::from_url(resolved_url);
-    if let Ok(page) = page {
-        if page.slug() != slug {
-            return Cow::Owned(page.slug().to_string());
-        }
+    if let Ok(page) = page
+        && page.slug() != slug
+    {
+        return Cow::Owned(page.slug().to_string());
     }
     Cow::Borrowed(slug)
 }
@@ -536,6 +543,8 @@ mod test {
         ];
         let es_redirects = vec![];
         let _es_docs = DocFixtures::new(&es_slugs, Locale::Es);
+        // Let's assume there are also assets for this page that have to be moved as well
+        DocFixtures::create_assets("Web/API/Other", Locale::Es);
         let _es_redirects = RedirectFixtures::new(&es_redirects, Locale::Es);
         let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
 
@@ -579,6 +588,15 @@ mod test {
             .join("othermoved")
             .join("index.md");
         assert!(moved_path.exists());
+
+        // Test that assets are also moved to the new location
+        let original_asset_path = translated_root
+            .join(Locale::Es.as_folder_str())
+            .join("web")
+            .join("api")
+            .join("other")
+            .join("asset.txt");
+        assert!(!original_asset_path.exists());
 
         let mut redirects = HashMap::new();
         redirects

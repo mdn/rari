@@ -1,0 +1,77 @@
+name: Run Reusable Workflow
+
+on:
+  workflow_call:
+    inputs:
+      rari-binary-artifact-id:
+        description: "ID of rari binary artifact"
+        required: true
+        type: string
+      command:
+        description: 'The rari command to run (e.g., content fix-flaws, content fmt-sidebars)'
+        required: true
+        type: string
+      translated-content:
+        description: 'Whether to checkout translated-content'
+        required: false
+        type: boolean
+        default: false
+      diff:
+        description: Whether to diff changes
+        required: false
+        type: boolean
+        default: false
+
+permissions: {} # No GITHUB_TOKEN permissions, as we only use it to increase API limit.
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (content)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: mdn/content
+          path: content
+          persist-credentials: false
+
+      - name: Checkout (translated-content)
+        if: inputs.translated-content
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: mdn/translated-content
+          path: translated-content
+          persist-credentials: false
+
+      - name: Download rari binary
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          artifact-ids: ${{ inputs.rari-binary-artifact-id }}
+          path: rari/target/release
+
+      - name: Prepare rari binary
+        run: chmod +x rari/target/release/rari
+
+      - name: Setup translated-content
+        if: inputs.translated-content
+        env:
+          CONTENT_TRANSLATED_ROOT: ${{ github.workspace }}/translated-content/files
+        run: echo "CONTENT_TRANSLATED_ROOT=$CONTENT_TRANSLATED_ROOT" >> "$GITHUB_ENV"
+
+      - name: Run ${{ inputs.command }}
+        working-directory: rari
+        env:
+          CONTENT_ROOT: ${{ github.workspace }}/content/files
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: target/release/rari ${{ inputs.command }}
+
+      - name: Diff content
+        if: inputs.diff
+        working-directory: content
+        run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
+
+      - name: Diff translated-content
+        if: inputs.diff && inputs.translated-content
+        working-directory: translated-content
+        run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'

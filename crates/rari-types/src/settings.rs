@@ -52,7 +52,7 @@ impl Deps {
         let mut deps: Self = s.try_deserialize::<Self>()?;
         // Make sure we are in the correct version range for webref-css, unless overridden.
         if deps.webref_css.is_none() {
-            deps.webref_css = VersionReq::parse(">=7.0.0, <8.0.0").ok();
+            deps.webref_css = VersionReq::parse(">=7.0.0, <9.0.0").ok();
         }
         Ok(deps)
     }
@@ -72,7 +72,6 @@ pub struct Settings {
     pub cache_content: bool,
     pub base_url: String,
     pub live_samples_base_url: String,
-    pub legacy_live_samples_base_url: String,
     pub interactive_examples_base_url: String,
     pub additional_locales_for_generics_and_spas: Vec<Locale>,
     pub reader_ignores_gitignore: bool,
@@ -105,22 +104,24 @@ impl Settings {
 
     #[cfg(feature = "testing")]
     pub fn new() -> Result<Self, ConfigError> {
-        std::env::set_var(
-            "CONTENT_ROOT",
-            std::env::var("TESTING_CONTENT_ROOT").unwrap(),
-        );
-        std::env::set_var(
-            "CONTENT_TRANSLATED_ROOT",
-            std::env::var("TESTING_CONTENT_TRANSLATED_ROOT").unwrap(),
-        );
-        std::env::set_var(
-            "CACHE_CONTENT",
-            std::env::var("TESTING_CACHE_CONTENT").unwrap(),
-        );
-        std::env::set_var(
-            "READER_IGNORES_GITIGNORE",
-            std::env::var("TESTING_READER_IGNORES_GITIGNORE").unwrap(),
-        );
+        unsafe {
+            std::env::set_var(
+                "CONTENT_ROOT",
+                std::env::var("TESTING_CONTENT_ROOT").unwrap(),
+            );
+            std::env::set_var(
+                "CONTENT_TRANSLATED_ROOT",
+                std::env::var("TESTING_CONTENT_TRANSLATED_ROOT").unwrap(),
+            );
+            std::env::set_var(
+                "CACHE_CONTENT",
+                std::env::var("TESTING_CACHE_CONTENT").unwrap(),
+            );
+            std::env::set_var(
+                "READER_IGNORES_GITIGNORE",
+                std::env::var("TESTING_READER_IGNORES_GITIGNORE").unwrap(),
+            );
+        }
         Self::new_internal()
     }
     #[cfg(not(feature = "testing"))]

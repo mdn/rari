@@ -6,17 +6,17 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write as _};
 use std::path::Path;
+use std::sync::LazyLock;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::LazyLock;
 
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use clap::{Args, Parser, Subcommand};
-use ignore::types::TypesBuilder;
 use ignore::WalkBuilder;
+use ignore::types::TypesBuilder;
 use itertools::Itertools;
 use jsonpath_lib::Compiled;
-use lol_html::{element, rewrite_str, ElementContentHandlers, RewriteStrSettings, Selector};
+use lol_html::{ElementContentHandlers, RewriteStrSettings, Selector, element, rewrite_str};
 use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
@@ -226,12 +226,11 @@ fn full_diff(
     diff: &mut BTreeMap<String, String>,
     args: &BuildArgs,
 ) {
-    if path.len() == 1 {
-        if let PathIndex::Object(s) = &path[0] {
-            if s == "url" {
-                return;
-            }
-        }
+    if path.len() == 1
+        && let PathIndex::Object(s) = &path[0]
+        && s == "url"
+    {
+        return;
     }
     let key = make_key(path);
 
@@ -384,6 +383,7 @@ fn main() -> Result<(), anyhow::Error> {
 
             let hits = max(a.len(), b.len());
             let same = AtomicUsize::new(0);
+            let total_changes = AtomicUsize::new(0);
             if arg.html {
                 let list_items = a.par_iter().filter_map(|(k, v)| {
                     if b.get(k) == Some(v) {
@@ -397,6 +397,8 @@ fn main() -> Result<(), anyhow::Error> {
                         let mut diff = BTreeMap::new();
                         full_diff(left, right, k, &[], &mut diff, arg);
                         if !diff.is_empty() {
+                            let change_count = diff.len();
+                            total_changes.fetch_add(change_count, Relaxed);
                             return Some((k.clone(), format!(
                                 r#"<li><span>{k}</span><div class="r"><pre><code>{}</code></pre></div></li>"#,
                                 serde_json::to_string_pretty(&diff).unwrap_or_default(),
@@ -434,6 +436,8 @@ fn main() -> Result<(), anyhow::Error> {
                         if arg.inline {
                             println!("{}", diff_words(left, right));
                         }
+                        // In non-value mode, we count each differing file as 1 change
+                        total_changes.fetch_add(1, Relaxed);
                         Some((k.clone(), format!(r#"<li><span>{k}</span><div class="a">{left}</div><div class="b">{right}</div></li>"#)))
                     }
                 }
@@ -484,6 +488,8 @@ fn main() -> Result<(), anyhow::Error> {
                             let mut diff = BTreeMap::new();
                             full_diff(left, right, k, &[], &mut diff, arg);
                             if !diff.is_empty() {
+                                let change_count = diff.len();
+                                total_changes.fetch_add(change_count, Relaxed);
                                 return Some(format!(
                                     "{}\n",
                                     diff.into_keys()
@@ -503,11 +509,21 @@ fn main() -> Result<(), anyhow::Error> {
                 file.write_all(out.into_iter().collect::<String>().as_bytes())?;
             }
 
+            let changed_files = hits - same.load(Relaxed);
+            let changes = total_changes.load(Relaxed);
+            let percentage = if hits > 0 {
+                (changed_files as f64 / hits as f64) * 100.0
+            } else {
+                0.0
+            };
+
             println!(
-                "Took: {:?} - {}/{hits} ok, {} remaining",
+                "Took: {:?} - {} changes in {} of {} files ({:.1}%)",
                 start.elapsed(),
-                same.load(Relaxed),
-                hits - same.load(Relaxed)
+                changes,
+                changed_files,
+                hits,
+                percentage
             );
         }
     }

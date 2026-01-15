@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use css_syntax::syntax::{render_formal_syntax, CssType, LinkedToken, SyntaxInput};
+use css_syntax::syntax::{CssType, LinkedToken, SyntaxInput, render_formal_syntax};
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 
@@ -48,19 +48,38 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
                 css_syntax::error::SyntaxError::NoSyntaxFound,
             ));
         }
+        rari_types::fm_types::PageType::None
+            if env.slug.starts_with("orphaned/") || env.slug.starts_with("conflicting/") =>
+        {
+            warn!(
+                "CSS syntax not available for conflicting/orphaned page: {}",
+                env.slug
+            );
+            return Err(DocError::CssSyntaxError(
+                css_syntax::error::SyntaxError::NoSyntaxFound,
+            ));
+        }
         _ => {
-            error!("No Css Page: {}", env.slug);
+            error!("CSS syntax not available for page type {:?}", page_type);
             return Err(DocError::CssPageTypeRequired);
         }
     };
 
     let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
 
+    if env.browser_compat.len() > 1 {
+        warn!(
+            "Multiple browser-compat entries found. CSS formal syntax will be rendered using the first entry as the scope: {}",
+            env.browser_compat.first().unwrap()
+        );
+    }
+
     Ok(render_formal_syntax(
         SyntaxInput::Css(typ),
+        env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
         &format!(
-            "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
+            "/{}/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             env.locale.as_url_str()
         ),
         &TOOLTIPS,
@@ -73,9 +92,10 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
     let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
     Ok(render_formal_syntax(
         SyntaxInput::SyntaxString(&syntax),
+        env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
         &format!(
-            "/{}/docs/Web/CSS/CSS_values_and_units/Value_definition_syntax",
+            "/{}/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             env.locale.as_url_str()
         ),
         &TOOLTIPS,

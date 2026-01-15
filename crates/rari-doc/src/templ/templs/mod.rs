@@ -4,7 +4,6 @@ pub mod badges;
 pub mod banners;
 pub mod compat;
 pub mod css_ref;
-pub mod css_ref_list;
 pub mod cssinfo;
 pub mod csssyntax;
 pub mod echo;
@@ -74,10 +73,10 @@ pub fn invoke(
         None if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
         None => {
             TEMPL_RECORDER.with(|tx| {
-                if let Some(tx) = tx {
-                    if let Err(e) = tx.send(name.to_string()) {
-                        error!("templ recorder: {e}");
-                    }
+                if let Some(tx) = tx
+                    && let Err(e) = tx.send(name.to_string())
+                {
+                    error!("templ recorder: {e}");
                 }
             });
             return Ok((format!("<s>unsupported templ: {name}</s>"), TemplType::None));

@@ -1,5 +1,5 @@
 use comrak::nodes::{AstNode, NodeValue};
-use comrak::{parse_document, Arena, ComrakOptions};
+use comrak::{Arena, ComrakOptions, parse_document};
 use html::{CustomFormatter, RariContext};
 use rari_types::locale::Locale;
 
@@ -99,7 +99,8 @@ mod test {
     #[test]
     fn render_code_tags() -> Result<(), anyhow::Error> {
         let out = m2h("`<select>`", Locale::EnUs)?;
-        assert_eq!(out,
+        assert_eq!(
+            out,
             "<p data-sourcepos=\"1:1-1:10\"><code data-sourcepos=\"1:1-1:10\">&lt;select&gt;</code></p>\n"
         );
         Ok(())
@@ -109,6 +110,27 @@ mod test {
     fn basic() -> Result<(), anyhow::Error> {
         let out = m2h("{{foo-bar}}", Locale::EnUs)?;
         assert_eq!(out, "<p data-sourcepos=\"1:1-1:11\">{{foo-bar}}</p>\n");
+        Ok(())
+    }
+
+    #[test]
+    fn test_comrak_sourcepos_multibyte() -> Result<(), anyhow::Error> {
+        // Test to verify Comrak's sourcepos uses BYTES (1-based) for column positions
+        // 🔥 emoji is 4 bytes but 1 character
+        let input = "🔥 [link](url)";
+        let html = m2h(input, Locale::EnUs)?;
+
+        // Expected: "1:6" means position 6 (1-based) = byte offset 5 (0-based)
+        // 🔥 (4 bytes) + space (1 byte) = 5 bytes before "[link]" starts
+        // If it were CHARACTERS: would be "1:3" (emoji=1 char + space=1 char = 2 chars before link)
+
+        // Verify Comrak uses byte-based columns (1-based)
+        assert!(
+            html.contains("data-sourcepos=\"1:6-1:16\""),
+            "Comrak should use byte positions (1-based). Got: {}",
+            html
+        );
+
         Ok(())
     }
 
@@ -145,7 +167,10 @@ mod test {
     #[test]
     fn code_macro() -> Result<(), anyhow::Error> {
         let out = m2h(r#"`{{foo}}` bar"#, Locale::EnUs)?;
-        assert_eq!(out, "<p data-sourcepos=\"1:1-1:13\"><code data-sourcepos=\"1:1-1:9\">{{foo}}</code> bar</p>\n");
+        assert_eq!(
+            out,
+            "<p data-sourcepos=\"1:1-1:13\"><code data-sourcepos=\"1:1-1:9\">{{foo}}</code> bar</p>\n"
+        );
         Ok(())
     }
 
@@ -169,35 +194,57 @@ mod test {
     #[test]
     fn li_p() -> Result<(), anyhow::Error> {
         let out = m2h("- foo\n- bar\n", Locale::EnUs)?;
-        assert_eq!(out, "<ul data-sourcepos=\"1:1-2:5\">\n<li data-sourcepos=\"1:1-1:5\">foo</li>\n<li data-sourcepos=\"2:1-2:5\">bar</li>\n</ul>\n");
+        assert_eq!(
+            out,
+            "<ul data-sourcepos=\"1:1-2:5\">\n<li data-sourcepos=\"1:1-1:5\">foo</li>\n<li data-sourcepos=\"2:1-2:5\">bar</li>\n</ul>\n"
+        );
         let out = m2h("- foo\n\n- bar\n", Locale::EnUs)?;
-        assert_eq!(out, "<ul data-sourcepos=\"1:1-3:5\">\n<li data-sourcepos=\"1:1-2:0\">\n<p data-sourcepos=\"1:3-1:5\">foo</p>\n</li>\n<li data-sourcepos=\"3:1-3:5\">\n<p data-sourcepos=\"3:3-3:5\">bar</p>\n</li>\n</ul>\n");
+        assert_eq!(
+            out,
+            "<ul data-sourcepos=\"1:1-3:5\">\n<li data-sourcepos=\"1:1-2:0\">\n<p data-sourcepos=\"1:3-1:5\">foo</p>\n</li>\n<li data-sourcepos=\"3:1-3:5\">\n<p data-sourcepos=\"3:3-3:5\">bar</p>\n</li>\n</ul>\n"
+        );
         Ok(())
     }
 
     #[test]
     fn callout() -> Result<(), anyhow::Error> {
-        let out = m2h("> **Callout:** foobar", Locale::EnUs)?;
-        assert_eq!(out, "<div class=\"callout\" data-sourcepos=\"1:1-1:21\">\n<p data-sourcepos=\"1:3-1:21\"> foobar</p>\n</div>\n");
+        let out = m2h("> [!CALLOUT]\n> foobar", Locale::EnUs)?;
+        assert_eq!(
+            out,
+            "<div class=\"callout\" data-sourcepos=\"1:1-2:8\">\n<p data-sourcepos=\"1:3-2:8\">\nfoobar</p>\n</div>\n"
+        );
         Ok(())
     }
 
     #[test]
     fn callout_strong() -> Result<(), anyhow::Error> {
-        let out = m2h("> **Callout:** **foobar**", Locale::EnUs)?;
+        let out = m2h("> [!CALLOUT]\n> **foobar**", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<div class=\"callout\" data-sourcepos=\"1:1-1:25\">\n<p data-sourcepos=\"1:3-1:25\"> <strong data-sourcepos=\"1:16-1:25\">foobar</strong></p>\n</div>\n"
+            "<div class=\"callout\" data-sourcepos=\"1:1-2:12\">\n<p data-sourcepos=\"1:3-2:12\">\n<strong data-sourcepos=\"2:3-2:12\">foobar</strong></p>\n</div>\n"
         );
         Ok(())
     }
 
     #[test]
     fn note() -> Result<(), anyhow::Error> {
-        let out = m2h("> **Note:** foobar", Locale::EnUs)?;
+        let out = m2h("> [!NOTE]\n> foobar", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<div class=\"notecard note\" data-add-note data-sourcepos=\"1:1-1:18\">\n<p data-sourcepos=\"1:3-1:18\"> foobar</p>\n</div>\n"
+            "<div class=\"notecard note\" data-add-note data-sourcepos=\"1:1-2:8\">\n<p data-sourcepos=\"1:3-2:8\">\nfoobar</p>\n</div>\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn note_zh_locale() -> Result<(), anyhow::Error> {
+        let out = m2h(
+            "> [!NOTE]\n> This paragraph should have no leading spaces",
+            Locale::ZhCn,
+        )?;
+        assert_eq!(
+            out,
+            "<div class=\"notecard note\" data-add-note data-sourcepos=\"1:1-2:46\">\n<p data-sourcepos=\"1:3-2:46\">This paragraph should have no leading spaces</p>\n</div>\n"
         );
         Ok(())
     }

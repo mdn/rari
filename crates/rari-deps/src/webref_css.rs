@@ -17,6 +17,49 @@ fn normalize_name(name: &str) -> String {
         .to_string()
 }
 
+fn by_for_and_name(values: Vec<Value>) -> BTreeMap<String, BTreeMap<String, Value>> {
+    let mut result: BTreeMap<String, BTreeMap<String, Value>> = BTreeMap::new();
+
+    for mut value in values {
+        let name = normalize_name(value["name"].as_str().unwrap());
+
+        // Recursively process nested descriptors
+        if value["descriptors"].is_array() {
+            let descriptors = by_name(serde_json::from_value(value["descriptors"].take()).unwrap());
+            value["descriptors"] = serde_json::to_value(descriptors).unwrap();
+        }
+
+        // Recursively process nested values (for compatibility with nested structures)
+        if value["values"].is_array() {
+            let nested_values = by_name(serde_json::from_value(value["values"].take()).unwrap());
+            value["values"] = serde_json::to_value(nested_values).unwrap();
+        }
+
+        // Handle 'for' key - could be a string, array, or missing
+        // Add the entry to the global scope as well, not all pages have the needed
+        // browser-compat key to properly find the entry in its scope.
+        let for_keys: Vec<String> = match &value["for"] {
+            Value::String(s) => vec![normalize_name(s), "__global_scope__".to_string()],
+            Value::Array(arr) => arr
+                .iter()
+                .filter_map(|v| v.as_str().map(normalize_name))
+                .chain(vec!["__global_scope__".to_string()])
+                .collect(),
+            _ => vec!["__global_scope__".to_string()],
+        };
+
+        // Insert the value into each 'for' group
+        for for_key in for_keys {
+            result
+                .entry(for_key)
+                .or_default()
+                .insert(name.clone(), value.clone());
+        }
+    }
+
+    result
+}
+
 fn by_name(values: Vec<Value>) -> BTreeMap<String, Value> {
     values
         .into_iter()
@@ -55,25 +98,58 @@ fn enrich_with_specs(data: &mut Value, url_to_title: &BTreeMap<String, String>) 
             };
 
             if let Some(href_val) = url_field {
-                if let Some(href_str) = href_val.as_str() {
-                    if let Ok(url) = Url::parse(href_str) {
-                        let mut url_without_fragment = url.clone();
-                        url_without_fragment.set_fragment(None);
-                        let title = url_to_title
-                            .get(url_without_fragment.as_str())
-                            .cloned()
-                            .unwrap_or_else(|| "CSS Specification".to_string());
+                if let Some(href_str) = href_val.as_str()
+                    && let Ok(url) = Url::parse(href_str)
+                {
+                    let mut url_without_fragment = url.clone();
+                    url_without_fragment.set_fragment(None);
+                    let title = url_to_title
+                        .get(url_without_fragment.as_str())
+                        .cloned()
+                        .unwrap_or_else(|| "CSS Specification".to_string());
 
-                        let spec = SpecLink { title, url };
-                        obj.insert("specLink".to_string(), serde_json::to_value(spec).unwrap());
-                    }
+                    let spec = SpecLink {
+                        title,
+                        url: url_without_fragment,
+                    };
+                    obj.insert("specLink".to_string(), serde_json::to_value(spec).unwrap());
                 }
                 obj.remove(field_name);
             }
 
-            // Recursively process all nested values, but skip spec_link fields to avoid infinite loops
+            if let Some(extended) = obj.get("extended")
+                && let Some(extended) = extended.as_array()
+            {
+                let specs = extended
+                    .iter()
+                    .filter_map(|value| {
+                        if let Some(href_str) = value.as_str()
+                            && let Ok(mut url) = Url::parse(href_str)
+                        {
+                            let title = url_to_title
+                                .get(value.as_str().unwrap())
+                                .cloned()
+                                .unwrap_or_else(|| "CSS Specification".to_string());
+                            url.set_fragment(None);
+                            Some(SpecLink { title, url })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                if !specs.is_empty() {
+                    obj.insert(
+                        "extendedSpecLinks".to_string(),
+                        serde_json::to_value(specs).unwrap(),
+                    );
+                }
+                obj.remove("extended");
+            }
+
+            // Recursively process all nested values, but skip specLink and extendedSpecLinks fields to avoid infinite loops
             for (key, value) in obj.iter_mut() {
-                if key != "specLink" {
+                if key != "specLink" && key != "extendedSpecLinks" {
                     enrich_with_specs(value, url_to_title);
                 }
             }
@@ -98,7 +174,7 @@ fn transform(
     let mut data: Value = serde_json::from_str(&text)?;
 
     if data["properties"].is_array() {
-        data["properties"] = serde_json::to_value(by_name(
+        data["properties"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["properties"].take()).unwrap_or_default(),
         ))?;
     } else {
@@ -108,7 +184,7 @@ fn transform(
     }
 
     if data["selectors"].is_array() {
-        data["selectors"] = serde_json::to_value(by_name(
+        data["selectors"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["selectors"].take()).unwrap_or_default(),
         ))?;
     } else {
@@ -118,7 +194,7 @@ fn transform(
     }
 
     if data["atrules"].is_array() {
-        data["atrules"] = serde_json::to_value(by_name(
+        data["atrules"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["atrules"].take()).unwrap_or_default(),
         ))?;
     } else {
@@ -128,7 +204,7 @@ fn transform(
     }
 
     if data["functions"].is_array() {
-        data["functions"] = serde_json::to_value(by_name(
+        data["functions"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["functions"].take()).unwrap_or_default(),
         ))?;
     } else {
@@ -138,7 +214,7 @@ fn transform(
     }
 
     if data["types"].is_array() {
-        data["types"] = serde_json::to_value(by_name(
+        data["types"] = serde_json::to_value(by_for_and_name(
             serde_json::from_value(data["types"].take()).unwrap_or_default(),
         ))?;
     } else {
@@ -171,23 +247,23 @@ fn process_browser_specs(folder: &Path) -> Result<BTreeMap<String, String>, Deps
         }
 
         // Also add release URL if different from main URL
-        if let Some(release) = &spec.release {
-            if release.url != spec.url {
-                url_to_title.insert(release.url.clone(), spec.title.clone());
-            }
+        if let Some(release) = &spec.release
+            && release.url != spec.url
+        {
+            url_to_title.insert(release.url.clone(), spec.title.clone());
         }
 
         // Add series URLs if different
-        if let Some(release_url) = spec.series.release_url {
-            if release_url != spec.url {
-                url_to_title.insert(release_url.clone(), spec.title.clone());
-            }
+        if let Some(release_url) = spec.series.release_url
+            && release_url != spec.url
+        {
+            url_to_title.insert(release_url.clone(), spec.title.clone());
         }
 
-        if let Some(nightly_url) = &spec.series.nightly_url {
-            if Some(nightly_url) != spec.nightly.as_ref().map(|n| &n.url) {
-                url_to_title.insert(nightly_url.clone(), spec.title.clone());
-            }
+        if let Some(nightly_url) = &spec.series.nightly_url
+            && Some(nightly_url) != spec.nightly.as_ref().map(|n| &n.url)
+        {
+            url_to_title.insert(nightly_url.clone(), spec.title.clone());
         }
     }
 
@@ -262,6 +338,52 @@ mod test {
     fn test_transform() {
         let url_to_title = url_titles_map(&PathBuf::from("test/url-titles.json"));
         let input_path = PathBuf::from("test");
-        let _webref_css = transform(&input_path, &url_to_title).unwrap();
+        let webref_css = transform(&input_path, &url_to_title).unwrap();
+        assert!(!webref_css.atrules.is_empty());
+        assert!(!webref_css.functions.is_empty());
+        assert!(!webref_css.properties.is_empty());
+        assert!(!webref_css.selectors.is_empty());
+        assert!(!webref_css.types.is_empty());
+
+        assert!(webref_css.atrules.contains_key("__global_scope__"));
+        assert!(webref_css.functions.contains_key("__global_scope__"));
+        assert!(webref_css.properties.contains_key("__global_scope__"));
+        assert!(webref_css.selectors.contains_key("__global_scope__"));
+        assert!(webref_css.types.contains_key("__global_scope__"));
+
+        // Check scoping via `for` field
+        // `fit-content()` should be in the global scope and in `grid-template-columns` scope
+        assert!(webref_css.functions.contains_key("grid-template-columns"));
+        assert!(
+            webref_css
+                .functions
+                .get("__global_scope__")
+                .unwrap()
+                .contains_key("fit-content()")
+        );
+        assert!(
+            webref_css
+                .functions
+                .get("grid-template-columns")
+                .unwrap()
+                .contains_key("fit-content()")
+        );
+
+        // The `align-self` property has some extended spec links, check that.
+        assert!(
+            webref_css
+                .properties
+                .get("__global_scope__")
+                .unwrap()
+                .contains_key("align-self")
+        );
+        let align_self = webref_css
+            .properties
+            .get("__global_scope__")
+            .unwrap()
+            .get("align-self")
+            .unwrap();
+
+        assert!(!align_self.extended_spec_links.is_empty());
     }
 }

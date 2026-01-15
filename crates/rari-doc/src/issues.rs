@@ -11,10 +11,11 @@ use serde::{Deserialize, Serialize};
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id};
 use tracing::{Event, Subscriber};
-use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
+use tracing_subscriber::registry::LookupSpan;
 
 use crate::pages::page::{Page, PageLike};
+use crate::position_utils::byte_to_char_column;
 
 pub static ISSUE_COUNTER_F: OnceLock<fn() -> i64> = OnceLock::new();
 static ISSUE_COUNTER: AtomicI64 = AtomicI64::new(0);
@@ -27,13 +28,21 @@ pub(crate) fn get_issue_counter_f() -> i64 {
     ISSUE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
+/// Internal representation of an issue detected during build.
+///
+/// This struct stores position information in **byte offsets** (from tree-sitter and comrak),
+/// which are later converted to character positions in `DisplayIssue` for user-facing output.
 #[derive(Debug, Clone, Serialize)]
 pub struct Issue {
     pub req: u64,
     pub ic: i64,
+    /// Column in BYTES from start of line (from tree-sitter or comrak sourcepos)
     pub col: i64,
+    /// Line number (1-based)
     pub line: i64,
+    /// End column in BYTES from start of line
     pub end_col: i64,
+    /// End line number (1-based)
     pub end_line: i64,
     pub file: String,
     pub ignore: bool,
@@ -226,6 +235,10 @@ pub enum Additional {
     None,
 }
 
+/// User-facing representation of an issue for display and JSON output.
+///
+/// This struct stores position information in **character positions** for proper display
+/// in editors and user interfaces. The positions are converted from byte offsets in `Issue`.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DisplayIssue {
@@ -234,9 +247,13 @@ pub struct DisplayIssue {
     pub suggestion: Option<String>,
     pub fixable: Option<bool>,
     pub fixed: bool,
+    /// Line number (1-based)
     pub line: Option<i64>,
+    /// Column in CHARACTERS from start of line (1-based, user-facing)
     pub column: Option<i64>,
+    /// End line number (1-based)
     pub end_line: Option<i64>,
+    /// End column in CHARACTERS from start of line (1-based, user-facing)
     pub end_column: Option<i64>,
     pub source_context: Option<String>,
     pub filepath: Option<String>,
@@ -248,6 +265,7 @@ pub struct DisplayIssue {
 pub enum IssueType {
     TemplRedirectedLink,
     TemplBrokenLink,
+    TemplIllCasedLink,
     TemplInvalidArg,
     RedirectedLink,
     BrokenLink,
@@ -263,6 +281,7 @@ impl FromStr for IssueType {
         Ok(match s {
             "templ-redirected-link" => Self::TemplRedirectedLink,
             "templ-broken-link" => Self::TemplBrokenLink,
+            "templ-ill-cased-link" => Self::TemplIllCasedLink,
             "templ-invalid-arg" => Self::TemplInvalidArg,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
@@ -314,22 +333,39 @@ pub type DisplayIssues = BTreeMap<&'static str, Vec<DIssue>>;
 impl DIssue {
     pub fn from_issue(issue: Issue, page: &Page) -> Option<Self> {
         if let Ok(id) = usize::try_from(issue.ic) {
+            // Convert byte columns to character columns for user-facing display
+            let (char_col, char_end_col) = if issue.line != 0 && issue.col != 0 {
+                // Get the line content (adjust for frontmatter offset)
+                let line_idx =
+                    (issue.line.saturating_sub(1) as usize).saturating_sub(page.fm_offset());
+                if let Some(line_content) = page.content().lines().nth(line_idx) {
+                    let char_col = byte_to_char_column(line_content, issue.col as usize) as i64 + 1; // +1 for 1-based
+                    let char_end_col = if issue.end_col != 0 {
+                        byte_to_char_column(line_content, issue.end_col as usize) as i64 + 1
+                    } else {
+                        0
+                    };
+                    (char_col, char_end_col)
+                } else {
+                    // Fallback: if we can't get the line, use byte positions (legacy behavior)
+                    (issue.col, issue.end_col)
+                }
+            } else {
+                (issue.col, issue.end_col)
+            };
+
             let mut di = DisplayIssue {
                 id: id as i64,
-                column: if issue.col == 0 {
-                    None
-                } else {
-                    Some(issue.col)
-                },
+                column: if char_col == 0 { None } else { Some(char_col) },
                 line: if issue.line == 0 {
                     None
                 } else {
                     Some(issue.line)
                 },
-                end_column: if issue.end_col == 0 {
+                end_column: if char_end_col == 0 {
                     None
                 } else {
-                    Some(issue.end_col)
+                    Some(char_end_col)
                 },
                 end_line: if issue.end_line == 0 {
                     None
@@ -390,7 +426,7 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(true);
                     di.explanation = Some(format!(
-                        "{} is ill cased",
+                        "Link {} is ill cased",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::BrokenLink {
@@ -402,7 +438,7 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(true);
                     di.explanation = Some(format!(
-                        "{} is a redirect",
+                        "Link {} is a redirect",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::BrokenLink {
@@ -414,7 +450,7 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(false);
                     di.explanation = Some(format!(
-                        "Can't resolve {}",
+                        "Link {} doesn't resolve",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::BrokenLink {
@@ -423,40 +459,61 @@ impl DIssue {
                     }
                 }
                 IssueType::TemplBrokenLink => {
+                    let macro_name = additional.remove("templ");
                     di.fixed = false;
                     di.fixable = Some(false);
                     di.explanation = Some(format!(
-                        "Can't resolve {}",
+                        "Macro {} produces link {} which doesn't resolve",
+                        macro_name.as_deref().unwrap_or("?"),
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name: additional.remove("templ"),
+                        macro_name,
                         href: additional.remove("url"),
                     }
                 }
                 IssueType::TemplRedirectedLink => {
+                    let macro_name = additional.remove("templ");
                     di.fixed = false;
-                    di.fixable = Some(true);
+                    di.fixable = Some(is_fixable_template(macro_name.as_deref()));
                     di.explanation = Some(format!(
-                        "Macro produces link {} which is a redirect",
+                        "Macro {} produces link {} which is a redirect",
+                        macro_name.as_deref().unwrap_or("?"),
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name: additional.remove("templ"),
+                        macro_name,
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::TemplIllCasedLink => {
+                    let macro_name = additional.remove("templ");
+                    di.fixed = false;
+                    di.fixable = Some(is_fixable_template(macro_name.as_deref()));
+                    di.explanation = Some(format!(
+                        "Macro {} produces link {} which is ill cased",
+                        macro_name.as_deref().unwrap_or("?"),
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name,
                         href: additional.remove("url"),
                     }
                 }
                 IssueType::TemplInvalidArg => {
+                    let macro_name = additional.remove("templ");
                     di.fixed = false;
                     di.explanation = Some(format!(
-                        "Argument ({}) is not valid.",
+                        "Macro {} received argument ({}) which is not valid.",
+                        macro_name.as_deref().unwrap_or("?"),
                         additional.get("arg").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name: additional.remove("templ"),
+                        macro_name,
                         href: None,
                     }
                 }
@@ -493,6 +550,15 @@ pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
         }
     }
     map
+}
+
+/// Check if a template macro issue can be automatically fixed.
+/// Only navigation templates have fixable slug parameters in the markdown source.
+fn is_fixable_template(macro_name: Option<&str>) -> bool {
+    matches!(
+        macro_name,
+        Some("previous" | "previousmenu" | "previousnext" | "previousmenunext")
+    )
 }
 
 pub static IN_MEMORY: LazyLock<InMemoryLayer> = LazyLock::new(InMemoryLayer::default);
