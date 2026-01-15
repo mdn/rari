@@ -14,7 +14,7 @@ pub fn get(url: impl AsRef<str>) -> Result<Response, DepsError> {
     // check if the URL's host is api.github.com
     if url.host_str() == Some("api.github.com") {
         // Use GH_TOKEN or GITHUB_TOKEN if set to avoid rate limiting.
-        if let Ok(token) = std::env::var("GH_TOKEN").or_else(|_| std::env::var("GITHUB_TOKEN")) {
+        if let Ok(token) = env::var("GH_TOKEN").or_else(|_| env::var("GITHUB_TOKEN")) {
             req_builder = req_builder.bearer_auth(token);
         } else if env::var("GITHUB_ACTIONS").as_deref() == Ok("true") {
             eprintln!(
