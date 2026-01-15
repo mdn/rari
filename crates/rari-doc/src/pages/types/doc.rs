@@ -20,6 +20,7 @@ use crate::cached_readers::{CACHED_DOC_PAGE_FILES, doc_page_from_static_files};
 use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::pages::types::utils::FmTempl;
+use crate::redirects::resolve_redirect;
 use crate::resolve::{build_url, url_to_folder_path};
 use crate::utils::{
     locale_and_typ_from_path, root_for_locale, serialize_t_or_vec, split_fm, t_or_vec,
@@ -157,6 +158,25 @@ impl Doc {
         meta.sidebar = super_doc.meta.sidebar.clone();
     }
 
+    fn super_doc_from_slug(slug: &str) -> Result<Arc<Doc>, DocError> {
+        match Doc::page_from_slug(slug, Default::default(), false) {
+            Ok(Page::Doc(super_doc)) => Ok(super_doc),
+            Ok(_) => Err(DocError::NotADoc),
+            Err(e) => {
+                // Try to follow redirects in case the en-US page was moved
+                build_url(slug, Default::default(), PageCategory::Doc)
+                    .ok()
+                    .and_then(|url| resolve_redirect(&url))
+                    .and_then(|redirect_url| Page::from_url(&redirect_url).ok())
+                    .and_then(|page| match page {
+                        Page::Doc(super_doc) => Some(super_doc),
+                        _ => None,
+                    })
+                    .ok_or(e)
+            }
+        }
+    }
+
     pub fn is_orphaned(&self) -> bool {
         self.meta.slug.starts_with("orphaned/")
     }
@@ -182,8 +202,8 @@ impl PageReader<Page> for Doc {
         let mut doc = read_doc(&path)?;
 
         if doc.meta.locale != Default::default() && !doc.is_conflicting() && !doc.is_orphaned() {
-            match Doc::page_from_slug(&doc.meta.slug, Default::default(), false) {
-                Ok(Page::Doc(super_doc)) => {
+            match Doc::super_doc_from_slug(&doc.meta.slug) {
+                Ok(super_doc) => {
                     doc.copy_meta_from_super(&super_doc);
                 }
                 Err(DocError::PageNotFound(path, _)) => {
@@ -194,7 +214,14 @@ impl PageReader<Page> for Doc {
                         path
                     );
                 }
-                _ => {}
+                Err(err) => {
+                    tracing::error!(
+                        "Super doc not found for {}:{} {}",
+                        doc.meta.locale.as_url_str(),
+                        doc.meta.slug,
+                        err
+                    );
+                }
             }
         }
 
