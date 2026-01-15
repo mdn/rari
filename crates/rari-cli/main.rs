@@ -19,7 +19,10 @@ use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas, build_top_level_meta,
 };
-use rari_doc::cached_readers::{CACHED_DOC_PAGE_FILES, read_and_cache_doc_pages};
+use rari_doc::cached_readers::{
+    CACHED_DOC_PAGE_FILES, blog_files, contributor_spotlight_files, curriculum_files,
+    generic_content_files, read_and_cache_doc_pages,
+};
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::Page;
@@ -89,6 +92,18 @@ enum Commands {
 struct FixFlawsArgs {
     #[arg(short, long, help = "Only fix flaws for <LOCALE>")]
     locale: Option<Locale>,
+    #[arg(long, help = "Fix all content types")]
+    all: bool,
+    #[arg(long, help = "Fix flaws in content (default if no flags specified)")]
+    content: bool,
+    #[arg(long, help = "Fix flaws in blog posts")]
+    blog: bool,
+    #[arg(long, help = "Fix flaws in curriculum pages")]
+    curriculum: bool,
+    #[arg(long, help = "Fix flaws in contributor spotlights")]
+    spotlights: bool,
+    #[arg(long, help = "Fix flaws in generic-content pages")]
+    generics: bool,
 }
 #[derive(Args)]
 struct ExportSchemaArgs {
@@ -560,21 +575,92 @@ fn main() -> Result<(), Error> {
                 gather_inventory()?;
             }
             ContentSubcommand::FixFlaws(args) => {
-                let start = std::time::Instant::now();
                 let mut settings = Settings::new()?;
                 settings.cache_content = true;
                 let _ = SETTINGS.set(settings);
-                let docs = read_and_cache_doc_pages()?;
-                info!(
-                    "Took: {: >10.3?} for reading {} docs",
-                    start.elapsed(),
-                    docs.len()
-                );
+
+                // Determine which content types to fix
+                // Default to content if no flags specified
+                let fix_content = args.all
+                    || args.content
+                    || (!args.blog && !args.curriculum && !args.spotlights && !args.generics);
+                let fix_blog = args.all || args.blog;
+                let fix_curriculum = args.all || args.curriculum;
+                let fix_spotlights = args.all || args.spotlights;
+                let fix_generics = args.all || args.generics;
+
+                let mut all_pages = Vec::new();
+
+                // Collect content pages
+                if fix_content {
+                    let start = std::time::Instant::now();
+                    let docs = read_and_cache_doc_pages()?;
+                    info!(
+                        "Took: {: >10.3?} for reading {} content pages",
+                        start.elapsed(),
+                        docs.len()
+                    );
+                    all_pages.extend(docs);
+                }
+
+                // Collect blog posts
+                if fix_blog {
+                    let start = std::time::Instant::now();
+                    let blog_pages: Vec<Page> = blog_files().posts.values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} blog posts",
+                        start.elapsed(),
+                        blog_pages.len()
+                    );
+                    all_pages.extend(blog_pages);
+                }
+
+                // Collect curriculum pages
+                if fix_curriculum {
+                    let start = std::time::Instant::now();
+                    let curriculum_pages: Vec<Page> =
+                        curriculum_files().by_url.values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} curriculum pages",
+                        start.elapsed(),
+                        curriculum_pages.len()
+                    );
+                    all_pages.extend(curriculum_pages);
+                }
+
+                // Collect contributor spotlight pages
+                if fix_spotlights {
+                    let start = std::time::Instant::now();
+                    let spotlight_pages: Vec<Page> =
+                        contributor_spotlight_files().values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} contributor spotlight pages",
+                        start.elapsed(),
+                        spotlight_pages.len()
+                    );
+                    all_pages.extend(spotlight_pages);
+                }
+
+                // Collect generic content pages
+                if fix_generics {
+                    let start = std::time::Instant::now();
+                    let generic_pages: Vec<Page> =
+                        generic_content_files().values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} generic content pages",
+                        start.elapsed(),
+                        generic_pages.len()
+                    );
+                    all_pages.extend(generic_pages);
+                }
+
+                // Fix flaws in all collected pages
                 let start = std::time::Instant::now();
-                let fixed = fix_all(&docs, args.locale)?;
+                let fixed = fix_all(&all_pages, args.locale)?;
                 info!(
-                    "Took: {: >10.3?} for fixing {} docs",
+                    "Took: {: >10.3?} for fixing {} pages (fixed {})",
                     start.elapsed(),
+                    all_pages.len(),
                     fixed.len()
                 );
             }
