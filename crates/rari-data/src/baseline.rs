@@ -57,7 +57,13 @@ impl WebFeatures {
                         tracing::error!("Error serializing baseline for {}: {}", k, &e)
                     })
                     .ok()
-                    .map(|v| (k, v))
+                    .map(|mut v| {
+                        // Populate the id field with the feature key
+                        if let FeatureEnum::Feature(ref mut feature_data) = v {
+                            feature_data.id = k.clone();
+                        }
+                        (k, v)
+                    })
             })
             .collect();
         // bcd_keys is a sorted by KeyStatus.bcd_key
@@ -218,6 +224,8 @@ pub struct FeatureSplitData {
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct FeatureData {
+    #[serde(default)]
+    pub id: String,
     /** Specification */
     #[serde(default, skip_serializing)]
     pub spec: Vec<Url>,
