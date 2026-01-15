@@ -18,7 +18,7 @@ pub fn get(url: impl AsRef<str>) -> Result<Response, DepsError> {
             req_builder = req_builder.bearer_auth(token);
         } else if env::var("GITHUB_ACTIONS").as_deref() == Ok("true") {
             eprintln!(
-                "::warning::Cannot authenticate GitHub API request. (Provide GITHUB_TOKEN to get a higher rate limit.)"
+                "::warning::Cannot authenticate GitHub API request. (Provide GH_TOKEN or GITHUB_TOKEN to get a higher rate limit.)"
             );
         }
     }
