@@ -11,6 +11,7 @@ use serde_json::Value;
 use url::Url;
 
 use crate::error::Error;
+use crate::feature_urls::get_mdn_url;
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct Baseline<'a> {
@@ -18,7 +19,16 @@ pub struct Baseline<'a> {
     pub support: &'a SupportStatus,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub asterisk: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub alternatives: Vec<Alternative>,
     pub feature: &'a FeatureData,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+pub struct Alternative {
+    pub name: String,
+    pub description: String,
+    pub mdn_url: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -133,7 +143,13 @@ impl WebFeatures {
                 .iter()
                 .map(|sub_key| {
                     self.feature_data_by_name(&sub_key.feature)
-                        .and_then(|feature| feature.status.by_compat_key.as_ref())
+                        .and_then(|feature| {
+                            feature
+                                .discouraged
+                                .is_none()
+                                .then_some(feature.status.by_compat_key.as_ref())
+                                .flatten()
+                        })
                         .and_then(|by_key| by_key.get(&sub_key.bcd_key))
                         .map(|status_for_key| status_for_key.baseline)
                 })
@@ -166,9 +182,37 @@ impl WebFeatures {
                     _ => true,
                 }
             };
+
+            let alternatives = match feature.discouraged.clone() {
+                Some(discouraged) => discouraged
+                    .alternatives
+                    .iter()
+                    .filter_map(|alternative| {
+                        self.feature_data_by_name(alternative).and_then(
+                            |feature| match get_mdn_url(alternative) {
+                                Some(url) => Some(Alternative {
+                                    name: feature.name.clone(),
+                                    description: feature.description.clone(),
+                                    mdn_url: url.to_string(),
+                                }),
+                                None => {
+                                    tracing::warn!(
+                                        "Couldn't find url for {} web feature",
+                                        alternative
+                                    );
+                                    None
+                                }
+                            },
+                        )
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
+
             return Some(Baseline {
                 support: status_for_key,
                 asterisk,
+                alternatives,
                 feature,
             });
         }
@@ -190,9 +234,6 @@ impl WebFeatures {
         if let Some(feature_enum) = self.features.get(feature_name) {
             match feature_enum {
                 FeatureEnum::Feature(feature_data) => {
-                    if feature_data.discouraged.is_some() {
-                        return None;
-                    }
                     return Some(feature_data);
                 }
                 _ => {
@@ -253,6 +294,9 @@ pub struct FeatureData {
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct Discouraged {
+    reason_html: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    removal_date: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     according_to: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
