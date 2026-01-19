@@ -3523,9 +3523,9 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "svg_metadata"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "274c7cbc78c2e2cdc104ea7d98db4d2416d2433dfaa3f2ae6fb8c8f9c9e2271c"
+checksum = "28fd4429ff4b96f972bacf8e0a66241a81c4fc127b639677c13aa50bfbad4cf4"
 dependencies = [
  "doc-comment",
  "once_cell",
