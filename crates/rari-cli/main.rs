@@ -489,6 +489,7 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
+            let total_files = urls.len();
             if args.all || args.sitemaps && !urls.is_empty() {
                 let sitemaps = Sitemaps { sitemap_meta: urls };
                 let start = std::time::Instant::now();
@@ -511,10 +512,14 @@ fn main() -> Result<(), Error> {
             let events = memory_layer.get_events();
             let num_files = events.len();
             let num_issues: usize = events.iter().map(|e| e.value().len()).sum();
-            if num_issues == 0 {
-                info!("No issues found");
+
+            if num_issues > 0 {
+                info!(
+                    "Found {} issues in {} of {} files",
+                    num_issues, num_files, total_files
+                );
             } else {
-                info!("Found {} issue(s) in {} file(s)", num_issues, num_files);
+                info!("No issues found in {} files", total_files);
             }
 
             if let Some(issues_path) = args.issues {
