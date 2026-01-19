@@ -93,7 +93,6 @@ impl Visit for IssueEntries {
     fn record_bool(&mut self, field: &Field, value: bool) {
         if field.name() == "ignore" {
             self.ignore = value;
-            eprintln!("Setting IssueEntries.ignore = {}", value);
         }
     }
     fn record_i64(&mut self, field: &Field, value: i64) {
@@ -129,7 +128,6 @@ impl Visit for Issue {
     fn record_bool(&mut self, field: &Field, value: bool) {
         if field.name() == "ignore" {
             self.ignore = value;
-            eprintln!("Setting Issue.ignore = {} (issue: {:?})", value, self);
         }
     }
     fn record_i64(&mut self, field: &Field, value: i64) {
@@ -206,7 +204,6 @@ where
                 }
                 if entries.ignore {
                     issue.ignore = entries.ignore;
-                    eprintln!("Setting issue.ignore = {} from entries", entries.ignore);
                 }
                 issue.spans.extend(entries.entries.iter().rev().cloned());
             }
