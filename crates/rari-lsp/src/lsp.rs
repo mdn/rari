@@ -12,7 +12,7 @@ use rari_doc::pages::types::doc::doc_from_raw;
 use rari_doc::templ::templs::TEMPL_MAP;
 use rari_tools::fix::issues::get_fixable_issues;
 use rari_types::locale::Locale;
-use tower_lsp_server::lsp_types::{
+use tower_lsp_server::ls_types::{
     CodeAction, CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability,
     CodeActionResponse, CompletionItem, CompletionItemKind, CompletionList, CompletionOptions,
     CompletionParams, CompletionResponse, CompletionTextEdit, Diagnostic, DiagnosticSeverity,
@@ -24,9 +24,11 @@ use tower_lsp_server::lsp_types::{
     TextDocumentContentChangeEvent, TextDocumentEdit, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextEdit, Uri, WorkspaceEdit,
 };
-use tower_lsp_server::{LanguageServer, UriExt, jsonrpc};
+use tower_lsp_server::{LanguageServer, jsonrpc};
 use tree_sitter::Tree;
 use tree_sitter_md::{MarkdownParser, MarkdownTree};
+
+use crate::lsp_compat::{to_lsp_types_content_change, to_lsp_types_position, to_lsp_types_range};
 
 fn text_doc_change_to_tree_sitter_edit(
     change: &TextDocumentContentChangeEvent,
@@ -36,8 +38,8 @@ fn text_doc_change_to_tree_sitter_edit(
     let start = range.start;
     let end = range.end;
 
-    let start_byte = doc.offset_at(start) as usize;
-    let old_end_byte = doc.offset_at(end) as usize;
+    let start_byte = doc.offset_at(to_lsp_types_position(start)) as usize;
+    let old_end_byte = doc.offset_at(to_lsp_types_position(end)) as usize;
     let new_end_byte = start_byte + change.text.len();
 
     let new_end_pos = doc.position_at(new_end_byte as u32);
@@ -180,8 +182,12 @@ impl LanguageServer for Backend {
         let mut curr_doc = self.docs.get_mut(&params.text_document.uri);
 
         if let Some(ref mut doc) = curr_doc {
-            doc.full
-                .update(&params.content_changes, params.text_document.version);
+            let lsp_changes: Vec<_> = params
+                .content_changes
+                .iter()
+                .map(to_lsp_types_content_change)
+                .collect();
+            doc.full.update(&lsp_changes, params.text_document.version);
             for change in params.content_changes.iter() {
                 match text_doc_change_to_tree_sitter_edit(change, &doc.full) {
                     Ok(edit) => {
@@ -410,14 +416,17 @@ impl LanguageServer for Backend {
                     d.range,
                 )
             }) {
-                let new_text = doc.full.get_content(Some(range)).replace(
-                    issue.content().unwrap_or("<__never_ever__>"),
-                    issue
-                        .display_issue()
-                        .suggestion
-                        .as_deref()
-                        .unwrap_or("<__invalid_suggestion__>"),
-                );
+                let new_text = doc
+                    .full
+                    .get_content(Some(to_lsp_types_range(range)))
+                    .replace(
+                        issue.content().unwrap_or("<__never_ever__>"),
+                        issue
+                            .display_issue()
+                            .suggestion
+                            .as_deref()
+                            .unwrap_or("<__invalid_suggestion__>"),
+                    );
                 Ok(Some(vec![CodeActionOrCommand::CodeAction(CodeAction {
                     title: "fix issue".to_string(),
                     edit: Some(WorkspaceEdit {
