@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.10](https://github.com/mdn/rari/compare/v0.2.9...v0.2.10) (2026-01-19)
+
+
+### Features
+
+* **baseline:** add feature id to data in doc ([#473](https://github.com/mdn/rari/issues/473)) ([d491457](https://github.com/mdn/rari/commit/d491457c9e9fe48b182f2cf93c162ac73a40ab56))
+* **fix-flaws:** support other content ([#474](https://github.com/mdn/rari/issues/474)) ([4cd0903](https://github.com/mdn/rari/commit/4cd090373a96dbfbc29ba42c7a7d994e66ad0253))
+
+
+### Bug Fixes
+
+* **doc:** follow redirects when copying meta ([#449](https://github.com/mdn/rari/issues/449)) ([8c025d0](https://github.com/mdn/rari/commit/8c025d0994f87dc2cfb4f811657ab1d32aa367dd))
+* **doc:** handle ignored errors without span (e.g. missing optional roots) ([#455](https://github.com/mdn/rari/issues/455)) ([3684232](https://github.com/mdn/rari/commit/3684232a8e78624e9e298f8589ea18cc0dc58df8))
+* **doc:** map "No such file or directory" error in read_doc()` ([#451](https://github.com/mdn/rari/issues/451)) ([c548e5c](https://github.com/mdn/rari/commit/c548e5ca0f746ff81ddd63374b9601e6c7a271d6))
+
+
+### Miscellaneous
+
+* **cli:** warn in GitHub Actions without GITHUB_TOKEN ([#448](https://github.com/mdn/rari/issues/448)) ([38b4a5c](https://github.com/mdn/rari/commit/38b4a5cfee09ffca1cf5ce662bfd6f455931121a))
+* **csssyntax:** refine errors ([#450](https://github.com/mdn/rari/issues/450)) ([44fb8ac](https://github.com/mdn/rari/commit/44fb8ac5df4f80453527d22e9065fabdaff7a41c))
+* **deps:** bump axum from 0.8.4 to 0.8.8 ([#461](https://github.com/mdn/rari/issues/461)) ([2466496](https://github.com/mdn/rari/commit/2466496c7be1d9003f46b6f75037343d0a616968))
+* **deps:** bump chrono from 0.4.41 to 0.4.42 ([#467](https://github.com/mdn/rari/issues/467)) ([161305f](https://github.com/mdn/rari/commit/161305f2f42ad8be92d5c5bb9e616130b8e01a37))
+* **deps:** bump clap from 4.5.40 to 4.5.53 ([#463](https://github.com/mdn/rari/issues/463)) ([3d169f5](https://github.com/mdn/rari/commit/3d169f5ec42afb6e520695a5cfd51a32d3886995))
+* **deps:** bump clap-verbosity-flag from 3.0.3 to 3.0.4 ([#468](https://github.com/mdn/rari/issues/468)) ([d75501f](https://github.com/mdn/rari/commit/d75501fd9d12640b907783cb337223c436af486e))
+* **deps:** bump darling from 0.20.11 to 0.23.0 ([#466](https://github.com/mdn/rari/issues/466)) ([554630f](https://github.com/mdn/rari/commit/554630f9c16f5b000b66178acdd9f67006e78148))
+* **deps:** bump rand from 0.9.1 to 0.9.2 ([#469](https://github.com/mdn/rari/issues/469)) ([67156ae](https://github.com/mdn/rari/commit/67156ae83d3398092decac04b449750ac7c37921))
+* **deps:** bump regex from 1.11.1 to 1.12.2 ([#459](https://github.com/mdn/rari/issues/459)) ([ea78100](https://github.com/mdn/rari/commit/ea78100c03f4eb49aeb287dc91ddf0e580e794f7))
+* **deps:** bump regress from 0.10.3 to 0.10.5 ([#460](https://github.com/mdn/rari/issues/460)) ([eca660f](https://github.com/mdn/rari/commit/eca660fcbbbc067d10f17552c5652da36b16183d))
+* **deps:** bump semver from 1.0.26 to 1.0.27 ([#462](https://github.com/mdn/rari/issues/462)) ([b62846b](https://github.com/mdn/rari/commit/b62846b8b8c1cf98a19bb22d0efd37aed6510257))
+* **deps:** bump tokio from 1.45.1 to 1.49.0 ([#470](https://github.com/mdn/rari/issues/470)) ([f9066f5](https://github.com/mdn/rari/commit/f9066f570320a324db07a4fbf9f1ee40eeb08686))
+* **deps:** consume web-features npm package ([#454](https://github.com/mdn/rari/issues/454)) ([3ea875c](https://github.com/mdn/rari/commit/3ea875ca5f84195b83f1f318dc37d2df81be53c3))
+* **doc:** ignore shared assets when handling images ([#456](https://github.com/mdn/rari/issues/456)) ([568a9a7](https://github.com/mdn/rari/commit/568a9a7ff2f4f124941311f671c57166cd6e2db5))
+* **github:** use GH_TOKEN if it exists ([#457](https://github.com/mdn/rari/issues/457)) ([1889ac5](https://github.com/mdn/rari/commit/1889ac57154086fdba784cb204e69ebea1050a79))
+
 ## [0.2.9](https://github.com/mdn/rari/compare/v0.2.8...v0.2.9) (2025-12-19)
 
 
