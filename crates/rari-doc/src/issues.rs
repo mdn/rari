@@ -224,12 +224,13 @@ where
         }
 
         if !issue.ignore {
-            // Record first.
+            // Populate issue from Event fields.
             event.record(&mut issue);
         }
 
+        // Do not merge these blocks, as events without span can have an ignore field.
+
         if !issue.ignore {
-            // Check again after recording.
             self.events
                 .entry(issue.file.clone())
                 .or_default()
