@@ -508,19 +508,19 @@ fn main() -> Result<(), Error> {
                     .expect("unable to close templ recorder");
             }
 
+            let events = memory_layer.get_events();
+            let num_files = events.len();
+            let num_issues: usize = events.iter().map(|e| e.value().len()).sum();
+            if num_issues == 0 {
+                info!("No issues found");
+            } else {
+                info!("Found {} issue(s) in {} file(s)", num_issues, num_files);
+            }
+
             if let Some(issues_path) = args.issues {
-                let events = memory_layer.get_events();
-                let num_files = events.len();
-                let num_issues: usize = events.iter().map(|e| e.value().len()).sum();
                 let file = File::create(&issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
                 serde_json::to_writer_pretty(&mut buffed, &*events).unwrap();
-                info!(
-                    "Wrote {} issue(s) in {} file(s) to {}",
-                    num_issues,
-                    num_files,
-                    issues_path.display()
-                );
             }
         }
         Commands::Serve(args) => {
