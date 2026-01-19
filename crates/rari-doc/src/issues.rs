@@ -12,7 +12,7 @@ use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id};
 use tracing::{Event, Subscriber};
 use tracing_subscriber::Layer;
-use tracing_subscriber::registry::LookupSpan;
+use tracing_subscriber::registry::{LookupSpan, SpanRef};
 
 use crate::pages::page::{Page, PageLike};
 use crate::position_utils::byte_to_char_column;
@@ -144,6 +144,44 @@ impl Visit for Issue {
         }
     }
 }
+
+/// Populate issue fields from span scope, including position information and metadata.
+fn populate_issue_from_scope<'a, S>(issue: &mut Issue, scope: impl Iterator<Item = SpanRef<'a, S>>)
+where
+    S: Subscriber + for<'b> LookupSpan<'b>,
+{
+    for span in scope {
+        let ext = span.extensions();
+        if let Some(entries) = ext.get::<IssueEntries>() {
+            if entries.req != 0 {
+                issue.req = entries.req;
+            }
+            if entries.col != 0 {
+                issue.col = entries.col;
+            }
+            if entries.line != 0 {
+                issue.line = entries.line;
+            }
+            if entries.end_col != 0 {
+                issue.end_col = entries.end_col;
+            }
+            if entries.end_line != 0 {
+                issue.end_line = entries.end_line;
+            }
+            if !entries.file.is_empty() {
+                issue.file = entries.file.clone();
+            }
+            if entries.ic != -1 {
+                issue.ic = entries.ic;
+            }
+            if entries.ignore {
+                issue.ignore = entries.ignore;
+            }
+            issue.spans.extend(entries.entries.iter().rev().cloned());
+        }
+    }
+}
+
 impl<S> Layer<S> for InMemoryLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -176,44 +214,23 @@ where
             fields: vec![],
             spans: vec![],
         };
-        let span = ctx.event_span(event);
-        let scope = span.into_iter().flat_map(|span| span.scope());
-        for span in scope {
-            let ext = span.extensions();
-            if let Some(entries) = ext.get::<IssueEntries>() {
-                if entries.req != 0 {
-                    issue.req = entries.req;
-                }
-                if entries.col != 0 {
-                    issue.col = entries.col;
-                }
-                if entries.line != 0 {
-                    issue.line = entries.line;
-                }
-                if entries.end_col != 0 {
-                    issue.end_col = entries.end_col;
-                }
-                if entries.end_line != 0 {
-                    issue.end_line = entries.end_line;
-                }
-                if !entries.file.is_empty() {
-                    issue.file = entries.file.clone();
-                }
-                if entries.ic != -1 {
-                    issue.ic = entries.ic;
-                }
-                if entries.ignore {
-                    issue.ignore = entries.ignore;
-                }
-                issue.spans.extend(entries.entries.iter().rev().cloned());
-            }
+
+        if let Some(span) = ctx.event_span(event) {
+            populate_issue_from_scope(&mut issue, span.scope());
         }
 
         if issue.ic == -1 && !issue.ignore {
             issue.ic = get_issue_counter();
         }
+
         if !issue.ignore {
+            // Populate issue from Event fields.
             event.record(&mut issue);
+        }
+
+        // Do not merge these blocks, as events without span can have an ignore field.
+
+        if !issue.ignore {
             self.events
                 .entry(issue.file.clone())
                 .or_default()
