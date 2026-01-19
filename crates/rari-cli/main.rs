@@ -510,9 +510,17 @@ fn main() -> Result<(), Error> {
 
             if let Some(issues_path) = args.issues {
                 let events = memory_layer.get_events();
-                let file = File::create(issues_path).unwrap();
+                let num_files = events.len();
+                let num_issues: usize = events.iter().map(|e| e.value().len()).sum();
+                let file = File::create(&issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
                 serde_json::to_writer_pretty(&mut buffed, &*events).unwrap();
+                info!(
+                    "Wrote {} issue(s) in {} file(s) to {}",
+                    num_issues,
+                    num_files,
+                    issues_path.display()
+                );
             }
         }
         Commands::Serve(args) => {
