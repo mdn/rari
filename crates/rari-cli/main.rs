@@ -489,6 +489,7 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
+            let total_files = urls.len();
             if args.all || args.sitemaps && !urls.is_empty() {
                 let sitemaps = Sitemaps { sitemap_meta: urls };
                 let start = std::time::Instant::now();
@@ -508,9 +509,21 @@ fn main() -> Result<(), Error> {
                     .expect("unable to close templ recorder");
             }
 
+            let events = memory_layer.get_events();
+            let num_files = events.len();
+            let num_issues: usize = events.iter().map(|e| e.value().len()).sum();
+
+            if num_issues > 0 {
+                info!(
+                    "Found {} issues in {} of {} files",
+                    num_issues, num_files, total_files
+                );
+            } else {
+                info!("No issues found in {} files", total_files);
+            }
+
             if let Some(issues_path) = args.issues {
-                let events = memory_layer.get_events();
-                let file = File::create(issues_path).unwrap();
+                let file = File::create(&issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
                 serde_json::to_writer_pretty(&mut buffed, &*events).unwrap();
             }
