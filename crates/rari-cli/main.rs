@@ -40,7 +40,10 @@ use rari_tools::redirects::{fix_redirects, validate_redirects};
 use rari_tools::remove::remove;
 use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
-use rari_types::globals::{SETTINGS, build_out_root, content_root, content_translated_root};
+use rari_types::globals::{
+    SETTINGS, blog_root, build_out_root, content_root, content_translated_root,
+    contributor_spotlight_root, curriculum_root, generic_content_root,
+};
 use rari_types::locale::Locale;
 use rari_types::settings::Settings;
 use rari_utils::io::read_to_string;
@@ -205,6 +208,11 @@ struct BuildArgs {
     no_cache: bool,
     #[arg(long, help = "Build everything")]
     all: bool,
+    #[arg(
+        long,
+        help = "Build everything available (skips optional content if root not configured)"
+    )]
+    all_available: bool,
     #[arg(
         long,
         help = "Don't automatically build basics: content, spas, search-index"
@@ -409,7 +417,12 @@ fn main() -> Result<(), Error> {
             let mut urls = Vec::new();
             let mut docs = Vec::new();
             info!("Building everything 🛠️");
-            if args.all || !args.no_basic || args.content || !arg_files.is_empty() {
+            if args.all
+                || args.all_available
+                || !args.no_basic
+                || args.content
+                || !arg_files.is_empty()
+            {
                 let start = std::time::Instant::now();
                 docs = if !arg_files.is_empty() {
                     read_docs_parallel::<Page, Doc>(&arg_files, None)?
@@ -429,14 +442,19 @@ fn main() -> Result<(), Error> {
                     docs.len()
                 );
             }
-            if args.all || !args.no_basic || args.spas {
+            if args.all || args.all_available || !args.no_basic || args.spas {
                 let start = std::time::Instant::now();
                 let spas = build_spas()?;
                 let num = spas.len();
                 urls.extend(spas);
                 info!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
             }
-            if args.all || !args.no_basic || args.content || !arg_files.is_empty() {
+            if args.all
+                || args.all_available
+                || !args.no_basic
+                || args.content
+                || !arg_files.is_empty()
+            {
                 let start = std::time::Instant::now();
                 let (docs, meta) = build_docs(&docs)?;
                 build_top_level_meta(meta)?;
@@ -447,12 +465,13 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || !args.no_basic || args.search_index {
+            if args.all || args.all_available || !args.no_basic || args.search_index {
                 let start = std::time::Instant::now();
                 build_search_index(&docs)?;
                 info!("Took: {: >10.3?} to build search index", start.elapsed());
             }
-            if args.all || args.generics {
+            if args.all || args.generics || (args.all_available && generic_content_root().is_some())
+            {
                 let start = std::time::Instant::now();
                 let generic_pages = build_generic_pages()?;
                 let num = generic_pages.len();
@@ -462,7 +481,7 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || args.curriculum {
+            if args.all || args.curriculum || (args.all_available && curriculum_root().is_some()) {
                 let start = std::time::Instant::now();
                 let curriculum_pages = build_curriculum_pages()?;
                 let num = curriculum_pages.len();
@@ -472,14 +491,17 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || args.blog {
+            if args.all || args.blog || (args.all_available && blog_root().is_some()) {
                 let start = std::time::Instant::now();
                 let blog_pages = build_blog_pages()?;
                 let num = blog_pages.len();
                 urls.extend(blog_pages);
                 info!("Took: {: >10.3?} to build blog ({num})", start.elapsed());
             }
-            if args.all || args.spotlights {
+            if args.all
+                || args.spotlights
+                || (args.all_available && contributor_spotlight_root().is_some())
+            {
                 let start = std::time::Instant::now();
                 let contributor_spotlight_pages = build_contributor_spotlight_pages()?;
                 let num = contributor_spotlight_pages.len();
@@ -490,7 +512,7 @@ fn main() -> Result<(), Error> {
                 );
             }
             let total_files = urls.len();
-            if args.all || args.sitemaps && !urls.is_empty() {
+            if args.all || args.all_available || args.sitemaps && !urls.is_empty() {
                 let sitemaps = Sitemaps { sitemap_meta: urls };
                 let start = std::time::Instant::now();
                 let out_path = build_out_root()?;
