@@ -43,7 +43,10 @@ pub fn svginfo() -> Result<String, DocError> {
                     elements.push(svgxref_internal(element_name, env.locale)?)
                 } else {
                     let anchor = to_snake_case(element);
-                    let url = format!("/{}/docs/Web/SVG/Element#{anchor}", env.locale.as_url_str());
+                    let url = format!(
+                        "/{}/docs/Web/SVG/Reference/Element#{anchor}",
+                        env.locale.as_url_str()
+                    );
                     let display = l10n_json_data("SVG", element, env.locale).unwrap_or(element);
                     let link =
                         RariApi::link(&url, Some(env.locale), Some(display), false, None, false)?;
