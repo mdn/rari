@@ -413,3 +413,70 @@ fn grouped_index() -> Result<Vec<CurriculumIndexEntry>, DocError> {
         },
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_curriculum_file_to_slug_root_readme() {
+        // Root README should produce empty slug
+        assert_eq!(curriculum_file_to_slug(Path::new("0-README.md")), "");
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_simple_module() {
+        // Simple module path
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("1-intro/0-README.md")),
+            "intro"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_nested_path() {
+        // Nested path with multiple numeric prefixes
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("2-core/3-modules/1-something.md")),
+            "core/modules/something"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_deep_nested() {
+        // Deep nested path
+        assert_eq!(
+            curriculum_file_to_slug(Path::new(
+                "1-getting-started/2-environment-setup/0-README.md"
+            )),
+            "getting-started/environment-setup"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_two_digit_prefix() {
+        // Two-digit numeric prefix
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("10-advanced/05-topics.md")),
+            "advanced/topics"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_readme_without_zero_prefix() {
+        // README without zero prefix
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("1-section/README.md")),
+            "section"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_preserves_hyphens_in_names() {
+        // Hyphens in names should be preserved
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("1-web-standards/2-html-basics.md")),
+            "web-standards/html-basics"
+        );
+    }
+}
