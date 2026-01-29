@@ -153,11 +153,16 @@ impl PageReader<Page> for Curriculum {
         let fm = fm.ok_or(DocError::NoFrontmatter)?;
 
         let raw_content = &raw[content_start..];
-        let filename = full_path
-            .strip_prefix(curriculum_root().ok_or(DocError::NoCurriculumRoot)?)?
-            .to_owned();
+        let curriculum_dir = curriculum_root()
+            .ok_or(DocError::NoCurriculumRoot)?
+            .join("curriculum");
+        let filename = full_path.strip_prefix(&curriculum_dir)?.to_owned();
         let slug = curriculum_file_to_slug(&filename);
-        let url = format!("/{}/{slug}/", Locale::default().as_url_str());
+        let url = if slug.is_empty() {
+            format!("/{}/curriculum/", Locale::default().as_url_str())
+        } else {
+            format!("/{}/curriculum/{slug}/", Locale::default().as_url_str())
+        };
         let (title, line) = TITLE_RE
             .captures(raw_content)
             .map(|cap| (cap[1].to_owned(), cap[0].to_owned()))
@@ -168,9 +173,7 @@ impl PageReader<Page> for Curriculum {
             template,
             topic,
         } = serde_yaml_ng::from_str(fm)?;
-        let path = full_path
-            .strip_prefix(curriculum_root().ok_or(DocError::NoCurriculumRoot)?)?
-            .to_path_buf();
+        let path = full_path.strip_prefix(&curriculum_dir)?.to_path_buf();
         let meta = CurriculumBuildMeta {
             url,
             title,
