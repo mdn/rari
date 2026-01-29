@@ -190,7 +190,7 @@ impl PageReader<Page> for Curriculum {
 
 static TITLE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^[\w\n]*#\s+(.*)\n"#).unwrap());
 static SLUG_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"(\d+-|\.md$|\/0?-?README)"#).unwrap());
+    LazyLock::new(|| Regex::new(r#"(\d+-|\.md$|\/?0?-?README)"#).unwrap());
 
 fn curriculum_file_to_slug(file: &Path) -> String {
     SLUG_RE.replace_all(&file.to_string_lossy(), "").to_string()
