@@ -146,6 +146,23 @@ impl Page {
         }
     }
 
+    /// Checks whether a page category's root is not configured.
+    ///
+    /// # Arguments
+    /// - `category`: The page category to check.
+    ///
+    /// # Returns
+    /// `true` if the category's root is not configured; otherwise, `false`.
+    pub fn is_unavailable_category(category: PageCategory) -> bool {
+        match category {
+            PageCategory::BlogPost if blog_root().is_none() => true,
+            PageCategory::Curriculum if curriculum_root().is_none() => true,
+            PageCategory::ContributorSpotlight if contributor_spotlight_root().is_none() => true,
+            PageCategory::GenericPage if generic_content_root().is_none() => true,
+            _ => false,
+        }
+    }
+
     /// Determines if the given URL should be ignored for link-checking.
     ///
     /// # Arguments
