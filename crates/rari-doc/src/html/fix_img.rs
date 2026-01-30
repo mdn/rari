@@ -25,17 +25,35 @@ pub fn handle_img(
             && !url.path().starts_with("/assets/")
             && !url.path().starts_with("/shared-assets/")
         {
-            el.set_attribute("src", url.path())?;
-            // Leave dimensions alone if we have a `width` attribute
-            if el.get_attribute("width").is_some() {
-                return Ok(());
-            }
+            // Check if the file exists in the current locale
             let mut file = page.full_path().parent().unwrap().join(&src);
+            let mut final_url_path = url.path().to_string();
+
+            // If file doesn't exist in translated locale, try en-US fallback
             if !file.try_exists().unwrap_or_default()
+                && page.locale() != default_locale()
                 && let Ok(en_us_page) =
                     Page::from_url_with_locale_and_fallback(page.url(), default_locale())
             {
-                file = en_us_page.full_path().parent().unwrap().join(&src);
+                let en_us_file = en_us_page.full_path().parent().unwrap().join(&src);
+                if en_us_file.try_exists().unwrap_or_default() {
+                    // Rewrite URL to point to en-US asset
+                    let en_us_url = en_us_page.url();
+                    final_url_path = format!(
+                        "{}{}{}",
+                        en_us_url,
+                        if en_us_url.ends_with('/') { "" } else { "/" },
+                        src
+                    );
+                    file = en_us_file;
+                }
+            }
+
+            el.set_attribute("src", &final_url_path)?;
+
+            // Leave dimensions alone if we have a `width` attribute
+            if el.get_attribute("width").is_some() {
+                return Ok(());
             }
             let (width, height) = img_size(el, &src, &file, data_issues)?;
             if let Some(width) = width {
