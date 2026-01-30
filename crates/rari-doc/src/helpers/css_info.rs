@@ -113,7 +113,7 @@ pub fn css_info_properties(
         out.push((
             "animationType",
             Cow::Owned(RariApi::link(
-                "/Web/CSS/CSS_animated_properties",
+                "/Web/CSS/Guides/Animations/Animatable_properties",
                 Some(locale),
                 Some(get_css_l10n_for_locale("animationType", locale)),
                 false,
@@ -305,7 +305,7 @@ pub fn get_for_locale(locale: Locale, lookup: &Value) -> &Value {
 pub fn css_computed(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_csscomputed", locale)?;
     RariApi::link(
-        "/Web/CSS/CSS_cascade/Value_processing#computed_value",
+        "/Web/CSS/Guides/Cascade/Property_value_processing#computed_value",
         Some(locale),
         Some(copy),
         false,
@@ -317,7 +317,7 @@ pub fn css_computed(locale: Locale) -> Result<String, DocError> {
 pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinherited", locale)?;
     RariApi::link(
-        "/Web/CSS/CSS_cascade/Inheritance",
+        "/Web/CSS/Guides/Cascade/Inheritance",
         Some(locale),
         Some(copy),
         false,
@@ -329,7 +329,7 @@ pub fn css_inherited(locale: Locale) -> Result<String, DocError> {
 pub fn css_initial(locale: Locale) -> Result<String, DocError> {
     let copy = l10n_json_data("Template", "xref_cssinitial", locale)?;
     RariApi::link(
-        "/Web/CSS/CSS_cascade/Value_processing#initial_value",
+        "/Web/CSS/Guides/Cascade/Property_value_processing#initial_value",
         Some(locale),
         Some(copy),
         false,
