@@ -81,7 +81,7 @@ impl RariApi {
         Page::from_url_with_fallback(url).inspect_err(|e| {
             if let DocError::PageNotFound(_, category) = &e
                 && !matches!(warn, LinkWarn::No)
-                && !Page::is_unavailable_category(*category)
+                && Page::is_page_category_available(*category)
             {
                 let ic = get_issue_counter();
                 tracing::warn!(source = "templ-broken-link", ic = ic, url = url);
