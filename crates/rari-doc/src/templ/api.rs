@@ -78,14 +78,14 @@ impl RariApi {
             }
             None => url,
         };
-        Page::from_url_with_fallback(url).map_err(|e| {
-            if let DocError::PageNotFound(_, _) = e
+        Page::from_url_with_fallback(url).inspect_err(|e| {
+            if let DocError::PageNotFound(_, category) = &e
                 && !matches!(warn, LinkWarn::No)
+                && Page::is_category_available(*category)
             {
                 let ic = get_issue_counter();
                 tracing::warn!(source = "templ-broken-link", ic = ic, url = url);
             }
-            e
         })
     }
 
