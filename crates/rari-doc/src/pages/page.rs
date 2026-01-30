@@ -155,10 +155,10 @@ impl Page {
     /// `true` if the category's root is configured; otherwise, `false`.
     pub fn is_page_category_available(category: PageCategory) -> bool {
         match category {
-            PageCategory::BlogPost if blog_root().is_none() => false,
-            PageCategory::Curriculum if curriculum_root().is_none() => false,
-            PageCategory::ContributorSpotlight if contributor_spotlight_root().is_none() => false,
-            PageCategory::GenericPage if generic_content_root().is_none() => false,
+            PageCategory::BlogPost => blog_root().is_some(),
+            PageCategory::Curriculum => curriculum_root().is_some(),
+            PageCategory::ContributorSpotlight => contributor_spotlight_root().is_some(),
+            PageCategory::GenericPage => generic_content_root().is_some(),
             _ => true,
         }
     }
