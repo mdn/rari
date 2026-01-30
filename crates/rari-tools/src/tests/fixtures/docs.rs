@@ -119,6 +119,53 @@ impl DocFixtures {
             .join("asset.txt");
         fs::write(&path, "Asset content").unwrap();
     }
+
+    /// Create a minimal valid PNG image file in the doc folder
+    pub fn create_image(slug: &str, locale: Locale, filename: &str) {
+        let locale_root = root_for_locale(locale).unwrap();
+
+        let path = locale_root
+            .join(Self::path_from_slug(slug, locale))
+            .join(filename);
+        // Minimal valid 1x1 transparent PNG (67 bytes)
+        let png_data: [u8; 67] = [
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1 dimensions
+            0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, // 8-bit RGBA
+            0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, // IDAT chunk
+            0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, // compressed data
+            0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, // IDAT CRC
+            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, // IEND chunk
+            0xAE, 0x42, 0x60, 0x82,
+        ];
+        fs::write(&path, png_data).unwrap();
+    }
+
+    /// Create a doc with custom markdown content
+    pub fn create_doc_with_content(slug: &str, locale: Locale, content: &str) {
+        let locale_root = root_for_locale(locale).unwrap();
+        let folder_path = Self::path_from_slug(slug, locale);
+        let abs_folder_path = locale_root.join(&folder_path);
+
+        let title = Self::capitalize(slug.split('/').last().unwrap());
+        let full_content = formatdoc! {
+            r#"---
+            title: {}
+            slug: {}
+            ---
+
+            {}
+            "#,
+            title,
+            slug,
+            content
+        };
+
+        fs::create_dir_all(&abs_folder_path).unwrap();
+        let path = abs_folder_path.join("index.md");
+        fs::write(&path, full_content).unwrap();
+    }
 }
 
 impl Drop for DocFixtures {
