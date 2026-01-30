@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12](https://github.com/mdn/rari/compare/v0.2.11...v0.2.12) (2026-01-30)
+
+
+### Bug Fixes
+
+* **doc:** ignore `templ-broken-link` issues for unavailable content ([#505](https://github.com/mdn/rari/issues/505)) ([32943d5](https://github.com/mdn/rari/commit/32943d5675c11fbc748e539abcade0ef6e7c792a))
+
+
+### Miscellaneous
+
+* **deps:** bump tar from 7.5.6 to 7.5.7 in /rari-npm ([#504](https://github.com/mdn/rari/issues/504)) ([19b2568](https://github.com/mdn/rari/commit/19b2568c8a0ded30739e79c782027b763ec1d03c))
+* **svginfo:** SVG Element url ([#490](https://github.com/mdn/rari/issues/490)) ([0b960d7](https://github.com/mdn/rari/commit/0b960d76553aca5b00a952879b357b7b26210d38))
+
 ## [0.2.11](https://github.com/mdn/rari/compare/v0.2.10...v0.2.11) (2026-01-26)
 
 
