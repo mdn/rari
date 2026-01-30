@@ -153,7 +153,7 @@ impl Page {
     ///
     /// # Returns
     /// `true` if the category's root is configured; otherwise, `false`.
-    pub fn is_page_category_available(category: PageCategory) -> bool {
+    pub fn is_category_available(category: PageCategory) -> bool {
         match category {
             PageCategory::BlogPost => blog_root().is_some(),
             PageCategory::Curriculum => curriculum_root().is_some(),
