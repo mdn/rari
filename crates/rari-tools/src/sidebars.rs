@@ -518,7 +518,10 @@ mod test {
         } else {
             panic!("Expected a Link entry");
         };
-        assert_eq!(link, "/Web/CSS/Guides/Box_alignment/Something_New".to_string());
+        assert_eq!(
+            link,
+            "/Web/CSS/Guides/Box_alignment/Something_New".to_string()
+        );
 
         // replacement of link of the third child in the third item of the sidebar
         let third_item_third_child =
@@ -532,7 +535,10 @@ mod test {
         } else {
             panic!("Expected a Link entry");
         };
-        assert_eq!(link, "/Web/CSS/Guides/Box_alignment/Also_New".to_string());
+        assert_eq!(
+            link,
+            "/Web/CSS/Guides/Box_alignment/Also_New".to_string()
+        );
 
         // replacement of the path of the fifth item in the sidebar (listSubPages)
         if let SidebarEntry::ListSubPages(SubPageEntry { path, .. }) = &sb.sidebar[4] {
