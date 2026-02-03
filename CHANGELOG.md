@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12](https://github.com/mdn/rari/compare/v0.2.11...v0.2.12) (2026-02-03)
+
+
+### Bug Fixes
+
+* **cssinfo:** update CSS guides urls ([#508](https://github.com/mdn/rari/issues/508)) ([40f7beb](https://github.com/mdn/rari/commit/40f7bebf59aa6d3c1a3c1df67ad81a728b518036))
+* **doc:** ignore `templ-broken-link` issues for unavailable content ([#505](https://github.com/mdn/rari/issues/505)) ([32943d5](https://github.com/mdn/rari/commit/32943d5675c11fbc748e539abcade0ef6e7c792a))
+* **doc:** rewrite content-only images ([#506](https://github.com/mdn/rari/issues/506)) ([a458583](https://github.com/mdn/rari/commit/a45858395842b3e36128bc8368625ed831925df1))
+* **svginfo:** update SVG Element url ([#490](https://github.com/mdn/rari/issues/490)) ([0b960d7](https://github.com/mdn/rari/commit/0b960d76553aca5b00a952879b357b7b26210d38))
+
+
+### Miscellaneous
+
+* **deps:** bump memoize from 0.5.1 to 0.6.0 ([#513](https://github.com/mdn/rari/issues/513)) ([a9e6622](https://github.com/mdn/rari/commit/a9e6622ea717155ac8222a9542c27a095077f846))
+* **deps:** bump quick-xml from 0.37.5 to 0.39.0 ([#511](https://github.com/mdn/rari/issues/511)) ([0bf473d](https://github.com/mdn/rari/commit/0bf473d9f1fe3c55e2206c4a600bcc81c169b54b))
+* **deps:** bump serial_test from 3.2.0 to 3.3.1 ([#510](https://github.com/mdn/rari/issues/510)) ([8473c8d](https://github.com/mdn/rari/commit/8473c8d918c2310cddee32598c13def12037c010))
+* **deps:** bump tar from 7.5.6 to 7.5.7 in /rari-npm ([#504](https://github.com/mdn/rari/issues/504)) ([19b2568](https://github.com/mdn/rari/commit/19b2568c8a0ded30739e79c782027b763ec1d03c))
+* **deps:** bump thiserror from 2.0.12 to 2.0.18 ([#512](https://github.com/mdn/rari/issues/512)) ([4d2fad1](https://github.com/mdn/rari/commit/4d2fad1a6f5ca350281e53ab818f54aaa8484b35))
+
 ## [0.2.11](https://github.com/mdn/rari/compare/v0.2.10...v0.2.11) (2026-01-26)
 
 
