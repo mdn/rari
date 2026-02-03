@@ -35,6 +35,7 @@ pub(crate) fn get_issue_counter_f() -> i64 {
 #[derive(Debug, Clone, Serialize)]
 pub struct Issue {
     pub req: u64,
+    #[serde(skip_serializing)]
     pub ic: i64,
     /// Column in BYTES from start of line (from tree-sitter or comrak sourcepos)
     pub col: i64,
