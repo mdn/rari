@@ -337,7 +337,7 @@ impl SyntaxRenderer<'_> {
                 if name.starts_with("<'") && name.ends_with("'>") {
                     let slug = &name[2..name.len() - 2];
                     format!(
-                        r#"<a href="/{}/docs/Web/CSS/{slug}"><span class="token property">{encoded}</span></a>"#,
+                        r#"<a href="/{}/docs/Web/CSS/Reference/Properties/{slug}"><span class="token property">{encoded}</span></a>"#,
                         self.locale_str
                     )
                 } else {
@@ -367,7 +367,7 @@ impl SyntaxRenderer<'_> {
                 } else {
                     // FIXME: this should have the class type but to be compatible we use property
                     format!(
-                        r#"<a href="/{}/docs/Web/CSS/{slug}"><span class="token property">{encoded}</span></a>"#,
+                        r#"<a href="/{}/docs/Web/CSS/Reference/Values/{slug}"><span class="token property">{encoded}</span></a>"#,
                         self.locale_str
                     )
                 }
@@ -874,7 +874,7 @@ mod test {
     #[test]
     fn test_render_function_scoped() -> Result<(), SyntaxError> {
         // rect() from the clip specs
-        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/Reference/Values/top\"><span class=\"token property\">&lt;top&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/Reference/Values/right\"><span class=\"token property\">&lt;right&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/Reference/Values/bottom\"><span class=\"token property\">&lt;bottom&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/Reference/Values/left\"><span class=\"token property\">&lt;left&gt;</span></a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/Reference/Values/top\"><span class=\"token property\">&lt;top&gt;</span></a>, <a href=\"/en-US/docs/Web/CSS/Reference/Values/right\"><span class=\"token property\">&lt;right&gt;</span></a>, <a href=\"/en-US/docs/Web/CSS/Reference/Values/bottom\"><span class=\"token property\">&lt;bottom&gt;</span></a>, <a href=\"/en-US/docs/Web/CSS/Reference/Values/left\"><span class=\"token property\">&lt;left&gt;</span></a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Function("rect")),
             Some("css.properties.clip"),
