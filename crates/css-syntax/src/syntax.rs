@@ -770,7 +770,7 @@ mod test {
         assert_eq!(name, "<color>");
         assert_eq!(
             syntax,
-            "<color-base> | currentColor | <system-color> | <contrast-color()> | <device-cmyk()> | <light-dark()>"
+            "<color-base> | currentColor | <system-color> | <color_value/contrast-color> | <color_value/device-cmyk> | <color_value/light-dark>"
         );
     }
     #[test]
@@ -874,7 +874,7 @@ mod test {
     #[test]
     fn test_render_function_scoped() -> Result<(), SyntaxError> {
         // rect() from the clip specs
-        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/Reference/Values/top\"><span class=\"token property\">&lt;top&gt;</span></a>, <a href=\"/en-US/docs/Web/CSS/Reference/Values/right\"><span class=\"token property\">&lt;right&gt;</span></a>, <a href=\"/en-US/docs/Web/CSS/Reference/Values/bottom\"><span class=\"token property\">&lt;bottom&gt;</span></a>, <a href=\"/en-US/docs/Web/CSS/Reference/Values/left\"><span class=\"token property\">&lt;left&gt;</span></a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
+        let expected = "<pre class=\"notranslate css-formal-syntax\"><span class=\"token property\" id=\"&lt;rect()&gt;\">&lt;rect()&gt; = </span><br/>  <span class=\"token function\">rect(</span> <a href=\"/en-US/docs/Web/CSS/Reference/Values/top\"><span class=\"token property\">&lt;top&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/Reference/Values/right\"><span class=\"token property\">&lt;right&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/Reference/Values/bottom\"><span class=\"token property\">&lt;bottom&gt;</span></a> , <a href=\"/en-US/docs/Web/CSS/Reference/Values/left\"><span class=\"token property\">&lt;left&gt;</span></a> <span class=\"token function\">)</span>  <br/></pre><footer></footer>";
         let result = render_formal_syntax(
             SyntaxInput::Css(CssType::Function("rect")),
             Some("css.properties.clip"),
