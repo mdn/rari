@@ -431,33 +431,33 @@ mod test {
               - details: closed
                 title: Backgrounds_and_Borders
                 children:
-                  - /Web/CSS/CSS_Backgrounds_and_Borders/Using_multiple_backgrounds
-                  - link: /Web/CSS/CSS_Backgrounds_and_Borders/Resizing_background_images
+                  - /Web/CSS/Guides/Backgrounds_and_borders/Using_multiple_backgrounds
+                  - link: /Web/CSS/Guides/Backgrounds_and_borders/Resizing_background_images
                     title: Resizing_background_images
               - details: closed
                 title: Box alignment
                 children:
-                  - link: /Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Block_Abspos_Tables
+                  - link: /Web/CSS/Guides/Box_alignment/In_block_abspos_tables
                     title: Box_alignment_in_block_layout
-                  - /Web/CSS/CSS_Box_Alignment/Box_Alignment_in_Flexbox
-                  - /Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Grid_Layout
-                  - /Web/CSS/CSS_Box_Alignment/Box_Alignment_in_Multi-column_Layout
+                  - /Web/CSS/Guides/Box_alignment/In_flexbox
+                  - /Web/CSS/Guides/Box_alignment/In_grid_layout
+                  - /Web/CSS/Guides/Box_alignment/In_multi-column_layout
               - details: closed
                 title: Box_model
                 children:
-                  - /Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
-                  - /Web/CSS/CSS_Box_Model/Mastering_margin_collapsing
+                  - /Web/CSS/Guides/Box_model/Introduction
+                  - /Web/CSS/Guides/Box_model/Margin_collapsing
               - type: listSubPages
                 path: /en-US/docs/Web/HTTP/Reference/Headers
                 title: Headers
                 tags: []
                 details: closed
               - type: listSubPages
-                path: /en-US/docs/Web/CSS/CSS_Box_Alignment
+                path: /en-US/docs/Web/CSS/Guides/Box_alignment
                 title: Headers
                 tags: []
                 details: closed
-              - link: /Web/CSS/CSS_Box_Alignment
+              - link: /Web/CSS/Guides/Box_alignment
 
             l10n:
               en-US:
@@ -474,22 +474,22 @@ mod test {
         let _sidebars = SidebarFixtures::new(vec![sb]);
         let pairs = vec![
             (
-                Cow::Borrowed("Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Block_Abspos_Tables"),
-                Some(Cow::Borrowed("Web/CSS/CSS_Box_Alignment/Something_New")),
+                Cow::Borrowed("Web/CSS/Guides/Box_alignment/In_block_abspos_tables"),
+                Some(Cow::Borrowed("Web/CSS/Guides/Box_alignment/Something_New")),
             ),
             (
-                Cow::Borrowed("Web/CSS/CSS_Box_Alignment/Box_Alignment_In_Grid_Layout"),
-                Some(Cow::Borrowed("Web/CSS/CSS_Box_Alignment/Also_New")),
+                Cow::Borrowed("Web/CSS/Guides/Box_alignment/In_grid_layout"),
+                Some(Cow::Borrowed("Web/CSS/Guides/Box_alignment/Also_New")),
             ),
             (
                 Cow::Borrowed("Web/HTTP/Reference/Headers"),
                 Some(Cow::Borrowed("Web/HTTP/Reference/Headers_New")),
             ),
             (
-                Cow::Borrowed("/Web/CSS/CSS_Box_Alignment/Box_Alignment_in_Multi-column_Layout"),
+                Cow::Borrowed("/Web/CSS/Guides/Box_alignment/In_multi-column_layout"),
                 None,
             ),
-            (Cow::Borrowed("/Web/CSS/CSS_Box_Alignment"), None),
+            (Cow::Borrowed("/Web/CSS/Guides/Box_alignment"), None),
         ];
         let res = update_sidebars(&pairs);
         assert!(res.is_ok());
@@ -518,7 +518,7 @@ mod test {
         } else {
             panic!("Expected a Link entry");
         };
-        assert_eq!(link, "/Web/CSS/CSS_Box_Alignment/Something_New".to_string());
+        assert_eq!(link, "/Web/CSS/Guides/Box_alignment/Something_New".to_string());
 
         // replacement of link of the third child in the third item of the sidebar
         let third_item_third_child =
@@ -532,7 +532,7 @@ mod test {
         } else {
             panic!("Expected a Link entry");
         };
-        assert_eq!(link, "/Web/CSS/CSS_Box_Alignment/Also_New".to_string());
+        assert_eq!(link, "/Web/CSS/Guides/Box_alignment/Also_New".to_string());
 
         // replacement of the path of the fifth item in the sidebar (listSubPages)
         if let SidebarEntry::ListSubPages(SubPageEntry { path, .. }) = &sb.sidebar[4] {
