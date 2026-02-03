@@ -547,7 +547,7 @@ fn main() -> Result<(), Error> {
             if let Some(issues_path) = args.issues {
                 let file = File::create(&issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
-                serde_json::to_writer_pretty(&mut buffed, &*events).unwrap();
+                serde_json::to_writer_pretty(&mut buffed, &memory_layer.sorted_issues()).unwrap();
             }
         }
         Commands::Serve(args) => {
