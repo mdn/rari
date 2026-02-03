@@ -54,7 +54,7 @@ enum_dispatch = "0.3"
 icu_collator = "2"
 imagesize = "0.14"
 svg_metadata = "0.6"
-memoize = "0.5"
+memoize = "0.6"
 unescaper = "0.1"
 
 
