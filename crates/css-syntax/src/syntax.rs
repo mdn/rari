@@ -770,7 +770,7 @@ mod test {
         assert_eq!(name, "<color>");
         assert_eq!(
             syntax,
-            "<color-base> | currentColor | <system-color> | <color_value/contrast-color> | <color_value/device-cmyk> | <color_value/light-dark>"
+            "<color-base> | currentColor | <system-color> | <contrast-color()> | <device-cmyk()> | <light-dark()>"
         );
     }
     #[test]
