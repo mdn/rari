@@ -349,6 +349,9 @@ impl SyntaxRenderer<'_> {
                 let slug = match name {
                     "<color>" => "color_value",
                     "<position>" => "position_value",
+                    "<contrast-color()>" => "color_value/contrast-color",
+                    "<device-cmyk()>" => "color_value/device-cmyk",
+                    "<light-dark()>" => "color_value/light-dark",
                     name if name.starts_with('<') && name.ends_with('>') => {
                         &name[1..name.find(" [").or(name.find('[')).unwrap_or(name.len() - 1)]
                     }
