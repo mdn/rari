@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13](https://github.com/mdn/rari/compare/v0.2.12...v0.2.13) (2026-02-05)
+
+
+### Bug Fixes
+
+* **issues:** stabilize `build --issues` output ([#516](https://github.com/mdn/rari/issues/516)) ([3b1e2be](https://github.com/mdn/rari/commit/3b1e2be489d5d56ea3d0dbd14ac458bdfac5b38b))
+
+
+### Miscellaneous
+
+* **deps:** bump bytes from 1.10.1 to 1.11.1 ([#517](https://github.com/mdn/rari/issues/517)) ([48c8f14](https://github.com/mdn/rari/commit/48c8f14f6b949de951baf3076c229170e12f8cdd))
+* **deps:** bump time from 0.3.41 to 0.3.47 ([#522](https://github.com/mdn/rari/issues/522)) ([b087199](https://github.com/mdn/rari/commit/b087199342bd85b5f1c6546ab0301f7e8ea9f7ca))
+
 ## [0.2.12](https://github.com/mdn/rari/compare/v0.2.11...v0.2.12) (2026-02-03)
 
 
