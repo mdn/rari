@@ -70,7 +70,7 @@ mod test {
     #[test]
     fn test_root_doc_url() {
         assert_eq!(
-            root_doc_url("/en-US/docs/Web/CSS/border"),
+            root_doc_url("/en-US/docs/Web/CSS/Reference/Properties/border"),
             Some("/en-US/docs/Web/CSS")
         );
         assert_eq!(

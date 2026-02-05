@@ -102,7 +102,7 @@ fn initial_letter(s: &str) -> char {
 /// (e.g., "font-family (@font-face)").
 fn label_from_page(page: &Page) -> Cow<'_, str> {
     if page.page_type() == PageType::CssAtRuleDescriptor {
-        // Extract at-rule name from slug (e.g., "Web/CSS/@font-face/font-family" → "@font-face")
+        // Extract at-rule name from slug (e.g., "Web/CSS/Reference/At-rules/@font-face/font-family" → "@font-face")
         if let Some(at_rule) = page
             .slug()
             .rsplit('/')
