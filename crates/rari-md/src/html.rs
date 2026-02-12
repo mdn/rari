@@ -1,14 +1,16 @@
 use core::str;
 use std::collections::HashMap;
 use std::io::Write;
+use std::sync::LazyLock;
 
 use comrak::create_formatter;
 use comrak::html::{collect_text, render_math_code_block, render_sourcepos, write_opening_tag};
-use comrak::nodes::NodeValue;
+use comrak::nodes::{AstNode, NodeValue};
 use itertools::Itertools;
 use rari_types::locale::Locale;
+use regex::Regex;
 
-use crate::anchor::anchorize;
+use crate::anchor::{anchorize, extract_heading_id};
 use crate::ctype::isspace;
 use crate::ext::DELIM_START;
 use crate::node_card::{NoteCard, is_callout};
@@ -17,6 +19,29 @@ use crate::utils::{escape_href, tagfilter_block};
 pub struct RariContext {
     pub stack: Vec<Option<NoteCard>>,
     pub locale: Locale,
+}
+
+fn find_last_text_node<'a>(node: &'a AstNode<'a>) -> Option<&'a AstNode<'a>> {
+    for child in node.reverse_children() {
+        if matches!(child.data.borrow().value, NodeValue::Text(_)) {
+            return Some(child);
+        }
+        if let Some(text_node) = find_last_text_node(child) {
+            return Some(text_node);
+        }
+    }
+    None
+}
+
+fn strip_heading_id_suffix<'a>(heading: &'a AstNode<'a>) {
+    static HEADING_ID_SUFFIX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"\s*\{#[\w-]+\}\s*$").unwrap());
+    if let Some(last_text) = find_last_text_node(heading) {
+        let mut data = last_text.data.borrow_mut();
+        if let NodeValue::Text(ref mut t) = data.value {
+            *t = HEADING_ID_SUFFIX.replace(t.as_str(), "").into_owned();
+        }
+    }
 }
 
 create_formatter!(CustomFormatter<RariContext>, {
@@ -162,6 +187,9 @@ create_formatter!(CustomFormatter<RariContext>, {
                 let is_templ = raw_id.contains(DELIM_START);
                 if is_templ {
                     write!(context, " data-update-id")?;
+                } else if let Some(custom_id) = extract_heading_id(&raw_id) {
+                    write!(context, " id=\"{custom_id}\"")?;
+                    strip_heading_id_suffix(node);
                 } else {
                     let id = anchorize(&raw_id);
                     write!(context, " id=\"{id}\"")?;
