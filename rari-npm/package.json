@@ -26,7 +26,7 @@
   "dependencies": {
     "extract-zip": "^2.0.1",
     "https-proxy-agent": "^7.0.2",
-    "proxy-from-env": "^1.1.0",
+    "proxy-from-env": "^2.0.0",
     "tar": "^7.4.3",
     "json-schema-to-typescript": "^15.0.0"
   }
