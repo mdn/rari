@@ -2224,7 +2224,7 @@ checksum = "06f0e9336ae72681b7be8ccf7c8152b7d5ae4485061d62c6d4dbdec88135a769"
 dependencies = [
  "rowan",
  "tiny_pretty",
- "yaml_parser",
+ "yaml_parser 0.2.3",
 ]
 
 [[package]]
@@ -2526,7 +2526,7 @@ dependencies = [
  "url",
  "validator",
  "yaml-rust",
- "yaml_parser",
+ "yaml_parser 0.3.0",
 ]
 
 [[package]]
@@ -2623,7 +2623,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tracing",
  "url",
- "yaml_parser",
+ "yaml_parser 0.3.0",
 ]
 
 [[package]]
@@ -4513,6 +4513,16 @@ name = "yaml_parser"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c422c39fd59a9dc11efa2b2be26cf9130c6ef9cb744da112a2e9e59c649e471"
+dependencies = [
+ "rowan",
+ "winnow",
+]
+
+[[package]]
+name = "yaml_parser"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71ebb04c72edf699612d543f6c421142527b85ac180156017fa26be49dc0762f"
 dependencies = [
  "rowan",
  "winnow",

@@ -91,7 +91,7 @@ dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"
 schemars = { version = "1", features = ["chrono04", "url2"] }
 pretty_yaml = "0.5"
-yaml_parser = "0.2"
+yaml_parser = "0.3"
 const_format = "0.2"
 dialoguer = "0.12"
 semver = { version = "1", features = ["serde"] }
