@@ -23,7 +23,6 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.secret_source == 'Actions'
     runs-on: ubuntu-latest
-
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"

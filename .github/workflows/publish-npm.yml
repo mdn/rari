@@ -23,6 +23,7 @@ jobs:
         with:
           registry-url: "https://registry.npmjs.org/"
           node-version-file: "./rari-npm/package.json"
+          check-latest: true
           package-manager-cache: false
 
       # Ensure npm 11.5.1 or later for trusted publishing
