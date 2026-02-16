@@ -42,7 +42,7 @@ scraper = { version = "0.25", features = ["deterministic"] }
 lol_html = "2"
 html-escape = "0.2"
 html5ever = "0.36"
-ego-tree = "0.10"
+ego-tree = "0.11"
 rss = { version = "2", features = [], default-features = false }
 cssparser = "0.36"
 
