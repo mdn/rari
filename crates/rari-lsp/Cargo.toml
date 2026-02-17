@@ -21,7 +21,7 @@ tree-sitter.workspace = true
 tree-sitter-mdn.workspace = true
 
 tree-sitter-md = { version = "0.3", features = ["parser"] }
-lsp-textdocument = "0.4"
+lsp-textdocument = "0.5"
 tower-lsp-server = "0.22"
 streaming-iterator = "0.1"
 dashmap = "6"
