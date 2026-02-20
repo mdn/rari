@@ -26,6 +26,7 @@ jobs:
         with:
           registry-url: "https://registry.npmjs.org/"
           node-version-file: "./rari-npm/package.json"
+          check-latest: true
           package-manager-cache: false
 
       - name: Test Publish

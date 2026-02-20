@@ -3,10 +3,10 @@ name: Build Content and Diff
 on:
   pull_request:
     paths:
-      - '**/*.rs'
-      - '**/Cargo.lock'
-      - '**/Cargo.toml'
-      - '.github/workflows/build-content-and-diff.yml'
+      - "**/*.rs"
+      - "**/Cargo.lock"
+      - "**/Cargo.toml"
+      - ".github/workflows/build-content-and-diff.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}

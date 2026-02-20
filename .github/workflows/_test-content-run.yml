@@ -8,11 +8,11 @@ on:
         required: true
         type: string
       command:
-        description: 'The rari command to run (e.g., content fix-flaws, content fmt-sidebars)'
+        description: "The rari command to run (e.g., content fix-flaws, content fmt-sidebars)"
         required: true
         type: string
       translated-content:
-        description: 'Whether to checkout translated-content'
+        description: "Whether to checkout translated-content"
         required: false
         type: boolean
         default: false
