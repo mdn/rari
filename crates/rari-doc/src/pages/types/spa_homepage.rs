@@ -84,12 +84,12 @@ pub fn featured_articles(
 }
 
 pub fn recent_contributions() -> Result<Vec<HomePageRecentContribution>, DocError> {
-    let mut content = recent_contributions_from_git(content_root(), "mdn/content")?;
+    let mut content = recent_contributions_from_git(content_root(), "mdn/content").unwrap_or_default();
     if let Some(translated_root) = content_translated_root() {
         content.extend(recent_contributions_from_git(
             translated_root,
             "mdn/translated-content",
-        )?);
+        ).unwrap_or_default());
     };
     content.sort_by(|a, b| a.updated_at.cmp(&b.updated_at));
     Ok(content)
@@ -105,8 +105,7 @@ fn recent_contributions_from_git(
     let output = Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .current_dir(path)
-        .output()
-        .expect("failed to execute git rev-parse");
+        .output()?;
 
     let repo_root_raw = String::from_utf8_lossy(&output.stdout);
     let repo_root = repo_root_raw.trim();
@@ -120,8 +119,7 @@ fn recent_contributions_from_git(
             "-z",
         ])
         .current_dir(repo_root)
-        .output()
-        .expect("failed to execute process");
+        .output()?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     Ok(output_str
