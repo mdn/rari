@@ -21,13 +21,9 @@ jobs:
       - name: Checkout
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
+          node-version-file: rari-npm/.nvmrc
           registry-url: "https://registry.npmjs.org/"
-          node-version-file: "./rari-npm/package.json"
           package-manager-cache: false
-
-      # Ensure npm 11.5.1 or later for trusted publishing
-      - name: Install latest npm
-        run: npm install -g npm@latest
 
       - name: Generate Schema
         working-directory: ./rari-npm
