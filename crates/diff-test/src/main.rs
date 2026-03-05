@@ -189,6 +189,7 @@ const IGNORED_KEYS: &[&str] = &[
     "doc.source.github_url",
     "doc.source.last_commit_url",
     "doc.other_translations",
+    "doc.titleHTML",
 ];
 
 static SKIP_GLOB_LIST: LazyLock<Vec<&str>> = LazyLock::new(Vec::new);
