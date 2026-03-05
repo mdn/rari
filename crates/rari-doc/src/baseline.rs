@@ -37,10 +37,68 @@ static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
 ///   or `None` if the key is not found or `WEB_FEATURES` is not initialized.
 pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>> {
     if let Some(ref web_features) = *WEB_FEATURES {
-        return match &browser_compat {
-            &[bcd_key] => web_features.baseline_by_bcd_key(bcd_key.as_str()),
-            _ => None,
-        };
+        return get_baseline_from(browser_compat, web_features);
     }
     None
+}
+
+fn get_baseline_from<'a>(
+    browser_compat: &[String],
+    web_features: &'a WebFeatures,
+) -> Option<Baseline<'a>> {
+    match browser_compat {
+        [bcd_key] => web_features.baseline_by_bcd_key(bcd_key.as_str()),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rari_data::baseline::BaselineHighLow;
+
+    use super::*;
+
+    static TEST_WEB_FEATURES: LazyLock<WebFeatures> = LazyLock::new(|| {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/web-features.json");
+        WebFeatures::from_file(&path).unwrap()
+    });
+
+    fn get(keys: &[&str]) -> Option<Baseline<'static>> {
+        let keys: Vec<String> = keys.iter().map(|s| s.to_string()).collect();
+        get_baseline_from(&keys, &TEST_WEB_FEATURES)
+    }
+
+    #[test]
+    fn empty() {
+        assert!(get(&[]).is_none());
+    }
+
+    #[test]
+    fn missing() {
+        assert!(get(&["api.NonExistent"]).is_none());
+    }
+
+    #[test]
+    fn single_high() {
+        let b = get(&["api.high"]).unwrap();
+        assert_eq!(b.support.baseline, BaselineHighLow::High);
+    }
+
+    #[test]
+    fn single_low() {
+        let b = get(&["api.low"]).unwrap();
+        assert_eq!(b.support.baseline, BaselineHighLow::Low);
+    }
+
+    #[test]
+    fn single_limited() {
+        let b = get(&["api.limited"]).unwrap();
+        assert_eq!(b.support.baseline, BaselineHighLow::False);
+    }
+
+    #[test]
+    fn multiple_keys() {
+        assert!(get(&["api.high", "api.low"]).is_none());
+    }
 }

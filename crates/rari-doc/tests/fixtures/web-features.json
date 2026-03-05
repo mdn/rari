@@ -1,0 +1,46 @@
+{
+  "features": {
+    "high": {
+      "kind": "feature",
+      "name": "Widely Available",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": {
+          "api.high": { "baseline": "high", "support": {} }
+        }
+      },
+      "compat_features": ["api.high"]
+    },
+    "low": {
+      "kind": "feature",
+      "name": "Newly Available",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": "low",
+        "support": {},
+        "by_compat_key": {
+          "api.low": { "baseline": "low", "support": {} }
+        }
+      },
+      "compat_features": ["api.low"]
+    },
+    "limited": {
+      "kind": "feature",
+      "name": "Limited Availability",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": false,
+        "support": {},
+        "by_compat_key": {
+          "api.limited": { "baseline": false, "support": {} }
+        }
+      },
+      "compat_features": ["api.limited"]
+    }
+  }
+}
