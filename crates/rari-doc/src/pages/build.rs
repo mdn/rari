@@ -21,7 +21,7 @@ use super::types::generic::Generic;
 use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::helpers::parents::parents;
-use crate::helpers::title::{page_title, transform_title};
+use crate::helpers::title::{TitleFormat, page_title, process_backticks, transform_title};
 use crate::html::banner::build_banner;
 use crate::html::bubble_up::bubble_up_curriculum_page;
 use crate::html::code::{Code, code_blocks};
@@ -299,6 +299,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
     Ok(BuiltPage::Doc(Box::new(JsonDocPage {
         doc: JsonDoc {
             title: doc.title().to_string(),
+            title_html: process_backticks(&doc.meta.title_raw, TitleFormat::Html),
             is_markdown: true,
             locale: doc.locale(),
             native: doc.locale().into(),

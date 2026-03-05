@@ -270,6 +270,8 @@ pub struct JsonDoc {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
     pub title: String,
+    #[serde(rename = "titleHTML")]
+    pub title_html: String,
     pub toc: Vec<TocEntry>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline: Option<Baseline<'static>>,
@@ -304,6 +306,7 @@ impl JsonDocMetadata {
             source,
             summary,
             title,
+            title_html,
             baseline,
             browser_compat,
             page_type,
@@ -326,6 +329,7 @@ impl JsonDocMetadata {
             source,
             summary,
             title,
+            title_html,
             baseline,
             browser_compat,
             page_type,
@@ -360,6 +364,8 @@ pub struct JsonDocMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
     pub title: String,
+    #[serde(rename = "titleHTML")]
+    pub title_html: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline: Option<Baseline<'static>>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
