@@ -9,10 +9,11 @@
         "baseline": "high",
         "support": {},
         "by_compat_key": {
-          "api.high": { "baseline": "high", "support": {} }
+          "api.high": { "baseline": "high", "support": {} },
+          "api.high-adjacent": { "baseline": "high", "support": {} }
         }
       },
-      "compat_features": ["api.high"]
+      "compat_features": ["api.high", "api.high-adjacent"]
     },
     "low": {
       "kind": "feature",
