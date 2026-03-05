@@ -289,7 +289,7 @@ pub struct Support {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     safari_ios: Option<String>,
 }
-#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum BaselineHighLow {
     High,
