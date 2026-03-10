@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13](https://github.com/mdn/rari/compare/v0.2.12...v0.2.13) (2026-03-04)
+
+
+### Bug Fixes
+
+* **css-syntax,doc,tools:** update CSS slugs ([#518](https://github.com/mdn/rari/issues/518)) ([a8adacf](https://github.com/mdn/rari/commit/a8adacfefaa9f4a0b75f1128318def9c99d84b04))
+* **issues:** stabilize `build --issues` output ([#516](https://github.com/mdn/rari/issues/516)) ([3b1e2be](https://github.com/mdn/rari/commit/3b1e2be489d5d56ea3d0dbd14ac458bdfac5b38b))
+
+
+### Miscellaneous
+
+* **deps:** bump bytes from 1.10.1 to 1.11.1 ([#517](https://github.com/mdn/rari/issues/517)) ([48c8f14](https://github.com/mdn/rari/commit/48c8f14f6b949de951baf3076c229170e12f8cdd))
+* **deps:** bump clap from 4.5.54 to 4.5.60 ([#542](https://github.com/mdn/rari/issues/542)) ([618c910](https://github.com/mdn/rari/commit/618c9104f7e908ddd18ebbbc532978a574b6ce55))
+* **deps:** bump fake from 4.3.0 to 4.4.0 ([#524](https://github.com/mdn/rari/issues/524)) ([d699f12](https://github.com/mdn/rari/commit/d699f1250ef9824a9d52db653c3916f0130a4f44))
+* **deps:** bump flate2 from 1.1.2 to 1.1.9 ([#550](https://github.com/mdn/rari/issues/550)) ([2022daa](https://github.com/mdn/rari/commit/2022daa0d1b44778731a2ccf5e2e948913fe23c7))
+* **deps:** bump inventory from 0.3.21 to 0.3.22 ([#548](https://github.com/mdn/rari/issues/548)) ([fadc0b0](https://github.com/mdn/rari/commit/fadc0b0f0dd2a43279157c2ff980bfcb31011556))
+* **deps:** bump lsp-textdocument from 0.4.2 to 0.5.0 ([#526](https://github.com/mdn/rari/issues/526)) ([a0531bd](https://github.com/mdn/rari/commit/a0531bd59b0c696bbae89dfbfbf7cdef1ee5d47e))
+* **deps:** bump pretty_yaml + yaml_parser ([#535](https://github.com/mdn/rari/issues/535)) ([8e74c51](https://github.com/mdn/rari/commit/8e74c512a527329a679f01aaff6fab69ab042171))
+* **deps:** bump proxy-from-env from 1.1.0 to 2.0.0 in /rari-npm ([#532](https://github.com/mdn/rari/issues/532)) ([2f06b53](https://github.com/mdn/rari/commit/2f06b5342fa49cb4350c58cccd280838cfa811cf))
+* **deps:** bump quote from 1.0.42 to 1.0.44 ([#525](https://github.com/mdn/rari/issues/525)) ([416965b](https://github.com/mdn/rari/commit/416965b69d2f25f7a1909860d61c185c05325736))
+* **deps:** bump reqwest from 0.12.20 to 0.12.28 ([#543](https://github.com/mdn/rari/issues/543)) ([36c816c](https://github.com/mdn/rari/commit/36c816ccd401da3ab4c3f09034c3dcd767da552d))
+* **deps:** bump strum from 0.27.2 to 0.28.0 ([#549](https://github.com/mdn/rari/issues/549)) ([c3aa42e](https://github.com/mdn/rari/commit/c3aa42ead35efa6c29dd4719417b1702528772a3))
+* **deps:** bump syn from 2.0.114 to 2.0.117 ([#541](https://github.com/mdn/rari/issues/541)) ([7bc471b](https://github.com/mdn/rari/commit/7bc471bb2e6d383b59a98bc60c4f9ad7ba9d072e))
+* **deps:** bump tar from 7.5.7 to 7.5.8 in /rari-npm ([#537](https://github.com/mdn/rari/issues/537)) ([87f2f25](https://github.com/mdn/rari/commit/87f2f251d4ffb1c6d480c4edafcb558ca29f84aa))
+* **deps:** bump tar from 7.5.8 to 7.5.9 in /rari-npm in the npm-prod group ([#539](https://github.com/mdn/rari/issues/539)) ([68f238d](https://github.com/mdn/rari/commit/68f238d51396f73e7020198fa719ab869d87d31a))
+* **deps:** bump time from 0.3.41 to 0.3.47 ([#522](https://github.com/mdn/rari/issues/522)) ([b087199](https://github.com/mdn/rari/commit/b087199342bd85b5f1c6546ab0301f7e8ea9f7ca))
+* **deps:** bump unescaper from 0.1.6 to 0.1.8 ([#523](https://github.com/mdn/rari/issues/523)) ([7368347](https://github.com/mdn/rari/commit/7368347f4e28b0c0ed5a2ce741fbcfce17b99704))
+* **page-types:** add webdriver-event ([#551](https://github.com/mdn/rari/issues/551)) ([cf8fe8a](https://github.com/mdn/rari/commit/cf8fe8a4da45f64091ec980d8e596f8350881147))
+
+## [0.2.12](https://github.com/mdn/rari/compare/v0.2.11...v0.2.12) (2026-02-03)
+
+
+### Bug Fixes
+
+* **cssinfo:** update CSS guides urls ([#508](https://github.com/mdn/rari/issues/508)) ([40f7beb](https://github.com/mdn/rari/commit/40f7bebf59aa6d3c1a3c1df67ad81a728b518036))
+* **doc:** ignore `templ-broken-link` issues for unavailable content ([#505](https://github.com/mdn/rari/issues/505)) ([32943d5](https://github.com/mdn/rari/commit/32943d5675c11fbc748e539abcade0ef6e7c792a))
+* **doc:** rewrite content-only images ([#506](https://github.com/mdn/rari/issues/506)) ([a458583](https://github.com/mdn/rari/commit/a45858395842b3e36128bc8368625ed831925df1))
+* **svginfo:** update SVG Element url ([#490](https://github.com/mdn/rari/issues/490)) ([0b960d7](https://github.com/mdn/rari/commit/0b960d76553aca5b00a952879b357b7b26210d38))
+
+
+### Miscellaneous
+
+* **deps:** bump memoize from 0.5.1 to 0.6.0 ([#513](https://github.com/mdn/rari/issues/513)) ([a9e6622](https://github.com/mdn/rari/commit/a9e6622ea717155ac8222a9542c27a095077f846))
+* **deps:** bump quick-xml from 0.37.5 to 0.39.0 ([#511](https://github.com/mdn/rari/issues/511)) ([0bf473d](https://github.com/mdn/rari/commit/0bf473d9f1fe3c55e2206c4a600bcc81c169b54b))
+* **deps:** bump serial_test from 3.2.0 to 3.3.1 ([#510](https://github.com/mdn/rari/issues/510)) ([8473c8d](https://github.com/mdn/rari/commit/8473c8d918c2310cddee32598c13def12037c010))
+* **deps:** bump tar from 7.5.6 to 7.5.7 in /rari-npm ([#504](https://github.com/mdn/rari/issues/504)) ([19b2568](https://github.com/mdn/rari/commit/19b2568c8a0ded30739e79c782027b763ec1d03c))
+* **deps:** bump thiserror from 2.0.12 to 2.0.18 ([#512](https://github.com/mdn/rari/issues/512)) ([4d2fad1](https://github.com/mdn/rari/commit/4d2fad1a6f5ca350281e53ab818f54aaa8484b35))
+
+## [0.2.11](https://github.com/mdn/rari/compare/v0.2.10...v0.2.11) (2026-01-26)
+
+
+### Features
+
+* **cli:** add `--all-available` build option ([#494](https://github.com/mdn/rari/issues/494)) ([b255ac9](https://github.com/mdn/rari/commit/b255ac95c028027dd33b4d578496b618b4097b07))
+* **cli:** print issue summary on build ([#488](https://github.com/mdn/rari/issues/488)) ([8eb3ed6](https://github.com/mdn/rari/commit/8eb3ed67d4d3545481b3082c9a5ea8937b14509f))
+
+
+### Miscellaneous
+
+* **deps:** bump dialoguer from 0.11.0 to 0.12.0 ([#498](https://github.com/mdn/rari/issues/498)) ([0800d7c](https://github.com/mdn/rari/commit/0800d7ca975868cfe5c56414e6b4d9b61ef11bb8))
+* **deps:** bump icu_collator from 2.0.0 to 2.1.1 ([#484](https://github.com/mdn/rari/issues/484)) ([aef0d52](https://github.com/mdn/rari/commit/aef0d52ca23d7f77975749917a0d737a170b773c))
+* **deps:** bump ignore from 0.4.23 to 0.4.25 ([#486](https://github.com/mdn/rari/issues/486)) ([b4652f7](https://github.com/mdn/rari/commit/b4652f7a2ed7b63d3bfa3b8be3e1a98ea0cdc643))
+* **deps:** bump indexmap from 2.12.1 to 2.13.0 ([#485](https://github.com/mdn/rari/issues/485)) ([e64f75e](https://github.com/mdn/rari/commit/e64f75ea1216e3a4769d81b09ca5d93555629739))
+* **deps:** bump indoc from 2.0.6 to 2.0.7 ([#478](https://github.com/mdn/rari/issues/478)) ([da0d533](https://github.com/mdn/rari/commit/da0d5339ac4110a70f1f619a08e79a7e6820691c))
+* **deps:** bump lodash from 4.17.21 to 4.17.23 in /rari-npm ([#492](https://github.com/mdn/rari/issues/492)) ([c42c2dd](https://github.com/mdn/rari/commit/c42c2ddf77b5348451a6a76c397d68dcd00fe22e))
+* **deps:** bump lol_html from 2.4.0 to 2.7.1 ([#497](https://github.com/mdn/rari/issues/497)) ([a2d3ef6](https://github.com/mdn/rari/commit/a2d3ef6fa01fbd4f58531e166696ee4428883017))
+* **deps:** bump proc-macro2 from 1.0.103 to 1.0.105 ([#487](https://github.com/mdn/rari/issues/487)) ([5d70f71](https://github.com/mdn/rari/commit/5d70f710b54d6d8c45ac3b7c55bcddf668664f99))
+* **deps:** bump schemars from 1.0.4 to 1.2.0 ([#499](https://github.com/mdn/rari/issues/499)) ([15143ac](https://github.com/mdn/rari/commit/15143ac8b5db5d53789370de219ecdb5f0134c3e))
+* **deps:** bump serde_json from 1.0.140 to 1.0.149 ([#479](https://github.com/mdn/rari/issues/479)) ([2f642cc](https://github.com/mdn/rari/commit/2f642cc16aada87b0e09eed1f120a643f4721b18))
+* **deps:** bump svg_metadata from 0.5.1 to 0.6.0 ([#480](https://github.com/mdn/rari/issues/480)) ([04aa05d](https://github.com/mdn/rari/commit/04aa05d59b82c92c433491adb6c3610420bdf469))
+* **deps:** bump syn from 2.0.111 to 2.0.114 ([#481](https://github.com/mdn/rari/issues/481)) ([8a10b6c](https://github.com/mdn/rari/commit/8a10b6c461c32765b3c13ab8c62bf05b5a6a6849))
+* **deps:** bump tar from 7.5.2 to 7.5.4 in /rari-npm ([#489](https://github.com/mdn/rari/issues/489)) ([2e0f246](https://github.com/mdn/rari/commit/2e0f246334710a0c236df8094ab93a484f0791a1))
+* **deps:** bump tar from 7.5.4 to 7.5.6 in /rari-npm in the npm-prod group ([#496](https://github.com/mdn/rari/issues/496)) ([77212d3](https://github.com/mdn/rari/commit/77212d344fc1e3ec64ea61863c9d79f7a9178802))
+* **deps:** bump tar in /rari-npm in the npm-prod group ([77212d3](https://github.com/mdn/rari/commit/77212d344fc1e3ec64ea61863c9d79f7a9178802))
+* **deps:** bump tower-http from 0.6.7 to 0.6.8 ([#500](https://github.com/mdn/rari/issues/500)) ([0b59a04](https://github.com/mdn/rari/commit/0b59a04f5a7270481044e107b80bf60d92228478))
+* **github:** remove obsolete `settings.yml` ([#491](https://github.com/mdn/rari/issues/491)) ([0681813](https://github.com/mdn/rari/commit/068181335b12fb9faea4f7f0cf1aaf53d1e4d803))
+
 ## [0.2.10](https://github.com/mdn/rari/compare/v0.2.9...v0.2.10) (2026-01-19)
 
 

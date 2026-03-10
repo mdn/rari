@@ -35,6 +35,7 @@ pub(crate) fn get_issue_counter_f() -> i64 {
 #[derive(Debug, Clone, Serialize)]
 pub struct Issue {
     pub req: u64,
+    #[serde(skip_serializing)]
     pub ic: i64,
     /// Column in BYTES from start of line (from tree-sitter or comrak sourcepos)
     pub col: i64,
@@ -71,6 +72,20 @@ pub struct InMemoryLayer {
 impl InMemoryLayer {
     pub fn get_events(&self) -> Arc<DashMap<String, Vec<Issue>>> {
         Arc::clone(&self.events)
+    }
+
+    /// Returns issues as a sorted BTreeMap for deterministic output.
+    /// Files are sorted alphabetically, and issues within each file
+    /// are sorted by line, then column.
+    pub fn sorted_issues(&self) -> BTreeMap<String, Vec<Issue>> {
+        self.events
+            .iter()
+            .map(|entry| {
+                let mut issues = entry.value().clone();
+                issues.sort_by(|a, b| a.line.cmp(&b.line).then_with(|| a.col.cmp(&b.col)));
+                (entry.key().clone(), issues)
+            })
+            .collect()
     }
 }
 
