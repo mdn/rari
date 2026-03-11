@@ -18,7 +18,7 @@ use validator::Validate;
 
 use crate::cached_readers::{CACHED_DOC_PAGE_FILES, doc_page_from_static_files};
 use crate::error::DocError;
-use crate::helpers::title::{TitleFormat, process_backticks};
+use crate::helpers::title::{TitleFormat, render_title};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::pages::types::utils::FmTempl;
 use crate::redirects::resolve_redirect;
@@ -350,7 +350,7 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
         banners,
         ..
     } = serde_yaml_ng::from_str(fm)?;
-    let title = process_backticks(&title_raw, TitleFormat::Plain);
+    let title = render_title(&title_raw, TitleFormat::Plain);
     let url = build_url(&slug, locale, PageCategory::Doc)?;
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?

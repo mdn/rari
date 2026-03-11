@@ -6,19 +6,19 @@ pub enum TitleFormat {
     Html,
 }
 
-pub fn process_backticks(title: &str, format: TitleFormat) -> String {
+pub fn render_title(title: &str, format: TitleFormat) -> String {
     let html = matches!(format, TitleFormat::Html);
     let mut out = String::with_capacity(title.len() * 2);
     // swap escaped backticks for a unicode noncharacter placeholder:
     let normalized = title.replace("\\`", "\u{FFFE}");
     let parts: Vec<&str> = normalized.split('`').collect();
 
-    for (i, s) in parts.iter().enumerate() {
+    for (i, part) in parts.iter().enumerate() {
         let is_odd = i % 2 == 1;
         let is_last = i == parts.len() - 1;
         let is_unmatched = is_odd && is_last;
         let is_code = is_odd && !is_last;
-        let s = s.replace('\u{FFFE}', "`");
+        let s = part.replace('\u{FFFE}', "`");
 
         if is_unmatched {
             out.push('`');
@@ -141,14 +141,16 @@ mod test {
             ("\\`foo\\`", "`foo`", "`foo`"),
             ("\\`foo` bar", "`foo` bar", "`foo` bar"),
             ("`foo\\`bar`", "foo`bar", "<code>foo`bar</code>"),
+            (
+                "RegExp.leftContext ($`)",
+                "RegExp.leftContext ($`)",
+                "RegExp.leftContext ($`)",
+            ),
         ];
 
         for (input, expected_plain, expected_html) in cases {
-            assert_eq!(
-                process_backticks(input, TitleFormat::Plain),
-                *expected_plain,
-            );
-            assert_eq!(process_backticks(input, TitleFormat::Html), *expected_html,);
+            assert_eq!(render_title(input, TitleFormat::Plain), *expected_plain,);
+            assert_eq!(render_title(input, TitleFormat::Html), *expected_html,);
         }
     }
 
