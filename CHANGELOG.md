@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.14](https://github.com/mdn/rari/compare/v0.2.13...v0.2.14) (2026-03-12)
+
+
+### Features
+
+* **baseline:** show banner when all bcd keys share a feature ([#554](https://github.com/mdn/rari/issues/554)) ([87a3172](https://github.com/mdn/rari/commit/87a3172b7776e404ba2e08db3de6fa54987f4e77))
+* **doc:** add titleHTML to support backticks for code ([#552](https://github.com/mdn/rari/issues/552)) ([3aa785f](https://github.com/mdn/rari/commit/3aa785f0887dd17c51cb4196e4eea81c9c19d99f))
+
+
+### Miscellaneous
+
+* **deps:** bump chrono from 0.4.42 to 0.4.44 ([#558](https://github.com/mdn/rari/issues/558)) ([27b018a](https://github.com/mdn/rari/commit/27b018a404e664d28e0171857dc8cb71e19cfb8d))
+* **deps:** bump quinn-proto from 0.11.12 to 0.11.14 ([#562](https://github.com/mdn/rari/issues/562)) ([6b2eda0](https://github.com/mdn/rari/commit/6b2eda07bbf0767f2c16b2852c7ac7a9aeb4e65f))
+* **deps:** bump regex from 1.12.2 to 1.12.3 ([#557](https://github.com/mdn/rari/issues/557)) ([4831863](https://github.com/mdn/rari/commit/48318632c8b8bc7c3cece3fdf7be7745f81b6db1))
+* **deps:** bump tar from 7.5.10 to 7.5.11 in /rari-npm ([#563](https://github.com/mdn/rari/issues/563)) ([fe3c845](https://github.com/mdn/rari/commit/fe3c84570e005979d4871f4d7d25cd1adfaf6024))
+* **deps:** bump tar from 7.5.9 to 7.5.10 in /rari-npm ([#553](https://github.com/mdn/rari/issues/553)) ([ea280c6](https://github.com/mdn/rari/commit/ea280c6566c82e536efad898997e247148d95749))
+* **deps:** bump tokio from 1.49.0 to 1.50.0 ([#559](https://github.com/mdn/rari/issues/559)) ([a05d552](https://github.com/mdn/rari/commit/a05d552917eca3efe72d5deb2ad1936ffb2c1bdc))
+
 ## [0.2.13](https://github.com/mdn/rari/compare/v0.2.12...v0.2.13) (2026-03-04)
 
 
