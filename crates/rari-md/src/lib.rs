@@ -74,7 +74,7 @@ pub fn m2h_internal(
         }
     });
 
-    let mut html = vec![];
+    let mut html = String::new();
     CustomFormatter::format_document(
         root,
         &options,
@@ -84,10 +84,8 @@ pub fn m2h_internal(
             locale,
         },
     )
-    //format_document(root, &options, &mut html, locale)
     .map_err(|_| MarkdownError::HTMLFormatError)?;
-    let encoded_html = String::from_utf8(html).map_err(|_| MarkdownError::HTMLFormatError)?;
-    Ok(encoded_html)
+    Ok(html)
 }
 
 #[cfg(test)]
@@ -252,9 +250,9 @@ mod test {
     #[test]
     fn escape_hrefs() -> Result<(), anyhow::Error> {
         fn eh(s: &str) -> Result<String, anyhow::Error> {
-            let mut out = Vec::with_capacity(s.len());
-            escape_href(&mut out, s.as_bytes())?;
-            Ok(String::from_utf8(out)?)
+            let mut out = String::with_capacity(s.len());
+            escape_href(&mut out, s)?;
+            Ok(out)
         }
 
         assert_eq!(eh("/en-US/foo/bar")?, "/en-US/foo/bar");
