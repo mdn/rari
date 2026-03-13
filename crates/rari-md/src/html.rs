@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Write;
 
@@ -66,9 +67,8 @@ create_formatter!(CustomFormatter<RariContext>, {
                 context.cr()?;
 
                 let mut first_tag = 0;
-                let mut pre_attributes: HashMap<String, String> = HashMap::new();
-                let mut code_attributes: HashMap<String, String> = HashMap::new();
-                let code_attr: String;
+                let mut pre_attributes: HashMap<&'static str, Cow<str>> = HashMap::new();
+                let mut code_attributes: HashMap<&'static str, Cow<str>> = HashMap::new();
 
                 let info = ncb.info.as_bytes();
 
@@ -81,21 +81,21 @@ create_formatter!(CustomFormatter<RariContext>, {
                     let info_str = ncb.info[first_tag..].trim();
 
                     if context.options.render.github_pre_lang {
-                        pre_attributes.insert(String::from("lang"), lang_str.to_string());
+                        pre_attributes.insert("lang", lang_str.to_string().into());
 
                         if context.options.render.full_info_string && !info_str.is_empty() {
                             pre_attributes.insert(
-                                String::from("data-meta"),
-                                info_str.trim().to_string(),
+                                "data-meta",
+                                info_str.trim().to_string().into(),
                             );
                         }
                     } else {
-                        code_attr = format!("language-{lang_str}");
-                        code_attributes.insert(String::from("class"), code_attr);
+                        let code_attr = format!("language-{lang_str}");
+                        code_attributes.insert("class", code_attr.into());
 
                         if context.options.render.full_info_string && !info_str.is_empty() {
                             code_attributes
-                                .insert(String::from("data-meta"), info_str.to_string());
+                                .insert("data-meta", info_str.to_string().into());
                         }
                     }
                 }
@@ -103,7 +103,7 @@ create_formatter!(CustomFormatter<RariContext>, {
                 if context.options.render.sourcepos {
                     let ast = node.data.borrow();
                     pre_attributes
-                        .insert("data-sourcepos".to_string(), ast.sourcepos.to_string());
+                        .insert("data-sourcepos", ast.sourcepos.to_string().into());
                 }
 
                 match context.plugins.render.codefence_syntax_highlighter {
@@ -118,14 +118,14 @@ create_formatter!(CustomFormatter<RariContext>, {
                                     .map(|s| s.strip_suffix("-nolint").unwrap_or(s))
                                     .join(" ");
 
-                                *cls = format!("brush: {langs} notranslate",);
-                                &ncb.info != "plain"
+                                *cls = format!("brush: {langs} notranslate").into();
+                                &*ncb.info != "plain"
                             } else {
-                                *cls = "notranslate".to_string();
+                                *cls = "notranslate".into();
                                 false
                             }
                         } else {
-                            pre_attributes.insert("class".into(), "notranslate".into());
+                            pre_attributes.insert("class", "notranslate".into());
                             false
                         };
                         write_opening_tag(context, "pre", pre_attributes)?;
@@ -186,7 +186,7 @@ create_formatter!(CustomFormatter<RariContext>, {
             };
             if context.options.render.escape {
                 context.escape(literal)?;
-            } else if !context.options.render.unsafe_ {
+            } else if !context.options.render.r#unsafe {
                 context.write_str("<!-- raw HTML omitted -->")?;
             } else if context.options.extension.tagfilter {
                 tagfilter_block(literal, context)?;
@@ -215,7 +215,7 @@ create_formatter!(CustomFormatter<RariContext>, {
                     render_sourcepos(context, node)?;
                 }
                 context.write_str(" href=\"")?;
-                if context.options.render.unsafe_ {
+                if context.options.render.r#unsafe {
                     if let Some(rewriter) = &context.options.extension.link_url_rewriter {
                         escape_href(context, &rewriter.to_html(&nl.url))?;
                     } else {

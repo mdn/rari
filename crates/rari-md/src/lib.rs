@@ -1,5 +1,5 @@
 use comrak::nodes::{AstNode, NodeValue};
-use comrak::{Arena, ComrakOptions, parse_document};
+use comrak::{Arena, Options, parse_document};
 use html::{CustomFormatter, RariContext};
 use rari_types::locale::Locale;
 
@@ -51,10 +51,10 @@ pub fn m2h_internal(
     m2h_options: M2HOptions,
 ) -> Result<String, MarkdownError> {
     let arena = Arena::new();
-    let mut options = ComrakOptions::default();
+    let mut options = Options::default();
     options.extension.tagfilter = false;
     options.render.sourcepos = m2h_options.sourcepos;
-    options.render.unsafe_ = true;
+    options.render.r#unsafe = true;
     options.extension.table = true;
     options.extension.autolink = true;
     options.extension.header_ids = Some(Default::default());
