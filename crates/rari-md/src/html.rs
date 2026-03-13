@@ -155,10 +155,8 @@ create_formatter!(CustomFormatter<RariContext>, {
             context.cr()?;
             write!(context, "<h{}", nch.level)?;
             if context.options.extension.header_ids.is_some() {
-                let mut text_content = Vec::with_capacity(20);
-               collect_text(node, &mut text_content);
+                let raw_id = collect_text(node);
 
-                let raw_id = String::from_utf8(text_content).unwrap();
                 let is_templ = raw_id.contains(DELIM_START);
                 if is_templ {
                     write!(context, " data-update-id")?;
@@ -232,10 +230,9 @@ create_formatter!(CustomFormatter<RariContext>, {
                     context.write_all(b"\" title=\"")?;
                     context.escape(nl.title.as_bytes())?;
                 }
-                let mut text_content = Vec::with_capacity(20);
-                collect_text(node, &mut text_content);
+                let text_content = collect_text(node);
 
-                if text_content == url {
+                if text_content.as_bytes() == url {
                     context.write_all(b"\" data-autolink=\"")?;
                 }
                 context.write_all(b"\">")?;
