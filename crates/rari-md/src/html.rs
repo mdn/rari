@@ -14,6 +14,7 @@ use crate::ext::DELIM_START;
 use crate::node_card::{NoteCard, is_callout};
 use crate::utils::{escape_href, tagfilter_block};
 
+#[derive(Default)]
 pub struct RariContext {
     pub stack: Vec<Option<NoteCard>>,
     pub locale: Locale,
