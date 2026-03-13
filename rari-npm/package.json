@@ -1,6 +1,6 @@
 {
   "name": "@mdn/rari",
-  "version": "0.2.12",
+  "version": "0.2.14",
   "description": "npm package for rari",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -20,6 +20,7 @@
   },
   "author": "MDN Engineering Team <mdn-dev@mozilla.com>",
   "license": "MPL-2.0",
+  "packageManager": "npm@11.6.2",
   "engines": {
     "node": ">=20"
   },

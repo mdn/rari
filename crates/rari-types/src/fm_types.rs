@@ -97,6 +97,7 @@ pub enum PageType {
     WebdriverCommand,
     WebdriverCapability,
     WebdriverError,
+    WebdriverEvent,
     WebextensionApi,
     WebextensionApiEvent,
     WebextensionApiFunction,

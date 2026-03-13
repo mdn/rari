@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.2.12"
+version = "0.2.14"
 edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
@@ -95,7 +95,7 @@ yaml_parser = "0.3"
 const_format = "0.2"
 dialoguer = "0.12"
 semver = { version = "1", features = ["serde"] }
-strum = { version = "0.27", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 tokio = "1"
 inventory = "0.3"
 tree-sitter-mdn = "0.1"
