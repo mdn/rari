@@ -2,6 +2,7 @@ use tower_lsp_server::{LspService, Server};
 
 mod keywords;
 mod lsp;
+mod lsp_compat;
 mod parser;
 mod position;
 
