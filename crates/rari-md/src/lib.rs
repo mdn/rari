@@ -57,7 +57,6 @@ pub fn m2h_internal(
     options.render.r#unsafe = true;
     options.extension.table = true;
     options.extension.autolink = true;
-    options.parse.relaxed_autolinks = true;
     options.extension.header_ids = Some(Default::default());
     let root = parse_document(&arena, input, &options);
 
