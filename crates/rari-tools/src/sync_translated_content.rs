@@ -270,6 +270,10 @@ fn write_and_move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
     let mut new_doc = doc.clone();
     new_doc.meta.slug = target_slug.to_owned();
     new_doc.meta.original_slug = Some(doc.slug().to_owned());
+    // Do not serialize these for translated content
+    new_doc.meta.page_type = rari_types::fm_types::PageType::None;
+    new_doc.meta.spec_urls = vec![];
+    new_doc.meta.sidebar = vec![];
     new_doc.write()?;
 
     // Move index.md and all sibling files (assets) with git
