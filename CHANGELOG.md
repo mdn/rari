@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15](https://github.com/mdn/rari/compare/v0.2.14...v0.2.15) (2026-03-20)
+
+
+### Bug Fixes
+
+* **doc:** skip serializing some frontmatter in translated content ([#585](https://github.com/mdn/rari/issues/585)) ([bd6bb21](https://github.com/mdn/rari/commit/bd6bb211e97026fcc59ecb8fffddf43b19c44d45))
+
+
+### Miscellaneous
+
+* **deps:** bump anyhow from 1.0.98 to 1.0.102 ([#569](https://github.com/mdn/rari/issues/569)) ([c0476de](https://github.com/mdn/rari/commit/c0476de45c60d47a011c14fa448bfb0644d3c870))
+* **deps:** bump csv from 1.3.1 to 1.4.0 ([#570](https://github.com/mdn/rari/issues/570)) ([1c46a12](https://github.com/mdn/rari/commit/1c46a12fd85b9d082867a1418d0e42374c0ee132))
+* **deps:** bump https-proxy-agent from 7.0.6 to 8.0.0 in /rari-npm ([#568](https://github.com/mdn/rari/issues/568)) ([76fe8fe](https://github.com/mdn/rari/commit/76fe8fe0f894d917042b6c4d1be995f6db573728))
+* **deps:** bump proc-macro2 from 1.0.105 to 1.0.106 ([#571](https://github.com/mdn/rari/issues/571)) ([6f9f346](https://github.com/mdn/rari/commit/6f9f34680cba8de2b62ce12c9db245a76ad54093))
+* **deps:** bump serial_test from 3.3.1 to 3.4.0 ([#572](https://github.com/mdn/rari/issues/572)) ([ab72979](https://github.com/mdn/rari/commit/ab729797fed058a78561a38240b58fee371877dd))
+* **deps:** bump tower-lsp-server from 0.22.0 to 0.23.0 ([#482](https://github.com/mdn/rari/issues/482)) ([f3cb9ce](https://github.com/mdn/rari/commit/f3cb9ceff5bd6d150a0abd39194b9e43a266bc64))
+* remove TODO.md ([#581](https://github.com/mdn/rari/issues/581)) ([f02890c](https://github.com/mdn/rari/commit/f02890cc0379710477252a9bf272b00259e02c59))
+
 ## [0.2.14](https://github.com/mdn/rari/compare/v0.2.13...v0.2.14) (2026-03-12)
 
 
