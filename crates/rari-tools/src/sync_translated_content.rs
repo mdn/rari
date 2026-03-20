@@ -249,10 +249,6 @@ fn sync_translated_document(
         // Rename only: just update the slug in metadata
         let mut new_doc = doc.clone();
         new_doc.meta.slug = resolved_slug.to_string();
-        // Do not serialize these for translated content
-        new_doc.meta.page_type = rari_types::fm_types::PageType::None;
-        new_doc.meta.spec_urls = vec![];
-        new_doc.meta.sidebar = vec![];
         new_doc.write()?;
     }
 
@@ -521,6 +517,80 @@ mod test {
 
         let wiki_history = read_wiki_history(Locale::Es).unwrap();
         assert!(wiki_history.contains_key("orphaned/Web/API/Other"));
+    }
+
+    #[test]
+    fn test_sync_translated_content_moved_no_page_type() {
+        // Regression test: sync-translated-content was adding page-type to moved
+        // translated docs because copy_meta_from_super (which follows redirects
+        // since 0.2.10) populated doc.meta.page_type from the en-US doc.
+        let en_slugs = vec![
+            "Web/API/OtherMoved".to_string(),
+            "Web/API/ExampleOne".to_string(),
+        ];
+        let en_redirects = vec![(
+            "docs/Web/API/Other".to_string(),
+            "docs/Web/API/OtherMoved".to_string(),
+        )];
+        let _en_docs = DocFixtures::new(&en_slugs, Locale::EnUs);
+        // Overwrite the EN doc with a page-type to simulate a real en-US doc
+        let en_locale_root = root_for_locale(Locale::EnUs).unwrap();
+        let en_doc_path = en_locale_root
+            .join(Locale::EnUs.as_folder_str())
+            .join("web")
+            .join("api")
+            .join("othermoved")
+            .join("index.md");
+        std::fs::write(
+            &en_doc_path,
+            indoc::indoc! {"
+                ---
+                title: OtherMoved
+                slug: Web/API/OtherMoved
+                page-type: web-api-overview
+                ---
+
+                Content
+            "},
+        )
+        .unwrap();
+        let _en_redirects = RedirectFixtures::new(&en_redirects, Locale::EnUs);
+        let _en_wikihistory = WikihistoryFixtures::new(&en_slugs, Locale::EnUs);
+
+        let es_slugs = vec![
+            "Web/API/Other".to_string(),
+            "Web/API/ExampleOne".to_string(),
+        ];
+        let _es_docs = DocFixtures::new(&es_slugs, Locale::Es);
+        let _es_redirects = RedirectFixtures::new(&[], Locale::Es);
+        let _es_wikihistory = WikihistoryFixtures::new(&es_slugs, Locale::Es);
+
+        let _de_redirects = RedirectFixtures::new(&[], Locale::De);
+        let _fr_redirects = RedirectFixtures::new(&[], Locale::Fr);
+        let _ja_redirects = RedirectFixtures::new(&[], Locale::Ja);
+        let _ko_redirects = RedirectFixtures::new(&[], Locale::Ko);
+        let _ptbr_redirects = RedirectFixtures::new(&[], Locale::PtBr);
+        let _ru_redirects = RedirectFixtures::new(&[], Locale::Ru);
+        let _zhcn_redirects = RedirectFixtures::new(&[], Locale::ZhCn);
+        let _zhtw_redirects = RedirectFixtures::new(&[], Locale::ZhTw);
+
+        let result = sync_translated_content(&[Locale::Es], false);
+        assert!(result.is_ok());
+
+        let translated_root = content_translated_root().unwrap();
+        let moved_path = translated_root
+            .join(Locale::Es.as_folder_str())
+            .join("web")
+            .join("api")
+            .join("othermoved")
+            .join("index.md");
+        assert!(moved_path.exists());
+        let content = std::fs::read_to_string(&moved_path).unwrap();
+        assert!(
+            !content.contains("page-type:"),
+            "Moved translated doc should not contain page-type, but got:\n{}",
+            content
+        );
     }
 
     #[test]
