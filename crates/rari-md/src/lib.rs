@@ -250,6 +250,65 @@ mod test {
     }
 
     #[test]
+    fn heading_custom_id() -> Result<(), anyhow::Error> {
+        let out = m2h_internal(
+            "## Heading {#custom-id}",
+            Locale::EnUs,
+            M2HOptions { sourcepos: false },
+        )?;
+        assert_eq!(out, "<h2 id=\"custom-id\">Heading</h2>\n");
+        Ok(())
+    }
+
+    #[test]
+    fn heading_custom_id_with_bold() -> Result<(), anyhow::Error> {
+        let out = m2h_internal(
+            "## Heading **bold** {#my-id}",
+            Locale::EnUs,
+            M2HOptions { sourcepos: false },
+        )?;
+        assert_eq!(out, "<h2 id=\"my-id\">Heading <strong>bold</strong></h2>\n");
+        Ok(())
+    }
+
+    #[test]
+    fn heading_no_custom_id() -> Result<(), anyhow::Error> {
+        let out = m2h_internal(
+            "## Regular heading",
+            Locale::EnUs,
+            M2HOptions { sourcepos: false },
+        )?;
+        assert_eq!(out, "<h2 id=\"regular_heading\">Regular heading</h2>\n");
+        Ok(())
+    }
+
+    #[test]
+    fn heading_custom_id_not_at_end() -> Result<(), anyhow::Error> {
+        let out = m2h_internal(
+            "## Heading {#id} trailing",
+            Locale::EnUs,
+            M2HOptions { sourcepos: false },
+        )?;
+        // {#id} not at end, so it's treated as regular text and anchorized
+        assert_eq!(
+            out,
+            "<h2 id=\"heading_id_trailing\">Heading {#id} trailing</h2>\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn heading_h3_custom_id() -> Result<(), anyhow::Error> {
+        let out = m2h_internal(
+            "### Exemples {#examples}",
+            Locale::Fr,
+            M2HOptions { sourcepos: false },
+        )?;
+        assert_eq!(out, "<h3 id=\"examples\">Exemples</h3>\n");
+        Ok(())
+    }
+
+    #[test]
     fn escape_hrefs() -> Result<(), anyhow::Error> {
         fn eh(s: &str) -> Result<String, anyhow::Error> {
             let mut out = Vec::with_capacity(s.len());
