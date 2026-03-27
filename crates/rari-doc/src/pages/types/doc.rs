@@ -426,18 +426,36 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     // Read original frontmatter to pass additional fields along,
     // overwrite fields from meta
     let mut frontmatter: FrontMatter = serde_yaml_ng::from_str(fm)?;
+    let is_translated = locale != Locale::default();
     frontmatter = FrontMatter {
         title: doc.meta.title_raw.clone(),
         short_title: doc.meta.short_title.clone(),
-        tags: doc.meta.tags.clone(),
         slug: doc.meta.slug.clone(),
-        page_type: doc.meta.page_type,
-        status: doc.meta.status.clone(),
-        browser_compat: doc.meta.browser_compat.clone(),
-        spec_urls: doc.meta.spec_urls.clone(),
-        original_slug: doc.meta.original_slug.clone(),
-        sidebar: doc.meta.sidebar.clone(),
-        ..frontmatter
+        ..if is_translated {
+            FrontMatter {
+                tags: vec![],
+                page_type: PageType::None,
+                status: vec![],
+                browser_compat: vec![],
+                spec_urls: vec![],
+                original_slug: doc.meta.original_slug.clone(),
+                sidebar: vec![],
+                banners: vec![],
+                ..frontmatter
+            }
+        } else {
+            FrontMatter {
+                tags: doc.meta.tags.clone(),
+                page_type: doc.meta.page_type,
+                status: doc.meta.status.clone(),
+                browser_compat: doc.meta.browser_compat.clone(),
+                spec_urls: doc.meta.spec_urls.clone(),
+                original_slug: Option::None,
+                sidebar: doc.meta.sidebar.clone(),
+                banners: doc.meta.banners.clone(),
+                ..frontmatter
+            }
+        }
     };
 
     if let Some(parent) = file_path.parent() {

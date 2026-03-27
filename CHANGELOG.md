@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.16](https://github.com/mdn/rari/compare/v0.2.15...v0.2.16) (2026-03-26)
+
+
+### Bug Fixes
+
+* **doc:** derive ListGroups letter from API overview page ([#599](https://github.com/mdn/rari/issues/599)) ([ac5b0cb](https://github.com/mdn/rari/commit/ac5b0cbf6a8cb35c44ee902ff0d2eeb2d0f2bdff))
+
+
+### Miscellaneous
+
+* **deps:** bump cssparser from 0.36.0 to 0.37.0 ([#592](https://github.com/mdn/rari/issues/592)) ([c809971](https://github.com/mdn/rari/commit/c809971d3925aebad536716ff1bc4147ca6d5c5a))
+* **deps:** bump picomatch from 4.0.2 to 4.0.4 in /rari-npm ([#600](https://github.com/mdn/rari/issues/600)) ([0e5f641](https://github.com/mdn/rari/commit/0e5f641e3b239c0a8771b86e069d41799b94f01a))
+* **deps:** bump rand from 0.9.2 to 0.10.0 ([#593](https://github.com/mdn/rari/issues/593)) ([17b1d05](https://github.com/mdn/rari/commit/17b1d05ef8ffb089abfd3c70382e6d130560773b))
+* **deps:** bump rustls-webpki from 0.103.3 to 0.103.10 ([#588](https://github.com/mdn/rari/issues/588)) ([105140b](https://github.com/mdn/rari/commit/105140b7e4651d7ab616e45fe2485d7b5bdff295))
+* **deps:** bump tar from 0.4.44 to 0.4.45 ([#586](https://github.com/mdn/rari/issues/586)) ([439f5d2](https://github.com/mdn/rari/commit/439f5d2bd17e53cdeae5876e695d5d7cc4624c8f))
+* **deps:** bump the npm-prod group in /rari-npm with 2 updates ([#591](https://github.com/mdn/rari/issues/591)) ([9d6658a](https://github.com/mdn/rari/commit/9d6658aa7311fdb8dd7c807c76341ad2456f8ed1))
+* **deps:** bump tower from 0.5.2 to 0.5.3 ([#594](https://github.com/mdn/rari/issues/594)) ([1889f4f](https://github.com/mdn/rari/commit/1889f4f5e34227eaac3f0f6ceb1f98af0009375c))
+
+## [0.2.15](https://github.com/mdn/rari/compare/v0.2.14...v0.2.15) (2026-03-20)
+
+
+### Bug Fixes
+
+* **doc:** skip serializing some frontmatter in translated content ([#585](https://github.com/mdn/rari/issues/585)) ([bd6bb21](https://github.com/mdn/rari/commit/bd6bb211e97026fcc59ecb8fffddf43b19c44d45))
+
+
+### Miscellaneous
+
+* **deps:** bump anyhow from 1.0.98 to 1.0.102 ([#569](https://github.com/mdn/rari/issues/569)) ([c0476de](https://github.com/mdn/rari/commit/c0476de45c60d47a011c14fa448bfb0644d3c870))
+* **deps:** bump csv from 1.3.1 to 1.4.0 ([#570](https://github.com/mdn/rari/issues/570)) ([1c46a12](https://github.com/mdn/rari/commit/1c46a12fd85b9d082867a1418d0e42374c0ee132))
+* **deps:** bump https-proxy-agent from 7.0.6 to 8.0.0 in /rari-npm ([#568](https://github.com/mdn/rari/issues/568)) ([76fe8fe](https://github.com/mdn/rari/commit/76fe8fe0f894d917042b6c4d1be995f6db573728))
+* **deps:** bump proc-macro2 from 1.0.105 to 1.0.106 ([#571](https://github.com/mdn/rari/issues/571)) ([6f9f346](https://github.com/mdn/rari/commit/6f9f34680cba8de2b62ce12c9db245a76ad54093))
+* **deps:** bump serial_test from 3.3.1 to 3.4.0 ([#572](https://github.com/mdn/rari/issues/572)) ([ab72979](https://github.com/mdn/rari/commit/ab729797fed058a78561a38240b58fee371877dd))
+* **deps:** bump tower-lsp-server from 0.22.0 to 0.23.0 ([#482](https://github.com/mdn/rari/issues/482)) ([f3cb9ce](https://github.com/mdn/rari/commit/f3cb9ceff5bd6d150a0abd39194b9e43a266bc64))
+* remove TODO.md ([#581](https://github.com/mdn/rari/issues/581)) ([f02890c](https://github.com/mdn/rari/commit/f02890cc0379710477252a9bf272b00259e02c59))
+
 ## [0.2.14](https://github.com/mdn/rari/compare/v0.2.13...v0.2.14) (2026-03-12)
 
 
