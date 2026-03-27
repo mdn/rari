@@ -1,9 +1,9 @@
-use std::io;
-use std::io::Write;
+use std::fmt;
+use std::fmt::Write;
 
 use crate::ctype::isspace;
 
-pub fn tagfilter(literal: &[u8]) -> bool {
+pub fn tagfilter(literal: &str) -> bool {
     static TAGFILTER_BLACKLIST: [&str; 9] = [
         "title",
         "textarea",
@@ -16,40 +16,43 @@ pub fn tagfilter(literal: &[u8]) -> bool {
         "plaintext",
     ];
 
-    if literal.len() < 3 || literal[0] != b'<' {
+    let bytes = literal.as_bytes();
+
+    if bytes.len() < 3 || bytes[0] != b'<' {
         return false;
     }
 
     let mut i = 1;
-    if literal[i] == b'/' {
+    if bytes[i] == b'/' {
         i += 1;
     }
 
-    let lc = unsafe { String::from_utf8_unchecked(literal[i..].to_vec()) }.to_lowercase();
+    let lc = literal[i..].to_lowercase();
     for t in TAGFILTER_BLACKLIST.iter() {
         if lc.starts_with(t) {
             let j = i + t.len();
-            return isspace(literal[j])
-                || literal[j] == b'>'
-                || (literal[j] == b'/' && literal.len() >= j + 2 && literal[j + 1] == b'>');
+            return isspace(bytes[j])
+                || bytes[j] == b'>'
+                || (bytes[j] == b'/' && bytes.len() >= j + 2 && bytes[j + 1] == b'>');
         }
     }
 
     false
 }
 
-pub fn tagfilter_block(input: &[u8], o: &mut dyn Write) -> io::Result<()> {
-    let size = input.len();
+pub fn tagfilter_block(input: &str, o: &mut dyn Write) -> fmt::Result {
+    let bytes = input.as_bytes();
+    let size = bytes.len();
     let mut i = 0;
 
     while i < size {
         let org = i;
-        while i < size && input[i] != b'<' {
+        while i < size && bytes[i] != b'<' {
             i += 1;
         }
 
         if i > org {
-            o.write_all(&input[org..i])?;
+            o.write_str(&input[org..i])?;
         }
 
         if i >= size {
@@ -57,9 +60,9 @@ pub fn tagfilter_block(input: &[u8], o: &mut dyn Write) -> io::Result<()> {
         }
 
         if tagfilter(&input[i..]) {
-            o.write_all(b"&lt;")?;
+            o.write_str("&lt;")?;
         } else {
-            o.write_all(b"<")?;
+            o.write_str("<")?;
         }
 
         i += 1;
@@ -67,15 +70,16 @@ pub fn tagfilter_block(input: &[u8], o: &mut dyn Write) -> io::Result<()> {
 
     Ok(())
 }
-pub fn escape_href(output: &mut dyn Write, buffer: &[u8]) -> io::Result<()> {
-    let size = buffer.len();
+pub fn escape_href(output: &mut dyn Write, buffer: &str) -> fmt::Result {
+    let bytes = buffer.as_bytes();
+    let size = bytes.len();
     let mut i = 0;
     let mut escaped = "";
 
     while i < size {
         let org = i;
         while i < size {
-            escaped = match buffer[i] {
+            escaped = match bytes[i] {
                 b'&' => "&amp;",
                 b'<' => "&lt;",
                 b'>' => "&gt;",
@@ -92,11 +96,11 @@ pub fn escape_href(output: &mut dyn Write, buffer: &[u8]) -> io::Result<()> {
         }
 
         if i > org {
-            output.write_all(&buffer[org..i])?;
+            output.write_str(&buffer[org..i])?;
         }
 
         if !escaped.is_empty() {
-            output.write_all(escaped.as_bytes())?;
+            output.write_str(escaped)?;
             escaped = "";
             i += 1;
         }
