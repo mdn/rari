@@ -35,4 +35,3 @@ jobs:
           target: ${{ matrix.target }}
           build-tool: ${{ matrix.build-tool }}
           profile: release-lto
-          token: ${{ secrets.GITHUB_TOKEN }}
