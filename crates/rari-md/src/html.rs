@@ -153,7 +153,7 @@ create_formatter!(CustomFormatter<RariContext>, {
         if entering {
             context.cr()?;
             write!(context, "<h{}", nch.level)?;
-            if context.options.extension.header_ids.is_some() {
+            if context.options.extension.header_id_prefix.is_some() {
                 let raw_id = collect_text(node);
 
                 let is_templ = raw_id.contains(DELIM_START);
