@@ -6,6 +6,171 @@ use rari_types::locale::Locale;
 use crate::error::MarkdownError;
 use crate::p::{fix_p, is_empty_p, is_escaped_templ_p};
 
+/// Returns the byte offset of the next opening `<a` tag in `bytes` at or after `from`.
+/// Only matches tags where `<a` is followed by whitespace or `>` (not `<abbr>`, `<aside>`, etc.).
+fn find_next_opening_a(bytes: &[u8], from: usize) -> Option<usize> {
+    let mut pos = from;
+    while pos < bytes.len() {
+        let rel = bytes[pos..].iter().position(|&b| b == b'<')?;
+        let lt = pos + rel;
+        // Need at least `<a` (2 bytes)
+        if lt + 1 >= bytes.len() {
+            break;
+        }
+        let c1 = bytes[lt + 1];
+        // Must be 'a' or 'A', not '/' (closing tag) and not another letter
+        if c1 == b'a' || c1 == b'A' {
+            // Must be followed by whitespace, '>', or end-of-input
+            let c2 = bytes.get(lt + 2).copied().unwrap_or(b'>');
+            if matches!(c2, b' ' | b'\t' | b'\n' | b'\r' | b'>') {
+                return Some(lt);
+            }
+        }
+        pos = lt + 1;
+    }
+    None
+}
+
+/// Injects `data-sourcepos="<sp>"` into the first opening `<a` tag in `html`.
+fn inject_sourcepos_in_opening_a(html: &mut String, sp: &str) {
+    if let Some(lt) = find_next_opening_a(html.as_bytes(), 0) {
+        html.insert_str(lt + 2, &format!(" data-sourcepos=\"{sp}\""));
+    }
+}
+
+/// Walks an HTML block literal, injecting `data-sourcepos` into every opening `<a` tag.
+/// `block_start_line` is the 1-based line number of the first line of the block in the source.
+fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> String {
+    let mut result = String::with_capacity(literal.len() + 64);
+    let bytes = literal.as_bytes();
+    let mut pos = 0usize;
+    let mut line = block_start_line; // 1-based, tracks current line
+    let mut line_start = 0usize; // byte offset of current line's start within `literal`
+
+    loop {
+        match find_next_opening_a(bytes, pos) {
+            None => {
+                result.push_str(&literal[pos..]);
+                break;
+            }
+            Some(lt) => {
+                // Advance line tracking over the region we're about to emit
+                for (i, &b) in bytes.iter().enumerate().skip(pos).take(lt - pos) {
+                    if b == b'\n' {
+                        line += 1;
+                        line_start = i + 1;
+                    }
+                }
+                let start_col = lt - line_start + 1; // 1-based byte column
+
+                // Find the closing '>' of this opening tag (respects quoted attrs)
+                let (end_line, end_col) = find_opening_tag_end(bytes, lt, line, line_start);
+
+                let sp = format!("{line}:{start_col}-{end_line}:{end_col}");
+                // Emit up to and including `<a`, then inject
+                result.push_str(&literal[pos..lt + 2]);
+                result.push_str(&format!(" data-sourcepos=\"{sp}\""));
+                pos = lt + 2;
+            }
+        }
+    }
+    result
+}
+
+/// Scans forward from `tag_start` in `bytes` to find the `>` that closes the opening tag,
+/// handling double- and single-quoted attribute values. Returns the 1-based (line, col) of `>`.
+fn find_opening_tag_end(
+    bytes: &[u8],
+    tag_start: usize,
+    start_line: usize,
+    start_line_byte: usize,
+) -> (usize, usize) {
+    let mut in_quote: Option<u8> = None;
+    let mut line = start_line;
+    let mut line_start = start_line_byte;
+
+    for (i, &b) in bytes.iter().enumerate().skip(tag_start) {
+        match in_quote {
+            Some(q) => {
+                if b == q {
+                    in_quote = None;
+                } else if b == b'\n' {
+                    line += 1;
+                    line_start = i + 1;
+                }
+            }
+            None => match b {
+                b'"' | b'\'' => in_quote = Some(b),
+                b'>' => return (line, i - line_start + 1),
+                b'\n' => {
+                    line += 1;
+                    line_start = i + 1;
+                }
+                _ => {}
+            },
+        }
+    }
+    // Fallback: use start position
+    (start_line, tag_start - start_line_byte + 1)
+}
+
+/// Injects `data-sourcepos` attributes into raw HTML `<a>` tags in `HtmlInline` and
+/// `HtmlBlock` AST nodes. This allows `fix_link.rs` to report accurate line numbers for
+/// ill-cased or redirected links that appear as raw HTML rather than Markdown link syntax.
+fn annotate_raw_html_links(node: &AstNode<'_>, sourcepos: bool) {
+    if !sourcepos {
+        return;
+    }
+    enum Action {
+        None,
+        Inline(String), // sourcepos string to inject
+        Block(usize),   // block_start_line
+    }
+
+    let action = {
+        let data = node.data.borrow();
+        match &data.value {
+            NodeValue::HtmlInline(html) if find_next_opening_a(html.as_bytes(), 0).is_some() => {
+                let sp = data.sourcepos;
+                Action::Inline(format!(
+                    "{}:{}-{}:{}",
+                    sp.start.line, sp.start.column, sp.end.line, sp.end.column
+                ))
+            }
+            NodeValue::HtmlBlock(nhb)
+                if find_next_opening_a(nhb.literal.as_bytes(), 0).is_some() =>
+            {
+                Action::Block(data.sourcepos.start.line)
+            }
+            _ => Action::None,
+        }
+    }; // immutable borrow dropped here
+
+    match action {
+        Action::None => {}
+        Action::Inline(sp) => {
+            let mut data = node.data.borrow_mut();
+            if let NodeValue::HtmlInline(ref mut html) = data.value {
+                inject_sourcepos_in_opening_a(html, &sp);
+            }
+        }
+        Action::Block(block_start_line) => {
+            let new_literal = {
+                let data = node.data.borrow();
+                if let NodeValue::HtmlBlock(ref nhb) = data.value {
+                    inject_sourcepos_in_html_block(&nhb.literal, block_start_line)
+                } else {
+                    return;
+                }
+            };
+            let mut data = node.data.borrow_mut();
+            if let NodeValue::HtmlBlock(ref mut nhb) = data.value {
+                nhb.literal = new_literal;
+            }
+        }
+    }
+}
+
 pub mod anchor;
 pub(crate) mod ctype;
 pub(crate) mod dl;
@@ -72,6 +237,7 @@ pub fn m2h_internal(
         if templs_p || empty_p {
             fix_p(node)
         }
+        annotate_raw_html_links(node, m2h_options.sourcepos);
     });
 
     let mut html = String::new();
@@ -259,6 +425,145 @@ mod test {
         assert_eq!(eh("/en-US/foo/\"")?, "/en-US/foo/&quot;");
         assert_eq!(eh("/en-US/foo<script")?, "/en-US/foo&lt;script");
         assert_eq!(eh("/en-US/foo&bar")?, "/en-US/foo&amp;bar");
+        Ok(())
+    }
+
+    // ── raw-HTML sourcepos injection ─────────────────────────────────────────
+
+    #[test]
+    fn test_find_next_opening_a() {
+        assert_eq!(find_next_opening_a(b"<a href=\"/foo\">", 0), Some(0));
+        assert_eq!(find_next_opening_a(b"text <a href>", 0), Some(5));
+        assert_eq!(find_next_opening_a(b"<A HREF=\"/foo\">", 0), Some(0)); // uppercase
+        assert_eq!(find_next_opening_a(b"<a>", 0), Some(0)); // bare anchor
+        assert_eq!(find_next_opening_a(b"</a>", 0), None); // closing tag
+        assert_eq!(find_next_opening_a(b"<abbr>", 0), None); // not an <a>
+        assert_eq!(find_next_opening_a(b"<aside>", 0), None); // not an <a>
+        // Skips non-<a> tags, finds <a> further in
+        assert_eq!(find_next_opening_a(b"<abbr><a href>", 0), Some(6));
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_opening_a() {
+        let mut html = String::from("<a href=\"/foo\">");
+        inject_sourcepos_in_opening_a(&mut html, "1:1-1:15");
+        assert_eq!(html, "<a data-sourcepos=\"1:1-1:15\" href=\"/foo\">");
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_opening_a_uppercase() {
+        let mut html = String::from("<A HREF=\"/foo\">");
+        inject_sourcepos_in_opening_a(&mut html, "1:1-1:15");
+        assert_eq!(html, "<A data-sourcepos=\"1:1-1:15\" HREF=\"/foo\">");
+    }
+
+    #[test]
+    fn test_inject_sourcepos_closing_tag_unchanged() {
+        let mut html = String::from("</a>");
+        inject_sourcepos_in_opening_a(&mut html, "1:1-1:4");
+        assert_eq!(html, "</a>"); // closing tag must not be modified
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_html_block_single_line() {
+        let result = inject_sourcepos_in_html_block("<a href=\"/foo\">text</a>", 1);
+        assert_eq!(
+            result,
+            "<a data-sourcepos=\"1:1-1:15\" href=\"/foo\">text</a>"
+        );
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_html_block_multiline_a() {
+        // The `>` ending the opening tag is on line 2
+        let result = inject_sourcepos_in_html_block("<a\n  href=\"/foo\">text</a>", 1);
+        assert_eq!(
+            result,
+            "<a data-sourcepos=\"1:1-2:14\"\n  href=\"/foo\">text</a>"
+        );
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_html_block_start_line_offset() {
+        // Block starts on line 5 of the source
+        let result = inject_sourcepos_in_html_block("<a href=\"/foo\">text</a>", 5);
+        assert!(result.contains("data-sourcepos=\"5:1-5:15\""));
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_html_block_multiple_links() {
+        let input = "<a href=\"/foo\">A</a> <a href=\"/bar\">B</a>";
+        let result = inject_sourcepos_in_html_block(input, 1);
+        // Both links should get data-sourcepos
+        let count = result.matches("data-sourcepos=").count();
+        assert_eq!(
+            count, 2,
+            "Both <a> tags should get data-sourcepos: {result}"
+        );
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_html_block_skips_abbr() {
+        let result = inject_sourcepos_in_html_block("<abbr title=\"x\">y</abbr>", 1);
+        assert!(
+            !result.contains("data-sourcepos"),
+            "<abbr> should not get data-sourcepos: {result}"
+        );
+    }
+
+    // ── end-to-end m2h tests ─────────────────────────────────────────────────
+
+    #[test]
+    fn html_inline_a_gets_sourcepos() -> Result<(), anyhow::Error> {
+        let out = m2h("text <a href=\"/foo\">link</a> end", Locale::EnUs)?;
+        assert!(
+            out.contains("<a data-sourcepos="),
+            "Inline <a> tag should have data-sourcepos injected, got: {out}"
+        );
+        assert!(
+            !out.contains("</a data-sourcepos"),
+            "Closing </a> tag must not be modified, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn html_block_a_gets_sourcepos() -> Result<(), anyhow::Error> {
+        let out = m2h("<a href=\"/foo\">text</a>", Locale::EnUs)?;
+        assert!(
+            out.contains("<a data-sourcepos="),
+            "Block-level <a> tag should have data-sourcepos injected, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn html_block_multiline_a_gets_sourcepos() -> Result<(), anyhow::Error> {
+        let out = m2h("<a\n  href=\"/foo\">text</a>", Locale::EnUs)?;
+        assert!(
+            out.contains("<a data-sourcepos="),
+            "Multi-line block <a> tag should have data-sourcepos injected, got: {out}"
+        );
+        // sourcepos should span lines 1–2
+        assert!(
+            out.contains("data-sourcepos=\"1:1-2:"),
+            "sourcepos should start on line 1 and end on line 2, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn html_inline_a_sourcepos_disabled() -> Result<(), anyhow::Error> {
+        let out = m2h_internal(
+            "text <a href=\"/foo\">link</a> end",
+            Locale::EnUs,
+            M2HOptions { sourcepos: false },
+        )?;
+        // With sourcepos disabled no data-sourcepos attributes anywhere
+        assert!(
+            !out.contains("data-sourcepos"),
+            "No data-sourcepos expected when sourcepos is disabled, got: {out}"
+        );
         Ok(())
     }
 }
