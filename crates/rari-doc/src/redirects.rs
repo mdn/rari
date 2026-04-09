@@ -92,6 +92,26 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+/// For a non-en-US doc URL with no explicit locale redirect, checks whether
+/// the en-US equivalent has a redirect and returns the translated locale URL.
+///
+/// This handles the case where a page was moved in en-US but no corresponding
+/// locale redirect was created (e.g. because the page was never translated).
+fn en_redirect_for_locale(url: &str, redirects: &HashMap<String, String>) -> Option<String> {
+    let meta = url_meta_from(url).ok()?;
+    if meta.locale == Locale::EnUs || meta.page_category != PageCategory::Doc {
+        return None;
+    }
+    let en_url = format!("/en-us/docs/{}", meta.slug.to_lowercase());
+    let en_redirect = redirects.get(&en_url)?;
+    let en_meta = url_meta_from(en_redirect.as_str()).ok()?;
+    Some(format!(
+        "/{}/docs/{}",
+        meta.locale.as_url_str(),
+        en_meta.slug
+    ))
+}
+
 /// Resolves a given URL to a redirect URL if one exists.
 ///
 /// Takes a URL string as input and returns an Option containing either:
@@ -131,30 +151,58 @@ pub fn resolve_redirect<'a>(url: impl AsRef<str>) -> Option<Cow<'a, str>> {
                     None
                 }
             })
-            .or_else(|| {
-                // For non-en-US doc URLs with no explicit locale redirect, check if the
-                // en-US equivalent has a redirect and translate it to the locale.
-                // This handles the case where a page was moved in en-US but no
-                // corresponding locale redirect was created (e.g. because the page
-                // was never translated).
-                let meta = url_meta_from(url_no_hash).ok()?;
-                if meta.locale == Locale::EnUs || meta.page_category != PageCategory::Doc {
-                    return None;
-                }
-                let en_url = format!("/en-us/docs/{}", meta.slug.to_lowercase());
-                let en_redirect = REDIRECTS.get(&en_url)?;
-                let en_meta = url_meta_from(en_redirect.as_str()).ok()?;
-                Some(Cow::Owned(format!(
-                    "/{}/docs/{}",
-                    meta.locale.as_url_str(),
-                    en_meta.slug
-                )))
-            }),
+            .or_else(|| en_redirect_for_locale(url_no_hash, &REDIRECTS).map(Cow::Owned)),
         None => None,
     };
     match (redirect, hash) {
         (None, _) => None,
         (Some(url), hash) if url.contains('#') || hash.is_empty() => Some(url),
         (Some(url), hash) => Some(Cow::Owned(format!("{url}{hash}"))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn redirects(entries: &[(&str, &str)]) -> HashMap<String, String> {
+        entries
+            .iter()
+            .map(|(k, v)| (k.to_lowercase(), v.to_string()))
+            .collect()
+    }
+
+    #[test]
+    fn test_en_redirect_translated_to_locale() {
+        let map = redirects(&[(
+            "/en-US/docs/Learn/Accessibility/WAI-ARIA_basics",
+            "/en-US/docs/Learn_web_development/Core/Accessibility/WAI-ARIA_basics",
+        )]);
+        assert_eq!(
+            en_redirect_for_locale("/es/docs/Learn/Accessibility/WAI-ARIA_basics", &map),
+            Some("/es/docs/Learn_web_development/Core/Accessibility/WAI-ARIA_basics".to_string())
+        );
+    }
+
+    #[test]
+    fn test_en_redirect_not_applied_for_en_us() {
+        let map = redirects(&[("/en-US/docs/Old", "/en-US/docs/New")]);
+        assert_eq!(en_redirect_for_locale("/en-US/docs/Old", &map), None);
+    }
+
+    #[test]
+    fn test_en_redirect_no_match_returns_none() {
+        let map = redirects(&[]);
+        assert_eq!(
+            en_redirect_for_locale("/es/docs/Learn/Accessibility/WAI-ARIA_basics", &map),
+            None
+        );
+    }
+
+    #[test]
+    fn test_en_redirect_non_doc_ignored() {
+        // Blog posts should not be affected
+        let map = redirects(&[("/en-US/docs/Old", "/en-US/docs/New")]);
+        assert_eq!(en_redirect_for_locale("/en-US/blog/some-post", &map), None);
     }
 }
