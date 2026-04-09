@@ -16,7 +16,8 @@ use rari_utils::error::RariIoError;
 use tracing::error;
 
 use crate::error::DocError;
-use crate::pages::page::{Page, PageLike};
+use crate::pages::page::{Page, PageCategory, PageLike};
+use crate::resolve::url_meta_from;
 
 static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     let mut map = HashMap::new();
@@ -121,13 +122,34 @@ pub fn resolve_redirect<'a>(url: impl AsRef<str>) -> Option<Cow<'a, str>> {
                 .unwrap_or(Cow::Borrowed(redirect)),
         ),
         Some(redirect) => Some(Cow::Borrowed(redirect)),
-        None if url.starts_with("/") => Page::from_url(url).ok().and_then(|page| {
-            if url != page.url() {
-                Some(Cow::Owned(page.url().to_string()))
-            } else {
-                None
-            }
-        }),
+        None if url.starts_with("/") => Page::from_url(url)
+            .ok()
+            .and_then(|page| {
+                if url != page.url() {
+                    Some(Cow::Owned(page.url().to_string()))
+                } else {
+                    None
+                }
+            })
+            .or_else(|| {
+                // For non-en-US doc URLs with no explicit locale redirect, check if the
+                // en-US equivalent has a redirect and translate it to the locale.
+                // This handles the case where a page was moved in en-US but no
+                // corresponding locale redirect was created (e.g. because the page
+                // was never translated).
+                let meta = url_meta_from(url_no_hash).ok()?;
+                if meta.locale == Locale::EnUs || meta.page_category != PageCategory::Doc {
+                    return None;
+                }
+                let en_url = format!("/en-us/docs/{}", meta.slug.to_lowercase());
+                let en_redirect = REDIRECTS.get(&en_url)?;
+                let en_meta = url_meta_from(en_redirect.as_str()).ok()?;
+                Some(Cow::Owned(format!(
+                    "/{}/docs/{}",
+                    meta.locale.as_url_str(),
+                    en_meta.slug
+                )))
+            }),
         None => None,
     };
     match (redirect, hash) {
