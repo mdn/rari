@@ -18,6 +18,7 @@ use validator::Validate;
 
 use crate::cached_readers::{CACHED_DOC_PAGE_FILES, doc_page_from_static_files};
 use crate::error::DocError;
+use crate::helpers::title::{TitleFormat, render_title};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::pages::types::utils::FmTempl;
 use crate::redirects::resolve_redirect;
@@ -96,6 +97,7 @@ pub struct FrontMatter {
 #[derive(Debug, Clone)]
 pub struct Meta {
     pub title: String,
+    pub title_raw: String,
     pub short_title: Option<String>,
     pub tags: Vec<String>,
     pub slug: String,
@@ -335,7 +337,7 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     let FrontMatter {
-        title,
+        title: title_raw,
         short_title,
         tags,
         slug,
@@ -348,6 +350,7 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
         banners,
         ..
     } = serde_yaml_ng::from_str(fm)?;
+    let title = render_title(&title_raw, TitleFormat::Plain);
     let url = build_url(&slug, locale, PageCategory::Doc)?;
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?
@@ -378,6 +381,7 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
     Ok(Doc {
         meta: Meta {
             title,
+            title_raw,
             short_title,
             tags,
             slug,
@@ -422,18 +426,36 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     // Read original frontmatter to pass additional fields along,
     // overwrite fields from meta
     let mut frontmatter: FrontMatter = serde_yaml_ng::from_str(fm)?;
+    let is_translated = locale != Locale::default();
     frontmatter = FrontMatter {
-        title: doc.meta.title.clone(),
+        title: doc.meta.title_raw.clone(),
         short_title: doc.meta.short_title.clone(),
-        tags: doc.meta.tags.clone(),
         slug: doc.meta.slug.clone(),
-        page_type: doc.meta.page_type,
-        status: doc.meta.status.clone(),
-        browser_compat: doc.meta.browser_compat.clone(),
-        spec_urls: doc.meta.spec_urls.clone(),
-        original_slug: doc.meta.original_slug.clone(),
-        sidebar: doc.meta.sidebar.clone(),
-        ..frontmatter
+        ..if is_translated {
+            FrontMatter {
+                tags: vec![],
+                page_type: PageType::None,
+                status: vec![],
+                browser_compat: vec![],
+                spec_urls: vec![],
+                original_slug: doc.meta.original_slug.clone(),
+                sidebar: vec![],
+                banners: vec![],
+                ..frontmatter
+            }
+        } else {
+            FrontMatter {
+                tags: doc.meta.tags.clone(),
+                page_type: doc.meta.page_type,
+                status: doc.meta.status.clone(),
+                browser_compat: doc.meta.browser_compat.clone(),
+                spec_urls: doc.meta.spec_urls.clone(),
+                original_slug: Option::None,
+                sidebar: doc.meta.sidebar.clone(),
+                banners: doc.meta.banners.clone(),
+                ..frontmatter
+            }
+        }
     };
 
     if let Some(parent) = file_path.parent() {

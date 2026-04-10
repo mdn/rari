@@ -1,5 +1,5 @@
 use comrak::nodes::{AstNode, NodeValue};
-use comrak::{Arena, ComrakOptions, parse_document};
+use comrak::{Arena, Options, parse_document};
 use html::{CustomFormatter, RariContext};
 use rari_types::locale::Locale;
 
@@ -51,13 +51,13 @@ pub fn m2h_internal(
     m2h_options: M2HOptions,
 ) -> Result<String, MarkdownError> {
     let arena = Arena::new();
-    let mut options = ComrakOptions::default();
+    let mut options = Options::default();
     options.extension.tagfilter = false;
     options.render.sourcepos = m2h_options.sourcepos;
-    options.render.unsafe_ = true;
+    options.render.r#unsafe = true;
     options.extension.table = true;
     options.extension.autolink = true;
-    options.extension.header_ids = Some(Default::default());
+    options.extension.header_id_prefix = Some(Default::default());
     let root = parse_document(&arena, input, &options);
 
     iter_nodes(root, &|node| {
@@ -74,7 +74,7 @@ pub fn m2h_internal(
         }
     });
 
-    let mut html = vec![];
+    let mut html = String::new();
     CustomFormatter::format_document(
         root,
         &options,
@@ -84,10 +84,8 @@ pub fn m2h_internal(
             locale,
         },
     )
-    //format_document(root, &options, &mut html, locale)
     .map_err(|_| MarkdownError::HTMLFormatError)?;
-    let encoded_html = String::from_utf8(html).map_err(|_| MarkdownError::HTMLFormatError)?;
-    Ok(encoded_html)
+    Ok(html)
 }
 
 #[cfg(test)]
@@ -201,7 +199,7 @@ mod test {
         let out = m2h("- foo\n\n- bar\n", Locale::EnUs)?;
         assert_eq!(
             out,
-            "<ul data-sourcepos=\"1:1-3:5\">\n<li data-sourcepos=\"1:1-2:0\">\n<p data-sourcepos=\"1:3-1:5\">foo</p>\n</li>\n<li data-sourcepos=\"3:1-3:5\">\n<p data-sourcepos=\"3:3-3:5\">bar</p>\n</li>\n</ul>\n"
+            "<ul data-sourcepos=\"1:1-3:5\">\n<li data-sourcepos=\"1:1-1:5\">\n<p data-sourcepos=\"1:3-1:5\">foo</p>\n</li>\n<li data-sourcepos=\"3:1-3:5\">\n<p data-sourcepos=\"3:3-3:5\">bar</p>\n</li>\n</ul>\n"
         );
         Ok(())
     }
@@ -252,9 +250,9 @@ mod test {
     #[test]
     fn escape_hrefs() -> Result<(), anyhow::Error> {
         fn eh(s: &str) -> Result<String, anyhow::Error> {
-            let mut out = Vec::with_capacity(s.len());
-            escape_href(&mut out, s.as_bytes())?;
-            Ok(String::from_utf8(out)?)
+            let mut out = String::with_capacity(s.len());
+            escape_href(&mut out, s)?;
+            Ok(out)
         }
 
         assert_eq!(eh("/en-US/foo/bar")?, "/en-US/foo/bar");

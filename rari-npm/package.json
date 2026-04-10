@@ -1,6 +1,6 @@
 {
   "name": "@mdn/rari",
-  "version": "0.2.9",
+  "version": "0.2.16",
   "description": "npm package for rari",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -20,13 +20,14 @@
   },
   "author": "MDN Engineering Team <mdn-dev@mozilla.com>",
   "license": "MPL-2.0",
+  "packageManager": "npm@11.6.2",
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "extract-zip": "^2.0.1",
-    "https-proxy-agent": "^7.0.2",
-    "proxy-from-env": "^1.1.0",
+    "https-proxy-agent": "^9.0.0",
+    "proxy-from-env": "^2.0.0",
     "tar": "^7.4.3",
     "json-schema-to-typescript": "^15.0.0"
   }

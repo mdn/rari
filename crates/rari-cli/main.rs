@@ -19,7 +19,10 @@ use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas, build_top_level_meta,
 };
-use rari_doc::cached_readers::{CACHED_DOC_PAGE_FILES, read_and_cache_doc_pages};
+use rari_doc::cached_readers::{
+    CACHED_DOC_PAGE_FILES, blog_files, contributor_spotlight_files, curriculum_files,
+    generic_content_files, read_and_cache_doc_pages,
+};
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::Page;
@@ -37,7 +40,10 @@ use rari_tools::redirects::{fix_redirects, validate_redirects};
 use rari_tools::remove::remove;
 use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
-use rari_types::globals::{SETTINGS, build_out_root, content_root, content_translated_root};
+use rari_types::globals::{
+    SETTINGS, blog_root, build_out_root, content_root, content_translated_root,
+    contributor_spotlight_root, curriculum_root, generic_content_root,
+};
 use rari_types::locale::Locale;
 use rari_types::settings::Settings;
 use rari_utils::io::read_to_string;
@@ -89,6 +95,18 @@ enum Commands {
 struct FixFlawsArgs {
     #[arg(short, long, help = "Only fix flaws for <LOCALE>")]
     locale: Option<Locale>,
+    #[arg(long, help = "Fix all content types")]
+    all: bool,
+    #[arg(long, help = "Fix flaws in content (default if no flags specified)")]
+    content: bool,
+    #[arg(long, help = "Fix flaws in blog posts")]
+    blog: bool,
+    #[arg(long, help = "Fix flaws in curriculum pages")]
+    curriculum: bool,
+    #[arg(long, help = "Fix flaws in contributor spotlights")]
+    spotlights: bool,
+    #[arg(long, help = "Fix flaws in generic-content pages")]
+    generics: bool,
 }
 #[derive(Args)]
 struct ExportSchemaArgs {
@@ -190,6 +208,11 @@ struct BuildArgs {
     no_cache: bool,
     #[arg(long, help = "Build everything")]
     all: bool,
+    #[arg(
+        long,
+        help = "Build everything available (skips optional content if root not configured)"
+    )]
+    all_available: bool,
     #[arg(
         long,
         help = "Don't automatically build basics: content, spas, search-index"
@@ -394,7 +417,12 @@ fn main() -> Result<(), Error> {
             let mut urls = Vec::new();
             let mut docs = Vec::new();
             info!("Building everything 🛠️");
-            if args.all || !args.no_basic || args.content || !arg_files.is_empty() {
+            if args.all
+                || args.all_available
+                || !args.no_basic
+                || args.content
+                || !arg_files.is_empty()
+            {
                 let start = std::time::Instant::now();
                 docs = if !arg_files.is_empty() {
                     read_docs_parallel::<Page, Doc>(&arg_files, None)?
@@ -414,14 +442,19 @@ fn main() -> Result<(), Error> {
                     docs.len()
                 );
             }
-            if args.all || !args.no_basic || args.spas {
+            if args.all || args.all_available || !args.no_basic || args.spas {
                 let start = std::time::Instant::now();
                 let spas = build_spas()?;
                 let num = spas.len();
                 urls.extend(spas);
                 info!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
             }
-            if args.all || !args.no_basic || args.content || !arg_files.is_empty() {
+            if args.all
+                || args.all_available
+                || !args.no_basic
+                || args.content
+                || !arg_files.is_empty()
+            {
                 let start = std::time::Instant::now();
                 let (docs, meta) = build_docs(&docs)?;
                 build_top_level_meta(meta)?;
@@ -432,12 +465,13 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || !args.no_basic || args.search_index {
+            if args.all || args.all_available || !args.no_basic || args.search_index {
                 let start = std::time::Instant::now();
                 build_search_index(&docs)?;
                 info!("Took: {: >10.3?} to build search index", start.elapsed());
             }
-            if args.all || args.generics {
+            if args.all || args.generics || (args.all_available && generic_content_root().is_some())
+            {
                 let start = std::time::Instant::now();
                 let generic_pages = build_generic_pages()?;
                 let num = generic_pages.len();
@@ -447,7 +481,7 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || args.curriculum {
+            if args.all || args.curriculum || (args.all_available && curriculum_root().is_some()) {
                 let start = std::time::Instant::now();
                 let curriculum_pages = build_curriculum_pages()?;
                 let num = curriculum_pages.len();
@@ -457,14 +491,17 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || args.blog {
+            if args.all || args.blog || (args.all_available && blog_root().is_some()) {
                 let start = std::time::Instant::now();
                 let blog_pages = build_blog_pages()?;
                 let num = blog_pages.len();
                 urls.extend(blog_pages);
                 info!("Took: {: >10.3?} to build blog ({num})", start.elapsed());
             }
-            if args.all || args.spotlights {
+            if args.all
+                || args.spotlights
+                || (args.all_available && contributor_spotlight_root().is_some())
+            {
                 let start = std::time::Instant::now();
                 let contributor_spotlight_pages = build_contributor_spotlight_pages()?;
                 let num = contributor_spotlight_pages.len();
@@ -474,7 +511,8 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || args.sitemaps && !urls.is_empty() {
+            let total_files = urls.len();
+            if args.all || args.all_available || args.sitemaps && !urls.is_empty() {
                 let sitemaps = Sitemaps { sitemap_meta: urls };
                 let start = std::time::Instant::now();
                 let out_path = build_out_root()?;
@@ -493,11 +531,23 @@ fn main() -> Result<(), Error> {
                     .expect("unable to close templ recorder");
             }
 
+            let events = memory_layer.get_events();
+            let num_files = events.len();
+            let num_issues: usize = events.iter().map(|e| e.value().len()).sum();
+
+            if num_issues > 0 {
+                info!(
+                    "Found {} issues in {} of {} files",
+                    num_issues, num_files, total_files
+                );
+            } else {
+                info!("No issues found in {} files", total_files);
+            }
+
             if let Some(issues_path) = args.issues {
-                let events = memory_layer.get_events();
-                let file = File::create(issues_path).unwrap();
+                let file = File::create(&issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
-                serde_json::to_writer_pretty(&mut buffed, &*events).unwrap();
+                serde_json::to_writer_pretty(&mut buffed, &memory_layer.sorted_issues()).unwrap();
             }
         }
         Commands::Serve(args) => {
@@ -560,21 +610,92 @@ fn main() -> Result<(), Error> {
                 gather_inventory()?;
             }
             ContentSubcommand::FixFlaws(args) => {
-                let start = std::time::Instant::now();
                 let mut settings = Settings::new()?;
                 settings.cache_content = true;
                 let _ = SETTINGS.set(settings);
-                let docs = read_and_cache_doc_pages()?;
-                info!(
-                    "Took: {: >10.3?} for reading {} docs",
-                    start.elapsed(),
-                    docs.len()
-                );
+
+                // Determine which content types to fix
+                // Default to content if no flags specified
+                let fix_content = args.all
+                    || args.content
+                    || (!args.blog && !args.curriculum && !args.spotlights && !args.generics);
+                let fix_blog = args.all || args.blog;
+                let fix_curriculum = args.all || args.curriculum;
+                let fix_spotlights = args.all || args.spotlights;
+                let fix_generics = args.all || args.generics;
+
+                let mut all_pages = Vec::new();
+
+                // Collect content pages
+                if fix_content {
+                    let start = std::time::Instant::now();
+                    let docs = read_and_cache_doc_pages()?;
+                    info!(
+                        "Took: {: >10.3?} for reading {} content pages",
+                        start.elapsed(),
+                        docs.len()
+                    );
+                    all_pages.extend(docs);
+                }
+
+                // Collect blog posts
+                if fix_blog {
+                    let start = std::time::Instant::now();
+                    let blog_pages: Vec<Page> = blog_files().posts.values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} blog posts",
+                        start.elapsed(),
+                        blog_pages.len()
+                    );
+                    all_pages.extend(blog_pages);
+                }
+
+                // Collect curriculum pages
+                if fix_curriculum {
+                    let start = std::time::Instant::now();
+                    let curriculum_pages: Vec<Page> =
+                        curriculum_files().by_url.values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} curriculum pages",
+                        start.elapsed(),
+                        curriculum_pages.len()
+                    );
+                    all_pages.extend(curriculum_pages);
+                }
+
+                // Collect contributor spotlight pages
+                if fix_spotlights {
+                    let start = std::time::Instant::now();
+                    let spotlight_pages: Vec<Page> =
+                        contributor_spotlight_files().values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} contributor spotlight pages",
+                        start.elapsed(),
+                        spotlight_pages.len()
+                    );
+                    all_pages.extend(spotlight_pages);
+                }
+
+                // Collect generic content pages
+                if fix_generics {
+                    let start = std::time::Instant::now();
+                    let generic_pages: Vec<Page> =
+                        generic_content_files().values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} generic content pages",
+                        start.elapsed(),
+                        generic_pages.len()
+                    );
+                    all_pages.extend(generic_pages);
+                }
+
+                // Fix flaws in all collected pages
                 let start = std::time::Instant::now();
-                let fixed = fix_all(&docs, args.locale)?;
+                let fixed = fix_all(&all_pages, args.locale)?;
                 info!(
-                    "Took: {: >10.3?} for fixing {} docs",
+                    "Took: {: >10.3?} for fixing {} pages (fixed {})",
                     start.elapsed(),
+                    all_pages.len(),
                     fixed.len()
                 );
             }
@@ -612,8 +733,8 @@ fn update(version: Option<String>) -> Result<(), Error> {
         .no_confirm(true)
         .show_download_progress(true)
         .current_version(cargo_crate_version!());
-    // Use GITHUB_TOKEN if it's set to avoid rate limiting
-    if let Ok(gh_token) = env::var("GITHUB_TOKEN") {
+    // Use GH_TOKEN or GITHUB_TOKEN if set to avoid rate limiting.
+    if let Ok(gh_token) = env::var("GH_TOKEN").or_else(|_| env::var("GITHUB_TOKEN")) {
         update_builder.auth_token(gh_token.as_str());
     }
     let target_release = if let Some(version) = version {
