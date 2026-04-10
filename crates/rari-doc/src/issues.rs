@@ -589,7 +589,9 @@ pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
 fn is_fixable_template(macro_name: Option<&str>) -> bool {
     matches!(
         macro_name,
-        Some("previous" | "previousmenu" | "previousnext" | "previousmenunext")
+        Some(
+            "previous" | "previousmenu" | "previousnext" | "previousmenunext" | "next" | "nextmenu"
+        )
     )
 }
 
