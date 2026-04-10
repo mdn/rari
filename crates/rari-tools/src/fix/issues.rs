@@ -377,8 +377,9 @@ fn find_non_prefix_match(raw: &str, line_start_offset: usize, search_text: &str)
                 // These delimiters indicate a complete match (not a prefix)
                 Some('"') | Some('\'') | Some(',') | Some(')') | Some(' ') | Some('\t')
                 | Some('\n') => true,
-                // A forward slash means this is a prefix of a longer path
-                Some('/') => false,
+                // A forward slash, underscore, or hyphen means this is a prefix of a longer path
+                // (all are valid slug characters in MDN paths, e.g. Mobile_accessibility, WAI-ARIA)
+                Some('/') | Some('_') | Some('-') => false,
                 // Alphanumeric means it's part of a longer string
                 Some(c) if c.is_alphanumeric() => false,
                 // Other characters are treated as delimiters
@@ -1086,6 +1087,88 @@ slug: Learn_web_development/Core/Text_styling/Styling_lists
 {{PreviousMenuNext("Learn_web_development/Core/Text_styling/Fundamentals", "Learn_web_development/Core/Text_styling/Styling_links", "Learn_web_development/Core/Text_styling")}}
 
 Some content here.
+"#
+        );
+    }
+
+    #[test]
+    fn test_underscore_prefix_not_matched() {
+        // Regression test: searching for "Mobile" should NOT match "Mobile_accessibility"
+        // because '_' is a valid slug character, not a delimiter.
+        // Previously, find_non_prefix_match treated '_' as a delimiter (falling through to
+        // `_ => true`), causing it to incorrectly match a prefix of a longer slug.
+        // This led to wrong offsets and broken multi-flaw fixing on the same line.
+        let raw = r#"---
+title: Mobile accessibility
+slug: Learn/Accessibility/Mobile
+---
+{{PreviousMenuNext("Learn/Accessibility/Mobile_accessibility", "Learn/Accessibility", "Learn/Accessibility/Mobile")}}
+"#;
+
+        let issues = vec![
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 1,
+                    explanation: Some("redirect".to_string()),
+                    suggestion: Some("/en-US/docs/New/Mobile_accessibility".to_string()),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None,
+                    end_line: Some(5),
+                    end_column: None,
+                    source_context: None,
+                    filepath: Some("/path/to/index.md".to_string()),
+                    name: IssueType::TemplRedirectedLink,
+                },
+                macro_name: Some("PreviousMenuNext".to_string()),
+                href: Some("/en-US/docs/Learn/Accessibility/Mobile_accessibility".to_string()),
+            },
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    id: 2,
+                    explanation: Some("redirect".to_string()),
+                    suggestion: Some("/en-US/docs/New/Mobile".to_string()),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: None,
+                    end_line: Some(5),
+                    end_column: None,
+                    source_context: None,
+                    filepath: Some("/path/to/index.md".to_string()),
+                    name: IssueType::TemplRedirectedLink,
+                },
+                macro_name: Some("PreviousMenuNext".to_string()),
+                href: Some("/en-US/docs/Learn/Accessibility/Mobile".to_string()),
+            },
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(suggestions.len(), 2, "Both flaws should be found");
+
+        // The two suggestions must have different offsets
+        assert_ne!(
+            suggestions[0].offset, suggestions[1].offset,
+            "Suggestions must point to different positions"
+        );
+
+        // Mobile_accessibility comes first in the macro, so its offset should be smaller
+        assert_eq!(
+            suggestions[0].search,
+            "Learn/Accessibility/Mobile_accessibility"
+        );
+        assert_eq!(suggestions[1].search, "Learn/Accessibility/Mobile");
+
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            r#"---
+title: Mobile accessibility
+slug: Learn/Accessibility/Mobile
+---
+{{PreviousMenuNext("New/Mobile_accessibility", "Learn/Accessibility", "New/Mobile")}}
 "#
         );
     }
