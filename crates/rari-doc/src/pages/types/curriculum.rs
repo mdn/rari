@@ -300,11 +300,17 @@ pub fn build_sidebar() -> Result<Vec<CurriculumSidebarEntry>, DocError> {
         })
         .collect();
     sidebar.sort_by(|a, b| a.0.cmp(&b.0));
-    let sidebar = sidebar.into_iter().fold(
-        Vec::new(),
-        |mut acc: Vec<CurriculumSidebarEntry>, (_, entry)| {
+    let sidebar = group_sidebar_entries(sidebar.into_iter().map(|(_, e)| e).collect());
+
+    Ok(sidebar)
+}
+
+fn group_sidebar_entries(entries: Vec<CurriculumSidebarEntry>) -> Vec<CurriculumSidebarEntry> {
+    entries
+        .into_iter()
+        .fold(Vec::new(), |mut acc: Vec<CurriculumSidebarEntry>, entry| {
             let lvl = entry.slug.split('/').count();
-            if lvl > 2
+            if lvl > 1
                 && let Some(last) = acc.last_mut()
             {
                 last.children.push(entry);
@@ -313,10 +319,7 @@ pub fn build_sidebar() -> Result<Vec<CurriculumSidebarEntry>, DocError> {
 
             acc.push(entry);
             acc
-        },
-    );
-
-    Ok(sidebar)
+        })
 }
 
 pub fn build_landing_modules() -> Result<Vec<CurriculumIndexEntry>, DocError> {
@@ -400,21 +403,24 @@ pub fn prev_next(
 }
 
 fn grouped_index() -> Result<Vec<CurriculumIndexEntry>, DocError> {
-    Ok(curriculum_files().index.iter().fold(
-        Vec::new(),
-        |mut acc: Vec<CurriculumIndexEntry>, entry| {
+    Ok(group_index_entries(curriculum_files().index.clone()))
+}
+
+fn group_index_entries(entries: Vec<CurriculumIndexEntry>) -> Vec<CurriculumIndexEntry> {
+    entries
+        .into_iter()
+        .fold(Vec::new(), |mut acc: Vec<CurriculumIndexEntry>, entry| {
             let lvl = entry.slug.as_deref().unwrap_or_default().split('/').count();
-            if lvl > 2
+            if lvl > 1
                 && let Some(last) = acc.last_mut()
             {
-                last.children.push(entry.clone());
+                last.children.push(entry);
                 return acc;
             }
 
-            acc.push(entry.clone());
+            acc.push(entry);
             acc
-        },
-    ))
+        })
 }
 
 #[cfg(test)]
@@ -481,5 +487,51 @@ mod tests {
             curriculum_file_to_slug(Path::new("1-web-standards/2-html-basics.md")),
             "web-standards/html-basics"
         );
+    }
+
+    #[test]
+    fn test_group_index_entries_nests_two_segment_slugs() {
+        let entries = vec![
+            CurriculumIndexEntry {
+                url: String::new(),
+                title: String::new(),
+                slug: Some("core".into()),
+                summary: None,
+                topic: Topic::None,
+                children: vec![],
+            },
+            CurriculumIndexEntry {
+                url: String::new(),
+                title: String::new(),
+                slug: Some("core/web-standards".into()),
+                summary: None,
+                topic: Topic::None,
+                children: vec![],
+            },
+        ];
+        let grouped = group_index_entries(entries);
+        assert_eq!(grouped.len(), 1);
+        assert_eq!(grouped[0].children.len(), 1);
+    }
+
+    #[test]
+    fn test_group_sidebar_entries_nests_two_segment_slugs() {
+        let entries = vec![
+            CurriculumSidebarEntry {
+                url: String::new(),
+                title: String::new(),
+                slug: "core".into(),
+                children: vec![],
+            },
+            CurriculumSidebarEntry {
+                url: String::new(),
+                title: String::new(),
+                slug: "core/web-standards".into(),
+                children: vec![],
+            },
+        ];
+        let grouped = group_sidebar_entries(entries);
+        assert_eq!(grouped.len(), 1);
+        assert_eq!(grouped[0].children.len(), 1);
     }
 }
