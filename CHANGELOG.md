@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.17](https://github.com/mdn/rari/compare/v0.2.16...v0.2.17) (2026-04-14)
+
+
+### Bug Fixes
+
+* **curriculum:** modules not displaying on landing page ([#623](https://github.com/mdn/rari/issues/623)) ([7d07997](https://github.com/mdn/rari/commit/7d0799781d725025c6528ef77b0f189b0456a8c8))
+* **curriculum:** sidebar not nesting correctly ([7d07997](https://github.com/mdn/rari/commit/7d0799781d725025c6528ef77b0f189b0456a8c8))
+* **doc:** fix `{{Next}}` + `{{NextMenu}}` issues ([#619](https://github.com/mdn/rari/issues/619)) ([97b7cc5](https://github.com/mdn/rari/commit/97b7cc5842852c480f2e4f7f56c99f3e97964ef4))
+* **doc:** lowercase local image sources ([#617](https://github.com/mdn/rari/issues/617)) ([8969872](https://github.com/mdn/rari/commit/896987228f3e49f306fa37f09ed19d0f034aa736))
+
+
+### Miscellaneous
+
+* **deps:** bump clap from 4.5.60 to 4.6.0 ([#606](https://github.com/mdn/rari/issues/606)) ([a860812](https://github.com/mdn/rari/commit/a860812cb6c4d8c208e0f2480650e84f7c21e466))
+* **deps:** bump comrak from 0.39.0 to 0.50.0 ([#540](https://github.com/mdn/rari/issues/540)) ([9898adc](https://github.com/mdn/rari/commit/9898adc6f570a055133f1e93fbaeae943be5a57d))
+* **deps:** bump comrak from 0.50.0 to 0.52.0 ([#612](https://github.com/mdn/rari/issues/612)) ([dbd1dcb](https://github.com/mdn/rari/commit/dbd1dcbb746421aca8ccb8ada4836905349c038d))
+* **deps:** bump config from 0.15.11 to 0.15.22 ([#604](https://github.com/mdn/rari/issues/604)) ([ae11b4c](https://github.com/mdn/rari/commit/ae11b4c7292014e74c5ff79d7af2dcc8e95b5c34))
+* **deps:** bump fake from 4.4.0 to 5.1.0 ([#607](https://github.com/mdn/rari/issues/607)) ([62aa201](https://github.com/mdn/rari/commit/62aa2014663dcf89fb206e4daedde53a45f39084))
+* **deps:** bump https-proxy-agent from 8.0.0 to 9.0.0 in /rari-npm ([#611](https://github.com/mdn/rari/issues/611)) ([3fe1034](https://github.com/mdn/rari/commit/3fe1034ecf1f1234ef7473578068ab504e50ef77))
+* **deps:** bump icu_locale_core from 2.1.1 to 2.2.0 ([#613](https://github.com/mdn/rari/issues/613)) ([57baa96](https://github.com/mdn/rari/commit/57baa964b91f8ed260a7e214a87dcc5285bf25a2))
+* **deps:** bump lodash from 4.17.23 to 4.18.1 in /rari-npm ([#609](https://github.com/mdn/rari/issues/609)) ([5690775](https://github.com/mdn/rari/commit/56907754c68870413925d3e3dc9450fbac63f1da))
+* **deps:** bump lol_html from 2.7.1 to 2.7.2 ([#626](https://github.com/mdn/rari/issues/626)) ([0ba3fe0](https://github.com/mdn/rari/commit/0ba3fe0ef70efd1fbf57cb1a6c20dc0e0f2ac503))
+* **deps:** bump quick-xml from 0.39.0 to 0.39.2 ([#614](https://github.com/mdn/rari/issues/614)) ([75f39f0](https://github.com/mdn/rari/commit/75f39f03af2d5f234da3f67a6f83d2e15933e16b))
+* **deps:** bump rand from 0.10.0 to 0.10.1 ([#628](https://github.com/mdn/rari/issues/628)) ([fb16de3](https://github.com/mdn/rari/commit/fb16de3bf5f651fd6f391fdd876e998adcdc4434))
+* **deps:** bump schemars from 1.2.0 to 1.2.1 ([#608](https://github.com/mdn/rari/issues/608)) ([d0813d6](https://github.com/mdn/rari/commit/d0813d63b55117b28b856c8f9c7d921581f101bc))
+* **deps:** bump semver from 1.0.27 to 1.0.28 ([#625](https://github.com/mdn/rari/issues/625)) ([09bde91](https://github.com/mdn/rari/commit/09bde916a9b48c18ea708109fe60616b98445951))
+* **deps:** bump tar from 7.5.12 to 7.5.13 in /rari-npm in the npm-prod group ([#603](https://github.com/mdn/rari/issues/603)) ([b385856](https://github.com/mdn/rari/commit/b385856b6d7569a5f4876639d84cb79fd9be9102))
+* **deps:** bump tar in /rari-npm in the npm-prod group ([b385856](https://github.com/mdn/rari/commit/b385856b6d7569a5f4876639d84cb79fd9be9102))
+
 ## [0.2.16](https://github.com/mdn/rari/compare/v0.2.15...v0.2.16) (2026-03-26)
 
 
