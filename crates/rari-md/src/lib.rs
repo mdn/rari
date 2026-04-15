@@ -540,6 +540,41 @@ mod test {
         assert_eq!(result, "<a data-sourcepos=\"1:1-1:1\" href=\"/foo\"");
     }
 
+    #[test]
+    fn test_inject_sourcepos_in_html_block_multibyte_char_column() {
+        // 'é' (U+00E9) is 2 bytes in UTF-8, so <a> sits at byte offset 2 but
+        // character offset 1 (0-based), i.e. column 2 (1-based).
+        // The HtmlBlock path currently computes byte-based columns
+        // (start_col = lt - line_start + 1 = 2 - 0 + 1 = 3), whereas Comrak's
+        // HtmlInline sourcepos uses character-based columns.
+        // This test expects character-based columns (matching the inline path)
+        // and will fail until the block path is fixed to count chars, not bytes.
+        let result = inject_sourcepos_in_html_block("é<a href=\"/foo\">text</a>", 1);
+        assert!(
+            result.contains("data-sourcepos=\"1:2-1:16\""),
+            "Column should be character-based (1:2-1:16), not byte-based (1:3-1:17): {result}"
+        );
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_opening_a_annotates_all() {
+        // inject_sourcepos_in_opening_a calls find_next_opening_a(html, 0) and
+        // injects only into the first match, leaving any subsequent <a> tags in
+        // the same string unannotated.
+        // In practice, Comrak creates one HtmlInline node per tag, so this is
+        // benign for the normal flow — but the function's contract is silent about
+        // it and a caller that passes multiple tags gets surprising behaviour.
+        // This test documents the gap and will fail until the function either
+        // annotates all <a> tags or explicitly documents the single-tag contract.
+        let mut html = String::from("<a href=\"/a\"><a href=\"/b\">");
+        inject_sourcepos_in_opening_a(&mut html, "1:1-1:13");
+        assert_eq!(
+            html.matches("data-sourcepos=").count(),
+            2,
+            "Both <a> tags should get data-sourcepos, got: {html}"
+        );
+    }
+
     // ── end-to-end m2h tests ─────────────────────────────────────────────────
 
     #[test]
