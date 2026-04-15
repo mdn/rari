@@ -167,7 +167,7 @@ fn annotate_raw_html_links(node: &AstNode<'_>) {
                 if let NodeValue::HtmlBlock(ref nhb) = data.value {
                     inject_sourcepos_in_html_block(&nhb.literal, block_start_line)
                 } else {
-                    return;
+                    unreachable!("Action::Block was produced from an HtmlBlock node")
                 }
             };
             let mut data = node.data.borrow_mut();
