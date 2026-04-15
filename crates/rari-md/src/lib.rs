@@ -70,10 +70,11 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
                 // Find the closing '>' of this opening tag (respects quoted attrs)
                 let (end_line, end_col) = find_opening_tag_end(literal, lt, line, line_start);
 
-                let sp = format!("{line}:{start_col}-{end_line}:{end_col}");
                 // Emit up to and including `<a`, then inject
                 result.push_str(&literal[pos..lt + 2]);
-                result.push_str(&format!(" data-sourcepos=\"{sp}\""));
+                result.push_str(" data-sourcepos=\"");
+                result.push_str(&format!("{line}:{start_col}-{end_line}:{end_col}"));
+                result.push('"');
                 pos = lt + 2;
             }
         }
