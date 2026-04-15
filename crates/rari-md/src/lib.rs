@@ -31,10 +31,14 @@ fn find_next_opening_a(bytes: &[u8], from: usize) -> Option<usize> {
     None
 }
 
-/// Injects `data-sourcepos="<sp>"` into the first opening `<a` tag in `html`.
+/// Injects `data-sourcepos="<sp>"` into every opening `<a` tag in `html`.
 fn inject_sourcepos_in_opening_a(html: &mut String, sp: &str) {
-    if let Some(lt) = find_next_opening_a(html.as_bytes(), 0) {
-        html.insert_str(lt + 2, &format!(" data-sourcepos=\"{sp}\""));
+    let attr = format!(" data-sourcepos=\"{sp}\"");
+    let attr_len = attr.len();
+    let mut pos = 0;
+    while let Some(lt) = find_next_opening_a(html.as_bytes(), pos) {
+        html.insert_str(lt + 2, &attr);
+        pos = lt + 2 + attr_len;
     }
 }
 
