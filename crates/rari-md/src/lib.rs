@@ -61,10 +61,10 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
                         line_start = i + 1;
                     }
                 }
-                let start_col = lt - line_start + 1; // 1-based byte column
+                let start_col = literal[line_start..lt].chars().count() + 1; // 1-based char column
 
                 // Find the closing '>' of this opening tag (respects quoted attrs)
-                let (end_line, end_col) = find_opening_tag_end(bytes, lt, line, line_start);
+                let (end_line, end_col) = find_opening_tag_end(literal, lt, line, line_start);
 
                 let sp = format!("{line}:{start_col}-{end_line}:{end_col}");
                 // Emit up to and including `<a`, then inject
@@ -77,14 +77,16 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
     result
 }
 
-/// Scans forward from `tag_start` in `bytes` to find the `>` that closes the opening tag,
-/// handling double- and single-quoted attribute values. Returns the 1-based (line, col) of `>`.
+/// Scans forward from `tag_start` in `literal` to find the `>` that closes the opening tag,
+/// handling double- and single-quoted attribute values. Returns the 1-based (line, col) of `>`,
+/// where col is a character count (not a byte offset) to match Comrak's sourcepos convention.
 fn find_opening_tag_end(
-    bytes: &[u8],
+    literal: &str,
     tag_start: usize,
     start_line: usize,
     start_line_byte: usize,
 ) -> (usize, usize) {
+    let bytes = literal.as_bytes();
     let mut in_quote: Option<u8> = None;
     let mut line = start_line;
     let mut line_start = start_line_byte;
@@ -101,7 +103,7 @@ fn find_opening_tag_end(
             }
             None => match b {
                 b'"' | b'\'' => in_quote = Some(b),
-                b'>' => return (line, i - line_start + 1),
+                b'>' => return (line, literal[line_start..i].chars().count() + 1),
                 b'\n' => {
                     line += 1;
                     line_start = i + 1;
@@ -111,7 +113,10 @@ fn find_opening_tag_end(
         }
     }
     // Fallback: use start position
-    (start_line, tag_start - start_line_byte + 1)
+    (
+        start_line,
+        literal[start_line_byte..tag_start].chars().count() + 1,
+    )
 }
 
 /// Injects `data-sourcepos` attributes into raw HTML `<a>` tags in `HtmlInline` and
