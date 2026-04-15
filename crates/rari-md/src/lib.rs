@@ -568,14 +568,10 @@ mod test {
 
     #[test]
     fn test_inject_sourcepos_in_opening_a_annotates_all() {
-        // inject_sourcepos_in_opening_a calls find_next_opening_a(html, 0) and
-        // injects only into the first match, leaving any subsequent <a> tags in
-        // the same string unannotated.
-        // In practice, Comrak creates one HtmlInline node per tag, so this is
-        // benign for the normal flow — but the function's contract is silent about
-        // it and a caller that passes multiple tags gets surprising behaviour.
-        // This test documents the gap and will fail until the function either
-        // annotates all <a> tags or explicitly documents the single-tag contract.
+        // `inject_sourcepos_in_opening_a` loops over all `<a>` tags and injects
+        // the same sourcepos string into each one. In the normal flow Comrak
+        // produces one `HtmlInline` node per tag (so the loop runs once), but
+        // the function's contract covers the multi-tag case too.
         let mut html = String::from("<a href=\"/a\"><a href=\"/b\">");
         inject_sourcepos_in_opening_a(&mut html, "1:1-1:13");
         assert_eq!(
