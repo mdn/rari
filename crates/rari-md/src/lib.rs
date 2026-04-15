@@ -511,6 +511,35 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_inject_sourcepos_in_html_block_uppercase_a() {
+        // Uppercase <A> tag in block path should also get data-sourcepos
+        let result = inject_sourcepos_in_html_block("<A HREF=\"/foo\">text</A>", 1);
+        assert_eq!(
+            result,
+            "<A data-sourcepos=\"1:1-1:15\" HREF=\"/foo\">text</A>"
+        );
+    }
+
+    #[test]
+    fn test_find_next_opening_a_at_end_of_input() {
+        // `<a` with nothing after it — c2 falls back to b'>' via unwrap_or
+        assert_eq!(find_next_opening_a(b"<a", 0), Some(0));
+        assert_eq!(find_next_opening_a(b"text<a", 0), Some(4));
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_html_block_malformed_no_closing_gt() {
+        // Tag without closing `>` — find_opening_tag_end falls back to start position,
+        // producing a zero-width sourcepos like "1:1-1:1". Should not panic.
+        let result = inject_sourcepos_in_html_block("<a href=\"/foo\"", 1);
+        assert!(
+            result.contains("data-sourcepos="),
+            "Malformed <a> tag (no closing >) should still get data-sourcepos: {result}"
+        );
+        assert_eq!(result, "<a data-sourcepos=\"1:1-1:1\" href=\"/foo\"");
+    }
+
     // ── end-to-end m2h tests ─────────────────────────────────────────────────
 
     #[test]
