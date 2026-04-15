@@ -42,9 +42,9 @@ fn inject_sourcepos_in_opening_a(html: &mut String, sp: &str) {
 fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> String {
     let mut result = String::with_capacity(literal.len() + 64);
     let bytes = literal.as_bytes();
-    let mut pos = 0usize;
+    let mut pos = 0;
     let mut line = block_start_line; // 1-based, tracks current line
-    let mut line_start = 0usize; // byte offset of current line's start within `literal`
+    let mut line_start = 0; // byte offset of current line's start within `literal`
 
     loop {
         match find_next_opening_a(bytes, pos) {
