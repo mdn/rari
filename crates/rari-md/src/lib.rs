@@ -127,10 +127,7 @@ fn find_opening_tag_end(
 /// Injects `data-sourcepos` attributes into raw HTML `<a>` tags in `HtmlInline` and
 /// `HtmlBlock` AST nodes. This allows `fix_link.rs` to report accurate line numbers for
 /// ill-cased or redirected links that appear as raw HTML rather than Markdown link syntax.
-fn annotate_raw_html_links(node: &AstNode<'_>, sourcepos: bool) {
-    if !sourcepos {
-        return;
-    }
+fn annotate_raw_html_links(node: &AstNode<'_>) {
     enum Action {
         None,
         Inline(String), // sourcepos string to inject
@@ -247,7 +244,9 @@ pub fn m2h_internal(
         if templs_p || empty_p {
             fix_p(node)
         }
-        annotate_raw_html_links(node, m2h_options.sourcepos);
+        if m2h_options.sourcepos {
+            annotate_raw_html_links(node);
+        }
     });
 
     let mut html = String::new();
