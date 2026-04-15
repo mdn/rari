@@ -25,6 +25,11 @@ pub fn handle_img(
             && !url.path().starts_with("/assets/")
             && !url.path().starts_with("/shared-assets/")
         {
+            // MDN content requires all filenames to be lowercase, so we
+            // normalise the src path to avoid case-sensitivity issues on Linux.
+            let src = src.to_lowercase();
+            let url = base_url.parse(&src)?;
+
             // Check if the file exists in the current locale
             let mut file = page.full_path().parent().unwrap().join(&src);
             let mut final_url_path = url.path().to_string();
