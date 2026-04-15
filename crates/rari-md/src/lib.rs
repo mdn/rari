@@ -59,10 +59,10 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
             }
             Some(lt) => {
                 // Advance line tracking over the region we're about to emit
-                for (i, &b) in bytes.iter().enumerate().skip(pos).take(lt - pos) {
+                for (rel, &b) in bytes[pos..lt].iter().enumerate() {
                     if b == b'\n' {
                         line += 1;
-                        line_start = i + 1;
+                        line_start = pos + rel + 1;
                     }
                 }
                 let start_col = literal[line_start..lt].chars().count() + 1; // 1-based char column
@@ -95,7 +95,8 @@ fn find_opening_tag_end(
     let mut line = start_line;
     let mut line_start = start_line_byte;
 
-    for (i, &b) in bytes.iter().enumerate().skip(tag_start) {
+    for (rel, &b) in bytes[tag_start..].iter().enumerate() {
+        let i = tag_start + rel;
         match in_quote {
             Some(q) => {
                 if b == q {
