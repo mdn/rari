@@ -353,17 +353,20 @@ fn maybe_multiplied(tokenizer: &mut Tokenizer, node: Node) -> Result<Node, Synta
     {
         // https://www.w3.org/TR/css-values-4/#component-multipliers
         // > The + and # multipliers may be stacked as +#;
-        // Represent "+#" as nested multipliers:
-        // { ...<multiplier #>,
+        // Also handle other stacked multipliers found in webref data, e.g. {n}?.
+        // Represent stacked multipliers as nested Multiplier nodes:
+        // { ...<outer multiplier>,
         //   term: {
-        //     ...<multiplier +>,
+        //     ...<inner multiplier>,
         //     term: node
         //   }
         // }
-        if tokenizer.char_code() == NUMBER_SIGN
-            && tokenizer.char_code_at(tokenizer.pos - 1) == PLUS_SIGN
-        {
-            return maybe_multiplied(
+        // Check if there's another multiplier following this one (e.g. {n}? stacking).
+        let next = tokenizer.char_code();
+        let is_next_multiplier = matches!(next, ASTERISK | PLUS_SIGN | QUESTION_MARK | NUMBER_SIGN)
+            || (next == LEFT_CURLY_BRACKET && tokenizer.next_char_code().is_ascii_digit());
+        return if is_next_multiplier {
+            maybe_multiplied(
                 tokenizer,
                 Node::Multiplier(Multiplier {
                     comma,
@@ -371,14 +374,15 @@ fn maybe_multiplied(tokenizer: &mut Tokenizer, node: Node) -> Result<Node, Synta
                     max,
                     term: Box::new(node),
                 }),
-            );
-        }
-        return Ok(Node::Multiplier(Multiplier {
-            comma,
-            min,
-            max,
-            term: Box::new(node),
-        }));
+            )
+        } else {
+            Ok(Node::Multiplier(Multiplier {
+                comma,
+                min,
+                max,
+                term: Box::new(node),
+            }))
+        };
     }
     Ok(node)
 }
@@ -1057,6 +1061,100 @@ mod test {
     #[test]
     fn test_parse_with_range() -> Result<(), SyntaxDefinitionError> {
         let _ = parse("<length-percentage [0,∞]>")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_stacked_multiplier_plus_hash() -> Result<(), SyntaxDefinitionError> {
+        // +# is a documented stacking in CSS Values 4:
+        // https://www.w3.org/TR/css-values-4/#component-multipliers
+        // Real-world example: stroke-dasharray uses "[...]+#"
+        // Produces nested Multipliers: outer # wrapping inner +
+        let result = parse("<length>+#")?;
+        assert_eq!(
+            result,
+            Node::Group(Group {
+                terms: vec![Node::Multiplier(Multiplier {
+                    comma: true,
+                    min: 1,
+                    max: 0,
+                    term: Box::new(Node::Multiplier(Multiplier {
+                        comma: false,
+                        min: 1,
+                        max: 0,
+                        term: Box::new(Node::Type(Type {
+                            name: "length".to_string(),
+                            opts: None,
+                        }))
+                    }))
+                })],
+                combinator: CombinatorType::Space,
+                disallow_empty: false,
+                explicit: false,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_stacked_multiplier_plus_hash_question() -> Result<(), SyntaxDefinitionError> {
+        // Triple stacking: +#? (seen in custom-selector type syntax)
+        let result = parse("<foo>+#?")?;
+        // +#? produces: Multiplier(#?, Multiplier(+, Type))
+        // where #? means {comma:true, min:0, max:0}
+        assert_eq!(
+            result,
+            Node::Group(Group {
+                terms: vec![Node::Multiplier(Multiplier {
+                    comma: true,
+                    min: 0,
+                    max: 0,
+                    term: Box::new(Node::Multiplier(Multiplier {
+                        comma: false,
+                        min: 1,
+                        max: 0,
+                        term: Box::new(Node::Type(Type {
+                            name: "foo".to_string(),
+                            opts: None,
+                        }))
+                    }))
+                })],
+                combinator: CombinatorType::Space,
+                disallow_empty: false,
+                explicit: false,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_stacked_multiplier_curly_question() -> Result<(), SyntaxDefinitionError> {
+        // Regression test: {n}? stacked multiplier (used in cursor-image syntax)
+        // https://github.com/mdn/rari/issues/596
+        let result = parse("<number>{2}?")?;
+        // parse() wraps a single non-Group term in an implicit Group
+        assert_eq!(
+            result,
+            Node::Group(Group {
+                terms: vec![Node::Multiplier(Multiplier {
+                    comma: false,
+                    min: 0,
+                    max: 1,
+                    term: Box::new(Node::Multiplier(Multiplier {
+                        comma: false,
+                        min: 2,
+                        max: 2,
+                        term: Box::new(Node::Type(Type {
+                            name: "number".to_string(),
+                            opts: None,
+                        }))
+                    }))
+                })],
+                combinator: CombinatorType::Space,
+                disallow_empty: false,
+                explicit: false,
+            })
+        );
         Ok(())
     }
 

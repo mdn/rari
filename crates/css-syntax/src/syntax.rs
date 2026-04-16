@@ -930,4 +930,23 @@ mod test {
             "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?"
         );
     }
+
+    #[test]
+    fn test_render_cursor_property() -> Result<(), SyntaxError> {
+        // Regression test for https://github.com/mdn/rari/issues/596
+        // The cursor-image type syntax uses a stacked multiplier ({2}?) which
+        // previously caused a "Parse error: Unexpected input" error.
+        let result = render_formal_syntax(
+            SyntaxInput::Css(CssType::Property("cursor")),
+            Some("css.properties.cursor"),
+            "en-US",
+            "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
+            &TOOLTIPS,
+            None,
+        )?;
+        assert!(result.contains("cursor-image"));
+        assert!(result.contains("cursor-predefined"));
+        assert!(result.contains("{2}"));
+        Ok(())
+    }
 }
