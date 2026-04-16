@@ -61,3 +61,6 @@ pub mod utils;
 pub mod walker;
 
 pub use templ::templs::Templ;
+
+#[cfg(test)]
+pub mod test_utils;
