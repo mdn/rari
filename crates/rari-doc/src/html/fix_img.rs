@@ -148,3 +148,135 @@ pub fn img_size(
     };
     Ok((width, height))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+
+    use lol_html::{RewriteStrSettings, element, rewrite_str};
+    use rari_types::RariEnv;
+    use rari_types::fm_types::{FeatureStatus, PageType};
+    use rari_types::locale::Locale;
+    use url::Url;
+
+    use super::handle_img;
+    use crate::error::DocError;
+    use crate::pages::page::PageLike;
+    use crate::pages::types::utils::FmTempl;
+
+    struct TestPage {
+        path: PathBuf,
+        url: String,
+    }
+
+    impl PageLike for TestPage {
+        fn url(&self) -> &str {
+            &self.url
+        }
+        fn slug(&self) -> &str {
+            ""
+        }
+        fn title(&self) -> &str {
+            ""
+        }
+        fn short_title(&self) -> Option<&str> {
+            None
+        }
+        fn locale(&self) -> Locale {
+            Locale::EnUs
+        }
+        fn content(&self) -> &str {
+            ""
+        }
+        fn rari_env(&self) -> Option<RariEnv<'_>> {
+            None
+        }
+        fn render(&self) -> Result<String, DocError> {
+            Ok(String::new())
+        }
+        fn title_suffix(&self) -> Option<&str> {
+            None
+        }
+        fn page_type(&self) -> PageType {
+            PageType::None
+        }
+        fn status(&self) -> &[FeatureStatus] {
+            &[]
+        }
+        fn full_path(&self) -> &Path {
+            &self.path
+        }
+        fn path(&self) -> &Path {
+            &self.path
+        }
+        fn base_slug(&self) -> &str {
+            ""
+        }
+        fn trailing_slash(&self) -> bool {
+            false
+        }
+        fn fm_offset(&self) -> usize {
+            0
+        }
+        fn raw_content(&self) -> &str {
+            ""
+        }
+        fn banners(&self) -> Option<&[FmTempl]> {
+            None
+        }
+    }
+
+    // Minimal valid GIF (10 bytes): imagesize only needs the 6-byte header
+    // followed by width and height as little-endian u16.
+    const TINY_GIF: &[u8] = b"GIF89a\x01\x00\x01\x00";
+
+    fn rewrite_img(html: &str, page: &TestPage) -> String {
+        let options = Url::options();
+        let base = Url::parse(&format!(
+            "http://rari.placeholder{}{}",
+            page.url,
+            if page.url.ends_with('/') { "" } else { "/" }
+        ))
+        .unwrap();
+        let base_url = options.base_url(Some(&base));
+        rewrite_str(
+            html,
+            RewriteStrSettings {
+                element_content_handlers: vec![element!("img[src]", |el| {
+                    handle_img(el, page, false, &base, &base_url)
+                })],
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    }
+
+    /// Filenames with non-ASCII characters (e.g. accents, Cyrillic) are
+    /// percent-encoded by the Markdown renderer (comrak).  `handle_img` must
+    /// decode them before constructing the filesystem path, otherwise the file
+    /// is never found and no `width`/`height` attributes are set.
+    #[test]
+    fn test_accented_filename_gets_dimensions() {
+        let tmp = std::env::temp_dir().join("rari-test-accented-img");
+        std::fs::create_dir_all(&tmp).unwrap();
+        // Actual filename on disk uses the literal UTF-8 character.
+        std::fs::write(tmp.join("bézier.gif"), TINY_GIF).unwrap();
+
+        let page = TestPage {
+            path: tmp.join("index.md"),
+            url: "/en-US/docs/Test".to_string(),
+        };
+
+        // comrak encodes `é` (U+00E9, UTF-8 0xC3 0xA9) as `%C3%A9`.
+        let output = rewrite_img(r#"<img src="b%C3%A9zier.gif">"#, &page);
+
+        assert!(
+            output.contains("width=\"1\""),
+            "expected width attribute; got: {output}"
+        );
+        assert!(
+            output.contains("height=\"1\""),
+            "expected height attribute; got: {output}"
+        );
+    }
+}
