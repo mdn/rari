@@ -3,6 +3,7 @@ use std::path::Path;
 
 use lol_html::HandlerResult;
 use lol_html::html_content::Element;
+use percent_encoding::percent_decode_str;
 use rari_types::locale::default_locale;
 use tracing::warn;
 use url::{ParseOptions, Url};
@@ -30,8 +31,15 @@ pub fn handle_img(
             let src = src.to_lowercase();
             let url = base_url.parse(&src)?;
 
-            // Check if the file exists in the current locale
-            let mut file = page.full_path().parent().unwrap().join(&src);
+            // Check if the file exists in the current locale.
+            // The src may be percent-encoded (comrak encodes non-ASCII characters
+            // in URLs), so decode it before constructing the filesystem path.
+            let decoded_src = percent_decode_str(&src).decode_utf8_lossy();
+            let mut file = page
+                .full_path()
+                .parent()
+                .unwrap()
+                .join(decoded_src.as_ref());
             let mut final_url_path = url.path().to_string();
 
             // If file doesn't exist in translated locale, try en-US fallback
@@ -40,7 +48,11 @@ pub fn handle_img(
                 && let Ok(en_us_page) =
                     Page::from_url_with_locale_and_fallback(page.url(), default_locale())
             {
-                let en_us_file = en_us_page.full_path().parent().unwrap().join(&src);
+                let en_us_file = en_us_page
+                    .full_path()
+                    .parent()
+                    .unwrap()
+                    .join(decoded_src.as_ref());
                 if en_us_file.try_exists().unwrap_or_default() {
                     // Rewrite URL to point to en-US asset
                     let en_us_url = en_us_page.url();
@@ -226,9 +238,10 @@ mod tests {
         }
     }
 
-    // Minimal valid GIF (10 bytes): imagesize only needs the 6-byte header
-    // followed by width and height as little-endian u16.
-    const TINY_GIF: &[u8] = b"GIF89a\x01\x00\x01\x00";
+    // Minimal GIF recognised by imagesize: the format detector reads a 12-byte
+    // header, then the GIF size parser seeks to byte 6 and reads width/height
+    // as little-endian u16 values. 12 bytes is therefore the minimum.
+    const TINY_GIF: &[u8] = b"GIF89a\x01\x00\x01\x00\x00\x00";
 
     fn rewrite_img(html: &str, page: &TestPage) -> String {
         let options = Url::options();
