@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.19](https://github.com/mdn/rari/compare/v0.2.18...v0.2.19) (2026-04-17)
+
+
+### Bug Fixes
+
+* **fix_img:** decode percent-encoded `src` before looking up image on disk ([#630](https://github.com/mdn/rari/issues/630)) ([16396c3](https://github.com/mdn/rari/commit/16396c3a334b5a377915046afade639f0d2fc72e))
+* **tools:** treat _/- as non-delimiters in slug prefix check ([[#620](https://github.com/mdn/rari/issues/620)](https://github.com/mdn/rari/issues/620)) ([3c896bd](https://github.com/mdn/rari/commit/3c896bda59aa2cc17e48b6951b344a87e6eaa6cf))
+
 ## [0.2.18](https://github.com/mdn/rari/compare/v0.2.17...v0.2.18) (2026-04-17)
 
 
