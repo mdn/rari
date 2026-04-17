@@ -10,19 +10,19 @@ use crate::p::{fix_p, is_empty_p, is_escaped_templ_p};
 /// Only matches tags where `<a` is followed by whitespace or `>` (not `<abbr>`, `<aside>`, etc.).
 fn find_next_opening_a(bytes: &[u8], mut pos: usize) -> Option<usize> {
     loop {
-        let rel = bytes[pos..].iter().position(|&b| b == b'<')?;
-        let lt = pos + rel;
+        let rel_offset = bytes[pos..].iter().position(|&b| b == b'<')?;
+        let lt_pos = pos + rel_offset;
         // `bytes.get` returns `None` if `<` is the last byte — no room for a tag name.
-        let c1 = bytes.get(lt + 1).copied()?;
+        let tag_char = bytes.get(lt_pos + 1).copied()?;
         // Must be 'a' or 'A', not '/' (closing tag) and not another letter
-        if c1 == b'a' || c1 == b'A' {
+        if tag_char == b'a' || tag_char == b'A' {
             // Must be followed by whitespace, '>', or end-of-input
-            let c2 = bytes.get(lt + 2).copied().unwrap_or(b'>');
-            if matches!(c2, b' ' | b'\t' | b'\n' | b'\r' | b'>') {
-                return Some(lt);
+            let after_tag = bytes.get(lt_pos + 2).copied().unwrap_or(b'>');
+            if matches!(after_tag, b' ' | b'\t' | b'\n' | b'\r' | b'>') {
+                return Some(lt_pos);
             }
         }
-        pos = lt + 1;
+        pos = lt_pos + 1;
     }
 }
 
@@ -91,23 +91,28 @@ fn find_opening_tag_end(
     let mut line = start_line;
     let mut line_start = start_line_byte;
 
-    for (rel, &b) in bytes[tag_start..].iter().enumerate() {
-        let i = tag_start + rel;
+    for (tag_offset, &byte) in bytes[tag_start..].iter().enumerate() {
+        let literal_offset = tag_start + tag_offset;
         match in_quote {
-            Some(q) => {
-                if b == q {
+            Some(quote_char) => {
+                if byte == quote_char {
                     in_quote = None;
-                } else if b == b'\n' {
+                } else if byte == b'\n' {
                     line += 1;
-                    line_start = i + 1;
+                    line_start = literal_offset + 1;
                 }
             }
-            None => match b {
-                b'"' | b'\'' => in_quote = Some(b),
-                b'>' => return (line, literal[line_start..i].chars().count() + 1),
+            None => match byte {
+                b'"' | b'\'' => in_quote = Some(byte),
+                b'>' => {
+                    return (
+                        line,
+                        literal[line_start..literal_offset].chars().count() + 1,
+                    );
+                }
                 b'\n' => {
                     line += 1;
-                    line_start = i + 1;
+                    line_start = literal_offset + 1;
                 }
                 _ => {}
             },
