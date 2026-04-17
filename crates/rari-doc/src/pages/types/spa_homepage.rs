@@ -8,7 +8,7 @@ use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use regex::Regex;
 
-use crate::cached_readers::contributor_spotlight_files;
+use crate::cached_readers::{blog_files, contributor_spotlight_files};
 use crate::error::DocError;
 use crate::helpers::parents::parents;
 use crate::helpers::summary_hack::{get_hacky_summary_md, text_content};
@@ -18,31 +18,25 @@ use crate::pages::json::{
 };
 use crate::pages::page::{Page, PageLike};
 
-pub fn latest_news(urls: &[String]) -> Result<Vec<HomePageLatestNewsItem>, DocError> {
-    urls.iter()
-        .filter_map(|url| match Page::from_url_with_fallback(url) {
-            Ok(Page::BlogPost(post)) => Some(Ok(HomePageLatestNewsItem {
-                url: post.url().to_string(),
-                title: post.title().to_string(),
-                author: Some(post.meta.author.clone()),
-                source: NameUrl {
-                    name: "developer.mozilla.org".to_string(),
-                    url: concat_strs!("/", Locale::default().as_url_str(), "/blog/"),
-                },
-                published_at: post.meta.date,
-                summary: post.meta.description.clone(),
-            })),
-            Err(DocError::PageNotFound(url, category)) => {
-                tracing::warn!("page not found {url} ({category:?})");
-                None
-            }
-            Err(e) => Some(Err(e)),
-            x => {
-                tracing::debug!("{x:?}");
-                None
-            }
+pub fn latest_news() -> Result<Vec<HomePageLatestNewsItem>, DocError> {
+    Ok(blog_files()
+        .sorted_meta
+        .iter()
+        .rev()
+        .filter(|meta| !meta.sponsored)
+        .take(4)
+        .map(|meta| HomePageLatestNewsItem {
+            url: meta.url.clone(),
+            title: meta.title.clone(),
+            author: Some(meta.author.clone()),
+            source: NameUrl {
+                name: "developer.mozilla.org".to_string(),
+                url: concat_strs!("/", Locale::default().as_url_str(), "/blog/"),
+            },
+            published_at: meta.date,
+            summary: meta.description.clone(),
         })
-        .collect()
+        .collect())
 }
 
 pub fn featured_articles(
