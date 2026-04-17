@@ -107,10 +107,15 @@ pub struct SearchReplaceWithOffset {
 
 /// Converts issues into offset-based search/replace suggestions
 pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWithOffset> {
+    // Track the byte offset past the last found occurrence for each (line, decoded_href) pair.
+    // This lets us find the correct occurrence when the same href appears multiple times on
+    // the same line — each successive issue starts searching from after the previous match.
+    let mut next_search_from: std::collections::HashMap<(i64, String), usize> =
+        std::collections::HashMap::new();
+
     let mut suggestions = issues
         .iter()
         .filter_map(|dissue| {
-            let offset_end = actual_offset(raw, dissue);
             let (display_issue, href) = match dissue {
                 DIssue::BrokenLink {
                     display_issue,
@@ -129,11 +134,14 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                 let decoded_href = html_escape::decode_html_entities(href);
                 let decoded_suggestion = html_escape::decode_html_entities(suggestion);
 
-                // Try to find the href in the markdown. First try the full href, then fallback to slug.
-                // This handles template-generated links where the markdown contains only the slug.
+                // For repeated identical hrefs on the same line, search past the last match.
+                let line_num = display_issue.line.unwrap_or(0);
+                let key = (line_num, decoded_href.to_string());
+                let min_byte_offset = next_search_from.get(&key).copied().unwrap_or(0);
 
-                // actual_offset returns the END of the href
-                // We need to find the START by searching backward for the text
+                // actual_offset returns the END of the href in the raw markdown.
+                // We need to find the START by searching backward for the text.
+                let offset_end = actual_offset(raw, dissue, min_byte_offset);
 
                 // Ensure offset_end is on a char boundary
                 let offset_end_adjusted =
@@ -177,6 +185,9 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                 );
 
                 if let Some((href_start, search_text, replace_text)) = result {
+                    // Record the end of this match so the next identical href on the same
+                    // line starts searching from here.
+                    next_search_from.insert(key, href_start + search_text.len());
                     Some(SearchReplaceWithOffset {
                         offset: href_start,
                         search: search_text,
@@ -323,7 +334,7 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
     Ok(is_fixed)
 }
 
-pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
+pub fn actual_offset(raw: &str, dissue: &DIssue, min_byte_offset: usize) -> usize {
     let href = match dissue {
         DIssue::BrokenLink {
             href: Some(href), ..
@@ -338,17 +349,20 @@ pub fn actual_offset(raw: &str, dissue: &DIssue) -> usize {
     let decoded_href = html_escape::decode_html_entities(href);
 
     // Get line information from the issue
-    // Note: Column information refers to rendered HTML positions, not markdown source positions,
-    // so we search from the line start instead. Column is still useful for ordering issues.
     let line_num = dissue.display_issue().line;
     if let Some(line) = line_num {
         let line_idx = (line as usize).saturating_sub(1);
         let line_start_offset = calculate_line_start_offset(raw, line_idx);
 
+        // Start searching from the later of the line start or the min_byte_offset.
+        // min_byte_offset is set to past the end of the previous match for the same
+        // href on the same line, so repeated identical hrefs each find their own occurrence.
+        let search_from = line_start_offset.max(min_byte_offset);
+
         // Try searching for the full href first, fallback to slug
         if let Some((offset, _found_text)) =
             search_with_slug_fallback(&decoded_href, |search_text| {
-                find_non_prefix_match(raw, line_start_offset, search_text)
+                find_non_prefix_match(raw, search_from, search_text)
                     .map(|start| start + search_text.len())
             })
         {
@@ -1087,6 +1101,70 @@ slug: Learn_web_development/Core/Text_styling/Styling_lists
 {{PreviousMenuNext("Learn_web_development/Core/Text_styling/Fundamentals", "Learn_web_development/Core/Text_styling/Styling_links", "Learn_web_development/Core/Text_styling")}}
 
 Some content here.
+"#
+        );
+    }
+
+    #[test]
+    fn test_repeated_href_on_same_line() {
+        // Regression test: the same href appearing multiple times on one line must each be fixed.
+        // Previously, actual_offset always found the *first* occurrence, producing identical
+        // SearchReplaceWithOffset entries that dedup collapsed to one.
+        let raw = r#"---
+title: HTML elements
+slug: Web/HTML/Reference/Elements
+---
+| [`<h1>`](/pt-BR/docs/Web/HTML/Element/Heading_Elements), [`<h2>`](/pt-BR/docs/Web/HTML/Element/Heading_Elements), [`<h3>`](/pt-BR/docs/Web/HTML/Element/Heading_Elements) | description |
+"#;
+
+        let make_issue = |id: i64, col: i64, end_col: i64| DIssue::BrokenLink {
+            display_issue: DisplayIssue {
+                id,
+                explanation: Some("redirect".to_string()),
+                suggestion: Some(
+                    "/pt-BR/docs/Web/HTML/Reference/Elements/Heading_Elements".to_string(),
+                ),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(5),
+                column: Some(col),
+                end_line: Some(5),
+                end_column: Some(end_col),
+                source_context: None,
+                filepath: Some("/path/to/index.md".to_string()),
+                name: IssueType::RedirectedLink,
+            },
+            href: Some("/pt-BR/docs/Web/HTML/Element/Heading_Elements".to_string()),
+        };
+
+        let issues = vec![
+            make_issue(1, 10, 55),
+            make_issue(2, 66, 111),
+            make_issue(3, 122, 167),
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(suggestions.len(), 3, "All three occurrences must be fixed");
+
+        // All offsets must be distinct
+        let offsets: Vec<usize> = suggestions.iter().map(|s| s.offset).collect();
+        let unique: std::collections::HashSet<_> = offsets.iter().collect();
+        assert_eq!(
+            unique.len(),
+            3,
+            "Each suggestion must point to a different position, got: {:?}",
+            offsets
+        );
+
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            r#"---
+title: HTML elements
+slug: Web/HTML/Reference/Elements
+---
+| [`<h1>`](/pt-BR/docs/Web/HTML/Reference/Elements/Heading_Elements), [`<h2>`](/pt-BR/docs/Web/HTML/Reference/Elements/Heading_Elements), [`<h3>`](/pt-BR/docs/Web/HTML/Reference/Elements/Heading_Elements) | description |
 "#
         );
     }

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.18](https://github.com/mdn/rari/compare/v0.2.17...v0.2.18) (2026-04-17)
+
+
+### Bug Fixes
+
+* **css-syntax:** support stacked multipliers like `{n}?` ([#631](https://github.com/mdn/rari/issues/631)) ([2f55c92](https://github.com/mdn/rari/commit/2f55c92430dcd5656beed94e0d48ce65eb69a40f))
+* **tools:** fix multiple flaws on the same line ([#621](https://github.com/mdn/rari/issues/621)) ([d730897](https://github.com/mdn/rari/commit/d730897e6562ea47d1b35994032443346d3ee748))
+
 ## [0.2.17](https://github.com/mdn/rari/compare/v0.2.16...v0.2.17) (2026-04-14)
 
 
