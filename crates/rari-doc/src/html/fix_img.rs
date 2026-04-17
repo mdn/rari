@@ -201,13 +201,12 @@ mod tests {
     /// is never found and no `width`/`height` attributes are set.
     #[test]
     fn test_accented_filename_gets_dimensions() {
-        let tmp = std::env::temp_dir().join("rari-test-accented-img");
-        std::fs::create_dir_all(&tmp).unwrap();
+        let tmp = tempfile::TempDir::new().unwrap();
         // Actual filename on disk uses the literal UTF-8 character.
-        std::fs::write(tmp.join("bézier.gif"), TINY_GIF).unwrap();
+        std::fs::write(tmp.path().join("bézier.gif"), TINY_GIF).unwrap();
 
         let page = TestPage {
-            path: tmp.join("index.md"),
+            path: tmp.path().join("index.md"),
             url: "/en-US/docs/Test".to_string(),
             ..Default::default()
         };
