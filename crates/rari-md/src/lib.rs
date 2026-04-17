@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use comrak::nodes::{AstNode, NodeValue};
 use comrak::{Arena, Options, parse_document};
 use html::{CustomFormatter, RariContext};
@@ -67,9 +69,11 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
 
                 // Emit up to and including `<a`, then inject
                 result.push_str(&literal[pos..lt + 2]);
-                result.push_str(" data-sourcepos=\"");
-                result.push_str(&format!("{line}:{start_col}-{end_line}:{end_col}"));
-                result.push('"');
+                write!(
+                    result,
+                    " data-sourcepos=\"{line}:{start_col}-{end_line}:{end_col}\""
+                )
+                .unwrap();
                 pos = lt + 2;
             }
         }
