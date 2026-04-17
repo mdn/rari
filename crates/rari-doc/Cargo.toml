@@ -63,3 +63,4 @@ css-syntax = { path = "../css-syntax", features = ["rari"] }
 [dev-dependencies]
 rari-types = { path = "../rari-types", features = ["testing"] }
 indoc.workspace = true
+tempfile = "3"
