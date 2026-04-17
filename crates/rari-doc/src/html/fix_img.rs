@@ -34,7 +34,7 @@ pub fn handle_img(
             // Check if the file exists in the current locale.
             // The src may be percent-encoded (comrak encodes non-ASCII characters
             // in URLs), so decode it before constructing the filesystem path.
-            let decoded_src = percent_decode_str(&src).decode_utf8_lossy();
+            let decoded_src = percent_decode_str(&src).decode_utf8()?;
             let mut file = page
                 .full_path()
                 .parent()
