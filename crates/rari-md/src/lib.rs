@@ -73,12 +73,13 @@ fn advance_line_tracking(
 
 /// Walks an HTML block literal, injecting `data-sourcepos` into every `<a` tag.
 /// `block_start_line` is the 1-based line number of the first line of the block in the source.
-fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> String {
-    let mut result = String::with_capacity(literal.len() + 64);
+/// Returns `None` if no `<a` tags were found (no allocation performed).
+fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Option<String> {
     let bytes = literal.as_bytes();
     let mut pos = 0;
     let mut line = block_start_line; // 1-based, tracks current line
     let mut line_start = 0; // byte offset of current line's start within `literal`
+    let mut result: Option<String> = None;
 
     while let Some(lt) = find_next_opening_a(bytes, pos) {
         (line, line_start) = advance_line_tracking(bytes, pos, lt, line, line_start);
@@ -87,22 +88,27 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
         // Find the closing '>' of this opening tag (respects quoted attrs)
         let Some(gt) = find_opening_tag_end(bytes, lt) else {
             // Malformed tag with no closing `>` — emit as-is and stop
-            result.push_str(&literal[pos..]);
+            if let Some(r) = &mut result {
+                r.push_str(&literal[pos..]);
+            }
             return result;
         };
 
         let (end_line, end_line_start) = advance_line_tracking(bytes, lt, gt, line, line_start);
         let end_col = literal[end_line_start..gt].chars().count() + 1;
 
-        result.push_str(&literal[pos..lt + 2]);
+        let r = result.get_or_insert_with(|| String::with_capacity(literal.len() + 64));
+        r.push_str(&literal[pos..lt + 2]);
         write!(
-            result,
+            r,
             " data-sourcepos=\"{line}:{start_col}-{end_line}:{end_col}\""
         )
         .unwrap();
         pos = lt + 2;
     }
-    result.push_str(&literal[pos..]);
+    if let Some(r) = &mut result {
+        r.push_str(&literal[pos..]);
+    }
     result
 }
 
@@ -134,7 +140,7 @@ fn annotate_raw_html_links(node: &AstNode<'_>) {
     let mut data = node.data.borrow_mut();
     let sp = data.sourcepos;
     match &mut data.value {
-        NodeValue::HtmlInline(html) if find_next_opening_a(html.as_bytes(), 0).is_some() => {
+        NodeValue::HtmlInline(html) => {
             inject_sourcepos_in_opening_a(
                 html,
                 &format!(
@@ -143,8 +149,10 @@ fn annotate_raw_html_links(node: &AstNode<'_>) {
                 ),
             );
         }
-        NodeValue::HtmlBlock(nhb) if find_next_opening_a(nhb.literal.as_bytes(), 0).is_some() => {
-            nhb.literal = inject_sourcepos_in_html_block(&nhb.literal.clone(), sp.start.line);
+        NodeValue::HtmlBlock(nhb) => {
+            if let Some(new_literal) = inject_sourcepos_in_html_block(&nhb.literal, sp.start.line) {
+                nhb.literal = new_literal;
+            }
         }
         _ => {}
     }
@@ -434,7 +442,7 @@ mod test {
 
     #[test]
     fn test_inject_sourcepos_in_html_block_single_line() {
-        let result = inject_sourcepos_in_html_block("<a href=\"/foo\">text</a>", 1);
+        let result = inject_sourcepos_in_html_block("<a href=\"/foo\">text</a>", 1).unwrap();
         assert_eq!(
             result,
             "<a data-sourcepos=\"1:1-1:15\" href=\"/foo\">text</a>"
@@ -444,7 +452,7 @@ mod test {
     #[test]
     fn test_inject_sourcepos_in_html_block_multiline_a() {
         // The `>` ending the opening tag is on line 2
-        let result = inject_sourcepos_in_html_block("<a\n  href=\"/foo\">text</a>", 1);
+        let result = inject_sourcepos_in_html_block("<a\n  href=\"/foo\">text</a>", 1).unwrap();
         assert_eq!(
             result,
             "<a data-sourcepos=\"1:1-2:14\"\n  href=\"/foo\">text</a>"
@@ -454,14 +462,14 @@ mod test {
     #[test]
     fn test_inject_sourcepos_in_html_block_start_line_offset() {
         // Block starts on line 5 of the source
-        let result = inject_sourcepos_in_html_block("<a href=\"/foo\">text</a>", 5);
+        let result = inject_sourcepos_in_html_block("<a href=\"/foo\">text</a>", 5).unwrap();
         assert!(result.contains("data-sourcepos=\"5:1-5:15\""));
     }
 
     #[test]
     fn test_inject_sourcepos_in_html_block_multiple_links() {
         let input = "<a href=\"/foo\">A</a> <a href=\"/bar\">B</a>";
-        let result = inject_sourcepos_in_html_block(input, 1);
+        let result = inject_sourcepos_in_html_block(input, 1).unwrap();
         // Both links should get data-sourcepos
         let count = result.matches("data-sourcepos=").count();
         assert_eq!(
@@ -473,16 +481,13 @@ mod test {
     #[test]
     fn test_inject_sourcepos_in_html_block_skips_abbr() {
         let result = inject_sourcepos_in_html_block("<abbr title=\"x\">y</abbr>", 1);
-        assert!(
-            !result.contains("data-sourcepos"),
-            "<abbr> should not get data-sourcepos: {result}"
-        );
+        assert!(result.is_none(), "<abbr> should not get data-sourcepos");
     }
 
     #[test]
     fn test_inject_sourcepos_in_html_block_uppercase_a() {
         // Uppercase <A> tag in block path should also get data-sourcepos
-        let result = inject_sourcepos_in_html_block("<A HREF=\"/foo\">text</A>", 1);
+        let result = inject_sourcepos_in_html_block("<A HREF=\"/foo\">text</A>", 1).unwrap();
         assert_eq!(
             result,
             "<A data-sourcepos=\"1:1-1:15\" HREF=\"/foo\">text</A>"
@@ -498,13 +503,12 @@ mod test {
 
     #[test]
     fn test_inject_sourcepos_in_html_block_malformed_no_closing_gt() {
-        // Malformed tag with no closing `>` — emitted as-is without data-sourcepos.
+        // Malformed tag with no closing `>` — no injection, returns None.
         let result = inject_sourcepos_in_html_block("<a href=\"/foo\"", 1);
         assert!(
-            !result.contains("data-sourcepos="),
-            "Malformed <a> tag (no closing >) should not get data-sourcepos: {result}"
+            result.is_none(),
+            "Malformed <a> tag (no closing >) should not get data-sourcepos"
         );
-        assert_eq!(result, "<a href=\"/foo\"");
     }
 
     #[test]
@@ -516,7 +520,7 @@ mod test {
         // HtmlInline sourcepos uses character-based columns.
         // This test expects character-based columns (matching the inline path)
         // and will fail until the block path is fixed to count chars, not bytes.
-        let result = inject_sourcepos_in_html_block("é<a href=\"/foo\">text</a>", 1);
+        let result = inject_sourcepos_in_html_block("é<a href=\"/foo\">text</a>", 1).unwrap();
         assert!(
             result.contains("data-sourcepos=\"1:2-1:16\""),
             "Column should be character-based (1:2-1:16), not byte-based (1:3-1:17): {result}"
