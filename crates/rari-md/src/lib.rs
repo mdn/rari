@@ -175,17 +175,10 @@ fn annotate_raw_html_links(node: &AstNode<'_>) {
             }
         }
         Action::Block(block_start_line) => {
-            let new_literal = {
-                let data = node.data.borrow();
-                if let NodeValue::HtmlBlock(ref nhb) = data.value {
-                    inject_sourcepos_in_html_block(&nhb.literal, block_start_line)
-                } else {
-                    unreachable!("Action::Block was produced from an HtmlBlock node")
-                }
-            };
             let mut data = node.data.borrow_mut();
             if let NodeValue::HtmlBlock(ref mut nhb) = data.value {
-                nhb.literal = new_literal;
+                nhb.literal =
+                    inject_sourcepos_in_html_block(&nhb.literal.clone(), block_start_line);
             }
         }
     }
