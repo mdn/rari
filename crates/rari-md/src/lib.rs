@@ -39,6 +39,24 @@ fn inject_sourcepos_in_opening_a(html: &mut String, sp: &str) {
     }
 }
 
+/// Advances `(line, line_start)` over `bytes[start..end]`, returning the updated pair.
+/// `line_start` is the byte offset of the current line's start within the full literal.
+fn advance_line_tracking(
+    bytes: &[u8],
+    start: usize,
+    end: usize,
+    mut line: usize,
+    mut line_start: usize,
+) -> (usize, usize) {
+    for (rel, &b) in bytes[start..end].iter().enumerate() {
+        if b == b'\n' {
+            line += 1;
+            line_start = start + rel + 1;
+        }
+    }
+    (line, line_start)
+}
+
 /// Walks an HTML block literal, injecting `data-sourcepos` into every `<a` tag.
 /// `block_start_line` is the 1-based line number of the first line of the block in the source.
 fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> String {
@@ -55,22 +73,19 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
                 break;
             }
             Some(lt) => {
-                // Advance line tracking over the region we're about to emit
-                for (rel, &b) in bytes[pos..lt].iter().enumerate() {
-                    if b == b'\n' {
-                        line += 1;
-                        line_start = pos + rel + 1;
-                    }
-                }
-                let start_col = literal[line_start..lt].chars().count() + 1; // 1-based char column
+                (line, line_start) = advance_line_tracking(bytes, pos, lt, line, line_start);
+                let start_col = literal[line_start..lt].chars().count() + 1;
 
                 // Find the closing '>' of this opening tag (respects quoted attrs)
-                let Some((end_line, end_col)) = find_opening_tag_end(literal, lt, line, line_start)
-                else {
+                let Some(gt) = find_opening_tag_end(bytes, lt) else {
                     // Malformed tag with no closing `>` — emit as-is and stop
                     result.push_str(&literal[pos..]);
                     return result;
                 };
+
+                let (end_line, end_line_start) =
+                    advance_line_tracking(bytes, lt, gt, line, line_start);
+                let end_col = literal[end_line_start..gt].chars().count() + 1;
 
                 // Emit up to and including `<a`, then inject
                 result.push_str(&literal[pos..lt + 2]);
@@ -86,39 +101,19 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
     result
 }
 
-/// Scans forward from `tag_start` in `literal` to find the `>` that closes the opening tag,
-/// handling double- and single-quoted attribute values. Returns the 1-based (line, col) of `>`,
-/// where col is a character count (not a byte offset) to match Comrak's sourcepos convention.
+/// Scans forward from `tag_start` in `bytes` to find the byte offset of the `>` that closes
+/// the opening tag, handling double- and single-quoted attribute values.
 ///
 /// Returns `None` if no closing `>` is found (malformed tag).
-fn find_opening_tag_end(
-    literal: &str,
-    tag_start: usize,
-    start_line: usize,
-    start_line_byte: usize,
-) -> Option<(usize, usize)> {
-    let bytes = literal.as_bytes();
-
-    let mut line = start_line;
-    let mut line_byte = start_line_byte;
-
+fn find_opening_tag_end(bytes: &[u8], tag_start: usize) -> Option<usize> {
     let mut in_single_quote = false;
     let mut in_double_quote = false;
 
     for (offset, &byte) in bytes[tag_start..].iter().enumerate() {
-        let pos = tag_start + offset;
         match byte {
             b'\'' if !in_double_quote => in_single_quote = !in_single_quote,
             b'"' if !in_single_quote => in_double_quote = !in_double_quote,
-            b'>' if !in_single_quote && !in_double_quote => {
-                // Convert from bytes (0-based) to characters (1-based).
-                let col = literal[line_byte..pos].chars().count() + 1;
-                return Some((line, col));
-            }
-            b'\n' => {
-                line += 1;
-                line_byte = pos + 1;
-            }
+            b'>' if !in_single_quote && !in_double_quote => return Some(tag_start + offset),
             _ => {}
         }
     }
