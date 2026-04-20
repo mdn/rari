@@ -212,7 +212,7 @@ impl SPA {
                     )?,
                     featured_contributor: featured_contributor(self.locale)?,
                     latest_news: ItemContainer {
-                        items: latest_news(&home_page_data.latest_news)?,
+                        items: latest_news()?,
                     },
                     recent_contributions: ItemContainer {
                         items: recent_contributions()?,

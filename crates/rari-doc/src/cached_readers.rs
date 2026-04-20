@@ -800,7 +800,6 @@ pub struct PaginationData {
 #[serde(rename_all = "camelCase")]
 pub struct HomePageData {
     pub featured_articles: Vec<String>,
-    pub latest_news: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
