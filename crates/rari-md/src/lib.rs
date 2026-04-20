@@ -65,7 +65,12 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
                 let start_col = literal[line_start..lt].chars().count() + 1; // 1-based char column
 
                 // Find the closing '>' of this opening tag (respects quoted attrs)
-                let (end_line, end_col) = find_opening_tag_end(literal, lt, line, line_start);
+                let Some((end_line, end_col)) = find_opening_tag_end(literal, lt, line, line_start)
+                else {
+                    // Malformed tag with no closing `>` — emit as-is and stop
+                    result.push_str(&literal[pos..]);
+                    return result;
+                };
 
                 // Emit up to and including `<a`, then inject
                 result.push_str(&literal[pos..lt + 2]);
@@ -84,49 +89,41 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
 /// Scans forward from `tag_start` in `literal` to find the `>` that closes the opening tag,
 /// handling double- and single-quoted attribute values. Returns the 1-based (line, col) of `>`,
 /// where col is a character count (not a byte offset) to match Comrak's sourcepos convention.
+///
+/// Returns `None` if no closing `>` is found (malformed tag).
 fn find_opening_tag_end(
     literal: &str,
     tag_start: usize,
     start_line: usize,
     start_line_byte: usize,
-) -> (usize, usize) {
+) -> Option<(usize, usize)> {
     let bytes = literal.as_bytes();
-    let mut in_quote: Option<u8> = None;
-    let mut line = start_line;
-    let mut line_start = start_line_byte;
 
-    for (tag_offset, &byte) in bytes[tag_start..].iter().enumerate() {
-        let literal_offset = tag_start + tag_offset;
-        match in_quote {
-            Some(quote_char) => {
-                if byte == quote_char {
-                    in_quote = None;
-                } else if byte == b'\n' {
-                    line += 1;
-                    line_start = literal_offset + 1;
-                }
+    let mut line = start_line;
+    let mut line_byte = start_line_byte;
+
+    let mut in_single_quote = false;
+    let mut in_double_quote = false;
+
+    for (offset, &byte) in bytes[tag_start..].iter().enumerate() {
+        let pos = tag_start + offset;
+        match byte {
+            b'\'' if !in_double_quote => in_single_quote = !in_single_quote,
+            b'"' if !in_single_quote => in_double_quote = !in_double_quote,
+            b'>' if !in_single_quote && !in_double_quote => {
+                // Convert from bytes (0-based) to characters (1-based).
+                let col = literal[line_byte..pos].chars().count() + 1;
+                return Some((line, col));
             }
-            None => match byte {
-                b'"' | b'\'' => in_quote = Some(byte),
-                b'>' => {
-                    return (
-                        line,
-                        literal[line_start..literal_offset].chars().count() + 1,
-                    );
-                }
-                b'\n' => {
-                    line += 1;
-                    line_start = literal_offset + 1;
-                }
-                _ => {}
-            },
+            b'\n' => {
+                line += 1;
+                line_byte = pos + 1;
+            }
+            _ => {}
         }
     }
-    // Fallback: use start position
-    (
-        start_line,
-        literal[start_line_byte..tag_start].chars().count() + 1,
-    )
+
+    None
 }
 
 /// Injects `data-sourcepos` attributes into raw HTML `<a>` tags in `HtmlInline` and
@@ -545,14 +542,13 @@ mod test {
 
     #[test]
     fn test_inject_sourcepos_in_html_block_malformed_no_closing_gt() {
-        // Tag without closing `>` — find_opening_tag_end falls back to start position,
-        // producing a zero-width sourcepos like "1:1-1:1". Should not panic.
+        // Malformed tag with no closing `>` — emitted as-is without data-sourcepos.
         let result = inject_sourcepos_in_html_block("<a href=\"/foo\"", 1);
         assert!(
-            result.contains("data-sourcepos="),
-            "Malformed <a> tag (no closing >) should still get data-sourcepos: {result}"
+            !result.contains("data-sourcepos="),
+            "Malformed <a> tag (no closing >) should not get data-sourcepos: {result}"
         );
-        assert_eq!(result, "<a data-sourcepos=\"1:1-1:1\" href=\"/foo\"");
+        assert_eq!(result, "<a href=\"/foo\"");
     }
 
     #[test]
