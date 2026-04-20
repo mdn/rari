@@ -141,46 +141,22 @@ fn find_opening_tag_end(bytes: &[u8], tag_start: usize) -> Option<usize> {
 /// Allows `fix_link.rs` to report accurate line numbers for ill-cased or
 /// redirected links that appear as raw HTML rather than Markdown link syntax.
 fn annotate_raw_html_links(node: &AstNode<'_>) {
-    enum Action {
-        None,
-        Inline(String), // sourcepos string to inject
-        Block(usize),   // block_start_line
-    }
-
-    let action = {
-        let data = node.data.borrow();
-        match &data.value {
-            NodeValue::HtmlInline(html) if find_next_opening_a(html.as_bytes(), 0).is_some() => {
-                let sp = data.sourcepos;
-                Action::Inline(format!(
+    let mut data = node.data.borrow_mut();
+    let sp = data.sourcepos;
+    match &mut data.value {
+        NodeValue::HtmlInline(html) if find_next_opening_a(html.as_bytes(), 0).is_some() => {
+            inject_sourcepos_in_opening_a(
+                html,
+                &format!(
                     "{}:{}-{}:{}",
                     sp.start.line, sp.start.column, sp.end.line, sp.end.column
-                ))
-            }
-            NodeValue::HtmlBlock(nhb)
-                if find_next_opening_a(nhb.literal.as_bytes(), 0).is_some() =>
-            {
-                Action::Block(data.sourcepos.start.line)
-            }
-            _ => Action::None,
+                ),
+            );
         }
-    }; // immutable borrow dropped here
-
-    match action {
-        Action::None => {}
-        Action::Inline(sp) => {
-            let mut data = node.data.borrow_mut();
-            if let NodeValue::HtmlInline(ref mut html) = data.value {
-                inject_sourcepos_in_opening_a(html, &sp);
-            }
+        NodeValue::HtmlBlock(nhb) if find_next_opening_a(nhb.literal.as_bytes(), 0).is_some() => {
+            nhb.literal = inject_sourcepos_in_html_block(&nhb.literal.clone(), sp.start.line);
         }
-        Action::Block(block_start_line) => {
-            let mut data = node.data.borrow_mut();
-            if let NodeValue::HtmlBlock(ref mut nhb) = data.value {
-                nhb.literal =
-                    inject_sourcepos_in_html_block(&nhb.literal.clone(), block_start_line);
-            }
-        }
+        _ => {}
     }
 }
 
