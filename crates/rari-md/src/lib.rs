@@ -32,9 +32,10 @@ fn find_next_opening_a(bytes: &[u8], pos: usize) -> Option<usize> {
         let first_tag_byte = bytes.get(tag_start + 1).copied()?;
         // Must be 'a' or 'A', not '/' (closing tag) and not another letter
         if first_tag_byte == b'a' || first_tag_byte == b'A' {
-            // Must be followed by whitespace, '>', or end-of-input
-            let second_tag_byte = bytes.get(tag_start + 2).copied().unwrap_or(b'>');
-            if matches!(second_tag_byte, b' ' | b'\t' | b'\n' | b'\r' | b'>') {
+            // Must be followed by whitespace or '>'
+            if let Some(b) = bytes.get(tag_start + 2).copied()
+                && matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b'>')
+            {
                 return Some(tag_start);
             }
         }
@@ -496,9 +497,9 @@ mod test {
 
     #[test]
     fn test_find_next_opening_a_at_end_of_input() {
-        // `<a` with nothing after it — c2 falls back to b'>' via unwrap_or
-        assert_eq!(find_next_opening_a(b"<a", 0), Some(0));
-        assert_eq!(find_next_opening_a(b"text<a", 0), Some(4));
+        // `<a` with nothing after it is a truncated tag — not a match
+        assert_eq!(find_next_opening_a(b"<a", 0), None);
+        assert_eq!(find_next_opening_a(b"text<a", 0), None);
     }
 
     #[test]
