@@ -81,38 +81,29 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Str
     let mut line = block_start_line; // 1-based, tracks current line
     let mut line_start = 0; // byte offset of current line's start within `literal`
 
-    loop {
-        match find_next_opening_a(bytes, pos) {
-            None => {
-                result.push_str(&literal[pos..]);
-                break;
-            }
-            Some(lt) => {
-                (line, line_start) = advance_line_tracking(bytes, pos, lt, line, line_start);
-                let start_col = literal[line_start..lt].chars().count() + 1;
+    while let Some(lt) = find_next_opening_a(bytes, pos) {
+        (line, line_start) = advance_line_tracking(bytes, pos, lt, line, line_start);
+        let start_col = literal[line_start..lt].chars().count() + 1;
 
-                // Find the closing '>' of this opening tag (respects quoted attrs)
-                let Some(gt) = find_opening_tag_end(bytes, lt) else {
-                    // Malformed tag with no closing `>` — emit as-is and stop
-                    result.push_str(&literal[pos..]);
-                    return result;
-                };
+        // Find the closing '>' of this opening tag (respects quoted attrs)
+        let Some(gt) = find_opening_tag_end(bytes, lt) else {
+            // Malformed tag with no closing `>` — emit as-is and stop
+            result.push_str(&literal[pos..]);
+            return result;
+        };
 
-                let (end_line, end_line_start) =
-                    advance_line_tracking(bytes, lt, gt, line, line_start);
-                let end_col = literal[end_line_start..gt].chars().count() + 1;
+        let (end_line, end_line_start) = advance_line_tracking(bytes, lt, gt, line, line_start);
+        let end_col = literal[end_line_start..gt].chars().count() + 1;
 
-                // Emit up to and including `<a`, then inject
-                result.push_str(&literal[pos..lt + 2]);
-                write!(
-                    result,
-                    " data-sourcepos=\"{line}:{start_col}-{end_line}:{end_col}\""
-                )
-                .unwrap();
-                pos = lt + 2;
-            }
-        }
+        result.push_str(&literal[pos..lt + 2]);
+        write!(
+            result,
+            " data-sourcepos=\"{line}:{start_col}-{end_line}:{end_col}\""
+        )
+        .unwrap();
+        pos = lt + 2;
     }
+    result.push_str(&literal[pos..]);
     result
 }
 
