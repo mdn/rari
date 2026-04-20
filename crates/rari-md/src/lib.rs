@@ -19,7 +19,6 @@ pub(crate) mod p;
 pub(crate) mod utils;
 
 use dl::{convert_dl, is_dl};
-//use html::format_document;
 
 /// Returns the byte offset of the next opening `<a` tag in `bytes` at or after `pos`.
 /// Only matches tags where `<a` is followed by whitespace or `>` (not `<abbr>`, `<aside>`, etc.).
