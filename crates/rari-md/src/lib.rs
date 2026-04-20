@@ -8,6 +8,19 @@ use rari_types::locale::Locale;
 use crate::error::MarkdownError;
 use crate::p::{fix_p, is_empty_p, is_escaped_templ_p};
 
+pub mod anchor;
+pub(crate) mod ctype;
+pub(crate) mod dl;
+pub mod error;
+pub mod ext;
+pub(crate) mod html;
+pub mod node_card;
+pub(crate) mod p;
+pub(crate) mod utils;
+
+use dl::{convert_dl, is_dl};
+//use html::format_document;
+
 /// Returns the byte offset of the next opening `<a` tag in `bytes` at or after `pos`.
 /// Only matches tags where `<a` is followed by whitespace or `>` (not `<abbr>`, `<aside>`, etc.).
 fn find_next_opening_a(bytes: &[u8], pos: usize) -> Option<usize> {
@@ -177,19 +190,6 @@ fn annotate_raw_html_links(node: &AstNode<'_>) {
         }
     }
 }
-
-pub mod anchor;
-pub(crate) mod ctype;
-pub(crate) mod dl;
-pub mod error;
-pub mod ext;
-pub(crate) mod html;
-pub mod node_card;
-pub(crate) mod p;
-pub(crate) mod utils;
-
-use dl::{convert_dl, is_dl};
-//use html::format_document;
 
 fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &F)
 where
