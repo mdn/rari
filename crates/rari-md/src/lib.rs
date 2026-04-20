@@ -418,6 +418,9 @@ mod test {
         assert_eq!(find_next_opening_a(b"<aside>", 0), None); // not an <a>
         // Skips non-<a> tags, finds <a> further in
         assert_eq!(find_next_opening_a(b"<abbr><a href>", 0), Some(6));
+        // `<a` with nothing after it is a truncated tag — not a match
+        assert_eq!(find_next_opening_a(b"<a", 0), None);
+        assert_eq!(find_next_opening_a(b"text<a", 0), None);
     }
 
     #[test]
@@ -493,13 +496,6 @@ mod test {
             result,
             "<A data-sourcepos=\"1:1-1:15\" HREF=\"/foo\">text</A>"
         );
-    }
-
-    #[test]
-    fn test_find_next_opening_a_at_end_of_input() {
-        // `<a` with nothing after it is a truncated tag — not a match
-        assert_eq!(find_next_opening_a(b"<a", 0), None);
-        assert_eq!(find_next_opening_a(b"text<a", 0), None);
     }
 
     #[test]
