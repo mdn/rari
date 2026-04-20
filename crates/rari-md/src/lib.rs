@@ -8,7 +8,7 @@ use rari_types::locale::Locale;
 use crate::error::MarkdownError;
 use crate::p::{fix_p, is_empty_p, is_escaped_templ_p};
 
-/// Returns the byte offset of the next opening `<a` tag in `bytes` at or after `from`.
+/// Returns the byte offset of the next opening `<a` tag in `bytes` at or after `pos`.
 /// Only matches tags where `<a` is followed by whitespace or `>` (not `<abbr>`, `<aside>`, etc.).
 fn find_next_opening_a(bytes: &[u8], mut pos: usize) -> Option<usize> {
     loop {
@@ -28,7 +28,7 @@ fn find_next_opening_a(bytes: &[u8], mut pos: usize) -> Option<usize> {
     }
 }
 
-/// Injects `data-sourcepos="<sp>"` into every opening `<a` tag in `html`.
+/// Injects `data-sourcepos` into every `<a` tag in `html`.
 fn inject_sourcepos_in_opening_a(html: &mut String, sp: &str) {
     let attr = format!(" data-sourcepos=\"{sp}\"");
     let attr_len = attr.len();
@@ -39,7 +39,7 @@ fn inject_sourcepos_in_opening_a(html: &mut String, sp: &str) {
     }
 }
 
-/// Walks an HTML block literal, injecting `data-sourcepos` into every opening `<a` tag.
+/// Walks an HTML block literal, injecting `data-sourcepos` into every `<a` tag.
 /// `block_start_line` is the 1-based line number of the first line of the block in the source.
 fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> String {
     let mut result = String::with_capacity(literal.len() + 64);
@@ -130,8 +130,9 @@ fn find_opening_tag_end(
 }
 
 /// Injects `data-sourcepos` attributes into raw HTML `<a>` tags in `HtmlInline` and
-/// `HtmlBlock` AST nodes. This allows `fix_link.rs` to report accurate line numbers for
-/// ill-cased or redirected links that appear as raw HTML rather than Markdown link syntax.
+/// `HtmlBlock` AST nodes.
+/// Allows `fix_link.rs` to report accurate line numbers for ill-cased or
+/// redirected links that appear as raw HTML rather than Markdown link syntax.
 fn annotate_raw_html_links(node: &AstNode<'_>) {
     enum Action {
         None,
