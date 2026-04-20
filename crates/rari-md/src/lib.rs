@@ -1,4 +1,4 @@
-use std::fmt::Write as _;
+use std::fmt::Write;
 
 use comrak::nodes::{AstNode, NodeValue};
 use comrak::{Arena, Options, parse_document};
