@@ -10,10 +10,12 @@ use crate::p::{fix_p, is_empty_p, is_escaped_templ_p};
 
 /// Returns the byte offset of the next opening `<a` tag in `bytes` at or after `pos`.
 /// Only matches tags where `<a` is followed by whitespace or `>` (not `<abbr>`, `<aside>`, etc.).
-fn find_next_opening_a(bytes: &[u8], mut pos: usize) -> Option<usize> {
-    loop {
-        let rel_offset = bytes[pos..].iter().position(|&b| b == b'<')?;
-        let lt_pos = pos + rel_offset;
+fn find_next_opening_a(bytes: &[u8], pos: usize) -> Option<usize> {
+    for (offset, &byte) in bytes[pos..].iter().enumerate() {
+        if byte != b'<' {
+            continue;
+        }
+        let lt_pos = pos + offset;
         // `bytes.get` returns `None` if `<` is the last byte — no room for a tag name.
         let tag_char = bytes.get(lt_pos + 1).copied()?;
         // Must be 'a' or 'A', not '/' (closing tag) and not another letter
@@ -24,8 +26,8 @@ fn find_next_opening_a(bytes: &[u8], mut pos: usize) -> Option<usize> {
                 return Some(lt_pos);
             }
         }
-        pos = lt_pos + 1;
     }
+    None
 }
 
 /// Injects `data-sourcepos` into every `<a` tag in `html`.
