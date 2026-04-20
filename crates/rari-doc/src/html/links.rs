@@ -55,7 +55,6 @@ pub fn render_internal_link(
     if modifier.code {
         out.push_str("</code>");
     }
-    out.push_str("</a>");
     if !modifier.badges.is_empty() {
         if modifier.badges.contains(&FeatureStatus::Experimental) {
             write_experimental(out, modifier.badge_locale)?;
@@ -67,6 +66,7 @@ pub fn render_internal_link(
             write_deprecated(out, modifier.badge_locale)?;
         }
     }
+    out.push_str("</a>");
     Ok(())
 }
 
