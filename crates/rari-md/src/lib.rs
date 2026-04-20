@@ -15,15 +15,15 @@ fn find_next_opening_a(bytes: &[u8], pos: usize) -> Option<usize> {
         if byte != b'<' {
             continue;
         }
-        let lt_pos = pos + offset;
+        let tag_start = pos + offset;
         // `bytes.get` returns `None` if `<` is the last byte — no room for a tag name.
-        let tag_char = bytes.get(lt_pos + 1).copied()?;
+        let first_tag_byte = bytes.get(tag_start + 1).copied()?;
         // Must be 'a' or 'A', not '/' (closing tag) and not another letter
-        if tag_char == b'a' || tag_char == b'A' {
+        if first_tag_byte == b'a' || first_tag_byte == b'A' {
             // Must be followed by whitespace, '>', or end-of-input
-            let after_tag = bytes.get(lt_pos + 2).copied().unwrap_or(b'>');
-            if matches!(after_tag, b' ' | b'\t' | b'\n' | b'\r' | b'>') {
-                return Some(lt_pos);
+            let second_tag_byte = bytes.get(tag_start + 2).copied().unwrap_or(b'>');
+            if matches!(second_tag_byte, b' ' | b'\t' | b'\n' | b'\r' | b'>') {
+                return Some(tag_start);
             }
         }
     }
@@ -50,10 +50,10 @@ fn advance_line_tracking(
     mut line: usize,
     mut line_start: usize,
 ) -> (usize, usize) {
-    for (rel, &b) in bytes[start..end].iter().enumerate() {
-        if b == b'\n' {
+    for (offset, &byte) in bytes[start..end].iter().enumerate() {
+        if byte == b'\n' {
             line += 1;
-            line_start = start + rel + 1;
+            line_start = start + offset + 1;
         }
     }
     (line, line_start)
