@@ -491,61 +491,61 @@ impl DIssue {
                     }
                 }
                 IssueType::TemplBrokenLink => {
-                    let macro_name = additional.remove("templ");
+                    let source = issue_source(&mut additional);
                     di.fixed = false;
                     di.fixable = Some(false);
                     di.explanation = Some(format!(
-                        "Macro {} produces link {} which doesn't resolve",
-                        macro_name.as_deref().unwrap_or("?"),
+                        "{} produces link {} which doesn't resolve",
+                        source.label,
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name,
+                        macro_name: source.name,
                         href: additional.remove("url"),
                     }
                 }
                 IssueType::TemplRedirectedLink => {
-                    let macro_name = additional.remove("templ");
+                    let source = issue_source(&mut additional);
                     di.fixed = false;
-                    di.fixable = Some(is_fixable_template(macro_name.as_deref()));
+                    di.fixable = Some(is_fixable_template(source.name.as_deref()));
                     di.explanation = Some(format!(
-                        "Macro {} produces link {} which is a redirect",
-                        macro_name.as_deref().unwrap_or("?"),
+                        "{} produces link {} which is a redirect",
+                        source.label,
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name,
+                        macro_name: source.name,
                         href: additional.remove("url"),
                     }
                 }
                 IssueType::TemplIllCasedLink => {
-                    let macro_name = additional.remove("templ");
+                    let source = issue_source(&mut additional);
                     di.fixed = false;
-                    di.fixable = Some(is_fixable_template(macro_name.as_deref()));
+                    di.fixable = Some(is_fixable_template(source.name.as_deref()));
                     di.explanation = Some(format!(
-                        "Macro {} produces link {} which is ill cased",
-                        macro_name.as_deref().unwrap_or("?"),
+                        "{} produces link {} which is ill cased",
+                        source.label,
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name,
+                        macro_name: source.name,
                         href: additional.remove("url"),
                     }
                 }
                 IssueType::TemplInvalidArg => {
-                    let macro_name = additional.remove("templ");
+                    let source = issue_source(&mut additional);
                     di.fixed = false;
                     di.explanation = Some(format!(
-                        "Macro {} received argument ({}) which is not valid.",
-                        macro_name.as_deref().unwrap_or("?"),
+                        "{} received argument ({}) which is not valid.",
+                        source.label,
                         additional.get("arg").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name,
+                        macro_name: source.name,
                         href: None,
                     }
                 }
@@ -584,6 +584,27 @@ pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
     map
 }
 
+struct IssueSource {
+    label: String,
+    name: Option<String>,
+}
+
+fn issue_source(additional: &mut HashMap<&str, String>) -> IssueSource {
+    let macro_name = additional.remove("templ");
+    let sidebar_name = additional.remove("sidebar");
+    let label = if let Some(ref s) = sidebar_name {
+        format!("Sidebar {s}")
+    } else if let Some(ref m) = macro_name {
+        format!("Macro {m}")
+    } else {
+        "Unknown macro".to_string()
+    };
+    IssueSource {
+        label,
+        name: macro_name.or(sidebar_name),
+    }
+}
+
 /// Check if a template macro issue can be automatically fixed.
 /// Only navigation templates have fixable slug parameters in the markdown source.
 fn is_fixable_template(macro_name: Option<&str>) -> bool {
@@ -596,3 +617,34 @@ fn is_fixable_template(macro_name: Option<&str>) -> bool {
 }
 
 pub static IN_MEMORY: LazyLock<InMemoryLayer> = LazyLock::new(InMemoryLayer::default);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_issue_source_macro() {
+        let mut additional: HashMap<&str, String> =
+            [("templ", "previous".to_string())].into_iter().collect();
+        let source = issue_source(&mut additional);
+        assert_eq!(source.label, "Macro previous");
+        assert_eq!(source.name, Some("previous".to_string()));
+    }
+
+    #[test]
+    fn test_issue_source_sidebar() {
+        let mut additional: HashMap<&str, String> =
+            [("sidebar", "games".to_string())].into_iter().collect();
+        let source = issue_source(&mut additional);
+        assert_eq!(source.label, "Sidebar games");
+        assert_eq!(source.name, Some("games".to_string()));
+    }
+
+    #[test]
+    fn test_issue_source_unknown() {
+        let mut additional: HashMap<&str, String> = HashMap::new();
+        let source = issue_source(&mut additional);
+        assert_eq!(source.label, "Unknown macro");
+        assert_eq!(source.name, None);
+    }
+}
