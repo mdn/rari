@@ -84,7 +84,7 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Opt
 
     while let Some(lt) = find_next_opening_a(bytes, pos) {
         (line, line_start) = advance_line_tracking(bytes, pos, lt, line, line_start);
-        let start_col = literal[line_start..lt].chars().count() + 1;
+        let start_col = lt - line_start + 1;
 
         // Find the closing '>' of this opening tag (respects quoted attrs)
         let Some(gt) = find_opening_tag_end(bytes, lt) else {
@@ -96,7 +96,7 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Opt
         };
 
         let (end_line, end_line_start) = advance_line_tracking(bytes, lt, gt, line, line_start);
-        let end_col = literal[end_line_start..gt].chars().count() + 1;
+        let end_col = gt - end_line_start + 1;
 
         let r = result.get_or_insert_with(|| String::with_capacity(literal.len() + 64));
         r.push_str(&literal[pos..lt + 2]);
@@ -510,17 +510,12 @@ mod test {
 
     #[test]
     fn test_inject_sourcepos_in_html_block_multibyte_char_column() {
-        // 'é' (U+00E9) is 2 bytes in UTF-8, so <a> sits at byte offset 2 but
-        // character offset 1 (0-based), i.e. column 2 (1-based).
-        // The HtmlBlock path currently computes byte-based columns
-        // (start_col = lt - line_start + 1 = 2 - 0 + 1 = 3), whereas Comrak's
-        // HtmlInline sourcepos uses character-based columns.
-        // This test expects character-based columns (matching the inline path)
-        // and will fail until the block path is fixed to count chars, not bytes.
+        // 'é' (U+00E9) is 2 bytes in UTF-8, so <a> sits at byte offset 2 (0-based),
+        // i.e. column 3 (1-based). Columns are byte-based, matching Comrak's sourcepos.
         let result = inject_sourcepos_in_html_block("é<a href=\"/foo\">text</a>", 1).unwrap();
         assert!(
-            result.contains("data-sourcepos=\"1:2-1:16\""),
-            "Column should be character-based (1:2-1:16), not byte-based (1:3-1:17): {result}"
+            result.contains("data-sourcepos=\"1:3-1:17\""),
+            "Column should be byte-based (1:3-1:17): {result}"
         );
     }
 
