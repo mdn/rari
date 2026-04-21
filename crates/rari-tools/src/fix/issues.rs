@@ -193,25 +193,30 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                         search: search_text,
                         replace: replace_text,
                     })
-                } else if decoded_href.contains('<') || decoded_href.contains('>') {
+                } else {
                     // Fallback: markdown may use backslash-escaped angle brackets (\< and \>)
                     // in URLs that contain literal < or > characters (e.g., bitwise operator
                     // fragments like #<<_(Left_shift) written as #\<\<_(Left_shift)).
-                    let escaped_href = decoded_href.replace('<', "\\<").replace('>', "\\>");
-                    let line_start =
-                        calculate_line_start_offset(raw, (line_num as usize).saturating_sub(1));
-                    let search_from = line_start.max(min_byte_offset);
-
-                    if let Some((href_start, search_text)) =
+                    let found = if decoded_href.contains('<') || decoded_href.contains('>') {
+                        let escaped_href = decoded_href.replace('<', "\\<").replace('>', "\\>");
+                        let line_start =
+                            calculate_line_start_offset(raw, (line_num as usize).saturating_sub(1));
+                        let search_from = line_start.max(min_byte_offset);
                         search_with_slug_fallback(&escaped_href, |st| {
                             find_non_prefix_match(raw, search_from, st)
                         })
-                    {
-                        let replace_text = if search_text == escaped_href {
-                            decoded_suggestion.to_string()
-                        } else {
-                            extract_slug_from_href(&decoded_suggestion).to_string()
-                        };
+                        .map(|(href_start, search_text)| {
+                            let replace_text = if search_text == escaped_href {
+                                decoded_suggestion.to_string()
+                            } else {
+                                extract_slug_from_href(&decoded_suggestion).to_string()
+                            };
+                            (href_start, search_text, replace_text)
+                        })
+                    } else {
+                        None
+                    };
+                    if let Some((href_start, search_text, replace_text)) = found {
                         next_search_from.insert(key, href_start + search_text.len());
                         Some(SearchReplaceWithOffset {
                             offset: href_start,
@@ -219,9 +224,9 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                             replace: replace_text,
                         })
                     } else {
-                        let search_start = offset_end.saturating_sub(decoded_href.len());
+                        let context_start = offset_end.saturating_sub(decoded_href.len());
                         let context_end = offset_end_adjusted.min(raw.len());
-                        let context = &raw[search_start..context_end];
+                        let context = &raw[context_start..context_end];
                         tracing::warn!(
                             "Could not locate '{}' before offset {} (searched region: {:?})",
                             decoded_href,
@@ -230,18 +235,6 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                         );
                         None
                     }
-                } else {
-                    // Show context around the offset for debugging
-                    let search_start = offset_end.saturating_sub(decoded_href.len());
-                    let context_end = offset_end_adjusted.min(raw.len());
-                    let context = &raw[search_start..context_end];
-                    tracing::warn!(
-                        "Could not locate '{}' before offset {} (searched region: {:?})",
-                        decoded_href,
-                        offset_end,
-                        context
-                    );
-                    None
                 }
             } else {
                 None
