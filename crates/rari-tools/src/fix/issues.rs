@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
-use rari_doc::issues::{DIssue, IN_MEMORY};
+use rari_doc::issues::{DIssue, DisplayIssue, IN_MEMORY};
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use rari_doc::position_utils::{Direction, adjust_to_char_boundary, calculate_line_start_offset};
 use tracing::{Level, span};
@@ -128,108 +128,18 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                 } => (display_issue, href),
                 _ => return None,
             };
-            let suggestion = display_issue.suggestion.as_deref()?;
 
-            // The href and suggestion from HTML may contain HTML entities (&#x27; for ', &lt; for <, etc.)
-            // Decode them to match the raw markdown content
             let decoded_href = html_escape::decode_html_entities(href);
-            let decoded_suggestion = html_escape::decode_html_entities(suggestion);
-
-            // For repeated identical hrefs on the same line, search past the last match.
             let line_num = display_issue.line.unwrap_or(0);
             let key = (line_num, decoded_href.to_string());
             let min_byte_offset = next_search_from.get(&key).copied().unwrap_or(0);
 
-            // actual_offset returns the END of the href in the raw markdown.
-            // We need to find the START by searching backward for the text.
-            let offset_end = actual_offset(raw, dissue, min_byte_offset);
-            let offset_end_adjusted = adjust_to_char_boundary(raw, offset_end, Direction::Forward);
+            let result = issue_to_suggestion(raw, dissue, display_issue, href, min_byte_offset)?;
 
-            // Backward search: anchored to offset_end — works when the HTML position maps
-            // directly to the markdown byte offset.
-            let backward_search = |search_text: &str| -> Option<usize> {
-                let search_start = adjust_to_char_boundary(
-                    raw,
-                    offset_end.saturating_sub(search_text.len()),
-                    Direction::Backward,
-                );
-                raw[search_start..offset_end_adjusted]
-                    .rfind(search_text)
-                    .and_then(|rel_pos| {
-                        let href_start = search_start + rel_pos;
-                        let href_end = href_start + search_text.len();
-                        ((href_end == offset_end || href_end == offset_end_adjusted)
-                            && &raw[href_start..href_end] == search_text)
-                            .then_some(href_start)
-                    })
-            };
-
-            // Forward search: from line start — needed when backslash-escaping of < and >
-            // shifts byte positions relative to what the HTML column offset reports.
-            let line_start =
-                calculate_line_start_offset(raw, (line_num as usize).saturating_sub(1));
-            let search_from = line_start.max(min_byte_offset);
-            let forward_search =
-                |search_text: &str| find_non_prefix_match(raw, search_from, search_text);
-
-            let href = decoded_href.as_ref();
-            let suggestion = decoded_suggestion.as_ref();
-            let slug = extract_slug_from_href(href);
-            let slug_suggestion = extract_slug_from_href(suggestion);
-            // Markdown uses \< and \> to escape angle brackets in link destinations
-            // (e.g., #<<_(Left_shift) written as #\<\<_(Left_shift)).
-            let escaped = (href.contains('<') || href.contains('>'))
-                .then(|| href.replace('<', "\\<").replace('>', "\\>"));
-
-            // Candidates in priority order: most specific (full href, backward) first.
-            // Escaped variants only apply when the href contains literal < or >.
-            let mut candidates: Vec<(String, String, &dyn Fn(&str) -> Option<usize>)> =
-                vec![(href.to_string(), suggestion.to_string(), &backward_search)];
-            if href.starts_with('/') {
-                candidates.push((
-                    slug.to_string(),
-                    slug_suggestion.to_string(),
-                    &backward_search,
-                ));
-            }
-            if let Some(ref esc) = escaped {
-                candidates.push((esc.clone(), suggestion.to_string(), &forward_search));
-                if href.starts_with('/') {
-                    candidates.push((
-                        extract_slug_from_href(esc).to_string(),
-                        slug_suggestion.to_string(),
-                        &forward_search,
-                    ));
-                }
-            }
-
-            let found = candidates
-                .iter()
-                .find_map(|(search_text, replace_text, search_fn)| {
-                    search_fn(search_text)
-                        .map(|offset| (offset, search_text.clone(), replace_text.clone()))
-                });
-
-            if let Some((href_start, search_text, replace_text)) = found {
-                // Record the end of this match so the next identical href on the same
-                // line starts searching from here.
-                next_search_from.insert(key, href_start + search_text.len());
-                Some(SearchReplaceWithOffset {
-                    offset: href_start,
-                    search: search_text,
-                    replace: replace_text,
-                })
-            } else {
-                let context_start = offset_end.saturating_sub(decoded_href.len());
-                let context_end = offset_end_adjusted.min(raw.len());
-                tracing::warn!(
-                    "Could not locate '{}' before offset {} (searched region: {:?})",
-                    decoded_href,
-                    offset_end,
-                    &raw[context_start..context_end]
-                );
-                None
-            }
+            // Record the end of this match so the next identical href on the same
+            // line starts searching from here.
+            next_search_from.insert(key, result.offset + result.search.len());
+            Some(result)
         })
         .collect::<Vec<_>>();
 
@@ -237,6 +147,147 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
     suggestions.dedup();
 
     suggestions
+}
+
+/// Searches for `href` in the raw markdown and returns a search/replace pair at the found offset.
+///
+/// Tries candidates in priority order (full href → slug → escaped variants) and returns the
+/// first match. Returns `None` if no candidate is found and logs a warning.
+fn issue_to_suggestion(
+    raw: &str,
+    dissue: &DIssue,
+    display_issue: &DisplayIssue,
+    href: &str,
+    min_byte_offset: usize,
+) -> Option<SearchReplaceWithOffset> {
+    let suggestion = display_issue.suggestion.as_deref()?;
+
+    // The href and suggestion from HTML may contain HTML entities (&#x27; for ', &lt; for <, etc.)
+    // Decode them to match the raw markdown content.
+    let decoded_href = html_escape::decode_html_entities(href);
+    let decoded_suggestion = html_escape::decode_html_entities(suggestion);
+
+    let line_num = display_issue.line.unwrap_or(0);
+
+    // actual_offset returns the END of the href in the raw markdown.
+    // We need to find the START by searching backward for the text.
+    let offset_end = actual_offset(raw, dissue, min_byte_offset);
+    let offset_end_adjusted = adjust_to_char_boundary(raw, offset_end, Direction::Forward);
+
+    // Backward search: anchored to offset_end — works when the HTML position maps
+    // directly to the markdown byte offset.
+    let backward_search = |search_text: &str| -> Option<usize> {
+        let search_start = adjust_to_char_boundary(
+            raw,
+            offset_end.saturating_sub(search_text.len()),
+            Direction::Backward,
+        );
+        raw[search_start..offset_end_adjusted]
+            .rfind(search_text)
+            .and_then(|rel_pos| {
+                let href_start = search_start + rel_pos;
+                let href_end = href_start + search_text.len();
+                ((href_end == offset_end || href_end == offset_end_adjusted)
+                    && &raw[href_start..href_end] == search_text)
+                    .then_some(href_start)
+            })
+    };
+
+    // Forward search: from line start — needed when backslash-escaping of < and >
+    // shifts byte positions relative to what the HTML column offset reports.
+    let line_start = calculate_line_start_offset(raw, (line_num as usize).saturating_sub(1));
+    let search_from = line_start.max(min_byte_offset);
+    let forward_search = |search_text: &str| find_non_prefix_match(raw, search_from, search_text);
+
+    let candidates = build_candidates(
+        decoded_href.as_ref(),
+        decoded_suggestion.as_ref(),
+        &backward_search,
+        &forward_search,
+    );
+
+    if let Some((href_start, search_text, replace_text)) = candidates.iter().find_map(|candidate| {
+        (candidate.search_fn)(candidate.search.as_str())
+            .map(|offset| (offset, candidate.search.clone(), candidate.replace.clone()))
+    }) {
+        Some(SearchReplaceWithOffset {
+            offset: href_start,
+            search: search_text,
+            replace: replace_text,
+        })
+    } else {
+        let context_start = offset_end.saturating_sub(decoded_href.len());
+        let context_end = offset_end_adjusted.min(raw.len());
+        tracing::warn!(
+            "Could not locate '{}' before offset {} (searched region: {:?})",
+            decoded_href,
+            offset_end,
+            &raw[context_start..context_end]
+        );
+        None
+    }
+}
+
+struct Candidate<'a> {
+    search: String,
+    replace: String,
+    search_fn: &'a dyn Fn(&str) -> Option<usize>,
+}
+
+impl<'a> Candidate<'a> {
+    fn new(
+        search: impl Into<String>,
+        replace: impl Into<String>,
+        search_fn: &'a dyn Fn(&str) -> Option<usize>,
+    ) -> Self {
+        Self {
+            search: search.into(),
+            replace: replace.into(),
+            search_fn,
+        }
+    }
+}
+
+/// Builds an ordered list of candidates for locating and replacing an href in raw markdown.
+///
+/// Candidates are tried in priority order by `issue_to_suggestion`: full href first (most
+/// specific), then slug-only fallback, then escaped-angle-bracket variants. The two search
+/// strategies differ in anchoring: `backward_search` works from a known byte offset, while
+/// `forward_search` scans from the line start (needed when `\<`/`\>` escapes shift positions).
+fn build_candidates<'a>(
+    href: &'a str,
+    suggestion: &'a str,
+    backward_search: &'a dyn Fn(&str) -> Option<usize>,
+    forward_search: &'a dyn Fn(&str) -> Option<usize>,
+) -> Vec<Candidate<'a>> {
+    let slug = extract_slug_from_href(href);
+    let slug_suggestion = extract_slug_from_href(suggestion);
+
+    // 1. Full URL.
+    let mut candidates = vec![Candidate::new(href, suggestion, backward_search)];
+    if href.starts_with('/') {
+        // 2. Slug.
+        candidates.push(Candidate::new(slug, slug_suggestion, backward_search));
+    }
+
+    if href.contains('<') || href.contains('>') {
+        // Markdown allows escaped angle brackets in links, for example `#<<_(Left_shift)` written as `#\<\<_(Left_shift)`.
+        let esc = href.replace('<', "\\<").replace('>', "\\>");
+
+        // 3. Full URL with escaped angle brackets.
+        candidates.push(Candidate::new(esc.as_str(), suggestion, forward_search));
+
+        if href.starts_with('/') {
+            // 4. Slug with escaped angle brackets.
+            candidates.push(Candidate::new(
+                extract_slug_from_href(&esc),
+                slug_suggestion,
+                forward_search,
+            ));
+        }
+    }
+
+    candidates
 }
 
 /// Applies search/replace suggestions to raw content, returning the modified text
