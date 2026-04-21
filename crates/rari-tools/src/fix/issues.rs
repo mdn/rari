@@ -199,16 +199,14 @@ fn issue_to_suggestion(
     let search_from = line_start.max(min_byte_offset);
     let forward_search = |search_text: &str| find_non_prefix_match(raw, search_from, search_text);
 
-    let candidates = build_candidates(
-        decoded_href.as_ref(),
-        decoded_suggestion.as_ref(),
-        &backward_search,
-        &forward_search,
-    );
+    let candidates = build_candidates(decoded_href.as_ref(), decoded_suggestion.as_ref());
 
-    if let Some((href_start, search_text, replace_text)) = candidates.iter().find_map(|candidate| {
-        (candidate.search_fn)(candidate.search.as_str())
-            .map(|offset| (offset, candidate.search.clone(), candidate.replace.clone()))
+    if let Some((href_start, search_text, replace_text)) = candidates.iter().find_map(|c| {
+        let offset = match c.direction {
+            ScanDirection::Backward => backward_search(c.search.as_str()),
+            ScanDirection::Forward => forward_search(c.search.as_str()),
+        };
+        offset.map(|o| (o, c.search.clone(), c.replace.clone()))
     }) {
         Some(SearchReplaceWithOffset {
             offset: href_start,
@@ -228,22 +226,27 @@ fn issue_to_suggestion(
     }
 }
 
-struct Candidate<'a> {
-    search: String,
-    replace: String,
-    search_fn: &'a dyn Fn(&str) -> Option<usize>,
+enum ScanDirection {
+    Backward,
+    Forward,
 }
 
-impl<'a> Candidate<'a> {
+struct Candidate {
+    search: String,
+    replace: String,
+    direction: ScanDirection,
+}
+
+impl Candidate {
     fn new(
         search: impl Into<String>,
         replace: impl Into<String>,
-        search_fn: &'a dyn Fn(&str) -> Option<usize>,
+        direction: ScanDirection,
     ) -> Self {
         Self {
             search: search.into(),
             replace: replace.into(),
-            search_fn,
+            direction,
         }
     }
 }
@@ -251,23 +254,22 @@ impl<'a> Candidate<'a> {
 /// Builds an ordered list of candidates for locating and replacing an href in raw markdown.
 ///
 /// Candidates are tried in priority order by `issue_to_suggestion`: full href first (most
-/// specific), then slug-only fallback, then escaped-angle-bracket variants. The two search
-/// strategies differ in anchoring: `backward_search` works from a known byte offset, while
-/// `forward_search` scans from the line start (needed when `\<`/`\>` escapes shift positions).
-fn build_candidates<'a>(
-    href: &'a str,
-    suggestion: &'a str,
-    backward_search: &'a dyn Fn(&str) -> Option<usize>,
-    forward_search: &'a dyn Fn(&str) -> Option<usize>,
-) -> Vec<Candidate<'a>> {
+/// specific), then slug-only fallback, then escaped-angle-bracket variants. The two scan
+/// directions differ in anchoring: `Backward` works from a known byte offset, while `Forward`
+/// scans from the line start (needed when `\<`/`\>` escapes shift positions).
+fn build_candidates(href: &str, suggestion: &str) -> Vec<Candidate> {
     let slug = extract_slug_from_href(href);
     let slug_suggestion = extract_slug_from_href(suggestion);
 
     // 1. Full URL.
-    let mut candidates = vec![Candidate::new(href, suggestion, backward_search)];
+    let mut candidates = vec![Candidate::new(href, suggestion, ScanDirection::Backward)];
     if href.starts_with('/') {
         // 2. Slug.
-        candidates.push(Candidate::new(slug, slug_suggestion, backward_search));
+        candidates.push(Candidate::new(
+            slug,
+            slug_suggestion,
+            ScanDirection::Backward,
+        ));
     }
 
     if href.contains('<') || href.contains('>') {
@@ -280,7 +282,7 @@ fn build_candidates<'a>(
         candidates.push(Candidate::new(
             esc.as_str(),
             esc_suggestion.as_str(),
-            forward_search,
+            ScanDirection::Forward,
         ));
 
         if href.starts_with('/') {
@@ -288,7 +290,7 @@ fn build_candidates<'a>(
             candidates.push(Candidate::new(
                 extract_slug_from_href(&esc),
                 extract_slug_from_href(&esc_suggestion),
-                forward_search,
+                ScanDirection::Forward,
             ));
         }
     }
