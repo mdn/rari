@@ -73,8 +73,6 @@ pub fn write_badge(
     let title = html_escape::encode_quoted_attribute(title);
     write!(
         out,
-        r#"<abbr class="icon icon-{typ}" title="{title}">
-<span class="visually-hidden">{abbreviation}</span>
-</abbr>"#
+        r#"<span role="img" class="icon icon-{typ}" title="{title}" aria-label="{abbreviation}"></span>"#
     )
 }
