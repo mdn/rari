@@ -38,11 +38,11 @@ yaml-rust = "0.4"
 percent-encoding = "2"
 validator = { version = "0.20", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
-scraper = { version = "0.25", features = ["deterministic"] }
+scraper = { version = "0.26", features = ["deterministic"] }
 lol_html = "2"
 html-escape = "0.2"
-html5ever = "0.36"
-ego-tree = "0.10"
+html5ever = "0.39"
+ego-tree = "0.11"
 rss = { version = "2", features = [], default-features = false }
 cssparser = "0.37"
 
