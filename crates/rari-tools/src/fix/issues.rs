@@ -193,12 +193,48 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                         search: search_text,
                         replace: replace_text,
                     })
+                } else if decoded_href.contains('<') || decoded_href.contains('>') {
+                    // Fallback: markdown may use backslash-escaped angle brackets (\< and \>)
+                    // in URLs that contain literal < or > characters (e.g., bitwise operator
+                    // fragments like #<<_(Left_shift) written as #\<\<_(Left_shift)).
+                    let escaped_href = decoded_href.replace('<', "\\<").replace('>', "\\>");
+                    let line_start =
+                        calculate_line_start_offset(raw, (line_num as usize).saturating_sub(1));
+                    let search_from = line_start.max(min_byte_offset);
+
+                    if let Some((href_start, search_text)) =
+                        search_with_slug_fallback(&escaped_href, |st| {
+                            find_non_prefix_match(raw, search_from, st)
+                        })
+                    {
+                        let replace_text = if search_text == escaped_href {
+                            decoded_suggestion.to_string()
+                        } else {
+                            extract_slug_from_href(&decoded_suggestion).to_string()
+                        };
+                        next_search_from.insert(key, href_start + search_text.len());
+                        Some(SearchReplaceWithOffset {
+                            offset: href_start,
+                            search: search_text,
+                            replace: replace_text,
+                        })
+                    } else {
+                        let search_start = offset_end.saturating_sub(decoded_href.len());
+                        let context_end = offset_end_adjusted.min(raw.len());
+                        let context = &raw[search_start..context_end];
+                        tracing::warn!(
+                            "Could not locate '{}' before offset {} (searched region: {:?})",
+                            decoded_href,
+                            offset_end,
+                            context
+                        );
+                        None
+                    }
                 } else {
                     // Show context around the offset for debugging
                     let search_start = offset_end.saturating_sub(decoded_href.len());
-                    let context_start = search_start;
                     let context_end = offset_end_adjusted.min(raw.len());
-                    let context = &raw[context_start..context_end];
+                    let context = &raw[search_start..context_end];
                     tracing::warn!(
                         "Could not locate '{}' before offset {} (searched region: {:?})",
                         decoded_href,
@@ -1350,6 +1386,106 @@ slug: Web/JavaScript/Guide/Indexed_collections
 {{PreviousNext("Web/JavaScript/Guide/Regular_expressions", "Web/JavaScript/Guide/Keyed_collections")}}
 
 Some content here.
+"#
+        );
+    }
+
+    #[test]
+    fn test_backslash_escaped_angle_brackets_in_url() {
+        // Test that links with backslash-escaped < and > in URL fragments are found.
+        // Markdown uses \< and \> to escape angle brackets inside link destinations
+        // (e.g., bitwise operator fragments like #<<_(Left_shift) written as #\<\<_(Left_shift)).
+        let raw = r#"---
+title: Expressions and operators
+slug: Web/JavaScript/Guide/Expressions_and_operators
+---
+| [Left shift](</ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#\<\<_(Left_shift)>) (`<<`) | desc |
+| [Sign-propagating right shift](</ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#\>\>_(Sign-propagating_right_shift)>) (`>>`) | desc |
+"#;
+
+        let issues = vec![
+            DIssue::BrokenLink {
+                display_issue: DisplayIssue {
+                    id: 1,
+                    explanation: Some("Redirect detected".to_string()),
+                    suggestion: Some(
+                        "/ru/docs/Web/JavaScript/Reference/Operators/Left_shift".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(5),
+                    column: Some(14),
+                    end_line: Some(5),
+                    end_column: Some(88),
+                    source_context: None,
+                    filepath: Some("/path/to/index.md".to_string()),
+                    name: IssueType::RedirectedLink,
+                },
+                href: Some(
+                    "/ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#<<_(Left_shift)"
+                        .to_string(),
+                ),
+            },
+            DIssue::BrokenLink {
+                display_issue: DisplayIssue {
+                    id: 2,
+                    explanation: Some("Redirect detected".to_string()),
+                    suggestion: Some(
+                        "/ru/docs/Web/JavaScript/Reference/Operators/Right_shift".to_string(),
+                    ),
+                    fixable: Some(true),
+                    fixed: false,
+                    line: Some(6),
+                    column: Some(30),
+                    end_line: Some(6),
+                    end_column: Some(130),
+                    source_context: None,
+                    filepath: Some("/path/to/index.md".to_string()),
+                    name: IssueType::RedirectedLink,
+                },
+                href: Some(
+                    "/ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#>>_(Sign-propagating_right_shift)"
+                        .to_string(),
+                ),
+            },
+        ];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(
+            suggestions.len(),
+            2,
+            "Should find both hrefs with backslash-escaped angle brackets"
+        );
+
+        // Full escaped href is found (not just slug), so search contains the full URL path
+        assert_eq!(
+            suggestions[0].search,
+            "/ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#\\<\\<_(Left_shift)"
+        );
+        assert_eq!(
+            suggestions[0].replace,
+            "/ru/docs/Web/JavaScript/Reference/Operators/Left_shift"
+        );
+
+        assert_eq!(
+            suggestions[1].search,
+            "/ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#\\>\\>_(Sign-propagating_right_shift)"
+        );
+        assert_eq!(
+            suggestions[1].replace,
+            "/ru/docs/Web/JavaScript/Reference/Operators/Right_shift"
+        );
+
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            r#"---
+title: Expressions and operators
+slug: Web/JavaScript/Guide/Expressions_and_operators
+---
+| [Left shift](</ru/docs/Web/JavaScript/Reference/Operators/Left_shift>) (`<<`) | desc |
+| [Sign-propagating right shift](</ru/docs/Web/JavaScript/Reference/Operators/Right_shift>) (`>>`) | desc |
 "#
         );
     }
