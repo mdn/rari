@@ -272,16 +272,22 @@ fn build_candidates<'a>(
 
     if href.contains('<') || href.contains('>') {
         // Markdown allows escaped angle brackets in links, for example `#<<_(Left_shift)` written as `#\<\<_(Left_shift)`.
+        // Both the search text and the replacement must use the same escaping so the written-back markdown stays valid.
         let esc = href.replace('<', "\\<").replace('>', "\\>");
+        let esc_suggestion = suggestion.replace('<', "\\<").replace('>', "\\>");
 
         // 3. Full URL with escaped angle brackets.
-        candidates.push(Candidate::new(esc.as_str(), suggestion, forward_search));
+        candidates.push(Candidate::new(
+            esc.as_str(),
+            esc_suggestion.as_str(),
+            forward_search,
+        ));
 
         if href.starts_with('/') {
             // 4. Slug with escaped angle brackets.
             candidates.push(Candidate::new(
                 extract_slug_from_href(&esc),
-                slug_suggestion,
+                extract_slug_from_href(&esc_suggestion),
                 forward_search,
             ));
         }
@@ -1521,6 +1527,68 @@ slug: Web/JavaScript/Guide/Expressions_and_operators
 ---
 | [Left shift](</ru/docs/Web/JavaScript/Reference/Operators/Left_shift>) (`<<`) | desc |
 | [Sign-propagating right shift](</ru/docs/Web/JavaScript/Reference/Operators/Right_shift>) (`>>`) | desc |
+"#
+        );
+    }
+
+    #[test]
+    fn test_backslash_escaped_angle_brackets_in_suggestion() {
+        // Regression test: when the *suggestion* also contains angle brackets, the replacement
+        // text written back into the markdown must also use backslash-escaped form so the
+        // resulting markdown stays valid.
+        let raw = r#"---
+title: Expressions and operators
+slug: Web/JavaScript/Guide/Expressions_and_operators
+---
+| [Left shift](</ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#\<\<_(Left_shift)>) | desc |
+"#;
+
+        let issues = vec![DIssue::BrokenLink {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some("Redirect detected".to_string()),
+                // Suggestion also has an angle-bracket fragment.
+                suggestion: Some(
+                    "/ru/docs/Web/JavaScript/Reference/Operators/New_Operators#<<_(New_left_shift)"
+                        .to_string(),
+                ),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(5),
+                column: Some(14),
+                end_line: Some(5),
+                end_column: Some(88),
+                source_context: None,
+                filepath: Some("/path/to/index.md".to_string()),
+                name: IssueType::RedirectedLink,
+            },
+            href: Some(
+                "/ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#<<_(Left_shift)"
+                    .to_string(),
+            ),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(
+            suggestions[0].search,
+            "/ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#\\<\\<_(Left_shift)"
+        );
+        // Replace must use escaped form, not raw `<<`.
+        assert_eq!(
+            suggestions[0].replace,
+            "/ru/docs/Web/JavaScript/Reference/Operators/New_Operators#\\<\\<_(New_left_shift)"
+        );
+
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            r#"---
+title: Expressions and operators
+slug: Web/JavaScript/Guide/Expressions_and_operators
+---
+| [Left shift](</ru/docs/Web/JavaScript/Reference/Operators/New_Operators#\<\<_(New_left_shift)>) | desc |
 "#
         );
     }
