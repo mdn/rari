@@ -1594,4 +1594,94 @@ slug: Web/JavaScript/Guide/Expressions_and_operators
 "#
         );
     }
+
+    #[test]
+    fn test_build_candidates_full_url_with_slash() {
+        let c = build_candidates("/en-US/docs/Web/API/Foo", "/en-US/docs/Web/API/Bar");
+        assert_eq!(c.len(), 2);
+        assert_eq!(c[0].search, "/en-US/docs/Web/API/Foo");
+        assert_eq!(c[0].replace, "/en-US/docs/Web/API/Bar");
+        assert!(matches!(c[0].direction, ScanDirection::Backward));
+        assert_eq!(c[1].search, "Web/API/Foo");
+        assert_eq!(c[1].replace, "Web/API/Bar");
+        assert!(matches!(c[1].direction, ScanDirection::Backward));
+    }
+
+    #[test]
+    fn test_build_candidates_slug_only_href() {
+        let c = build_candidates("Web/API/Foo", "Web/API/Bar");
+        assert_eq!(c.len(), 1);
+        assert_eq!(c[0].search, "Web/API/Foo");
+        assert_eq!(c[0].replace, "Web/API/Bar");
+        assert!(matches!(c[0].direction, ScanDirection::Backward));
+    }
+
+    #[test]
+    fn test_build_candidates_escaped_angle_brackets() {
+        let c = build_candidates(
+            "/ru/docs/Bitwise_Operators#<<_(Left_shift)",
+            "/ru/docs/Operators/Left_shift",
+        );
+        assert_eq!(c.len(), 4);
+        // Backward first (unescaped)
+        assert!(matches!(c[0].direction, ScanDirection::Backward));
+        assert_eq!(c[0].search, "/ru/docs/Bitwise_Operators#<<_(Left_shift)");
+        assert!(matches!(c[1].direction, ScanDirection::Backward));
+        assert_eq!(c[1].search, "Bitwise_Operators#<<_(Left_shift)");
+        // Forward next (escaped search, suggestion unchanged — no <> in suggestion)
+        assert!(matches!(c[2].direction, ScanDirection::Forward));
+        assert_eq!(
+            c[2].search,
+            "/ru/docs/Bitwise_Operators#\\<\\<_(Left_shift)"
+        );
+        assert_eq!(c[2].replace, "/ru/docs/Operators/Left_shift");
+        assert!(matches!(c[3].direction, ScanDirection::Forward));
+        assert_eq!(c[3].search, "Bitwise_Operators#\\<\\<_(Left_shift)");
+    }
+
+    #[test]
+    fn test_build_candidates_escapes_suggestion_when_needed() {
+        // Regression: forward-scan candidates must escape angle brackets in BOTH search and replace.
+        let c = build_candidates("/a#<<_old", "/b#<<_new");
+        assert_eq!(c.len(), 4);
+        // Backward candidates use raw (unescaped) text on both sides
+        assert_eq!(c[0].search, "/a#<<_old");
+        assert_eq!(c[0].replace, "/b#<<_new");
+        assert!(matches!(c[0].direction, ScanDirection::Backward));
+        // Forward candidates use escaped text on BOTH sides
+        assert!(matches!(c[2].direction, ScanDirection::Forward));
+        assert_eq!(c[2].search, "/a#\\<\\<_old");
+        assert_eq!(c[2].replace, "/b#\\<\\<_new");
+        assert_eq!(c[3].replace, "b#\\<\\<_new");
+    }
+
+    #[test]
+    fn test_build_candidates_greater_than_only() {
+        let c = build_candidates("/a#>>_shift", "/b");
+        assert_eq!(c.len(), 4);
+        assert!(matches!(c[2].direction, ScanDirection::Forward));
+        assert_eq!(c[2].search, "/a#\\>\\>_shift");
+        assert_eq!(c[2].replace, "/b");
+    }
+
+    #[test]
+    fn test_build_candidates_escaped_without_slash() {
+        let c = build_candidates("foo#<<_x", "bar#<<_y");
+        assert_eq!(c.len(), 2);
+        assert!(matches!(c[0].direction, ScanDirection::Backward));
+        assert_eq!(c[0].search, "foo#<<_x");
+        assert!(matches!(c[1].direction, ScanDirection::Forward));
+        assert_eq!(c[1].search, "foo#\\<\\<_x");
+        assert_eq!(c[1].replace, "bar#\\<\\<_y");
+    }
+
+    #[test]
+    fn test_build_candidates_slug_extraction_without_docs_segment() {
+        // /Web/API/Foo has no /docs/ segment — extract_slug_from_href strips only the leading slash.
+        let c = build_candidates("/Web/API/Foo", "/Web/API/Bar");
+        assert_eq!(c.len(), 2);
+        assert_eq!(c[1].search, "Web/API/Foo");
+        assert_eq!(c[1].replace, "Web/API/Bar");
+        assert!(matches!(c[1].direction, ScanDirection::Backward));
+    }
 }
