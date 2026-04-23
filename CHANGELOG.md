@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.20](https://github.com/mdn/rari/compare/v0.2.19...v0.2.20) (2026-04-21)
+
+
+### Features
+
+* **homepage:** source latest news from blog ([#632](https://github.com/mdn/rari/issues/632)) ([bf8bea2](https://github.com/mdn/rari/commit/bf8bea21b267f0e146ba2313a2f6c85fb5001a9e))
+
+
+### Bug Fixes
+
+* **badges:** use span role=img with aria-label + move inside link ([#635](https://github.com/mdn/rari/issues/635)) ([4b1257d](https://github.com/mdn/rari/commit/4b1257d38a3bdf95e6a6d824df98b1697c23496a))
+* **doc:** fall back to en-US redirect for unredirected locale URLs ([#618](https://github.com/mdn/rari/issues/618)) ([d095d32](https://github.com/mdn/rari/commit/d095d3243c0d599dfec992b912d3a062d23bb797))
+* **issues:** identify source for sidebar link issues ([#641](https://github.com/mdn/rari/issues/641)) ([ccb6d3b](https://github.com/mdn/rari/commit/ccb6d3bcfa4dbdfef14ce5a9984a33ee208a7d53))
+
+
+### Miscellaneous
+
+* **deps:** bump to scraper 0.26, html5ever 0.39, ego-tree 0.11 ([#605](https://github.com/mdn/rari/issues/605)) ([502167a](https://github.com/mdn/rari/commit/502167a405bcdcf0d1b3f1e967e06b38304b4210))
+
 ## [0.2.19](https://github.com/mdn/rari/compare/v0.2.18...v0.2.19) (2026-04-17)
 
 
