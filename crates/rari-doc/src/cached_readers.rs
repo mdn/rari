@@ -258,12 +258,7 @@ fn gather_generic_content() -> Result<HashMap<String, Page>, DocError> {
                     None
                 }
             })
-            .flat_map(|generic| {
-                Locale::for_generic_and_spas()
-                    .iter()
-                    .map(|locale| Page::GenericPage(Arc::new(generic.as_locale(*locale))))
-                    .collect::<Vec<_>>()
-            })
+            .map(|generic| Page::GenericPage(Arc::new(generic.as_locale(Locale::EnUs))))
             .map(|page| (page.url().to_ascii_lowercase(), page))
             .collect())
     } else {
