@@ -74,7 +74,7 @@ itertools = "0.14"
 constcat = "0.6"
 anyhow = "1"
 indexmap = { version = "2", features = ["serde"] }
-regress = "0.10"
+regress = "0.11"
 html-escape = "0.2"
 ignore = "0.4"
 rayon = "1"
