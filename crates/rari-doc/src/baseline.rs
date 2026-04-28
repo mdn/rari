@@ -22,8 +22,12 @@ static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
 
 /// Looks up baseline support status for the given browser compatibility keys in `WEB_FEATURES`.
 ///
-/// Returns the baseline for the keys' shared web feature, or `None` if the keys belong to
-/// different features or none, or `WEB_FEATURES` is not initialized.
+/// Returns a baseline and thus shows the banner when either:
+/// - All keys belong to the same web feature, or
+/// - The keys belong to different features but every key has baseline status High
+///   (fixes pages like "Web Components" with multiple BCD keys: mdn/fred#1391).
+///
+/// Returns `None` if any key is missing, or if keys span features and not all are High.
 pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>> {
     if let Some(ref web_features) = *WEB_FEATURES {
         return get_baseline_from(browser_compat, web_features);
@@ -35,15 +39,27 @@ fn get_baseline_from<'a>(
     browser_compat: &[String],
     web_features: &'a WebFeatures,
 ) -> Option<Baseline<'a>> {
+    use rari_data::baseline::BaselineHighLow;
+
     let first = web_features.baseline_by_bcd_key(browser_compat.first()?.as_str())?;
-    browser_compat[1..]
+    let baselines: Option<Vec<_>> = browser_compat
         .iter()
-        .all(|key| {
-            web_features
-                .baseline_by_bcd_key(key.as_str())
-                .is_some_and(|b| b.feature.id == first.feature.id)
-        })
-        .then_some(first)
+        .map(|key| web_features.baseline_by_bcd_key(key.as_str()))
+        .collect();
+    let baselines = baselines?;
+    let all_same_feature = baselines.iter().all(|b| b.feature.id == first.feature.id);
+    if all_same_feature {
+        return Some(first);
+    }
+    // Different features: show banner only when every key has baseline High.
+    if baselines
+        .iter()
+        .all(|b| b.support.baseline == BaselineHighLow::High)
+    {
+        Some(first)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -104,6 +120,13 @@ mod tests {
     #[test]
     fn multiple_same_feature() {
         let b = get(&["api.high", "api.high-adjacent"]).unwrap();
+        assert_eq!(b.support.baseline, BaselineHighLow::High);
+    }
+
+    #[test]
+    fn multiple_different_features_all_high() {
+        // e.g. Web components page with html.elements.template + api.ShadowRoot (mdn/fred#1391)
+        let b = get(&["api.high", "api.high2"]).unwrap();
         assert_eq!(b.support.baseline, BaselineHighLow::High);
     }
 }
