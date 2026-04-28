@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.21](https://github.com/mdn/rari/compare/v0.2.20...v0.2.21) (2026-04-28)
+
+
+### Features
+
+* **md:** inject `data-sourcepos` into raw HTML `<a>` tags ([#615](https://github.com/mdn/rari/issues/615)) ([b51fa12](https://github.com/mdn/rari/commit/b51fa129a294960c946b4b77205b90e5b3694929))
+
+
+### Bug Fixes
+
+* **doc:** build generic pages only in en-US ([#644](https://github.com/mdn/rari/issues/644)) ([7d38158](https://github.com/mdn/rari/commit/7d3815817b94a1566bbdcb150e0f55aa4378c76d))
+
+
+### Miscellaneous
+
+* **deps:** bump clap from 4.6.0 to 4.6.1 ([#649](https://github.com/mdn/rari/issues/649)) ([41cec79](https://github.com/mdn/rari/commit/41cec79a5286b3980e5dd48191ff6ad97f30691a))
+* **deps:** bump indexmap from 2.13.0 to 2.14.0 ([#651](https://github.com/mdn/rari/issues/651)) ([4001742](https://github.com/mdn/rari/commit/4001742a914f4dcae16d150f0ad58139d8f27c73))
+* **deps:** bump rayon from 1.11.0 to 1.12.0 ([#650](https://github.com/mdn/rari/issues/650)) ([dd621cb](https://github.com/mdn/rari/commit/dd621cbaaaf590fd6b9d3bedd55e84b2010a2c3d))
+* **deps:** bump regress from 0.10.5 to 0.11.1 ([#652](https://github.com/mdn/rari/issues/652)) ([d4507a6](https://github.com/mdn/rari/commit/d4507a6e28087e23bd8550a5611b12cc8157188f))
+* **deps:** bump rustls-webpki from 0.103.10 to 0.103.13 ([#645](https://github.com/mdn/rari/issues/645)) ([751c20d](https://github.com/mdn/rari/commit/751c20de10ccbeb06ed740a1697fe959c5063375))
+
 ## [0.2.20](https://github.com/mdn/rari/compare/v0.2.19...v0.2.20) (2026-04-21)
 
 
