@@ -192,11 +192,7 @@ pub fn list_sub_pages_nested_internal(
                 write_li_with_badges(out, &sub_page, locale, code, true)?;
             }
         } else {
-            if page_type_match {
-                write_li_with_badges(out, &sub_page, locale, code, false)?;
-            }
             let mut sub_pages_out = String::new();
-
             list_sub_pages_nested_internal(
                 &mut sub_pages_out,
                 sub_page.url(),
@@ -209,13 +205,31 @@ pub fn list_sub_pages_nested_internal(
                     include_parent,
                 },
             )?;
-            if !sub_pages_out.is_empty() {
-                out.push_str("<ol>");
-                out.push_str(&sub_pages_out);
-                out.push_str("</ol>");
-            }
             if page_type_match {
-                out.push_str("</li>");
+                if sub_pages_out.is_empty() {
+                    write_li_with_badges(out, &sub_page, locale, code, true)?;
+                } else {
+                    out.push_str("<li><details><summary>");
+                    render_internal_link(
+                        out,
+                        sub_page.url(),
+                        None,
+                        &html_escape::encode_safe(
+                            sub_page.short_title().unwrap_or(sub_page.title()),
+                        ),
+                        None,
+                        &LinkModifier {
+                            badges: sub_page.status(),
+                            badge_locale: locale,
+                            code,
+                            only_en_us: sub_page.locale() != locale,
+                        },
+                        true,
+                    )?;
+                    out.push_str("</summary><ol>");
+                    out.push_str(&sub_pages_out);
+                    out.push_str("</ol></details></li>");
+                }
             }
         }
     }
