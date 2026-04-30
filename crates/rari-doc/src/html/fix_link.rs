@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use lol_html::HandlerResult;
 use lol_html::html_content::Element;
 use rari_types::fm_types::PageType;
-use rari_types::locale::default_locale;
+use rari_types::locale::{Locale, default_locale};
 use rari_utils::concat_strs;
 
 use crate::helpers::l10n::l10n_json_data;
@@ -31,13 +31,13 @@ pub fn check_and_fix_link(
     {
         handle_internal_link(&original_href, el, page, data_issues, templ_link, auto_link)
     } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
-        handle_external_link(el)
+        handle_external_link(el, page.locale())
     } else {
         Ok(())
     }
 }
 
-pub fn handle_external_link(el: &mut Element) -> HandlerResult {
+pub fn handle_external_link(el: &mut Element, locale: Locale) -> HandlerResult {
     let class = el.get_attribute("class").unwrap_or_default();
     if !class.split(' ').any(|s| s == "external") {
         el.set_attribute(
@@ -48,6 +48,11 @@ pub fn handle_external_link(el: &mut Element) -> HandlerResult {
     el.remove_attribute("data-autolink");
     if !el.has_attribute("target") {
         el.set_attribute("target", "_blank")?;
+    }
+    if !el.has_attribute("title")
+        && let Ok(title) = l10n_json_data("Template", "external_link", locale)
+    {
+        el.set_attribute("title", title)?;
     }
     Ok(())
 }
