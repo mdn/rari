@@ -19,7 +19,7 @@ use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory, PageLike};
 use crate::resolve::url_meta_from;
 
-static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
+pub(crate) static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     let mut map = HashMap::new();
     if let Some(ctr) = content_translated_root() {
         for locale in ctr
