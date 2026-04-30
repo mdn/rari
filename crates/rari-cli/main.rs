@@ -243,6 +243,11 @@ struct BuildArgs {
         help = "Write all issues to path <ISSUES> (defaults to BUILD_OUT_ROOT/issues.json)"
     )]
     issues: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Write per-locale issues to BUILD_OUT_ROOT/{locale}/issues.json"
+    )]
+    issues_per_locale: bool,
     #[arg(long, help = "Annotate html with 'data-flaw' attributes")]
     data_issues: bool,
     #[arg(long, help = "Add flaws field to index.json for docs")]
@@ -584,6 +589,32 @@ fn main() -> Result<(), Error> {
                 let file = File::create(&issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
                 serde_json::to_writer_pretty(&mut buffed, &memory_layer.sorted_issues()).unwrap();
+            }
+
+            if args.issues_per_locale {
+                let mut by_locale: std::collections::BTreeMap<
+                    Locale,
+                    std::collections::BTreeMap<String, Vec<rari_doc::issues::Issue>>,
+                > = std::collections::BTreeMap::new();
+                for (file, issues) in memory_layer.sorted_issues() {
+                    let locale = Path::new(&file).components().find_map(|c| {
+                        c.as_os_str()
+                            .to_str()
+                            .and_then(|s| Locale::from_str(s).ok())
+                    });
+                    if let Some(locale) = locale {
+                        by_locale.entry(locale).or_default().insert(file, issues);
+                    }
+                }
+                let out_root = build_out_root()?;
+                for (locale, issues) in &by_locale {
+                    let dir = out_root.join(locale.as_folder_str());
+                    fs::create_dir_all(&dir).unwrap();
+                    let out_file = dir.join("issues.json");
+                    let file = File::create(&out_file).unwrap();
+                    let mut buffed = BufWriter::new(file);
+                    serde_json::to_writer_pretty(&mut buffed, issues).unwrap();
+                }
             }
         }
         Commands::Serve(args) => {
