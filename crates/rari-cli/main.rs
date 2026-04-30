@@ -236,7 +236,12 @@ struct BuildArgs {
     sitemaps: bool,
     #[arg(long, help = "Display template statistics (debugging")]
     templ_stats: bool,
-    #[arg(long, help = "Write all issues to path <ISSUES>")]
+    #[arg(
+        long,
+        num_args = 0..=1,
+        default_missing_value = "",
+        help = "Write all issues to path <ISSUES> (defaults to BUILD_OUT_ROOT/issues.json)"
+    )]
     issues: Option<PathBuf>,
     #[arg(long, help = "Annotate html with 'data-flaw' attributes")]
     data_issues: bool,
@@ -571,6 +576,11 @@ fn main() -> Result<(), Error> {
             }
 
             if let Some(issues_path) = args.issues {
+                let issues_path = if issues_path.as_os_str().is_empty() {
+                    build_out_root()?.join("issues.json")
+                } else {
+                    issues_path
+                };
                 let file = File::create(&issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
                 serde_json::to_writer_pretty(&mut buffed, &memory_layer.sorted_issues()).unwrap();
