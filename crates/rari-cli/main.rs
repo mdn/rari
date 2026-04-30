@@ -540,6 +540,32 @@ fn main() -> Result<(), Error> {
                     "Found {} issues in {} of {} files",
                     num_issues, num_files, total_files
                 );
+                let mut by_locale: std::collections::BTreeMap<Option<Locale>, (usize, usize)> =
+                    std::collections::BTreeMap::new();
+                for entry in events.iter() {
+                    let locale = Path::new(entry.key()).components().find_map(|c| {
+                        c.as_os_str()
+                            .to_str()
+                            .and_then(|s| Locale::from_str(s).ok())
+                    });
+                    let stats = by_locale.entry(locale).or_default();
+                    stats.0 += 1;
+                    stats.1 += entry.value().len();
+                }
+                let unknown = by_locale.remove(&None);
+                for (locale, (files, issues)) in &by_locale {
+                    if let Some(locale) = locale {
+                        info!(
+                            "  {}: {} issues in {} files",
+                            locale.as_url_str(),
+                            issues,
+                            files
+                        );
+                    }
+                }
+                if let Some((files, issues)) = unknown {
+                    info!("  unknown: {} issues in {} files", issues, files);
+                }
             } else {
                 info!("No issues found in {} files", total_files);
             }
