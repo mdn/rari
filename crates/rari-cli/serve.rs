@@ -232,6 +232,7 @@ fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
         }
         .join(locale.as_folder_str())],
         None,
+        None,
     )?;
 
     let mut index = docs

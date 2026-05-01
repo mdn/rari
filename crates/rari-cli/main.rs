@@ -425,14 +425,14 @@ fn main() -> Result<(), Error> {
             {
                 let start = std::time::Instant::now();
                 docs = if !arg_files.is_empty() {
-                    read_docs_parallel::<Page, Doc>(&arg_files, None)?
+                    read_docs_parallel::<Page, Doc>(&arg_files, None, None)?
                 } else if args.no_cache {
                     let files: &[_] = if let Some(translated_root) = content_translated_root() {
                         &[content_root(), translated_root]
                     } else {
                         &[content_root()]
                     };
-                    read_docs_parallel::<Page, Doc>(files, None)?
+                    read_docs_parallel::<Page, Doc>(files, None, Some(&["templates"]))?
                 } else {
                     read_and_cache_doc_pages()?
                 };
