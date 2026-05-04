@@ -20,7 +20,7 @@ jsonpath_lib = "0.3"
 prettydiff = "0.9"
 html-minifier = "5"
 ansi-to-html = "0.2"
-similar = "2"
+similar = "3"
 quick-xml = "0.39"
 clap = { version = "4", features = ["derive"] }
 lol_html = "2"
