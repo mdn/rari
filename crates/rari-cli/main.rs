@@ -553,11 +553,7 @@ fn main() -> Result<(), Error> {
                 let mut by_locale: std::collections::BTreeMap<Option<Locale>, (usize, usize)> =
                     std::collections::BTreeMap::new();
                 for entry in events.iter() {
-                    let locale = Path::new(entry.key()).components().find_map(|c| {
-                        c.as_os_str()
-                            .to_str()
-                            .and_then(|s| Locale::from_str(s).ok())
-                    });
+                    let locale = locale_from_path(entry.key());
                     let stats = by_locale.entry(locale).or_default();
                     stats.0 += 1;
                     stats.1 += entry.value().len();
@@ -597,12 +593,7 @@ fn main() -> Result<(), Error> {
                     std::collections::BTreeMap<String, Vec<rari_doc::issues::Issue>>,
                 > = std::collections::BTreeMap::new();
                 for (file, issues) in memory_layer.sorted_issues() {
-                    let locale = Path::new(&file).components().find_map(|c| {
-                        c.as_os_str()
-                            .to_str()
-                            .and_then(|s| Locale::from_str(s).ok())
-                    });
-                    if let Some(locale) = locale {
+                    if let Some(locale) = locale_from_path(&file) {
                         by_locale.entry(locale).or_default().insert(file, issues);
                     }
                 }
@@ -857,4 +848,12 @@ fn update(version: Option<String>) -> Result<(), Error> {
     let status = update.update()?;
     info!("\n\nrari updated to `{}`", status.version());
     Ok(())
+}
+
+fn locale_from_path(path: &str) -> Option<Locale> {
+    Path::new(path).components().find_map(|c| {
+        c.as_os_str()
+            .to_str()
+            .and_then(|s| Locale::from_str(s).ok())
+    })
 }
