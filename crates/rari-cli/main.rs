@@ -29,7 +29,7 @@ use rari_doc::pages::page::Page;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
-use rari_doc::utils::TEMPL_RECORDER_SENDER;
+use rari_doc::utils::{TEMPL_RECORDER_SENDER, locale_and_typ_from_path};
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
 use rari_tools::fix::fixer::fix_all;
@@ -553,7 +553,9 @@ fn main() -> Result<(), Error> {
                 let mut by_locale: std::collections::BTreeMap<Option<Locale>, (usize, usize)> =
                     std::collections::BTreeMap::new();
                 for entry in events.iter() {
-                    let locale = locale_from_path(entry.key());
+                    let locale = locale_and_typ_from_path(Path::new(entry.key()))
+                        .ok()
+                        .map(|(l, _)| l);
                     let stats = by_locale.entry(locale).or_default();
                     stats.0 += 1;
                     stats.1 += entry.value().len();
@@ -593,7 +595,7 @@ fn main() -> Result<(), Error> {
                     std::collections::BTreeMap<String, Vec<rari_doc::issues::Issue>>,
                 > = std::collections::BTreeMap::new();
                 for (file, issues) in memory_layer.sorted_issues() {
-                    if let Some(locale) = locale_from_path(&file) {
+                    if let Ok((locale, _)) = locale_and_typ_from_path(Path::new(&file)) {
                         by_locale.entry(locale).or_default().insert(file, issues);
                     }
                 }
@@ -848,12 +850,4 @@ fn update(version: Option<String>) -> Result<(), Error> {
     let status = update.update()?;
     info!("\n\nrari updated to `{}`", status.version());
     Ok(())
-}
-
-fn locale_from_path(path: &str) -> Option<Locale> {
-    Path::new(path).components().find_map(|c| {
-        c.as_os_str()
-            .to_str()
-            .and_then(|s| Locale::from_str(s).ok())
-    })
 }
