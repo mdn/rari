@@ -113,6 +113,7 @@ impl Settings {
                 "CONTENT_TRANSLATED_ROOT",
                 std::env::var("TESTING_CONTENT_TRANSLATED_ROOT").unwrap(),
             );
+            std::env::set_var("BLOG_ROOT", std::env::var("TESTING_BLOG_ROOT").unwrap());
             std::env::set_var(
                 "CACHE_CONTENT",
                 std::env::var("TESTING_CACHE_CONTENT").unwrap(),
