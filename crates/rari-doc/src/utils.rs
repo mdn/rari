@@ -328,6 +328,48 @@ mod text {
     }
 
     #[test]
+    fn test_locale_and_typ_from_path() {
+        let en_us = content_root();
+
+        let path = en_us.to_path_buf().join("en-us/web/html/index.md");
+        assert_eq!(
+            locale_and_typ_from_path(&path).unwrap(),
+            (Locale::EnUs, PageCategory::Doc)
+        );
+    }
+
+    #[test]
+    fn test_locale_and_typ_from_path_translated() {
+        let translated = content_translated_root().expect("translated root configured");
+
+        let path = translated.to_path_buf().join("fr/web/html/index.md");
+        assert_eq!(
+            locale_and_typ_from_path(&path).unwrap(),
+            (Locale::Fr, PageCategory::Doc)
+        );
+    }
+
+    #[test]
+    fn test_locale_and_typ_from_path_blog() {
+        let blog = blog_root().expect("blog root configured");
+
+        let path = blog.to_path_buf().join("posts/some-slug/index.md");
+        assert_eq!(
+            locale_and_typ_from_path(&path).unwrap(),
+            (Locale::EnUs, PageCategory::BlogPost)
+        );
+    }
+
+    #[test]
+    fn test_locale_and_typ_from_path_err() {
+        let path = Path::new("/non/existent/path/index.md");
+        assert!(matches!(
+            locale_and_typ_from_path(path),
+            Err(DocError::LocaleError(LocaleError::NoLocaleInPath))
+        ));
+    }
+
+    #[test]
     fn test_readtime() {
         let s = format!(
             r#"Foo
