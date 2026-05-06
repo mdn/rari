@@ -570,14 +570,11 @@ dependencies = [
  "css-definition-syntax",
  "css-syntax-types",
  "html-escape",
- "itertools",
  "rari-deps",
  "rari-types",
- "regress",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
- "url",
 ]
 
 [[package]]
@@ -843,7 +840,6 @@ version = "0.2.21"
 dependencies = [
  "ansi-to-html",
  "anyhow",
- "base64",
  "clap",
  "html-minifier",
  "ignore",
@@ -854,9 +850,7 @@ dependencies = [
  "quick-xml 0.39.2",
  "rayon",
  "regex",
- "serde",
  "serde_json",
- "similar",
 ]
 
 [[package]]
@@ -2129,12 +2123,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
-name = "normalize-path"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5438dd2b2ff4c6df6e1ce22d825ed2fa93ee2922235cc45186991717f0a892d"
-
-[[package]]
 name = "nu-ansi-term"
 version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2596,7 +2584,6 @@ dependencies = [
 name = "rari-data"
 version = "0.2.21"
 dependencies = [
- "chrono",
  "indexmap",
  "rari-utils",
  "schemars",
@@ -2668,7 +2655,6 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "sha2",
- "strum",
  "svg_metadata",
  "tempfile",
  "thiserror 2.0.18",
@@ -2686,9 +2672,6 @@ dependencies = [
 [[package]]
 name = "rari-linter"
 version = "0.2.21"
-dependencies = [
- "thiserror 2.0.18",
-]
 
 [[package]]
 name = "rari-lsp"
@@ -2701,13 +2684,9 @@ dependencies = [
  "rari-doc",
  "rari-tools",
  "rari-types",
- "serde",
  "serde_json",
- "streaming-iterator",
  "tokio",
  "tower-lsp-server",
- "tracing",
- "tracing-subscriber",
  "tree-sitter",
  "tree-sitter-md",
  "tree-sitter-mdn",
@@ -2758,7 +2737,6 @@ dependencies = [
  "assert-json-diff",
  "chrono",
  "const_format",
- "csv",
  "dialoguer",
  "fake",
  "html-escape",
@@ -2769,7 +2747,6 @@ dependencies = [
  "rari-types",
  "rari-utils",
  "rayon",
- "reqwest",
  "serde",
  "serde_json",
  "serde_yaml_ng",
@@ -2790,7 +2767,6 @@ dependencies = [
  "darling 0.23.0",
  "dirs",
  "indexmap",
- "normalize-path",
  "proc-macro2",
  "quote",
  "schemars",
@@ -2807,10 +2783,7 @@ dependencies = [
 name = "rari-utils"
 version = "0.2.21"
 dependencies = [
- "serde",
- "serde_json",
  "thiserror 2.0.18",
- "tracing",
 ]
 
 [[package]]
@@ -3446,12 +3419,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
 
 [[package]]
-name = "similar"
-version = "2.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
-
-[[package]]
 name = "siphasher"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3504,12 +3471,6 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
-name = "streaming-iterator"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b2231b7c3057d5e4ad0156fb3dc807d900806020c5ffa3ee6ff2c8c76fb8520"
 
 [[package]]
 name = "string_cache"

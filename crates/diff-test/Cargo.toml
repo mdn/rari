@@ -12,15 +12,12 @@ anyhow.workspace = true
 ignore.workspace = true
 itertools.workspace = true
 regex.workspace = true
-serde.workspace = true
 serde_json.workspace = true
-base64.workspace = true
 
 jsonpath_lib = "0.3"
 prettydiff = "0.9"
 html-minifier = "5"
 ansi-to-html = "0.2"
-similar = "2"
 quick-xml = "0.39"
 clap = { version = "4", features = ["derive"] }
 lol_html = "2"
