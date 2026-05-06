@@ -2723,6 +2723,7 @@ dependencies = [
 name = "rari-templ-func"
 version = "0.2.21"
 dependencies = [
+ "anyhow",
  "darling 0.23.0",
  "quote",
  "rari-types",

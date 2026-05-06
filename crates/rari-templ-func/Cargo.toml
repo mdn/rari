@@ -15,3 +15,6 @@ darling.workspace = true
 quote.workspace = true
 
 syn = { version = "2", features = ["full"] }
+
+[dev-dependencies]
+anyhow.workspace = true
