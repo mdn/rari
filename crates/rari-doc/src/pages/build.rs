@@ -25,7 +25,9 @@ use crate::helpers::title::{TitleFormat, page_title, render_title, transform_tit
 use crate::html::banner::build_banner;
 use crate::html::bubble_up::bubble_up_curriculum_page;
 use crate::html::code::{Code, code_blocks};
-use crate::html::modifier::{add_missing_ids, insert_self_links_for_dts, remove_empty_p};
+use crate::html::modifier::{
+    add_missing_ids, collect_fragment_ids, insert_self_links_for_dts, remove_empty_p,
+};
 use crate::html::rewriter::{post_process_html, post_process_inline_sidebar};
 use crate::html::sections::{BuildSection, BuildSectionType, Split, split_sections};
 use crate::html::sidebar::{
@@ -141,6 +143,7 @@ impl BuildSection<'_> {
 pub struct PageContent {
     body: Vec<Section>,
     toc: Vec<TocEntry>,
+    fragments: Vec<String>,
     summary: Option<String>,
     sidebar: Option<String>,
     live_samples: Option<Vec<Code>>,
@@ -208,10 +211,12 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
         Some(sidebars.into_iter().collect::<Result<String, _>>()?)
     };
     let toc = make_toc(&sections, matches!(page.page_type(), PageType::Curriculum));
+    let fragments = collect_fragment_ids(&fragment);
     let body = sections.into_iter().map(Into::into).collect();
     Ok(PageContent {
         body,
         toc,
+        fragments,
         summary,
         sidebar,
         live_samples,
@@ -231,6 +236,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
     let PageContent {
         body,
         toc,
+        fragments,
         summary,
         sidebar,
         live_samples,
@@ -312,6 +318,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             body,
             sidebar_html,
             toc,
+            fragments,
             baseline,
             modified,
             summary,
@@ -344,6 +351,7 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
     let PageContent {
         body,
         toc,
+        fragments,
         live_samples,
         ..
     } = build_content(post)?;
@@ -356,6 +364,7 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
             locale: post.locale(),
             body,
             toc,
+            fragments,
             summary: Some(post.meta.description.clone()),
             live_samples,
             ..Default::default()
@@ -386,12 +395,18 @@ fn build_blog_post(post: &BlogPost) -> Result<BuiltPage, DocError> {
 
 fn build_generic_page(page: &Generic) -> Result<BuiltPage, DocError> {
     let built = build_content(page);
-    let PageContent { body, toc, .. } = built?;
+    let PageContent {
+        body,
+        toc,
+        fragments,
+        ..
+    } = built?;
     Ok(BuiltPage::GenericPage(Box::new(JsonGenericPage {
         hy_data: JsonGenericHyData {
             sections: body,
             title: page.meta.title.clone(),
             toc,
+            fragments,
         },
         short_title: page.meta.short_title.clone(),
         page_title: if let Some(suffix) = &page.meta.title_suffix {
@@ -419,7 +434,12 @@ fn build_spa(spa: &SPA) -> Result<BuiltPage, DocError> {
 }
 
 fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
-    let PageContent { body, toc, .. } = build_content(curriculum)?;
+    let PageContent {
+        body,
+        toc,
+        fragments,
+        ..
+    } = build_content(curriculum)?;
     let sidebar = build_sidebar().ok();
     let group = curriculum_group(&parents(curriculum));
     let modules = match curriculum.meta.template {
@@ -444,6 +464,7 @@ fn build_curriculum(curriculum: &Curriculum) -> Result<BuiltPage, DocError> {
             body,
             sidebar,
             toc,
+            fragments,
             group,
             modules,
             prev_next,

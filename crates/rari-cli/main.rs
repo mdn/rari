@@ -29,7 +29,7 @@ use rari_doc::pages::page::Page;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
-use rari_doc::utils::TEMPL_RECORDER_SENDER;
+use rari_doc::utils::{TEMPL_RECORDER_SENDER, locale_and_typ_from_path};
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
 use rari_tools::fix::fixer::fix_all;
@@ -236,8 +236,18 @@ struct BuildArgs {
     sitemaps: bool,
     #[arg(long, help = "Display template statistics (debugging")]
     templ_stats: bool,
-    #[arg(long, help = "Write all issues to path <ISSUES>")]
+    #[arg(
+        long,
+        num_args = 0..=1,
+        default_missing_value = "",
+        help = "Write all issues to path <ISSUES> (defaults to BUILD_OUT_ROOT/issues.json)"
+    )]
     issues: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Write per-locale issues to BUILD_OUT_ROOT/{locale}/issues.json"
+    )]
+    issues_per_locale: bool,
     #[arg(long, help = "Annotate html with 'data-flaw' attributes")]
     data_issues: bool,
     #[arg(long, help = "Add flaws field to index.json for docs")]
@@ -540,14 +550,64 @@ fn main() -> Result<(), Error> {
                     "Found {} issues in {} of {} files",
                     num_issues, num_files, total_files
                 );
+                let mut by_locale: std::collections::BTreeMap<Option<Locale>, (usize, usize)> =
+                    std::collections::BTreeMap::new();
+                for entry in events.iter() {
+                    let locale = locale_and_typ_from_path(Path::new(entry.key()))
+                        .ok()
+                        .map(|(l, _)| l);
+                    let stats = by_locale.entry(locale).or_default();
+                    stats.0 += 1;
+                    stats.1 += entry.value().len();
+                }
+                let unknown = by_locale.remove(&None);
+                for (locale, (files, issues)) in &by_locale {
+                    if let Some(locale) = locale {
+                        info!(
+                            "  {}: {} issues in {} files",
+                            locale.as_url_str(),
+                            issues,
+                            files
+                        );
+                    }
+                }
+                if let Some((files, issues)) = unknown {
+                    info!("  unknown: {} issues in {} files", issues, files);
+                }
             } else {
                 info!("No issues found in {} files", total_files);
             }
 
             if let Some(issues_path) = args.issues {
+                let issues_path = if issues_path.as_os_str().is_empty() {
+                    build_out_root()?.join("issues.json")
+                } else {
+                    issues_path
+                };
                 let file = File::create(&issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
                 serde_json::to_writer_pretty(&mut buffed, &memory_layer.sorted_issues()).unwrap();
+            }
+
+            if args.issues_per_locale {
+                let mut by_locale: std::collections::BTreeMap<
+                    Locale,
+                    std::collections::BTreeMap<String, Vec<rari_doc::issues::Issue>>,
+                > = std::collections::BTreeMap::new();
+                for (file, issues) in memory_layer.sorted_issues() {
+                    if let Ok((locale, _)) = locale_and_typ_from_path(Path::new(&file)) {
+                        by_locale.entry(locale).or_default().insert(file, issues);
+                    }
+                }
+                let out_root = build_out_root()?;
+                for (locale, issues) in &by_locale {
+                    let dir = out_root.join(locale.as_folder_str());
+                    fs::create_dir_all(&dir).unwrap();
+                    let out_file = dir.join("issues.json");
+                    let file = File::create(&out_file).unwrap();
+                    let mut buffed = BufWriter::new(file);
+                    serde_json::to_writer_pretty(&mut buffed, issues).unwrap();
+                }
             }
         }
         Commands::Serve(args) => {
