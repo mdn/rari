@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.22](https://github.com/mdn/rari/compare/v0.2.21...v0.2.22) (2026-05-06)
+
+
+### Features
+
+* **doc:** add localized `title` to external links ([#658](https://github.com/mdn/rari/issues/658)) ([56842cc](https://github.com/mdn/rari/commit/56842cc9fb1b6566e57907ad6471aa17bd9a863c))
+* **doc:** collect fragment IDs into `index.json` ([#653](https://github.com/mdn/rari/issues/653)) ([1337857](https://github.com/mdn/rari/commit/1337857286d6b310ca81988c85197aa3a95f6f0b))
+
+
+### Bug Fixes
+
+* **doc:** fallback blog posts to en-US ([#657](https://github.com/mdn/rari/issues/657)) ([623bf44](https://github.com/mdn/rari/commit/623bf44b162250f07073ad110976705e48c87095))
+
+
+### Miscellaneous
+
+* **cli:** count issues by locale ([#656](https://github.com/mdn/rari/issues/656)) ([bb9e7d4](https://github.com/mdn/rari/commit/bb9e7d4c062609d8af42d9d2b8d72664970b37b6))
+* **deps:** bump icu_collator from 2.1.1 to 2.2.0 ([#661](https://github.com/mdn/rari/issues/661)) ([8aa0b97](https://github.com/mdn/rari/commit/8aa0b974e7ad126b149c9a3fd2e37109d4ceed82))
+* **deps:** bump inventory from 0.3.22 to 0.3.24 ([#663](https://github.com/mdn/rari/issues/663)) ([fe0a912](https://github.com/mdn/rari/commit/fe0a912ada562cadf43be224b8890c4a8bdfcae0))
+* **deps:** bump lol_html from 2.7.2 to 2.8.1 ([#662](https://github.com/mdn/rari/issues/662)) ([b2e22fe](https://github.com/mdn/rari/commit/b2e22feb1073d8c3cecde9e65ef3cbba8b7932d4))
+* **deps:** remove unused dependencies ([#666](https://github.com/mdn/rari/issues/666)) ([18d4a83](https://github.com/mdn/rari/commit/18d4a83806336b652c9ef7250ee899e21c03c5f4))
+
 ## [0.2.21](https://github.com/mdn/rari/compare/v0.2.20...v0.2.21) (2026-04-28)
 
 
