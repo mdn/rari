@@ -8,8 +8,6 @@ use super::fixtures::blog::BlogFixtures;
 const SLUG: &str = "test-post";
 const URL: &str = "/en-US/blog/test-post/";
 
-/// Without fallback, looking up an `/en-US/blog/...` URL with a non-en-US
-/// locale must return `PageNotFound` — this guards the `!fallback` branch.
 #[test]
 #[file_serial(blog_fixtures)]
 fn blog_post_no_fallback_returns_page_not_found_for_non_en_us() {
@@ -24,8 +22,6 @@ fn blog_post_no_fallback_returns_page_not_found_for_non_en_us() {
     }
 }
 
-/// With fallback, an `/en-US/blog/...` URL should resolve even when the
-/// caller-supplied locale isn't en-US — covers the new behavior.
 #[test]
 #[file_serial(blog_fixtures)]
 fn blog_post_falls_back_to_en_us_for_non_en_us_locale() {
@@ -37,7 +33,6 @@ fn blog_post_falls_back_to_en_us_for_non_en_us_locale() {
     assert!(matches!(page, Page::BlogPost(_)));
 }
 
-/// Sanity check: the en-US lookup path is unaffected.
 #[test]
 #[file_serial(blog_fixtures)]
 fn blog_post_en_us_still_resolves() {
