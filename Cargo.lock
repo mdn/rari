@@ -2595,7 +2595,6 @@ dependencies = [
 name = "rari-data"
 version = "0.2.21"
 dependencies = [
- "chrono",
  "indexmap",
  "rari-utils",
  "schemars",
@@ -2667,7 +2666,6 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "sha2",
- "strum",
  "svg_metadata",
  "tempfile",
  "thiserror 2.0.18",
@@ -2757,7 +2755,6 @@ dependencies = [
  "assert-json-diff",
  "chrono",
  "const_format",
- "csv",
  "dialoguer",
  "fake",
  "html-escape",
@@ -2768,7 +2765,6 @@ dependencies = [
  "rari-types",
  "rari-utils",
  "rayon",
- "reqwest",
  "serde",
  "serde_json",
  "serde_yaml_ng",

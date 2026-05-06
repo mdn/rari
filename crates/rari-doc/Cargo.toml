@@ -29,7 +29,6 @@ pretty_yaml.workspace = true
 serde_yaml_ng.workspace = true
 yaml_parser.workspace = true
 schemars.workspace = true
-strum.workspace = true
 inventory.workspace = true
 tree-sitter.workspace = true
 tree-sitter-mdn.workspace = true

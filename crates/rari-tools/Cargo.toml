@@ -18,7 +18,6 @@ serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
 tracing.workspace = true
-reqwest.workspace = true
 url.workspace = true
 indoc.workspace = true
 rayon.workspace = true
@@ -29,8 +28,6 @@ yaml_parser.workspace = true
 const_format.workspace = true
 dialoguer.workspace = true
 html-escape.workspace = true
-
-csv = "1"
 
 [dev-dependencies]
 serial_test = { version = "3", features = ["file_locks"] }
