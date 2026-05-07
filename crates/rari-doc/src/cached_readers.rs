@@ -237,11 +237,13 @@ fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
     if let Some(blog_root) = blog_root() {
         let now = Utc::now().date_naive();
         let post_root = blog_root.join("posts");
-        Ok(read_docs_parallel::<Page, BlogPost>(&[post_root], None)?
-            .into_iter()
-            .filter(|post| filter_unpublished_blog_post(&post, &now))
-            .map(|page| (page.url().to_ascii_lowercase(), page))
-            .collect())
+        Ok(
+            read_docs_parallel::<Page, BlogPost>(&[post_root], None, None)?
+                .into_iter()
+                .filter(|post| filter_unpublished_blog_post(&post, &now))
+                .map(|page| (page.url().to_ascii_lowercase(), page))
+                .collect(),
+        )
     } else {
         Err(DocError::NoBlogRoot)
     }
@@ -249,18 +251,20 @@ fn gather_blog_posts() -> Result<HashMap<String, Page>, DocError> {
 
 fn gather_generic_content() -> Result<HashMap<String, Page>, DocError> {
     if let Some(root) = generic_content_root() {
-        Ok(read_docs_parallel::<Page, Generic>(&[root], Some("*.md"))?
-            .into_iter()
-            .filter_map(|page| {
-                if let Page::GenericPage(generic) = page {
-                    Some(generic)
-                } else {
-                    None
-                }
-            })
-            .map(|generic| Page::GenericPage(Arc::new(generic.as_locale(Locale::EnUs))))
-            .map(|page| (page.url().to_ascii_lowercase(), page))
-            .collect())
+        Ok(
+            read_docs_parallel::<Page, Generic>(&[root], Some("*.md"), None)?
+                .into_iter()
+                .filter_map(|page| {
+                    if let Page::GenericPage(generic) = page {
+                        Some(generic)
+                    } else {
+                        None
+                    }
+                })
+                .map(|generic| Page::GenericPage(Arc::new(generic.as_locale(Locale::EnUs))))
+                .map(|page| (page.url().to_ascii_lowercase(), page))
+                .collect(),
+        )
     } else {
         Err(DocError::NoGenericContentRoot)
     }
@@ -270,7 +274,7 @@ fn gather_curriculum() -> Result<CurriculumFiles, DocError> {
     if let Some(curriculum_root) = curriculum_root() {
         let curriculum_root = curriculum_root.join("curriculum");
         let pages: Vec<Page> =
-            read_docs_parallel::<Page, Curriculum>(&[curriculum_root], Some("*.md"))?
+            read_docs_parallel::<Page, Curriculum>(&[curriculum_root], Some("*.md"), None)?
                 .into_iter()
                 .collect();
         let by_url: HashMap<String, Page> = pages
@@ -322,7 +326,7 @@ fn gather_curriculum() -> Result<CurriculumFiles, DocError> {
 fn gather_contributor_spotlight() -> Result<HashMap<String, Page>, DocError> {
     if let Some(root) = contributor_spotlight_root() {
         Ok(
-            read_docs_parallel::<Page, ContributorSpotlight>(&[root], None)?
+            read_docs_parallel::<Page, ContributorSpotlight>(&[root], None, None)?
                 .into_iter()
                 .filter_map(|page| {
                     if let Page::ContributorSpotlight(cs) = page {
@@ -483,7 +487,7 @@ pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
 /// This function will return an error if:
 /// - An error occurs while reading the documentation pages from the content root or translated content root directories.
 pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
-    let mut docs = read_docs_parallel::<Page, Doc>(&[content_root()], None)?;
+    let mut docs = read_docs_parallel::<Page, Doc>(&[content_root()], None, Some(&["templates"]))?;
     STATIC_DOC_PAGE_FILES
         .set(
             docs.iter()
@@ -493,7 +497,8 @@ pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
         )
         .unwrap();
     if let Some(translated_root) = content_translated_root() {
-        let translated_docs = read_docs_parallel::<Page, Doc>(&[translated_root], None)?;
+        let translated_docs =
+            read_docs_parallel::<Page, Doc>(&[translated_root], None, Some(&["templates"]))?;
         STATIC_DOC_PAGE_TRANSLATED_FILES
             .set(
                 translated_docs

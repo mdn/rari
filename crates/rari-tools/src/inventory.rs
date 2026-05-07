@@ -40,7 +40,11 @@ impl PageReader<InventoryEntry> for InventoryEntry {
 }
 
 pub fn gather_inventory() -> Result<(), DocError> {
-    let inventory = read_docs_parallel::<InventoryEntry, InventoryEntry>(&[content_root()], None)?;
+    let inventory = read_docs_parallel::<InventoryEntry, InventoryEntry>(
+        &[content_root()],
+        None,
+        Some(&["templates"]),
+    )?;
     let mut out = std::io::stdout();
     serde_json::to_writer_pretty(&mut out, &inventory)?;
     Ok(())
@@ -110,7 +114,8 @@ mod test {
         ];
         let _docs = DocFixtures::new(&slugs, Locale::EnUs);
         let mut inventory =
-            read_docs_parallel::<InventoryEntry, InventoryEntry>(&[content_root()], None).unwrap();
+            read_docs_parallel::<InventoryEntry, InventoryEntry>(&[content_root()], None, None)
+                .unwrap();
         inventory.sort_by_key(|entry| entry.path.clone());
         assert_json_eq!(expected, serde_json::to_value(&inventory).unwrap());
     }
