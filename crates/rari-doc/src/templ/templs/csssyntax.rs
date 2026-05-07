@@ -2,15 +2,12 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use css_syntax::syntax::{CssType, LinkedToken, SyntaxInput, render_formal_syntax};
-use lol_html::{RewriteStrSettings, element, rewrite_str};
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
-use crate::issues::get_issue_counter;
-use crate::pages::page::Page;
-use crate::redirects::resolve_redirect;
+use crate::html::links::post_process_templ_links;
 
 static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     [(LinkedToken::Asterisk, "Asterisk: the entity may occur zero, one or several times".to_string()),
@@ -89,7 +86,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         &TOOLTIPS,
         Some(sources_prefix),
     )?;
-    post_process_formal_syntax(&html)
+    post_process_templ_links(&html)
 }
 
 #[rari_f(register = "crate::Templ")]
@@ -106,65 +103,5 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
         &TOOLTIPS,
         Some(sources_prefix),
     )?;
-    post_process_formal_syntax(&html)
-}
-
-/// Post-process formal-syntax HTML to validate generated internal links.
-///
-/// `render_formal_syntax` synthesizes `<a>` tags for CSS Properties/Values pages
-/// from token names without checking they resolve. We tag each generated link
-/// with `data-templ-link` (so `fix_link` skips its own checks) and emit a
-/// `templ-broken-link` warning here for any internal link that doesn't resolve.
-fn post_process_formal_syntax(html: &str) -> Result<String, DocError> {
-    let element_content_handlers = vec![element!("a[href]", |el| {
-        let Some(href) = el.get_attribute("href") else {
-            return Ok(());
-        };
-        if href.starts_with('/') {
-            let href_no_hash = &href[..href.find('#').unwrap_or(href.len())];
-            let resolved = resolve_redirect(href_no_hash);
-            let target = resolved.as_deref().unwrap_or(href_no_hash);
-            if !Page::ignore_link_check(target) && !Page::exists_with_fallback(target) {
-                let ic = get_issue_counter();
-                tracing::warn!(source = "templ-broken-link", ic = ic, url = href.as_str());
-            }
-            el.set_attribute("data-templ-link", "")?;
-        }
-        Ok(())
-    })];
-    Ok(rewrite_str(
-        html,
-        RewriteStrSettings {
-            element_content_handlers,
-            ..Default::default()
-        },
-    )?)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::post_process_formal_syntax;
-
-    #[test]
-    fn tags_internal_links_so_fix_link_skips_them() {
-        // Before the fix, formal-syntax `<a>` tags reached `fix_link` without
-        // `data-templ-link` and surfaced as plain `broken-link` issues with no
-        // sourcepos. The post-processor must now tag every internal link.
-        let input = r#"<a href="/en-US/docs/Web/CSS/Reference/Values/foo">foo</a>"#;
-        let output = post_process_formal_syntax(input).unwrap();
-        assert!(
-            output.contains("data-templ-link"),
-            "expected internal link to be tagged with `data-templ-link`, got: {output}"
-        );
-    }
-
-    #[test]
-    fn leaves_external_links_alone() {
-        let input = r#"<a href="https://drafts.csswg.org/css-conditional-5/">spec</a>"#;
-        let output = post_process_formal_syntax(input).unwrap();
-        assert!(
-            !output.contains("data-templ-link"),
-            "external link should not be tagged: {output}"
-        );
-    }
+    post_process_templ_links(&html)
 }
