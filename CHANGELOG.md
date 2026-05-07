@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.23](https://github.com/mdn/rari/compare/v0.2.22...v0.2.23) (2026-05-07)
+
+
+### Miscellaneous
+
+* **deps:** bump sha2 from 0.10.9 to 0.11.0 ([#627](https://github.com/mdn/rari/issues/627)) ([e999511](https://github.com/mdn/rari/commit/e99951159a36fc2654ffd6d29f868eb901080e5a))
+
 ## [0.2.22](https://github.com/mdn/rari/compare/v0.2.21...v0.2.22) (2026-05-06)
 
 
