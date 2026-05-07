@@ -7,6 +7,7 @@ use crate::error::DocError;
 use crate::helpers::css_info::{
     css_info_properties, mdn_data_files, write_computed_output, write_missing,
 };
+use crate::html::links::post_process_templ_links;
 
 #[rari_f(register = "crate::Templ")]
 pub fn cssinfo() -> Result<String, DocError> {
@@ -49,5 +50,5 @@ pub fn cssinfo() -> Result<String, DocError> {
         write!(&mut out, r#"</td></tr>"#)?;
     }
     out.push_str(r#"</tbody></table>"#);
-    Ok(out)
+    post_process_templ_links(&out)
 }
