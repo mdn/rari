@@ -91,7 +91,7 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     let mut buffed = BufWriter::new(file);
     let json_str = serde_json::to_string(&built_page)?;
     buffed.write_all(json_str.as_bytes())?;
-    let hash = format!("{:x}", Sha256::digest(json_str.as_bytes()));
+    let hash = base16ct::lower::encode_string(&Sha256::digest(json_str.as_bytes()));
     if let Some(in_path) = page.full_path().parent() {
         copy_additional_files(in_path, &out_path, page.full_path())?;
     }

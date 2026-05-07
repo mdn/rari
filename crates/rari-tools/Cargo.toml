@@ -22,6 +22,7 @@ url.workspace = true
 indoc.workspace = true
 rayon.workspace = true
 sha2.workspace = true
+base16ct.workspace = true
 serde_yaml_ng.workspace = true
 pretty_yaml.workspace = true
 yaml_parser.workspace = true
