@@ -745,7 +745,10 @@ fn peek(
             }
         }
 
-        _ => maybe_token(tokenizer),
+        _ => match maybe_token(tokenizer) {
+            Some(node) => Some(maybe_multiplied(tokenizer, node)?),
+            None => None,
+        },
     })
 }
 
@@ -1177,6 +1180,35 @@ mod test {
                 explicit: true
             })
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_token_with_multiplier() -> Result<(), SyntaxDefinitionError> {
+        // Regression test for https://github.com/mdn/rari/issues/668
+        // Literal tokens (e.g. ';') may be followed by multipliers in webref data,
+        // such as the if() syntax `if( [ <if-branch> ; ]* <if-branch> ;? )` and
+        // <init-descriptors>/<pattern-descriptors> using `;*` / `;+`.
+        let result = parse("a ;?")?;
+        assert_eq!(
+            result,
+            Node::Group(Group {
+                terms: vec![
+                    Node::Keyword(Keyword { name: "a".into() }),
+                    Node::Multiplier(Multiplier {
+                        comma: false,
+                        min: 0,
+                        max: 1,
+                        term: Box::new(Node::Token(Token { value: ';' })),
+                    }),
+                ],
+                combinator: CombinatorType::Space,
+                disallow_empty: false,
+                explicit: false,
+            })
+        );
+        // Full if() syntax from webref must round-trip through parse() without error.
+        parse("if( [ <if-branch> ; ]* <if-branch> ;? )")?;
         Ok(())
     }
 
