@@ -90,6 +90,9 @@ fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: &str, value: Strin
 /// the one with the fewest path segments wins (so a top-level interface like
 /// `Window` is preferred over a nested leaf like
 /// `DocumentPictureInPicture/window`).
+///
+/// The returned `&'static str` borrows from `API_NAME_INDEX`, which is a
+/// `LazyLock` that lives for the rest of the process.
 pub fn resolve_api_name(normalized: &str) -> Option<&'static str> {
     resolve_from_map(&API_NAME_INDEX, normalized)
 }
