@@ -37,20 +37,20 @@ fn build_index() -> HashMap<String, Vec<String>> {
         let canonical = sub_slug.to_string();
 
         // Full sub-slug key (e.g. `Window/structuredClone`).
-        insert_unique(&mut map, canonical.clone(), canonical.clone());
+        insert_unique(&mut map, &canonical, canonical.clone());
 
         // Leaf segment key (e.g. `structuredClone`).
         if let Some(leaf) = sub_slug.rsplit('/').next()
             && leaf != sub_slug
         {
-            insert_unique(&mut map, leaf.to_string(), canonical);
+            insert_unique(&mut map, leaf, canonical);
         }
     }
     map
 }
 
-fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: String, value: String) {
-    let entry = map.entry(key).or_default();
+fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: &str, value: String) {
+    let entry = map.entry(key.to_lowercase()).or_default();
     if !entry.iter().any(|v| v == &value) {
         entry.push(value);
     }
@@ -59,28 +59,38 @@ fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: String, value: Str
 /// Look up an API name in the index. Input must already be normalized
 /// (spaces → `_`, `()` stripped, `.prototype.` → `.`, `.` → `/`).
 ///
-/// On ambiguity (multiple Web/API pages share the same key), emits a
-/// `templ-ambiguous-arg` warning and returns the first candidate.
+/// Lookup is case-insensitive. When the bucket contains multiple candidates,
+/// the one with the fewest path segments wins (so a top-level interface like
+/// `Window` is preferred over a nested leaf like
+/// `DocumentPictureInPicture/window`). Remaining ties emit a
+/// `templ-ambiguous-arg` warning and the first candidate is returned.
 pub fn resolve_api_name(normalized: &str) -> Option<&'static str> {
     resolve_from_map(&API_NAME_INDEX, normalized)
+}
+
+fn segments(value: &str) -> usize {
+    value.matches('/').count()
 }
 
 fn resolve_from_map<'a>(
     map: &'a HashMap<String, Vec<String>>,
     normalized: &str,
 ) -> Option<&'a str> {
-    let candidates = map.get(normalized)?;
-    let first = candidates.first()?.as_str();
-    if candidates.len() > 1 {
+    let candidates = map.get(&normalized.to_lowercase())?;
+    let min_segments = candidates.iter().map(|v| segments(v)).min()?;
+    let mut shortest = candidates.iter().filter(|v| segments(v) == min_segments);
+    let chosen = shortest.next()?.as_str();
+    let remaining = shortest.count();
+    if remaining > 0 {
         warn!(
             source = "templ-ambiguous-arg",
             ic = get_issue_counter(),
             api_name = normalized,
-            chosen = first,
-            candidates = candidates.len(),
+            chosen = chosen,
+            candidates = remaining + 1,
         );
     }
-    Some(first)
+    Some(chosen)
 }
 
 #[cfg(test)]
@@ -91,30 +101,47 @@ mod tests {
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
         insert_unique(
             &mut map,
-            "Window/structuredClone".into(),
-            "Window/structuredClone".into(),
-        );
-        insert_unique(
-            &mut map,
-            "structuredClone".into(),
+            "Window/structuredClone",
             "Window/structuredClone".into(),
         );
+        insert_unique(&mut map, "structuredClone", "Window/structuredClone".into());
         insert_unique(
             &mut map,
-            "WorkerGlobalScope/structuredClone".into(),
+            "WorkerGlobalScope/structuredClone",
             "WorkerGlobalScope/structuredClone".into(),
         );
         insert_unique(
             &mut map,
-            "structuredClone".into(),
+            "structuredClone",
             "WorkerGlobalScope/structuredClone".into(),
         );
+        insert_unique(&mut map, "CSPViolationReport", "CSPViolationReport".into());
+        insert_unique(&mut map, "Window", "Window".into());
         insert_unique(
             &mut map,
-            "CSPViolationReport".into(),
-            "CSPViolationReport".into(),
+            "DocumentPictureInPicture/window",
+            "DocumentPictureInPicture/window".into(),
         );
+        insert_unique(&mut map, "window", "DocumentPictureInPicture/window".into());
         map
+    }
+
+    #[test]
+    fn case_insensitive_prefers_top_level_interface() {
+        let map = fixture();
+        assert_eq!(resolve_from_map(&map, "Window"), Some("Window"));
+        // Lowercase input also resolves to the top-level interface, not the
+        // nested `DocumentPictureInPicture/window` leaf.
+        assert_eq!(resolve_from_map(&map, "window"), Some("Window"));
+    }
+
+    #[test]
+    fn case_insensitive_hit() {
+        let map = fixture();
+        assert_eq!(
+            resolve_from_map(&map, "cspviolationreport"),
+            Some("CSPViolationReport")
+        );
     }
 
     #[test]
@@ -136,9 +163,9 @@ mod tests {
     }
 
     #[test]
-    fn ambiguous_leaf_returns_first() {
+    fn ambiguous_leaf_returns_first_at_min_depth() {
         let map = fixture();
-        // First inserted candidate wins.
+        // Two candidates at the same depth (1 slash); first inserted wins.
         assert_eq!(
             resolve_from_map(&map, "structuredClone"),
             Some("Window/structuredClone")
