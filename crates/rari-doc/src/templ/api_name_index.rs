@@ -102,6 +102,12 @@ fn resolve_from_map<'a>(
     // Prefer fewer segments, then an exact (case-insensitive) match over an
     // alias — so `Response/json` resolves to `Response/json`, not the
     // `Response/json_static` slug that also aliases under the same key.
+    //
+    // When both keys above tie (e.g. `Response/json` vs `Response/json_static`
+    // looked up by `response/json`), `min_by_key` returns the first candidate
+    // in iteration order. Correctness then relies on `build_index` iterating
+    // pages in ascending slug order (`SubPagesSorter::Slug`) so the canonical
+    // entry is inserted before its `_static`-suffixed sibling.
     candidates
         .iter()
         .min_by_key(|v| (segments(v), v.to_lowercase() != key))
