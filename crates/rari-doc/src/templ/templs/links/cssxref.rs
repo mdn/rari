@@ -104,12 +104,10 @@ pub fn cssxref_internal(
     let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
         resolve_css_feature(&format!("Values/{slug}"))
     } else if name.starts_with(':') {
-        if is_function {
-            resolve_css_feature(&format!("Selectors/{slug}_function"))
-                .or_else(|| resolve_css_feature(&format!("Selectors/{slug}")))
-        } else {
-            resolve_css_feature(&format!("Selectors/{slug}"))
-        }
+        is_function
+            .then(|| resolve_css_feature(&format!("Selectors/{slug}_function")))
+            .flatten()
+            .or_else(|| resolve_css_feature(&format!("Selectors/{slug}")))
     } else if name.starts_with('@') {
         resolve_css_feature(&format!("At-rules/{slug}"))
     } else if is_function {
