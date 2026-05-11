@@ -36,12 +36,21 @@ fn build_index() -> HashMap<String, Vec<String>> {
         }
         let canonical = sub_slug.to_string();
 
-        // Full sub-slug key (e.g. `Window/structuredClone`).
-        insert_unique(&mut map, &canonical, canonical.clone());
+        // After the Web API reorg (https://github.com/orgs/mdn/discussions/796),
+        // pages live at `Web/API/<Group>_API/Reference/<Name>`. The grouping
+        // segments aren't part of how users reference these pages in templates,
+        // so index by the portion after `/Reference/` when present.
+        let indexable = sub_slug
+            .split_once("/Reference/")
+            .map(|(_, after)| after)
+            .unwrap_or(sub_slug);
+
+        // Full indexable key (e.g. `Window/structuredClone` or `SyncEvent`).
+        insert_unique(&mut map, indexable, canonical.clone());
 
         // Leaf-only key for `Window/*` members (e.g. `fetch` → `Window/fetch`).
         // Other interfaces' members must be referenced by full sub-path.
-        if let Some(leaf) = sub_slug.strip_prefix("Window/")
+        if let Some(leaf) = indexable.strip_prefix("Window/")
             && !leaf.contains('/')
         {
             insert_unique(&mut map, leaf, canonical);
@@ -110,15 +119,29 @@ mod tests {
             "BackgroundFetchManager/fetch",
             "DocumentPictureInPicture/window",
             "CSPViolationReport",
+            "Background_Synchronization_API/Reference/SyncEvent",
         ] {
-            insert_unique(&mut map, sub_slug, sub_slug.to_string());
-            if let Some(leaf) = sub_slug.strip_prefix("Window/")
+            let indexable = sub_slug
+                .split_once("/Reference/")
+                .map(|(_, after)| after)
+                .unwrap_or(sub_slug);
+            insert_unique(&mut map, indexable, sub_slug.to_string());
+            if let Some(leaf) = indexable.strip_prefix("Window/")
                 && !leaf.contains('/')
             {
                 insert_unique(&mut map, leaf, sub_slug.to_string());
             }
         }
         map
+    }
+
+    #[test]
+    fn reference_path_is_indexed_by_post_reference_segment() {
+        let map = fixture();
+        assert_eq!(
+            resolve_from_map(&map, "SyncEvent"),
+            Some("Background_Synchronization_API/Reference/SyncEvent")
+        );
     }
 
     #[test]
