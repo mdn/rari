@@ -3,6 +3,7 @@ use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 
 use crate::error::DocError;
+use crate::issues::get_issue_counter;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 use crate::templ::css_feature_index::resolve_css_feature;
@@ -74,6 +75,15 @@ pub fn cssxref_internal(
         Some((n, frag)) => (n, Some(frag)),
         None => (name, None),
     };
+    if embedded_anchor.is_some() && anchor.is_some() {
+        let ic = get_issue_counter();
+        tracing::warn!(
+            source = "templ-invalid-arg",
+            ic = ic,
+            arg = "anchor",
+            "cssxref: `anchor` argument ignored because `name` already contains a fragment"
+        );
+    }
 
     let maybe_display_name = &display_name
         .or_else(|| name.rsplit_once('/').map(|(_, s)| s))
@@ -120,13 +130,11 @@ pub fn cssxref_internal(
     .map(str::to_string)
     .unwrap_or_else(|| slug.to_string());
 
-    let url = format!(
-        "{}{}{}{}",
-        &base_url,
-        &url_path,
-        embedded_anchor.map(|a| format!("#{a}")).unwrap_or_default(),
-        anchor.unwrap_or_default(),
-    );
+    let fragment = embedded_anchor
+        .map(|a| format!("#{a}"))
+        .or_else(|| anchor.map(str::to_string))
+        .unwrap_or_default();
+    let url = format!("{}{}{}", &base_url, &url_path, &fragment);
 
     let display_name = if display_name.is_some() {
         encoded_maybe_display_name.to_string()
