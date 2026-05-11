@@ -30,39 +30,45 @@ fn build_index() -> HashMap<String, Vec<String>> {
         let Some(sub_slug) = page.slug().strip_prefix(WEB_API_PREFIX) else {
             continue;
         };
-        if sub_slug.is_empty() {
-            continue;
-        }
-        let canonical = sub_slug.to_string();
-
-        // After the Web API reorg (https://github.com/orgs/mdn/discussions/796),
-        // pages live at `Web/API/<Group>_API/Reference/<Name>`. The grouping
-        // segments aren't part of how users reference these pages in templates,
-        // so index by the portion after `/Reference/` when present.
-        let indexable = sub_slug
-            .split_once("/Reference/")
-            .map(|(_, after)| after)
-            .unwrap_or(sub_slug);
-
-        // Full indexable key (e.g. `Window/structuredClone` or `SyncEvent`).
-        insert_unique(&mut map, indexable, canonical.clone());
-
-        // Static methods/properties live at `<Interface>/<Name>_static` but are
-        // commonly referenced without the suffix (e.g. `VideoDecoder.isConfigSupported()`).
-        // Index an alias without the `_static` suffix pointing to the same canonical slug.
-        if let Some(without_static) = indexable.strip_suffix("_static") {
-            insert_unique(&mut map, without_static, canonical.clone());
-        }
-
-        // Leaf-only key for `Window/*` members (e.g. `fetch` → `Window/fetch`).
-        // Other interfaces' members must be referenced by full sub-path.
-        if let Some(leaf) = indexable.strip_prefix("Window/")
-            && !leaf.contains('/')
-        {
-            insert_unique(&mut map, leaf, canonical);
-        }
+        index_one(&mut map, sub_slug);
     }
     map
+}
+
+/// Add the index entries (full key, plus optional `_static` and `Window/*`
+/// leaf aliases) for a single `Web/API/<sub_slug>` page.
+fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
+    if sub_slug.is_empty() {
+        return;
+    }
+    let canonical = sub_slug.to_string();
+
+    // After the Web API reorg (https://github.com/orgs/mdn/discussions/796),
+    // pages live at `Web/API/<Group>_API/Reference/<Name>`. The grouping
+    // segments aren't part of how users reference these pages in templates,
+    // so index by the portion after `/Reference/` when present.
+    let indexable = sub_slug
+        .split_once("/Reference/")
+        .map(|(_, after)| after)
+        .unwrap_or(sub_slug);
+
+    // Full indexable key (e.g. `Window/structuredClone` or `SyncEvent`).
+    insert_unique(map, indexable, canonical.clone());
+
+    // Static methods/properties live at `<Interface>/<Name>_static` but are
+    // commonly referenced without the suffix (e.g. `VideoDecoder.isConfigSupported()`).
+    // Index an alias without the `_static` suffix pointing to the same canonical slug.
+    if let Some(without_static) = indexable.strip_suffix("_static") {
+        insert_unique(map, without_static, canonical.clone());
+    }
+
+    // Leaf-only key for `Window/*` members (e.g. `fetch` → `Window/fetch`).
+    // Other interfaces' members must be referenced by full sub-path.
+    if let Some(leaf) = indexable.strip_prefix("Window/")
+        && !leaf.contains('/')
+    {
+        insert_unique(map, leaf, canonical);
+    }
 }
 
 fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: &str, value: String) {
@@ -106,8 +112,8 @@ fn resolve_from_map<'a>(
 mod tests {
     use super::*;
 
-    /// Simulate what `build_index` would produce for a representative set of
-    /// Web/API sub-slugs.
+    /// Build an index from a representative set of Web/API sub-slugs using
+    /// the real `index_one` per-slug logic.
     fn fixture() -> HashMap<String, Vec<String>> {
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
         for sub_slug in [
@@ -123,19 +129,7 @@ mod tests {
             "Response/json",
             "Response/json_static",
         ] {
-            let indexable = sub_slug
-                .split_once("/Reference/")
-                .map(|(_, after)| after)
-                .unwrap_or(sub_slug);
-            insert_unique(&mut map, indexable, sub_slug.to_string());
-            if let Some(without_static) = indexable.strip_suffix("_static") {
-                insert_unique(&mut map, without_static, sub_slug.to_string());
-            }
-            if let Some(leaf) = indexable.strip_prefix("Window/")
-                && !leaf.contains('/')
-            {
-                insert_unique(&mut map, leaf, sub_slug.to_string());
-            }
+            index_one(&mut map, sub_slug);
         }
         map
     }
