@@ -126,8 +126,7 @@ pub fn cssxref_internal(
     } else {
         resolve_css_feature("Properties", slug).or_else(|| resolve_css_feature("Values", slug))
     }
-    .map(str::to_string)
-    .unwrap_or_else(|| slug.to_string());
+    .map_or_else(|| slug.to_string(), str::to_string);
 
     let fragment = embedded_anchor
         .map(|a| format!("#{a}"))
