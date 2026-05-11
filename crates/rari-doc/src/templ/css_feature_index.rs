@@ -39,7 +39,6 @@ fn build_index() -> HashMap<String, Vec<String>> {
 /// Add the index entries for a single `Web/CSS/<sub_slug>` page.
 ///
 /// Each page is indexed under:
-/// - its full sub-path (e.g. `Reference/Properties/color`)
 /// - if under `Reference/`, the category-relative key (e.g. `Properties/color`,
 ///   `Values/color_value`, `Selectors/:hover`, `At-rules/@media`,
 ///   `At-rules/@media/color`)
@@ -47,13 +46,14 @@ fn build_index() -> HashMap<String, Vec<String>> {
 ///   without the suffix (e.g. `Values/color_value` is also indexed under
 ///   `Values/color`, so `{{cssxref("<color>")}}` resolves correctly after
 ///   the macro strips the brackets).
+///
+/// The full sub-path (e.g. `Reference/Properties/color`) is intentionally
+/// not indexed: no content uses `{{cssxref("Reference/…")}}` in practice.
 fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
     if sub_slug.is_empty() {
         return;
     }
     let canonical = sub_slug.to_string();
-
-    insert_unique(map, sub_slug, canonical.clone());
 
     let Some(after_ref) = sub_slug.strip_prefix("Reference/") else {
         return;
@@ -83,8 +83,7 @@ fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: &str, value: Strin
 }
 
 /// Look up a CSS feature by its category-relative path (e.g. `Properties/color`,
-/// `Values/color_value`, `Values/color`, `Selectors/:hover`, `At-rules/@media`)
-/// or full sub-path (e.g. `Reference/Properties/color`).
+/// `Values/color_value`, `Values/color`, `Selectors/:hover`, `At-rules/@media`).
 ///
 /// Lookup is case-insensitive. When the bucket contains multiple candidates,
 /// the one whose post-`Reference/` portion is an exact (case-insensitive)
@@ -218,15 +217,6 @@ mod tests {
         assert_eq!(
             resolve_from_map(&map, "At-rules/@media/color"),
             Some("Reference/At-rules/@media/color")
-        );
-    }
-
-    #[test]
-    fn full_sub_path_resolves() {
-        let map = fixture();
-        assert_eq!(
-            resolve_from_map(&map, "Reference/Properties/color"),
-            Some("Reference/Properties/color")
         );
     }
 
