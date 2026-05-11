@@ -12,6 +12,7 @@ use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
 
 const WEB_CSS_PREFIX: &str = "Web/CSS/";
+const REFERENCE_PREFIX: &str = "Reference/";
 
 static CSS_FEATURE_INDEX: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(build_index);
 
@@ -53,7 +54,7 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
         return;
     }
 
-    let Some(after_ref) = sub_slug.strip_prefix("Reference/") else {
+    let Some(after_ref) = sub_slug.strip_prefix(REFERENCE_PREFIX) else {
         return;
     };
     map.entry(after_ref.to_lowercase())
@@ -105,7 +106,8 @@ fn resolve_from_map<'a>(
     candidates
         .iter()
         .min_by_key(|v| {
-            let after_ref = v.strip_prefix("Reference/").unwrap_or(v.as_str());
+            // Every indexed canonical starts with `Reference/` (see `index_one`).
+            let after_ref = &v[REFERENCE_PREFIX.len()..];
             // ASCII-only comparison: CSS slugs never contain non-ASCII
             // characters, and the bucket key is already lowercase.
             (
