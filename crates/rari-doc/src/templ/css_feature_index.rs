@@ -85,8 +85,7 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
 /// 1. Exact match (post-`Reference/` portion equals the key, case-insensitive)
 ///    wins over alias matches — so `Values/color` (exact) beats a suffix-alias
 ///    pointing into a different canonical slug.
-/// 2. Fewer path segments wins (top-level entries beat nested ones).
-/// 3. `_value` beats `_function` when both alias to the same bare key — `<…>`
+/// 2. `_value` beats `_function` when both alias to the same bare key — `<…>`
 ///    and `…()` syntax already disambiguate type vs function, so the ambiguous
 ///    cases are bare names like `{{cssxref("url")}}` which in practice refer
 ///    to the data type, not the function.
@@ -117,7 +116,6 @@ fn resolve_from_map<'a>(
             // characters, and the bucket key is already lowercase.
             (
                 !after_ref.eq_ignore_ascii_case(&key),
-                v.matches('/').count(),
                 !v.ends_with("_value"),
             )
         })
