@@ -64,6 +64,16 @@ pub fn cssxref_internal(
     anchor: Option<&str>,
     locale: Locale,
 ) -> Result<String, DocError> {
+    // Authors sometimes embed a fragment in `name` (e.g.
+    // `font-variant-alternates#stylistic` or `<color>#syntax`) instead of
+    // passing the explicit `anchor` argument. Split it off up front so
+    // special-case mapping, prefix classification, and slug normalization
+    // all operate on the bare name; re-append it when building the URL.
+    let (name, embedded_anchor) = match name.split_once('#') {
+        Some((n, frag)) => (n, Some(frag)),
+        None => (name, None),
+    };
+
     let maybe_display_name = &display_name
         .or_else(|| name.rsplit_once('/').map(|(_, s)| s))
         .unwrap_or(name);
@@ -80,7 +90,7 @@ pub fn cssxref_internal(
     slug = slug.strip_suffix("()").unwrap_or(slug);
 
     // Apply special case mappings
-    let slug = match name {
+    let lookup_slug = match name {
         "&lt;color&gt;" | "<color>" => "color_value",
         "&lt;flex&gt;" | "<flex>" => "flex_value",
         "&lt;overflow&gt;" | "<overflow>" => "overflow_value",
@@ -91,13 +101,6 @@ pub fn cssxref_internal(
     };
 
     let base_url = format!("/{}/docs/Web/CSS/", locale.as_url_str());
-    // Authors sometimes embed a fragment in `name` (e.g. `font-variant-alternates#stylistic`)
-    // instead of passing the explicit `anchor` argument. Split it off so the
-    // index lookup gets the bare slug, then re-append it to the URL.
-    let (lookup_slug, embedded_anchor) = match slug.split_once('#') {
-        Some((s, frag)) => (s, Some(frag)),
-        None => (slug, None),
-    };
     // Resolve the (normalized) slug to a canonical Web/CSS sub-path via the
     // CSS feature index. The macro's input syntax (`<>`, `()`, `:`, `@`)
     // narrows the category we look up under; bare names are ambiguous between
