@@ -39,9 +39,10 @@ fn build_index() -> HashMap<String, Vec<String>> {
         // Full sub-slug key (e.g. `Window/structuredClone`).
         insert_unique(&mut map, &canonical, canonical.clone());
 
-        // Leaf segment key (e.g. `structuredClone`).
-        if let Some(leaf) = sub_slug.rsplit('/').next()
-            && leaf != sub_slug
+        // Leaf-only key for `Window/*` members (e.g. `fetch` → `Window/fetch`).
+        // Other interfaces' members must be referenced by full sub-path.
+        if let Some(leaf) = sub_slug.strip_prefix("Window/")
+            && !leaf.contains('/')
         {
             insert_unique(&mut map, leaf, canonical);
         }
@@ -97,42 +98,62 @@ fn resolve_from_map<'a>(
 mod tests {
     use super::*;
 
+    /// Simulate what `build_index` would produce for a representative set of
+    /// Web/API sub-slugs.
     fn fixture() -> HashMap<String, Vec<String>> {
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
-        insert_unique(
-            &mut map,
+        for sub_slug in [
+            "Window",
             "Window/structuredClone",
-            "Window/structuredClone".into(),
-        );
-        insert_unique(&mut map, "structuredClone", "Window/structuredClone".into());
-        insert_unique(
-            &mut map,
+            "Window/fetch",
             "WorkerGlobalScope/structuredClone",
-            "WorkerGlobalScope/structuredClone".into(),
-        );
-        insert_unique(
-            &mut map,
-            "structuredClone",
-            "WorkerGlobalScope/structuredClone".into(),
-        );
-        insert_unique(&mut map, "CSPViolationReport", "CSPViolationReport".into());
-        insert_unique(&mut map, "Window", "Window".into());
-        insert_unique(
-            &mut map,
+            "BackgroundFetchManager/fetch",
             "DocumentPictureInPicture/window",
-            "DocumentPictureInPicture/window".into(),
-        );
-        insert_unique(&mut map, "window", "DocumentPictureInPicture/window".into());
+            "CSPViolationReport",
+        ] {
+            insert_unique(&mut map, sub_slug, sub_slug.to_string());
+            if let Some(leaf) = sub_slug.strip_prefix("Window/")
+                && !leaf.contains('/')
+            {
+                insert_unique(&mut map, leaf, sub_slug.to_string());
+            }
+        }
         map
     }
 
     #[test]
-    fn case_insensitive_prefers_top_level_interface() {
+    fn case_insensitive_prefers_top_level_window() {
         let map = fixture();
         assert_eq!(resolve_from_map(&map, "Window"), Some("Window"));
-        // Lowercase input also resolves to the top-level interface, not the
-        // nested `DocumentPictureInPicture/window` leaf.
+        // Lowercase `window` resolves to the top-level `Window` interface, not
+        // the nested `DocumentPictureInPicture/window` (which requires its full
+        // sub-path).
         assert_eq!(resolve_from_map(&map, "window"), Some("Window"));
+    }
+
+    #[test]
+    fn window_member_resolves_by_leaf() {
+        let map = fixture();
+        // `fetch` resolves to `Window/fetch`, not `BackgroundFetchManager/fetch`
+        // (only `Window/*` members get a leaf-only shortcut).
+        assert_eq!(resolve_from_map(&map, "fetch"), Some("Window/fetch"));
+        assert_eq!(
+            resolve_from_map(&map, "structuredClone"),
+            Some("Window/structuredClone")
+        );
+    }
+
+    #[test]
+    fn non_window_member_requires_full_path() {
+        let map = fixture();
+        assert_eq!(
+            resolve_from_map(&map, "BackgroundFetchManager/fetch"),
+            Some("BackgroundFetchManager/fetch")
+        );
+        assert_eq!(
+            resolve_from_map(&map, "DocumentPictureInPicture/window"),
+            Some("DocumentPictureInPicture/window")
+        );
     }
 
     #[test]
@@ -141,34 +162,6 @@ mod tests {
         assert_eq!(
             resolve_from_map(&map, "cspviolationreport"),
             Some("CSPViolationReport")
-        );
-    }
-
-    #[test]
-    fn resolves_full_sub_slug() {
-        let map = fixture();
-        assert_eq!(
-            resolve_from_map(&map, "Window/structuredClone"),
-            Some("Window/structuredClone")
-        );
-    }
-
-    #[test]
-    fn resolves_single_segment() {
-        let map = fixture();
-        assert_eq!(
-            resolve_from_map(&map, "CSPViolationReport"),
-            Some("CSPViolationReport")
-        );
-    }
-
-    #[test]
-    fn ambiguous_leaf_returns_first_at_min_depth() {
-        let map = fixture();
-        // Two candidates at the same depth (1 slash); first inserted wins.
-        assert_eq!(
-            resolve_from_map(&map, "structuredClone"),
-            Some("Window/structuredClone")
         );
     }
 
