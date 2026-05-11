@@ -8,8 +8,6 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use tracing::error;
-
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
 
@@ -18,13 +16,8 @@ const WEB_CSS_PREFIX: &str = "Web/CSS/";
 static CSS_FEATURE_INDEX: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(build_index);
 
 fn build_index() -> HashMap<String, Vec<String>> {
-    let pages = match get_sub_pages("/en-US/docs/Web/CSS", None, SubPagesSorter::Slug) {
-        Ok(pages) => pages,
-        Err(e) => {
-            error!("failed to build cssxref CSS feature index: {e}");
-            return HashMap::new();
-        }
-    };
+    let pages = get_sub_pages("/en-US/docs/Web/CSS", None, SubPagesSorter::Slug)
+        .expect("failed to build cssxref CSS feature index from /en-US/docs/Web/CSS");
 
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
     for page in pages {
