@@ -18,14 +18,14 @@ const REFERENCE_PREFIX: &str = "Reference/";
 /// can target. The `as_str` form is the lowercase path segment used as the
 /// first half of an index key.
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum CssReferenceCategory {
+pub(crate) enum CssRefCategory {
     Properties,
     Values,
     Selectors,
     AtRules,
 }
 
-impl CssReferenceCategory {
+impl CssRefCategory {
     fn as_str(self) -> &'static str {
         match self {
             Self::Properties => "properties",
@@ -112,16 +112,13 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
 ///
 /// The returned `&'static str` borrows from `CSS_FEATURE_INDEX`, which is a
 /// `LazyLock` that lives for the rest of the process.
-pub(crate) fn resolve_css_feature(
-    category: CssReferenceCategory,
-    slug: &str,
-) -> Option<&'static str> {
+pub(crate) fn resolve_css_feature(category: CssRefCategory, slug: &str) -> Option<&'static str> {
     resolve_from_map(&CSS_FEATURE_INDEX, category, slug)
 }
 
 fn resolve_from_map<'a>(
     map: &'a HashMap<String, Vec<String>>,
-    category: CssReferenceCategory,
+    category: CssRefCategory,
     slug: &str,
 ) -> Option<&'a str> {
     let cat = category.as_str();
@@ -175,11 +172,11 @@ mod tests {
     fn property_resolves_by_category_key() {
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Properties, "color"),
+            resolve_from_map(&map, CssRefCategory::Properties, "color"),
             Some("Reference/Properties/color")
         );
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Properties, "background-color"),
+            resolve_from_map(&map, CssRefCategory::Properties, "background-color"),
             Some("Reference/Properties/background-color")
         );
     }
@@ -189,7 +186,7 @@ mod tests {
         let map = fixture();
         // `<color>` is normalized to slug `color` and looked up as `Values/color`.
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Values, "color"),
+            resolve_from_map(&map, CssRefCategory::Values, "color"),
             Some("Reference/Values/color_value")
         );
     }
@@ -199,7 +196,7 @@ mod tests {
         let map = fixture();
         // `calc()` is normalized to `calc` and looked up as `Values/calc`.
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Values, "calc"),
+            resolve_from_map(&map, CssRefCategory::Values, "calc"),
             Some("Reference/Values/calc")
         );
     }
@@ -210,12 +207,12 @@ mod tests {
         // `fit-content()` is special-cased to slug `fit-content_function`
         // and looked up as `Values/fit-content_function` — exact match.
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Values, "fit-content_function"),
+            resolve_from_map(&map, CssRefCategory::Values, "fit-content_function"),
             Some("Reference/Values/fit-content_function")
         );
         // But the suffix-less alias also resolves (to the same page).
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Values, "fit-content"),
+            resolve_from_map(&map, CssRefCategory::Values, "fit-content"),
             Some("Reference/Values/fit-content_function")
         );
     }
@@ -228,11 +225,11 @@ mod tests {
         // because the alias key is "Values/url", not "Values/url_value".
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Values, "url_value"),
+            resolve_from_map(&map, CssRefCategory::Values, "url_value"),
             Some("Reference/Values/url_value")
         );
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Values, "url_function"),
+            resolve_from_map(&map, CssRefCategory::Values, "url_function"),
             Some("Reference/Values/url_function")
         );
     }
@@ -245,7 +242,7 @@ mod tests {
         // would route the lookup to `Values/url_function` directly).
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Values, "url"),
+            resolve_from_map(&map, CssRefCategory::Values, "url"),
             Some("Reference/Values/url_value")
         );
     }
@@ -254,7 +251,7 @@ mod tests {
     fn selector_resolves() {
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Selectors, ":hover"),
+            resolve_from_map(&map, CssRefCategory::Selectors, ":hover"),
             Some("Reference/Selectors/:hover")
         );
     }
@@ -263,11 +260,11 @@ mod tests {
     fn at_rule_and_descriptor_resolve() {
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::AtRules, "@media"),
+            resolve_from_map(&map, CssRefCategory::AtRules, "@media"),
             Some("Reference/At-rules/@media")
         );
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::AtRules, "@media/color"),
+            resolve_from_map(&map, CssRefCategory::AtRules, "@media/color"),
             Some("Reference/At-rules/@media/color")
         );
     }
@@ -276,7 +273,7 @@ mod tests {
     fn case_insensitive_hit() {
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Properties, "COLOR"),
+            resolve_from_map(&map, CssRefCategory::Properties, "COLOR"),
             Some("Reference/Properties/color")
         );
     }
@@ -290,11 +287,11 @@ mod tests {
         // category-relative keys must resolve to their own canonical page.
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Properties, "color"),
+            resolve_from_map(&map, CssRefCategory::Properties, "color"),
             Some("Reference/Properties/color")
         );
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Values, "color"),
+            resolve_from_map(&map, CssRefCategory::Values, "color"),
             Some("Reference/Values/color_value")
         );
     }
@@ -303,11 +300,11 @@ mod tests {
     fn miss_returns_none() {
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Properties, "does-not-exist"),
+            resolve_from_map(&map, CssRefCategory::Properties, "does-not-exist"),
             None
         );
         assert_eq!(
-            resolve_from_map(&map, CssReferenceCategory::Values, "does-not-exist"),
+            resolve_from_map(&map, CssRefCategory::Values, "does-not-exist"),
             None
         );
     }
