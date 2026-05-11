@@ -108,8 +108,10 @@ fn resolve_from_map<'a>(
         .iter()
         .min_by_key(|v| {
             let after_ref = v.strip_prefix("Reference/").unwrap_or(v.as_ref());
+            // ASCII-only comparison: CSS slugs never contain non-ASCII
+            // characters, and the bucket key is already lowercase.
             (
-                after_ref.to_lowercase() != key,
+                !after_ref.eq_ignore_ascii_case(&key),
                 v.matches('/').count(),
                 !v.ends_with("_value"),
             )
