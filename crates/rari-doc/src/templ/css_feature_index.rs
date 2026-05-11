@@ -77,14 +77,13 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
     }
 }
 
-/// Look up a CSS feature by its category-relative path (e.g. `Properties/color`,
-/// `Values/color_value`, `Values/color`, `Selectors/:hover`, `At-rules/@media`).
+/// Look up a CSS feature by `category` (e.g. `Properties`, `Values`, `Selectors`,
+/// `At-rules`) and `slug` (e.g. `color`, `color_value`, `:hover`, `@media`).
+/// Matching is case-insensitive.
 ///
-/// Lookup is case-insensitive. When the bucket contains multiple candidates,
-/// they are ranked by:
-/// 1. Exact match (post-`Reference/` portion equals the key, case-insensitive)
-///    wins over alias matches — so `Values/color` (exact) beats a suffix-alias
-///    pointing into a different canonical slug.
+/// When the bucket contains multiple candidates, they are ranked by:
+/// 1. Exact match wins over alias matches — `Values/color` (exact) beats a
+///    suffix-alias pointing into a different canonical slug.
 /// 2. `_value` beats `_function` when both alias to the same bare key — `<…>`
 ///    and `…()` syntax already disambiguate type vs function, so the ambiguous
 ///    cases are bare names like `{{cssxref("url")}}` which in practice refer
