@@ -16,6 +16,9 @@ const WEB_CSS_PREFIX: &str = "Web/CSS/";
 static CSS_FEATURE_INDEX: LazyLock<HashMap<String, Vec<Arc<str>>>> = LazyLock::new(build_index);
 
 fn build_index() -> HashMap<String, Vec<Arc<str>>> {
+    // Slugs are locale-invariant in MDN content, so it's enough to walk the
+    // en-US tree — the resulting paths are reused unchanged across locales
+    // when constructing URLs.
     let pages = get_sub_pages("/en-US/docs/Web/CSS", None, SubPagesSorter::Slug)
         .expect("failed to build cssxref CSS feature index from /en-US/docs/Web/CSS");
 
@@ -251,6 +254,24 @@ mod tests {
         assert_eq!(
             resolve_from_map(&map, "properties/COLOR"),
             Some("Reference/Properties/color")
+        );
+    }
+
+    #[test]
+    fn bare_name_caller_controls_property_vs_value_precedence() {
+        // For a bare name like `color`, `cssxref` looks up `Properties/color`
+        // first and falls back to `Values/color` only on miss. Both buckets
+        // resolve in isolation, so the chained-`or_else` order in cssxref is
+        // what determines which page wins. Lock the contract in: both
+        // category-relative keys must resolve to their own canonical page.
+        let map = fixture();
+        assert_eq!(
+            resolve_from_map(&map, "Properties/color"),
+            Some("Reference/Properties/color")
+        );
+        assert_eq!(
+            resolve_from_map(&map, "Values/color"),
+            Some("Reference/Values/color_value")
         );
     }
 
