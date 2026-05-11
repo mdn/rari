@@ -38,10 +38,13 @@ fn build_index() -> HashMap<String, Vec<String>> {
 /// - if under `Reference/`, the category-relative key (e.g. `Properties/color`,
 ///   `Values/color_value`, `Selectors/:hover`, `At-rules/@media`,
 ///   `At-rules/@media/color`)
-/// - for Values pages whose name ends in `_value` or `_function`, an alias
-///   without the suffix (e.g. `Values/color_value` is also indexed under
+/// - for pages whose name ends in `_value` or `_function`, an alias without
+///   the suffix (e.g. `Values/color_value` is also indexed under
 ///   `Values/color`, so `{{cssxref("<color>")}}` resolves correctly after
-///   the macro strips the brackets).
+///   the macro strips the brackets; `Selectors/:host_function` is also
+///   indexed under `Selectors/:host`, so `{{cssxref(":host()")}}` resolves).
+///   The convention is Values-centric, but the alias applies regardless of
+///   category for cases like the selector-function pages.
 ///
 /// The full sub-path (e.g. `Reference/Properties/color`) is intentionally
 /// not indexed: no content uses `{{cssxref("Reference/…")}}` in practice.
@@ -61,8 +64,9 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
         return;
     };
 
-    // Values pages use `_value` and `_function` suffixes to disambiguate
-    // types and functions from properties of the same name. Index a
+    // `_value` and `_function` suffixes disambiguate types/functions from
+    // properties of the same name (Values pages) and also appear on
+    // selector-function pages (e.g. `Selectors/:host_function`). Index a
     // suffix-less alias so callers don't need to know the convention.
     for suffix in ["_value", "_function"] {
         if let Some(without) = name.strip_suffix(suffix) {
