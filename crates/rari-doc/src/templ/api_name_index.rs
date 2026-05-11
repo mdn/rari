@@ -131,17 +131,17 @@ mod tests {
     fn fixture() -> HashMap<String, Vec<String>> {
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
         for sub_slug in [
-            "Window",
-            "Window/structuredClone",
-            "Window/fetch",
-            "WorkerGlobalScope/structuredClone",
             "BackgroundFetchManager/fetch",
-            "DocumentPictureInPicture/window",
-            "CSPViolationReport",
             "Background_Synchronization_API/Reference/SyncEvent",
-            "VideoDecoder/isConfigSupported_static",
+            "CSPViolationReport",
+            "DocumentPictureInPicture/window",
             "Response/json",
             "Response/json_static",
+            "VideoDecoder/isConfigSupported_static",
+            "Window",
+            "Window/fetch",
+            "Window/structuredClone",
+            "WorkerGlobalScope/structuredClone",
         ] {
             index_one(&mut map, sub_slug);
         }
