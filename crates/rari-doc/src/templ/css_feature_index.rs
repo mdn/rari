@@ -93,15 +93,20 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
 ///
 /// The returned `&'static str` borrows from `CSS_FEATURE_INDEX`, which is a
 /// `LazyLock` that lives for the rest of the process.
-pub fn resolve_css_feature(category_path: &str) -> Option<&'static str> {
-    resolve_from_map(&CSS_FEATURE_INDEX, category_path)
+pub fn resolve_css_feature(category: &str, slug: &str) -> Option<&'static str> {
+    resolve_from_map(&CSS_FEATURE_INDEX, category, slug)
 }
 
 fn resolve_from_map<'a>(
     map: &'a HashMap<String, Vec<String>>,
-    category_path: &str,
+    category: &str,
+    slug: &str,
 ) -> Option<&'a str> {
-    let key = category_path.to_lowercase();
+    let mut key = String::with_capacity(category.len() + 1 + slug.len());
+    key.push_str(category);
+    key.push('/');
+    key.push_str(slug);
+    key.make_ascii_lowercase();
     let candidates = map.get(&key)?;
     candidates
         .iter()
@@ -148,11 +153,11 @@ mod tests {
     fn property_resolves_by_category_key() {
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, "Properties/color"),
+            resolve_from_map(&map, "Properties", "color"),
             Some("Reference/Properties/color")
         );
         assert_eq!(
-            resolve_from_map(&map, "Properties/background-color"),
+            resolve_from_map(&map, "Properties", "background-color"),
             Some("Reference/Properties/background-color")
         );
     }
@@ -162,7 +167,7 @@ mod tests {
         let map = fixture();
         // `<color>` is normalized to slug `color` and looked up as `Values/color`.
         assert_eq!(
-            resolve_from_map(&map, "Values/color"),
+            resolve_from_map(&map, "Values", "color"),
             Some("Reference/Values/color_value")
         );
     }
@@ -172,7 +177,7 @@ mod tests {
         let map = fixture();
         // `calc()` is normalized to `calc` and looked up as `Values/calc`.
         assert_eq!(
-            resolve_from_map(&map, "Values/calc"),
+            resolve_from_map(&map, "Values", "calc"),
             Some("Reference/Values/calc")
         );
     }
@@ -183,12 +188,12 @@ mod tests {
         // `fit-content()` is special-cased to slug `fit-content_function`
         // and looked up as `Values/fit-content_function` — exact match.
         assert_eq!(
-            resolve_from_map(&map, "Values/fit-content_function"),
+            resolve_from_map(&map, "Values", "fit-content_function"),
             Some("Reference/Values/fit-content_function")
         );
         // But the suffix-less alias also resolves (to the same page).
         assert_eq!(
-            resolve_from_map(&map, "Values/fit-content"),
+            resolve_from_map(&map, "Values", "fit-content"),
             Some("Reference/Values/fit-content_function")
         );
     }
@@ -201,11 +206,11 @@ mod tests {
         // because the alias key is "Values/url", not "Values/url_value".
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, "Values/url_value"),
+            resolve_from_map(&map, "Values", "url_value"),
             Some("Reference/Values/url_value")
         );
         assert_eq!(
-            resolve_from_map(&map, "Values/url_function"),
+            resolve_from_map(&map, "Values", "url_function"),
             Some("Reference/Values/url_function")
         );
     }
@@ -218,7 +223,7 @@ mod tests {
         // would route the lookup to `Values/url_function` directly).
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, "Values/url"),
+            resolve_from_map(&map, "Values", "url"),
             Some("Reference/Values/url_value")
         );
     }
@@ -227,7 +232,7 @@ mod tests {
     fn selector_resolves() {
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, "Selectors/:hover"),
+            resolve_from_map(&map, "Selectors", ":hover"),
             Some("Reference/Selectors/:hover")
         );
     }
@@ -236,11 +241,11 @@ mod tests {
     fn at_rule_and_descriptor_resolve() {
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, "At-rules/@media"),
+            resolve_from_map(&map, "At-rules", "@media"),
             Some("Reference/At-rules/@media")
         );
         assert_eq!(
-            resolve_from_map(&map, "At-rules/@media/color"),
+            resolve_from_map(&map, "At-rules", "@media/color"),
             Some("Reference/At-rules/@media/color")
         );
     }
@@ -249,7 +254,7 @@ mod tests {
     fn case_insensitive_hit() {
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, "properties/COLOR"),
+            resolve_from_map(&map, "properties", "COLOR"),
             Some("Reference/Properties/color")
         );
     }
@@ -263,11 +268,11 @@ mod tests {
         // category-relative keys must resolve to their own canonical page.
         let map = fixture();
         assert_eq!(
-            resolve_from_map(&map, "Properties/color"),
+            resolve_from_map(&map, "Properties", "color"),
             Some("Reference/Properties/color")
         );
         assert_eq!(
-            resolve_from_map(&map, "Values/color"),
+            resolve_from_map(&map, "Values", "color"),
             Some("Reference/Values/color_value")
         );
     }
@@ -275,7 +280,7 @@ mod tests {
     #[test]
     fn miss_returns_none() {
         let map = fixture();
-        assert_eq!(resolve_from_map(&map, "Properties/does-not-exist"), None);
-        assert_eq!(resolve_from_map(&map, "Values/does-not-exist"), None);
+        assert_eq!(resolve_from_map(&map, "Properties", "does-not-exist"), None);
+        assert_eq!(resolve_from_map(&map, "Values", "does-not-exist"), None);
     }
 }
