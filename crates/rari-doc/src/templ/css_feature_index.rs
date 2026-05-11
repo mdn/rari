@@ -86,10 +86,15 @@ fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: &str, value: Strin
 /// `Values/color_value`, `Values/color`, `Selectors/:hover`, `At-rules/@media`).
 ///
 /// Lookup is case-insensitive. When the bucket contains multiple candidates,
-/// the one whose post-`Reference/` portion is an exact (case-insensitive)
-/// match for the key wins — so `Values/color` (alias) loses to `Values/color`
-/// (exact) if both exist. Otherwise the candidate with the fewest path
-/// segments wins.
+/// they are ranked by:
+/// 1. Exact match (post-`Reference/` portion equals the key, case-insensitive)
+///    wins over alias matches — so `Values/color` (exact) beats a suffix-alias
+///    pointing into a different canonical slug.
+/// 2. Fewer path segments wins (top-level entries beat nested ones).
+/// 3. `_value` beats `_function` when both alias to the same bare key — `<…>`
+///    and `…()` syntax already disambiguate type vs function, so the ambiguous
+///    cases are bare names like `{{cssxref("url")}}` which in practice refer
+///    to the data type, not the function.
 ///
 /// The returned `&'static str` borrows from `CSS_FEATURE_INDEX`, which is a
 /// `LazyLock` that lives for the rest of the process.
@@ -107,7 +112,11 @@ fn resolve_from_map<'a>(
         .iter()
         .min_by_key(|v| {
             let after_ref = v.strip_prefix("Reference/").unwrap_or(v.as_str());
-            (after_ref.to_lowercase() != key, v.matches('/').count())
+            (
+                after_ref.to_lowercase() != key,
+                v.matches('/').count(),
+                !v.ends_with("_value"),
+            )
         })
         .map(String::as_str)
 }
@@ -187,14 +196,32 @@ mod tests {
     }
 
     #[test]
-    fn ambiguous_suffix_alias_picks_lowest_segment_count() {
-        // `url()` could be either `url_function` or `url_value`. Both alias
-        // under `Values/url`; tie-break gives a deterministic answer.
+    fn exact_suffix_match_beats_sibling_alias() {
+        // `{{cssxref("url_value", …)}}` looks up `Values/url_value` — exact
+        // match for `Reference/Values/url_value`. The alias for `Values/url`
+        // (which both url_value AND url_function insert into) must NOT win,
+        // because the alias key is "Values/url", not "Values/url_value".
         let map = fixture();
-        let resolved = resolve_from_map(&map, "Values/url").unwrap();
-        assert!(
-            resolved == "Reference/Values/url_function" || resolved == "Reference/Values/url_value",
-            "unexpected resolution: {resolved}"
+        assert_eq!(
+            resolve_from_map(&map, "Values/url_value"),
+            Some("Reference/Values/url_value")
+        );
+        assert_eq!(
+            resolve_from_map(&map, "Values/url_function"),
+            Some("Reference/Values/url_function")
+        );
+    }
+
+    #[test]
+    fn bare_name_with_both_value_and_function_prefers_value() {
+        // Both `url_value` and `url_function` alias to the `Values/url` key.
+        // Tie-break policy: prefer `_value` — bare `{{cssxref("url")}}` in
+        // practice refers to the data type (functions carry `()` syntax that
+        // would route the lookup to `Values/url_function` directly).
+        let map = fixture();
+        assert_eq!(
+            resolve_from_map(&map, "Values/url"),
+            Some("Reference/Values/url_value")
         );
     }
 
