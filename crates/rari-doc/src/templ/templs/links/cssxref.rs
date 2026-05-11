@@ -6,7 +6,7 @@ use crate::error::DocError;
 use crate::issues::get_issue_counter;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
-use crate::templ::css_feature_index::resolve_css_feature;
+use crate::templ::css_feature_index::{CssReferenceCategory, resolve_css_feature};
 
 /// Creates a link to a CSS reference page on MDN.
 ///
@@ -112,19 +112,22 @@ pub fn cssxref_internal(
     // behavior. If the index returns nothing, fall back to a bare `{slug}`
     // link under `Web/CSS/` (likely a 404).
     let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
-        resolve_css_feature("Values", slug)
+        resolve_css_feature(CssReferenceCategory::Values, slug)
     } else if name.starts_with(':') {
         is_function
-            .then(|| resolve_css_feature("Selectors", &format!("{slug}_function")))
+            .then(|| {
+                resolve_css_feature(CssReferenceCategory::Selectors, &format!("{slug}_function"))
+            })
             .flatten()
-            .or_else(|| resolve_css_feature("Selectors", slug))
+            .or_else(|| resolve_css_feature(CssReferenceCategory::Selectors, slug))
     } else if name.starts_with('@') {
-        resolve_css_feature("At-rules", slug)
+        resolve_css_feature(CssReferenceCategory::AtRules, slug)
     } else if is_function {
-        resolve_css_feature("Values", &format!("{slug}_function"))
-            .or_else(|| resolve_css_feature("Values", slug))
+        resolve_css_feature(CssReferenceCategory::Values, &format!("{slug}_function"))
+            .or_else(|| resolve_css_feature(CssReferenceCategory::Values, slug))
     } else {
-        resolve_css_feature("Properties", slug).or_else(|| resolve_css_feature("Values", slug))
+        resolve_css_feature(CssReferenceCategory::Properties, slug)
+            .or_else(|| resolve_css_feature(CssReferenceCategory::Values, slug))
     }
     .map_or_else(|| slug.to_string(), str::to_string);
 
