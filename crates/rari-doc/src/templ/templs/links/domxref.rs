@@ -29,7 +29,6 @@ use crate::templ::api_name_index::resolve_api_name;
 /// # Special handling
 /// - Converts spaces to underscores and removes `()` from method names
 /// - Handles prototype chain notation (`.prototype.` becomes `/`)
-/// - Automatically capitalizes first letter of interface names in URLs
 /// - Appends method/property names to display text when using anchors
 /// - Formats links with `<code>` tags unless `no_code` is true
 ///
@@ -60,17 +59,12 @@ pub fn domxref(
     if api.is_empty() {
         return Err(DocError::ArgError(ArgError::MustBeProvided));
     }
-    let mut url = if let Some(resolved) = resolve_api_name(&api) {
-        format!("/{}/docs/Web/API/{}", env.locale.as_url_str(), resolved)
-    } else {
-        let (first_char_index, _) = api.char_indices().next().unwrap_or_default();
-        format!(
-            "/{}/docs/Web/API/{}{}",
-            env.locale.as_url_str(),
-            &api[0..first_char_index].to_uppercase(),
-            &api[first_char_index..],
-        )
-    };
+    let resolved = resolve_api_name(&api);
+    let mut url = format!(
+        "/{}/docs/Web/API/{}",
+        env.locale.as_url_str(),
+        resolved.unwrap_or(&api),
+    );
     if let Some(anchor) = anchor {
         if !anchor.starts_with('#') {
             url.push('#');
