@@ -68,6 +68,11 @@ fn build_index() -> HashMap<String, Vec<String>> {
 ///   indexed under `Selectors/:host`, so `{{cssxref(":host()")}}` resolves).
 ///   The convention is Values-centric, but the alias applies regardless of
 ///   category for cases like the selector-function pages.
+/// - for nested pages whose name contains `/` (e.g.
+///   `Values/gradient/radial-gradient`), an alias under the leaf segment
+///   (`Values/radial-gradient`) so callers don't need to know the
+///   grouping. The `_value` / `_function` suffix-stripping also applies to
+///   the leaf alias.
 ///
 /// The full sub-path (e.g. `Reference/Properties/color`) is intentionally
 /// not indexed: no content uses `{{cssxref("Reference/…")}}` in practice.
@@ -91,6 +96,24 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
     // properties of the same name (Values pages) and also appear on
     // selector-function pages (e.g. `Selectors/:host_function`). Index a
     // suffix-less alias so callers don't need to know the convention.
+    add_suffix_aliases(map, category, name, sub_slug);
+
+    // Nested pages like `Values/gradient/radial-gradient` are otherwise only
+    // reachable by callers that already know the grouping. Index the leaf
+    // segment too so `{{cssxref("radial-gradient")}}` resolves.
+    if let Some((_, leaf)) = name.rsplit_once('/') {
+        let alias = format!("{category}/{leaf}").to_lowercase();
+        map.entry(alias).or_default().push(sub_slug.to_string());
+        add_suffix_aliases(map, category, leaf, sub_slug);
+    }
+}
+
+fn add_suffix_aliases(
+    map: &mut HashMap<String, Vec<String>>,
+    category: &str,
+    name: &str,
+    sub_slug: &str,
+) {
     for suffix in ["_value", "_function"] {
         if let Some(without) = name.strip_suffix(suffix) {
             let alias = format!("{category}/{without}").to_lowercase();
@@ -160,6 +183,7 @@ mod tests {
             "Reference/Values/calc",
             "Reference/Values/color_value",
             "Reference/Values/fit-content_function",
+            "Reference/Values/gradient/radial-gradient",
             "Reference/Values/url_function",
             "Reference/Values/url_value",
         ] {
@@ -293,6 +317,22 @@ mod tests {
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "color"),
             Some("Reference/Values/color_value")
+        );
+    }
+
+    #[test]
+    fn nested_page_resolves_by_leaf_segment() {
+        // `Reference/Values/gradient/radial-gradient` is indexed under both
+        // its full category-relative key and the leaf-segment alias so
+        // `{{cssxref("radial-gradient")}}` (a bare name) resolves.
+        let map = fixture();
+        assert_eq!(
+            resolve_from_map(&map, CssRefCategory::Values, "gradient/radial-gradient"),
+            Some("Reference/Values/gradient/radial-gradient")
+        );
+        assert_eq!(
+            resolve_from_map(&map, CssRefCategory::Values, "radial-gradient"),
+            Some("Reference/Values/gradient/radial-gradient")
         );
     }
 
