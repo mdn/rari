@@ -58,6 +58,11 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
     // Static methods/properties live at `<Interface>/<Name>_static` but are
     // commonly referenced without the suffix (e.g. `VideoDecoder.isConfigSupported()`).
     // Index an alias without the `_static` suffix pointing to the same canonical slug.
+    //
+    // We assume any slug ending in `_static` follows the static-member naming
+    // convention. There are no Web/API pages today whose name legitimately
+    // ends in `_static` outside that convention; if one is ever added it would
+    // get a spurious suffix-stripped alias.
     if let Some(without_static) = indexable.strip_suffix("_static") {
         insert_unique(map, without_static, canonical.clone());
     }
