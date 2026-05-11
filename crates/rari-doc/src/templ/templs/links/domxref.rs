@@ -6,6 +6,7 @@ use tracing::{Level, span};
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
+use crate::templ::api_name_index::resolve_api_name;
 
 /// Creates a link to a DOM/Web API reference page on MDN.
 ///
@@ -50,13 +51,17 @@ pub fn domxref(
     if api.is_empty() {
         return Err(DocError::ArgError(ArgError::MustBeProvided));
     }
-    let (first_char_index, _) = api.char_indices().next().unwrap_or_default();
-    let mut url = format!(
-        "/{}/docs/Web/API/{}{}",
-        env.locale.as_url_str(),
-        &api[0..first_char_index].to_uppercase(),
-        &api[first_char_index..],
-    );
+    let mut url = if let Some(resolved) = resolve_api_name(&api) {
+        format!("/{}/docs/Web/API/{}", env.locale.as_url_str(), resolved)
+    } else {
+        let (first_char_index, _) = api.char_indices().next().unwrap_or_default();
+        format!(
+            "/{}/docs/Web/API/{}{}",
+            env.locale.as_url_str(),
+            &api[0..first_char_index].to_uppercase(),
+            &api[first_char_index..],
+        )
+    };
     if let Some(anchor) = anchor {
         if !anchor.starts_with('#') {
             url.push('#');
