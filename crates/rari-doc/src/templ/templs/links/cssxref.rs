@@ -46,8 +46,9 @@ use crate::templ::css_feature_index::resolve_css_feature;
 /// - Functions automatically get `()` appended to display text if not present
 /// - Data types get wrapped in `<>` brackets in display text if not present
 /// - Handles HTML entity encoding (`&lt;` and `&gt;`)
-/// - Maps special cases like `<color>` to `color_value`, `:host()` to `:host_function`
-/// - Checks if pages exist at expected URLs and falls back to legacy structure if needed
+/// - Function inputs (`...()`) prefer a `{slug}_function` page when one exists,
+///   so `fit-content()` and `:host()` resolve to the function page rather than
+///   the like-named keyword/selector page
 #[rari_f(register = "crate::Templ")]
 pub fn cssxref(
     name: String,
@@ -80,47 +81,46 @@ pub fn cssxref_internal(
     let decoded_maybe_display_name = html_escape::decode_html_entities(maybe_display_name);
     let encoded_maybe_display_name = html_escape::encode_text(decoded_maybe_display_name.as_ref());
 
-    // Determine the original name for classification
+    // Strip type brackets and function parens to get the raw slug.
     let mut slug = name
         .strip_prefix("&lt;")
         .unwrap_or(name.strip_prefix('<').unwrap_or(name));
     slug = slug
         .strip_suffix("&gt;")
         .unwrap_or(slug.strip_suffix('>').unwrap_or(slug));
+    let is_function = slug.ends_with("()");
     slug = slug.strip_suffix("()").unwrap_or(slug);
-
-    // Apply special case mappings
-    let lookup_slug = match name {
-        "&lt;color&gt;" | "<color>" => "color_value",
-        "&lt;flex&gt;" | "<flex>" => "flex_value",
-        "&lt;overflow&gt;" | "<overflow>" => "overflow_value",
-        "&lt;position&gt;" | "<position>" => "position_value",
-        ":host()" => ":host_function",
-        "fit-content()" => "fit-content_function",
-        _ => slug,
-    };
 
     let base_url = format!("/{}/docs/Web/CSS/", locale.as_url_str());
     // Resolve the (normalized) slug to a canonical Web/CSS sub-path via the
     // CSS feature index. The macro's input syntax (`<>`, `()`, `:`, `@`)
-    // narrows the category we look up under; bare names are ambiguous between
-    // a property and a value, so try `Properties/` first then `Values/` —
-    // matching the legacy behavior. If the index returns nothing, fall back
-    // to a bare `{slug}` link under `Web/CSS/` (likely a 404).
+    // narrows the category we look up under. For function inputs we look up
+    // `{slug}_function` first so we land directly on the function page when
+    // both `{slug}` and `{slug}_function` exist (e.g. `fit-content()`,
+    // `:host()`); bare slugs are ambiguous between a property and a value,
+    // so try `Properties/` first then `Values/` — matching the legacy
+    // behavior. If the index returns nothing, fall back to a bare `{slug}`
+    // link under `Web/CSS/` (likely a 404).
     let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
-        resolve_css_feature(&format!("Values/{lookup_slug}"))
+        resolve_css_feature(&format!("Values/{slug}"))
     } else if name.starts_with(':') {
-        resolve_css_feature(&format!("Selectors/{lookup_slug}"))
+        if is_function {
+            resolve_css_feature(&format!("Selectors/{slug}_function"))
+                .or_else(|| resolve_css_feature(&format!("Selectors/{slug}")))
+        } else {
+            resolve_css_feature(&format!("Selectors/{slug}"))
+        }
     } else if name.starts_with('@') {
-        resolve_css_feature(&format!("At-rules/{lookup_slug}"))
-    } else if name.ends_with("()") {
-        resolve_css_feature(&format!("Values/{lookup_slug}"))
+        resolve_css_feature(&format!("At-rules/{slug}"))
+    } else if is_function {
+        resolve_css_feature(&format!("Values/{slug}_function"))
+            .or_else(|| resolve_css_feature(&format!("Values/{slug}")))
     } else {
-        resolve_css_feature(&format!("Properties/{lookup_slug}"))
-            .or_else(|| resolve_css_feature(&format!("Values/{lookup_slug}")))
+        resolve_css_feature(&format!("Properties/{slug}"))
+            .or_else(|| resolve_css_feature(&format!("Values/{slug}")))
     }
     .map(str::to_string)
-    .unwrap_or_else(|| lookup_slug.to_string());
+    .unwrap_or_else(|| slug.to_string());
 
     let url = format!(
         "{}{}{}{}",
