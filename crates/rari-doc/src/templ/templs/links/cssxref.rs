@@ -5,6 +5,7 @@ use rari_types::locale::Locale;
 use crate::error::DocError;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
+use crate::templ::css_feature_index::resolve_css_feature;
 
 /// Creates a link to a CSS reference page on MDN.
 ///
@@ -27,14 +28,19 @@ use crate::templ::api::RariApi;
 /// * `{{CSSxRef("@media/color")}}` -> links to color media feature at `/Web/CSS/Reference/At-rules/@media/color`
 ///
 /// # URL Structure
-/// The macro generates URLs based on the new CSS reference organization:
-/// - Data types (starting with `<` or `&lt;`): `/Web/CSS/Reference/Values/{slug}`
-/// - Pseudo-classes/elements (starting with `:`): `/Web/CSS/Reference/Selectors/{slug}`
-/// - At-rules (starting with `@`): `/Web/CSS/Reference/At-rules/{slug}`
-/// - Functions (ending with `()`): `/Web/CSS/Reference/Values/{slug}`
-/// - Properties: `/Web/CSS/Reference/Properties/{slug}` (checked first)
-/// - Other values: `/Web/CSS/Reference/Values/{slug}` (fallback)
-/// - If page not found in new structure: fallback to `/Web/CSS/{slug}`
+/// The macro resolves the (normalized) name against an index of all
+/// `Web/CSS/*` pages (see [`crate::templ::css_feature_index`]). The input
+/// syntax narrows the category looked up:
+/// - Data types (`<...>` or `&lt;...&gt;`): `Reference/Values/{slug}`
+/// - Pseudo-classes/elements (`:...`): `Reference/Selectors/{slug}`
+/// - At-rules (`@...`, optionally `/descriptor`): `Reference/At-rules/{slug}`
+/// - Functions (`...()`): `Reference/Values/{slug}`
+/// - Bare names: `Reference/Properties/{slug}` preferred, else `Reference/Values/{slug}`
+/// - If still unresolved: `/Web/CSS/{slug}` (typically a 404 link)
+///
+/// Values pages with conventional `_value` / `_function` suffixes are also
+/// indexed under their suffix-less names, so a stripped slug like `color`
+/// resolves to `Reference/Values/color_value`.
 ///
 /// # Special handling
 /// - Functions automatically get `()` appended to display text if not present
@@ -85,35 +91,26 @@ pub fn cssxref_internal(
     };
 
     let base_url = format!("/{}/docs/Web/CSS/", locale.as_url_str());
-    // Determine the URL path based on the new structure
-    let mut url_path = if name.starts_with("&lt;") || name.starts_with('<') {
-        // Types go under Web/CSS/Reference/Values
-        format!("Reference/Values/{slug}")
+    // Resolve the (normalized) slug to a canonical Web/CSS sub-path via the
+    // CSS feature index. The macro's input syntax (`<>`, `()`, `:`, `@`)
+    // narrows the category we look up under; bare names are ambiguous between
+    // a property and a value, so try `Properties/` first then `Values/` —
+    // matching the legacy behavior. If the index returns nothing, fall back
+    // to a bare `{slug}` link under `Web/CSS/` (likely a 404).
+    let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
+        resolve_css_feature(&format!("Values/{slug}"))
     } else if name.starts_with(':') {
-        // Pseudo-classes and pseudo-elements go under Web/CSS/Reference/Selectors
-        format!("Reference/Selectors/{slug}")
+        resolve_css_feature(&format!("Selectors/{slug}"))
     } else if name.starts_with('@') {
-        // At-rules go under Web/CSS/Reference/At-rules
-        format!("Reference/At-rules/{slug}")
+        resolve_css_feature(&format!("At-rules/{slug}"))
     } else if name.ends_with("()") {
-        // Functions go under Web/CSS/Reference/Values
-        format!("Reference/Values/{slug}")
+        resolve_css_feature(&format!("Values/{slug}"))
     } else {
-        // Everything else: check Properties first
-        let url_path = format!("Reference/Properties/{slug}");
-        let url = format!("{}{}", &base_url, &url_path);
-        if RariApi::get_page_nowarn(&url).is_ok() {
-            url_path
-        } else {
-            // Fallback to Values
-            format!("Reference/Values/{slug}")
-        }
-    };
-
-    if RariApi::get_page_nowarn(&format!("{}{}", &base_url, &url_path)).is_err() {
-        // Fall back to Web/CSS
-        url_path = slug.to_string();
+        resolve_css_feature(&format!("Properties/{slug}"))
+            .or_else(|| resolve_css_feature(&format!("Values/{slug}")))
     }
+    .map(str::to_string)
+    .unwrap_or_else(|| slug.to_string());
 
     let url = format!("{}{}{}", &base_url, &url_path, anchor.unwrap_or_default());
 
