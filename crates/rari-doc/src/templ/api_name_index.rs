@@ -10,7 +10,6 @@ use std::sync::LazyLock;
 use tracing::warn;
 
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
-
 use crate::pages::page::PageLike;
 
 const WEB_API_PREFIX: &str = "Web/API/";
@@ -47,6 +46,13 @@ fn build_index() -> HashMap<String, Vec<String>> {
 
         // Full indexable key (e.g. `Window/structuredClone` or `SyncEvent`).
         insert_unique(&mut map, indexable, canonical.clone());
+
+        // Static methods/properties live at `<Interface>/<Name>_static` but are
+        // commonly referenced without the suffix (e.g. `VideoDecoder.isConfigSupported()`).
+        // Index an alias without the `_static` suffix pointing to the same canonical slug.
+        if let Some(without_static) = indexable.strip_suffix("_static") {
+            insert_unique(&mut map, without_static, canonical.clone());
+        }
 
         // Leaf-only key for `Window/*` members (e.g. `fetch` → `Window/fetch`).
         // Other interfaces' members must be referenced by full sub-path.
@@ -85,10 +91,14 @@ fn resolve_from_map<'a>(
     map: &'a HashMap<String, Vec<String>>,
     normalized: &str,
 ) -> Option<&'a str> {
-    let candidates = map.get(&normalized.to_lowercase())?;
+    let key = normalized.to_lowercase();
+    let candidates = map.get(&key)?;
+    // Prefer fewer segments, then an exact (case-insensitive) match over an
+    // alias — so `Response/json` resolves to `Response/json`, not the
+    // `Response/json_static` slug that also aliases under the same key.
     candidates
         .iter()
-        .min_by_key(|v| segments(v))
+        .min_by_key(|v| (segments(v), v.to_lowercase() != key))
         .map(String::as_str)
 }
 
@@ -109,12 +119,18 @@ mod tests {
             "DocumentPictureInPicture/window",
             "CSPViolationReport",
             "Background_Synchronization_API/Reference/SyncEvent",
+            "VideoDecoder/isConfigSupported_static",
+            "Response/json",
+            "Response/json_static",
         ] {
             let indexable = sub_slug
                 .split_once("/Reference/")
                 .map(|(_, after)| after)
                 .unwrap_or(sub_slug);
             insert_unique(&mut map, indexable, sub_slug.to_string());
+            if let Some(without_static) = indexable.strip_suffix("_static") {
+                insert_unique(&mut map, without_static, sub_slug.to_string());
+            }
             if let Some(leaf) = indexable.strip_prefix("Window/")
                 && !leaf.contains('/')
             {
@@ -174,6 +190,32 @@ mod tests {
         assert_eq!(
             resolve_from_map(&map, "cspviolationreport"),
             Some("CSPViolationReport")
+        );
+    }
+
+    #[test]
+    fn static_member_resolves_with_and_without_suffix() {
+        let map = fixture();
+        assert_eq!(
+            resolve_from_map(&map, "VideoDecoder/isConfigSupported"),
+            Some("VideoDecoder/isConfigSupported_static")
+        );
+        assert_eq!(
+            resolve_from_map(&map, "VideoDecoder/isConfigSupported_static"),
+            Some("VideoDecoder/isConfigSupported_static")
+        );
+    }
+
+    #[test]
+    fn instance_and_static_with_same_name_are_distinguishable() {
+        let map = fixture();
+        assert_eq!(
+            resolve_from_map(&map, "Response/json"),
+            Some("Response/json")
+        );
+        assert_eq!(
+            resolve_from_map(&map, "Response/json_static"),
+            Some("Response/json_static")
         );
     }
 
