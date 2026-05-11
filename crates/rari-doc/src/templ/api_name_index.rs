@@ -10,7 +10,7 @@ use std::sync::LazyLock;
 use tracing::warn;
 
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
-use crate::issues::get_issue_counter;
+
 use crate::pages::page::PageLike;
 
 const WEB_API_PREFIX: &str = "Web/API/";
@@ -72,8 +72,7 @@ fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: &str, value: Strin
 /// Lookup is case-insensitive. When the bucket contains multiple candidates,
 /// the one with the fewest path segments wins (so a top-level interface like
 /// `Window` is preferred over a nested leaf like
-/// `DocumentPictureInPicture/window`). Remaining ties emit a
-/// `templ-ambiguous-arg` warning and the first candidate is returned.
+/// `DocumentPictureInPicture/window`).
 pub fn resolve_api_name(normalized: &str) -> Option<&'static str> {
     resolve_from_map(&API_NAME_INDEX, normalized)
 }
@@ -87,20 +86,10 @@ fn resolve_from_map<'a>(
     normalized: &str,
 ) -> Option<&'a str> {
     let candidates = map.get(&normalized.to_lowercase())?;
-    let min_segments = candidates.iter().map(|v| segments(v)).min()?;
-    let mut shortest = candidates.iter().filter(|v| segments(v) == min_segments);
-    let chosen = shortest.next()?.as_str();
-    let remaining = shortest.count();
-    if remaining > 0 {
-        warn!(
-            source = "templ-ambiguous-arg",
-            ic = get_issue_counter(),
-            api_name = normalized,
-            chosen = chosen,
-            candidates = remaining + 1,
-        );
-    }
-    Some(chosen)
+    candidates
+        .iter()
+        .min_by_key(|v| segments(v))
+        .map(String::as_str)
 }
 
 #[cfg(test)]
