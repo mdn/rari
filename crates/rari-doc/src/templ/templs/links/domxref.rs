@@ -32,6 +32,15 @@ use crate::templ::api_name_index::resolve_api_name;
 /// - Automatically capitalizes first letter of interface names in URLs
 /// - Appends method/property names to display text when using anchors
 /// - Formats links with `<code>` tags unless `no_code` is true
+///
+/// # Name resolution
+/// The (normalized) `api_name` is resolved against an index of all
+/// `Web/API/*` pages (see [`crate::templ::api_name_index`]). Authors can use:
+/// - A full sub-path: `{{domxref("BackgroundFetchManager/fetch")}}`
+/// - A bare interface or grouped name: `{{domxref("SyncEvent")}}`
+/// - **For `Window` members only**, a leaf segment:
+///   `{{domxref("structuredClone")}}` resolves to `Window/structuredClone`.
+///   Members of other interfaces must be referenced by full sub-path.
 #[rari_f(register = "crate::Templ")]
 pub fn domxref(
     api_name: String,
