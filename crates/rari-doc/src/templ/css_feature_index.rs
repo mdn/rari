@@ -6,20 +6,20 @@
 //! lookups during URL construction.
 
 use std::collections::HashMap;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
 
 const WEB_CSS_PREFIX: &str = "Web/CSS/";
 
-static CSS_FEATURE_INDEX: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(build_index);
+static CSS_FEATURE_INDEX: LazyLock<HashMap<String, Vec<Arc<str>>>> = LazyLock::new(build_index);
 
-fn build_index() -> HashMap<String, Vec<String>> {
+fn build_index() -> HashMap<String, Vec<Arc<str>>> {
     let pages = get_sub_pages("/en-US/docs/Web/CSS", None, SubPagesSorter::Slug)
         .expect("failed to build cssxref CSS feature index from /en-US/docs/Web/CSS");
 
-    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    let mut map: HashMap<String, Vec<Arc<str>>> = HashMap::new();
     for page in pages {
         let Some(sub_slug) = page.slug().strip_prefix(WEB_CSS_PREFIX) else {
             continue;
@@ -42,16 +42,16 @@ fn build_index() -> HashMap<String, Vec<String>> {
 ///
 /// The full sub-path (e.g. `Reference/Properties/color`) is intentionally
 /// not indexed: no content uses `{{cssxref("Reference/…")}}` in practice.
-fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
+fn index_one(map: &mut HashMap<String, Vec<Arc<str>>>, sub_slug: &str) {
     if sub_slug.is_empty() {
         return;
     }
-    let canonical = sub_slug.to_string();
+    let canonical: Arc<str> = Arc::from(sub_slug);
 
     let Some(after_ref) = sub_slug.strip_prefix("Reference/") else {
         return;
     };
-    insert_unique(map, after_ref, canonical.clone());
+    insert_unique(map, after_ref, &canonical);
 
     let Some((category, name)) = after_ref.split_once('/') else {
         return;
@@ -63,15 +63,18 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
     for suffix in ["_value", "_function"] {
         if let Some(without) = name.strip_suffix(suffix) {
             let alias = format!("{category}/{without}");
-            insert_unique(map, &alias, canonical.clone());
+            insert_unique(map, &alias, &canonical);
         }
     }
 }
 
-fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: &str, value: String) {
+fn insert_unique(map: &mut HashMap<String, Vec<Arc<str>>>, key: &str, value: &Arc<str>) {
     let entry = map.entry(key.to_lowercase()).or_default();
-    if !entry.iter().any(|v| v == &value) {
-        entry.push(value);
+    if !entry
+        .iter()
+        .any(|v| Arc::ptr_eq(v, value) || v.as_ref() == value.as_ref())
+    {
+        entry.push(Arc::clone(value));
     }
 }
 
@@ -96,7 +99,7 @@ pub fn resolve_css_feature(category_path: &str) -> Option<&'static str> {
 }
 
 fn resolve_from_map<'a>(
-    map: &'a HashMap<String, Vec<String>>,
+    map: &'a HashMap<String, Vec<Arc<str>>>,
     category_path: &str,
 ) -> Option<&'a str> {
     let key = category_path.to_lowercase();
@@ -104,14 +107,14 @@ fn resolve_from_map<'a>(
     candidates
         .iter()
         .min_by_key(|v| {
-            let after_ref = v.strip_prefix("Reference/").unwrap_or(v.as_str());
+            let after_ref = v.strip_prefix("Reference/").unwrap_or(v.as_ref());
             (
                 after_ref.to_lowercase() != key,
                 v.matches('/').count(),
                 !v.ends_with("_value"),
             )
         })
-        .map(String::as_str)
+        .map(Arc::as_ref)
 }
 
 #[cfg(test)]
@@ -120,8 +123,8 @@ mod tests {
 
     /// Build an index from a representative set of Web/CSS sub-slugs using
     /// the real `index_one` per-slug logic.
-    fn fixture() -> HashMap<String, Vec<String>> {
-        let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    fn fixture() -> HashMap<String, Vec<Arc<str>>> {
+        let mut map: HashMap<String, Vec<Arc<str>>> = HashMap::new();
         for sub_slug in [
             "Reference/At-rules/@media",
             "Reference/At-rules/@media/color",
