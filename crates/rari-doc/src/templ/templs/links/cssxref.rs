@@ -36,7 +36,9 @@ use crate::templ::css_feature_index::{CssRefCategory, resolve_css_feature};
 /// - Pseudo-classes/elements (`:...`): `Reference/Selectors/{slug}`
 /// - At-rules (`@...`, optionally `/descriptor`): `Reference/At-rules/{slug}`
 /// - Functions (`...()`): `Reference/Values/{slug}`
-/// - Bare names: `Reference/Properties/{slug}` preferred, else `Reference/Values/{slug}`
+/// - Bare names: `Reference/Properties/{slug}` preferred, else
+///   `Reference/Values/{slug}`, else `Reference/Selectors/{slug}` (for
+///   Selectors-tree landing pages like `pseudo-classes`, `pseudo-elements`)
 /// - If still unresolved: `/Web/CSS/{slug}` (typically a 404 link)
 ///
 /// Values pages with conventional `_value` / `_function` suffixes are also
@@ -126,6 +128,7 @@ pub fn cssxref_internal(
     } else {
         resolve_css_feature(CssRefCategory::Properties, slug)
             .or_else(|| resolve_css_feature(CssRefCategory::Values, slug))
+            .or_else(|| resolve_css_feature(CssRefCategory::Selectors, slug))
     }
     .map_or_else(|| slug.to_string(), str::to_string);
 
