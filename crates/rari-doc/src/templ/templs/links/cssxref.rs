@@ -91,6 +91,13 @@ pub fn cssxref_internal(
     };
 
     let base_url = format!("/{}/docs/Web/CSS/", locale.as_url_str());
+    // Authors sometimes embed a fragment in `name` (e.g. `font-variant-alternates#stylistic`)
+    // instead of passing the explicit `anchor` argument. Split it off so the
+    // index lookup gets the bare slug, then re-append it to the URL.
+    let (lookup_slug, embedded_anchor) = match slug.split_once('#') {
+        Some((s, frag)) => (s, Some(frag)),
+        None => (slug, None),
+    };
     // Resolve the (normalized) slug to a canonical Web/CSS sub-path via the
     // CSS feature index. The macro's input syntax (`<>`, `()`, `:`, `@`)
     // narrows the category we look up under; bare names are ambiguous between
@@ -98,21 +105,27 @@ pub fn cssxref_internal(
     // matching the legacy behavior. If the index returns nothing, fall back
     // to a bare `{slug}` link under `Web/CSS/` (likely a 404).
     let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
-        resolve_css_feature(&format!("Values/{slug}"))
+        resolve_css_feature(&format!("Values/{lookup_slug}"))
     } else if name.starts_with(':') {
-        resolve_css_feature(&format!("Selectors/{slug}"))
+        resolve_css_feature(&format!("Selectors/{lookup_slug}"))
     } else if name.starts_with('@') {
-        resolve_css_feature(&format!("At-rules/{slug}"))
+        resolve_css_feature(&format!("At-rules/{lookup_slug}"))
     } else if name.ends_with("()") {
-        resolve_css_feature(&format!("Values/{slug}"))
+        resolve_css_feature(&format!("Values/{lookup_slug}"))
     } else {
-        resolve_css_feature(&format!("Properties/{slug}"))
-            .or_else(|| resolve_css_feature(&format!("Values/{slug}")))
+        resolve_css_feature(&format!("Properties/{lookup_slug}"))
+            .or_else(|| resolve_css_feature(&format!("Values/{lookup_slug}")))
     }
     .map(str::to_string)
-    .unwrap_or_else(|| slug.to_string());
+    .unwrap_or_else(|| lookup_slug.to_string());
 
-    let url = format!("{}{}{}", &base_url, &url_path, anchor.unwrap_or_default());
+    let url = format!(
+        "{}{}{}{}",
+        &base_url,
+        &url_path,
+        embedded_anchor.map(|a| format!("#{a}")).unwrap_or_default(),
+        anchor.unwrap_or_default(),
+    );
 
     let display_name = if display_name.is_some() {
         encoded_maybe_display_name.to_string()
