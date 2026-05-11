@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use tracing::warn;
+use tracing::error;
 
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
@@ -20,7 +20,7 @@ fn build_index() -> HashMap<String, Vec<String>> {
     let pages = match get_sub_pages("/en-US/docs/Web/API", None, SubPagesSorter::Slug) {
         Ok(pages) => pages,
         Err(e) => {
-            warn!("failed to build domxref API name index: {e}");
+            error!("failed to build domxref API name index: {e}");
             return HashMap::new();
         }
     };
