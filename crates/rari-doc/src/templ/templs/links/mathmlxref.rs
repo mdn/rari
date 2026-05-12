@@ -26,7 +26,7 @@ use crate::templ::api::RariApi;
 /// - Sets title attribute with unescaped angle brackets for accessibility
 /// - Uses code formatting (`<code>` tags) by default
 /// - Links to `/Web/MathML/Reference/Element/{element_name}` path structure
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn mathmlelement(element_name: String) -> Result<String, DocError> {
     let element_name = element_name.to_lowercase();
     let display = concat_strs!("&lt;", element_name.as_str(), "&gt;");

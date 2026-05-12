@@ -25,7 +25,7 @@ use crate::templ::api::RariApi;
 /// - Automatically wraps element name in `&lt;` and `&gt;` for display
 /// - Uses code formatting (`<code>` tags) by default unless custom display text provided
 /// - Links to `/Web/HTML/Reference/Elements/{element_name}` path structure
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn htmlelement(
     element_name: String,
     display: Option<String>,

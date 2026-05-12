@@ -21,7 +21,7 @@ use crate::templ::api::RariApi;
 /// - Uses the attribute name as both the URL path and display text
 /// - Applies code formatting (`<code>` tags) by default
 /// - Links to `/Web/SVG/Reference/Attribute/{name}` path structure
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn svgattr(name: String) -> Result<String, DocError> {
     let url = format!(
         "/{}/docs/Web/SVG/Reference/Attribute/{}",

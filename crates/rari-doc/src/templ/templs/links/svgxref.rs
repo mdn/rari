@@ -24,7 +24,7 @@ use crate::templ::api::RariApi;
 /// - Automatically wraps element name in `&lt;` and `&gt;` for display
 /// - Uses code formatting (`<code>` tags) by default
 /// - Links to `/Web/SVG/Reference/Element/{element_name}` path structure
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn svgelement(element_name: String, _: Option<AnyArg>) -> Result<String, DocError> {
     svgxref_internal(&element_name, env.locale)
 }

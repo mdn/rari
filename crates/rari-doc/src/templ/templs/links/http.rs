@@ -22,7 +22,7 @@ use crate::templ::api::RariApi;
 /// * `{{HTTPStatus("200", "OK")}}` -> custom display text
 /// * `{{HTTPStatus("500", "", "#syntax")}}` -> with anchor
 /// * `{{HTTPStatus("403", "", "", true)}}` -> disables code formatting
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn httpstatus(
     status: AnyArg,
     display: Option<String>,
@@ -54,7 +54,7 @@ pub fn httpstatus(
 /// * `{{HTTPHeader("Authorization", "Auth header")}}` -> custom display text
 /// * `{{HTTPHeader("Cache-Control", "", "#syntax")}}` -> with anchor
 /// * `{{HTTPHeader("Accept", "", "", true)}}` -> disables code formatting
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn httpheader(
     status: AnyArg,
     display: Option<String>,
@@ -86,7 +86,7 @@ pub fn httpheader(
 /// * `{{HTTPMethod("GET", "GET request")}}` -> custom display text
 /// * `{{HTTPMethod("PUT", "", "#syntax")}}` -> with anchor
 /// * `{{HTTPMethod("DELETE", "", "", true)}}` -> disables code formatting
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn httpmethod(
     status: AnyArg,
     display: Option<String>,

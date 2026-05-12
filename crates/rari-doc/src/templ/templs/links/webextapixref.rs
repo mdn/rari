@@ -31,7 +31,7 @@ use crate::templ::api::RariApi;
 /// - Appends anchor information to display text when anchors are used
 /// - Formats links with `<code>` tags unless `no_code` is true
 /// - Links to `/Mozilla/Add-ons/WebExtensions/API/{api}` path structure
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn webextapiref(
     api: String,
     display: Option<String>,

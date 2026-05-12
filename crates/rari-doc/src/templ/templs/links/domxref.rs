@@ -31,7 +31,7 @@ use crate::templ::api::RariApi;
 /// - Automatically capitalizes first letter of interface names in URLs
 /// - Appends method/property names to display text when using anchors
 /// - Formats links with `<code>` tags unless `no_code` is true
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn domxref(
     api_name: String,
     display: Option<String>,
