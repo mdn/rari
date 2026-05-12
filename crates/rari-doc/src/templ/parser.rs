@@ -16,6 +16,7 @@ pub struct MacroToken {
     pub ident: String,
     pub pos: (usize, usize),
     pub args: Vec<Option<Arg>>,
+    pub expect_missing: bool,
 }
 
 fn from_node<'a>(
@@ -23,16 +24,27 @@ fn from_node<'a>(
     content: &str,
     cursor: &mut TreeCursor<'a>,
 ) -> Option<MacroToken> {
-    let ident_node = value.named_child(0).unwrap();
-    let ident = content[ident_node.start_byte()..ident_node.end_byte()].to_string();
-    let args = if let Some(args_node) = value.named_child(1) {
-        args_node
-            .named_children(cursor)
-            .map(|arg| ts_to_arg(arg, content))
-            .collect()
-    } else {
-        vec![]
-    };
+    let mut ident = String::new();
+    let mut args = vec![];
+    let mut expect_missing = false;
+    let mut walker = value.walk();
+    for child in value.named_children(&mut walker) {
+        match child.kind() {
+            "ident" => {
+                ident = content[child.start_byte()..child.end_byte()].to_string();
+            }
+            "expect_missing" => {
+                expect_missing = true;
+            }
+            "args" => {
+                args = child
+                    .named_children(cursor)
+                    .map(|arg| ts_to_arg(arg, content))
+                    .collect();
+            }
+            _ => {}
+        }
+    }
     let start = value.start_byte();
     let end = value.end_byte();
     let start_position = value.start_position();
@@ -43,6 +55,7 @@ fn from_node<'a>(
         pos,
         ident,
         args,
+        expect_missing,
     })
 }
 
@@ -153,6 +166,24 @@ mod test {
         for node in tree.root_node().children(&mut cursor) {
             println!("{}", node.grammar_name());
             println!("{node:?}");
+        }
+    }
+
+    #[test]
+    fn expect_missing_flag() {
+        let p = parse(r#"{{_cssxref("foo")}}"#).unwrap();
+        match p.first() {
+            Some(Token::Macro(m)) => {
+                assert_eq!(m.ident, "cssxref");
+                assert!(m.expect_missing);
+                assert_eq!(m.args.len(), 1);
+            }
+            _ => panic!("expected macro token"),
+        }
+        let p = parse(r#"{{cssxref("foo")}}"#).unwrap();
+        match p.first() {
+            Some(Token::Macro(m)) => assert!(!m.expect_missing),
+            _ => panic!("expected macro token"),
         }
     }
 
