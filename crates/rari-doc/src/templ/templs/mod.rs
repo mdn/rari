@@ -27,6 +27,7 @@ pub mod web_ext_examples;
 pub mod webext_all_examples;
 pub mod xsltref;
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -37,6 +38,34 @@ use tracing::error;
 
 use crate::error::DocError;
 use crate::utils::TEMPL_RECORDER;
+
+thread_local! {
+    static EXPECT_MISSING: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Whether the macro currently being expanded was prefixed with `_`
+/// (e.g. `{{_cssxref("foo")}}`), asserting that the target page is
+/// expected to be missing.
+///
+/// Only meaningful inside a template function invoked via [`invoke`].
+pub fn expect_missing() -> bool {
+    EXPECT_MISSING.with(|c| c.get())
+}
+
+struct ExpectMissingGuard(bool);
+
+impl ExpectMissingGuard {
+    fn new(value: bool) -> Self {
+        let previous = EXPECT_MISSING.with(|c| c.replace(value));
+        Self(previous)
+    }
+}
+
+impl Drop for ExpectMissingGuard {
+    fn drop(&mut self) {
+        EXPECT_MISSING.with(|c| c.set(self.0));
+    }
+}
 
 #[derive(Debug)]
 pub struct Templ {
@@ -65,6 +94,7 @@ pub fn invoke(
     env: &RariEnv,
     name: &str,
     args: Vec<Option<Arg>>,
+    expect_missing: bool,
 ) -> Result<(String, TemplType), DocError> {
     let name = name.replace('-', "_");
     let (f, is_sidebar) = match TEMPL_MAPPING.get(name.as_str()) {
@@ -82,6 +112,7 @@ pub fn invoke(
             return Ok((format!("<s>unsupported templ: {name}</s>"), TemplType::None));
         } //
     };
+    let _guard = ExpectMissingGuard::new(expect_missing);
     f(env, args).map(|s| (s, is_sidebar))
 }
 

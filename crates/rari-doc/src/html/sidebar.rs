@@ -157,7 +157,7 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
         let span = span!(Level::ERROR, "sidebar", sidebar = name,);
         let _enter = span.enter();
 
-        match invoke(&rari_env, name, args) {
+        match invoke(&rari_env, name, args, false) {
             Ok((rendered_sidebar, TemplType::Sidebar)) => rendered_sidebar,
             Ok((_, typ)) => {
                 let span = span!(Level::ERROR, "sidebar", sidebar = name,);

@@ -87,7 +87,7 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                     end_col = end_col
                 );
                 let _enter = span.enter();
-                match invoke(env, &name, mac.args) {
+                match invoke(env, &name, mac.args, mac.expect_missing) {
                     Ok((rendered, TemplType::Sidebar)) => {
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
                         templs.push(String::default());

@@ -20,7 +20,7 @@ pub fn build_banner<T: PageLike>(banner: &FmTempl, page: &T) -> Result<String, D
     };
     let span = span!(Level::ERROR, "banner", banner = name,);
     let _enter = span.enter();
-    let rendered_banner = match invoke(&rari_env, name, args) {
+    let rendered_banner = match invoke(&rari_env, name, args, false) {
         Ok((rendered_banner, TemplType::Banner)) => rendered_banner,
         Ok((_, typ)) => {
             let span = span!(Level::ERROR, "banner", banner = name,);
