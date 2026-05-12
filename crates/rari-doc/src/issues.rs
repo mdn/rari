@@ -555,6 +555,9 @@ impl DIssue {
                     let source = issue_source(&mut additional);
                     di.fixed = false;
                     di.fixable = Some(true);
+                    // Used by the fixer as a marker; the actual transformation is
+                    // determined by the issue type, not the suggestion text.
+                    di.suggestion = source.name.clone();
                     di.explanation = Some(format!(
                         "{} is flagged with `_` as expecting a missing page, but {} resolves — remove the leading underscore",
                         source.label,

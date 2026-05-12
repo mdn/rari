@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
-use rari_doc::issues::{DIssue, IN_MEMORY};
+use rari_doc::issues::{DIssue, IN_MEMORY, IssueType};
 use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use rari_doc::position_utils::{Direction, adjust_to_char_boundary, calculate_line_start_offset};
 use tracing::{Level, span};
@@ -106,6 +106,58 @@ pub struct SearchReplaceWithOffset {
 }
 
 /// Converts issues into offset-based search/replace suggestions
+/// Builds a search/replace suggestion that removes the leading `_` from a
+/// macro invocation like `{{_cssxref("foo")}}` → `{{cssxref("foo")}}`.
+///
+/// Locates `{{` (optionally followed by whitespace) immediately before a
+/// case-insensitive `_<macro_name>` on the issue's line.
+fn strip_underscore_suggestion(
+    raw: &str,
+    line: i64,
+    macro_name: &str,
+) -> Option<SearchReplaceWithOffset> {
+    let line_idx = (line as usize).saturating_sub(1);
+    let line_start = calculate_line_start_offset(raw, line_idx);
+    let line_end = raw[line_start..]
+        .find('\n')
+        .map(|i| line_start + i)
+        .unwrap_or(raw.len());
+    let line_text = &raw[line_start..line_end];
+
+    let lowered = line_text.to_ascii_lowercase();
+    let needle_macro = macro_name.to_ascii_lowercase();
+    let mut search_from = 0;
+    while let Some(rel_open) = lowered[search_from..].find("{{") {
+        let open = search_from + rel_open;
+        let after_braces = open + 2;
+        let after_ws = after_braces
+            + lowered[after_braces..]
+                .find(|c: char| !c.is_ascii_whitespace())
+                .unwrap_or(lowered.len() - after_braces);
+        if lowered[after_ws..].starts_with('_')
+            && lowered[after_ws + 1..].starts_with(&needle_macro)
+        {
+            let search_end = after_ws + 1 + needle_macro.len();
+            // Make sure we matched the whole identifier, not a prefix.
+            if lowered[search_end..]
+                .chars()
+                .next()
+                .is_none_or(|c| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+            {
+                let search_text = line_text[after_ws..search_end].to_string();
+                let replace_text = line_text[after_ws + 1..search_end].to_string();
+                return Some(SearchReplaceWithOffset {
+                    offset: line_start + after_ws,
+                    search: search_text,
+                    replace: replace_text,
+                });
+            }
+        }
+        search_from = after_braces;
+    }
+    None
+}
+
 pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWithOffset> {
     // Track the byte offset past the last found occurrence for each (line, decoded_href) pair.
     // This lets us find the correct occurrence when the same href appears multiple times on
@@ -116,6 +168,17 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
     let mut suggestions = issues
         .iter()
         .filter_map(|dissue| {
+            // The expect-missing-exists fix strips a leading `_` from the macro
+            // name in the markdown source. It does not search for the href.
+            if let DIssue::Macros {
+                display_issue,
+                macro_name: Some(macro_name),
+                ..
+            } = dissue
+                && matches!(display_issue.name, IssueType::TemplExpectMissingExists)
+            {
+                return strip_underscore_suggestion(raw, display_issue.line?, macro_name);
+            }
             let (display_issue, href) = match dissue {
                 DIssue::BrokenLink {
                     display_issue,
@@ -419,6 +482,36 @@ fn find_non_prefix_match(raw: &str, line_start_offset: usize, search_text: &str)
 mod tests {
     use super::*;
     use rari_doc::issues::{DisplayIssue, IssueType};
+
+    #[test]
+    fn test_strip_underscore_suggestion_basic() {
+        let raw = "intro\nsee {{_cssxref(\"color\")}} for details\n";
+        let sug = strip_underscore_suggestion(raw, 2, "cssxref").unwrap();
+        assert_eq!(sug.search, "_cssxref");
+        assert_eq!(sug.replace, "cssxref");
+        let fixed = apply_suggestions(raw, &[sug]).unwrap();
+        assert_eq!(fixed, "intro\nsee {{cssxref(\"color\")}} for details\n");
+    }
+
+    #[test]
+    fn test_strip_underscore_suggestion_case_insensitive() {
+        let raw = "{{_CSSxRef(\"color\")}}\n";
+        let sug = strip_underscore_suggestion(raw, 1, "cssxref").unwrap();
+        assert_eq!(sug.search, "_CSSxRef");
+        assert_eq!(sug.replace, "CSSxRef");
+    }
+
+    #[test]
+    fn test_strip_underscore_suggestion_no_match_without_underscore() {
+        let raw = "{{cssxref(\"color\")}}\n";
+        assert!(strip_underscore_suggestion(raw, 1, "cssxref").is_none());
+    }
+
+    #[test]
+    fn test_strip_underscore_suggestion_other_macro_unaffected() {
+        let raw = "{{_domxref(\"Element\")}}\n";
+        assert!(strip_underscore_suggestion(raw, 1, "cssxref").is_none());
+    }
 
     #[test]
     fn test_apply_suggestions_with_duplicate_offsets() {
