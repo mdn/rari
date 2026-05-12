@@ -11,6 +11,7 @@ use crate::issues::get_issue_counter;
 use crate::pages::page::Page;
 use crate::percent::PATH_SEGMENT;
 use crate::redirects::resolve_redirect;
+use crate::templ::templs::expect_missing;
 
 enum LinkWarn {
     No,
@@ -78,15 +79,24 @@ impl RariApi {
             }
             None => url,
         };
-        Page::from_url_with_fallback(url).inspect_err(|e| {
-            if let DocError::PageNotFound(_, category) = &e
-                && !matches!(warn, LinkWarn::No)
-                && Page::is_category_available(*category)
-            {
-                let ic = get_issue_counter();
-                tracing::warn!(source = "templ-broken-link", ic = ic, url = url);
-            }
-        })
+        let expect_missing = expect_missing();
+        Page::from_url_with_fallback(url)
+            .inspect(|_| {
+                if expect_missing && !matches!(warn, LinkWarn::No) {
+                    let ic = get_issue_counter();
+                    tracing::warn!(source = "templ-expect-missing-exists", ic = ic, url = url);
+                }
+            })
+            .inspect_err(|e| {
+                if let DocError::PageNotFound(_, category) = &e
+                    && !matches!(warn, LinkWarn::No)
+                    && Page::is_category_available(*category)
+                    && !expect_missing
+                {
+                    let ic = get_issue_counter();
+                    tracing::warn!(source = "templ-broken-link", ic = ic, url = url);
+                }
+            })
     }
 
     pub fn decode_uri_component(component: &str) -> String {

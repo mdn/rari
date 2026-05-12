@@ -299,6 +299,7 @@ pub enum IssueType {
     TemplBrokenLink,
     TemplIllCasedLink,
     TemplInvalidArg,
+    TemplExpectMissingExists,
     RedirectedLink,
     BrokenLink,
     IllCasedLink,
@@ -315,6 +316,7 @@ impl FromStr for IssueType {
             "templ-broken-link" => Self::TemplBrokenLink,
             "templ-ill-cased-link" => Self::TemplIllCasedLink,
             "templ-invalid-arg" => Self::TemplInvalidArg,
+            "templ-expect-missing-exists" => Self::TemplExpectMissingExists,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
             "ill-cased-link" => Self::IllCasedLink,
@@ -547,6 +549,21 @@ impl DIssue {
                         display_issue: di,
                         macro_name: source.name,
                         href: None,
+                    }
+                }
+                IssueType::TemplExpectMissingExists => {
+                    let source = issue_source(&mut additional);
+                    di.fixed = false;
+                    di.fixable = Some(true);
+                    di.explanation = Some(format!(
+                        "{} is flagged with `_` as expecting a missing page, but {} resolves — remove the leading underscore",
+                        source.label,
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: source.name,
+                        href: additional.remove("url"),
                     }
                 }
                 _ => {

@@ -42,7 +42,7 @@ use crate::templ::api::RariApi;
 /// - Handles HTML entity encoding (`&lt;` and `&gt;`)
 /// - Maps special cases like `<color>` to `color_value`, `:host()` to `:host_function`
 /// - Checks if pages exist at expected URLs and falls back to legacy structure if needed
-#[rari_f(register = "crate::Templ")]
+#[rari_f(register = "crate::Templ", accepts_expect_missing = true)]
 pub fn cssxref(
     name: String,
     display: Option<String>,
