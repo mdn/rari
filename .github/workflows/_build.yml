@@ -51,6 +51,11 @@ jobs:
           path: mdn/rari
           persist-credentials: false
 
+      # TODO: remove once tree-sitter-mdn with expect-missing support is released
+      - name: Checkout tree-sitter-mdn PR #103
+        if: inputs.rari-binary-artifact-id == ''
+        run: git clone --depth 1 --branch expect-missing https://github.com/mdn/tree-sitter-mdn.git mdn/tree-sitter-mdn
+
       - name: Checkout (content)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
