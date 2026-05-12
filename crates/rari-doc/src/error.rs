@@ -72,6 +72,8 @@ pub enum DocError {
     RedirectedLink { from: String, to: String },
     #[error("Unknown macro: {0}")]
     UnknownMacro(String),
+    #[error("Macro `{0}` does not support the `_` (expect-missing) flag")]
+    ExpectMissingNotSupported(String),
     #[error("CSS Page type required")]
     CssPageTypeRequired,
     #[error(transparent)]

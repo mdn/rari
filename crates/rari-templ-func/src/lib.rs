@@ -70,6 +70,11 @@ struct RariFargs {
     register: Option<syn::TypePath>,
     #[darling(default)]
     typ: Option<syn::TypePath>,
+    /// Opt the template into accepting the `_name(...)` "expect-missing"
+    /// flag. Only meaningful for link-emitting templates whose target
+    /// page may or may not exist (xref-family).
+    #[darling(default)]
+    accepts_expect_missing: bool,
 }
 
 /// Define rari templ functions.
@@ -190,6 +195,7 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
         .typ
         .map(|typ| quote! { #typ })
         .unwrap_or(quote! { TemplType::None });
+    let accepts_expect_missing = attr_args.accepts_expect_missing;
 
     let collect = if let Some(inventory_type) = attr_args.register {
         quote! {
@@ -202,6 +208,7 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
                         doc: #doc_string,
                         function: #dup_ident,
                         typ: rari_types::templ::#typ,
+                        accepts_expect_missing: #accepts_expect_missing,
                     }
                 }
         }

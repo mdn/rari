@@ -76,6 +76,10 @@ pub struct Templ {
     pub doc: &'static str,
     pub function: RariFn<Result<String, DocError>>,
     pub typ: TemplType,
+    /// Whether this template understands the `_name(...)` "expect-missing"
+    /// flag. When `false`, `invoke` rejects `expect_missing=true` for this
+    /// template with [`DocError::ExpectMissingNotSupported`].
+    pub accepts_expect_missing: bool,
 }
 
 inventory::collect!(Templ);
@@ -97,8 +101,8 @@ pub fn invoke(
     expect_missing: bool,
 ) -> Result<(String, TemplType), DocError> {
     let name = name.replace('-', "_");
-    let (f, is_sidebar) = match TEMPL_MAPPING.get(name.as_str()) {
-        Some(t) => (t.function, t.typ),
+    let (f, is_sidebar, accepts_expect_missing) = match TEMPL_MAPPING.get(name.as_str()) {
+        Some(t) => (t.function, t.typ, t.accepts_expect_missing),
         None if name == "xulelem" => return Ok((Default::default(), TemplType::None)),
         None if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
         None => {
@@ -112,6 +116,9 @@ pub fn invoke(
             return Ok((format!("<s>unsupported templ: {name}</s>"), TemplType::None));
         } //
     };
+    if expect_missing && !accepts_expect_missing {
+        return Err(DocError::ExpectMissingNotSupported(name));
+    }
     let _guard = ExpectMissingGuard::new(expect_missing);
     f(env, args).map(|s| (s, is_sidebar))
 }
@@ -123,5 +130,16 @@ mod test {
     #[test]
     fn test_kw() {
         println!("{:?}", *TEMPL_MAP);
+    }
+
+    #[test]
+    fn expect_missing_rejected_for_non_xref_template() {
+        let env = RariEnv::default();
+        // `echo` is a plain template that does not opt into expect-missing.
+        let result = invoke(&env, "echo", vec![], true);
+        assert!(matches!(
+            result,
+            Err(DocError::ExpectMissingNotSupported(ref n)) if n == "echo"
+        ));
     }
 }
