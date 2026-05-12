@@ -66,6 +66,10 @@ jobs:
           path: rari-pr
           persist-credentials: false
 
+      # TODO: remove once tree-sitter-mdn with expect-missing support is released
+      - name: Checkout tree-sitter-mdn PR #103
+        run: git clone --depth 1 --branch expect-missing https://github.com/mdn/tree-sitter-mdn.git tree-sitter-mdn
+
       - name: Build with base
         working-directory: rari-base
         env:
