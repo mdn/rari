@@ -109,14 +109,35 @@ pub struct SearchReplaceWithOffset {
 /// Builds a search/replace suggestion that removes the leading `_` from a
 /// macro invocation like `{{_cssxref("foo")}}` → `{{cssxref("foo")}}`.
 ///
-/// Locates `{{` (optionally followed by whitespace) immediately before a
-/// case-insensitive `_<macro_name>` on the issue's line.
+/// Issue line numbers refer to rendered HTML positions and can drift by a
+/// line or two from the markdown source, so we scan a small window of
+/// nearby lines for `{{` (optionally followed by whitespace) immediately
+/// before a case-insensitive `_<macro_name>`.
 fn strip_underscore_suggestion(
     raw: &str,
     line: i64,
     macro_name: &str,
 ) -> Option<SearchReplaceWithOffset> {
-    let line_idx = (line as usize).saturating_sub(1);
+    const SEARCH_WINDOW: i64 = 5;
+    for delta in 0..=SEARCH_WINDOW {
+        for candidate in [line + delta, line - delta] {
+            if candidate < 1 {
+                continue;
+            }
+            if let Some(s) = strip_underscore_on_line(raw, candidate as usize, macro_name) {
+                return Some(s);
+            }
+        }
+    }
+    None
+}
+
+fn strip_underscore_on_line(
+    raw: &str,
+    line: usize,
+    macro_name: &str,
+) -> Option<SearchReplaceWithOffset> {
+    let line_idx = line.saturating_sub(1);
     let line_start = calculate_line_start_offset(raw, line_idx);
     let line_end = raw[line_start..]
         .find('\n')
