@@ -3,6 +3,8 @@ use rari_types::{AnyArg, Arg};
 
 use super::listsubpages::listsubpages;
 use crate::error::DocError;
+use crate::issues::get_issue_counter;
+use crate::pages::page::Page;
 
 /// List sub pages
 #[rari_f(register = "crate::Templ")]
@@ -15,6 +17,15 @@ pub fn quicklinkswithsubpages(url: Option<String>) -> Result<String, DocError> {
             format!("{prefix}/{}", s.trim_start_matches('/'))
         }
     });
+
+    if let Some(url) = url.as_deref()
+        && Page::from_url_with_fallback(url).is_err()
+    {
+        let ic = get_issue_counter();
+        tracing::warn!(source = "templ-invalid-arg", ic = ic, arg = url);
+        return Ok(String::new());
+    }
+
     listsubpages(
         env,
         url,
