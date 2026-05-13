@@ -12,6 +12,14 @@ use crate::pages::page::{Page, PageLike};
 use crate::redirects::resolve_redirect;
 use crate::resolve::{strip_locale_from_url, url_with_locale};
 
+fn toggle_trailing_slash(url: &str) -> Option<String> {
+    if let Some(stripped) = url.strip_suffix('/') {
+        (!stripped.is_empty()).then(|| stripped.to_string())
+    } else {
+        Some(concat_strs!(url, "/"))
+    }
+}
+
 pub fn check_and_fix_link(
     el: &mut Element,
     page: &impl PageLike,
@@ -110,6 +118,24 @@ pub fn handle_internal_link(
     } else {
         false
     };
+
+    if !Page::exists_with_fallback(resolved_href_no_hash)
+        && !Page::ignore_link_check(href)
+        && let Some(toggled) = toggle_trailing_slash(resolved_href_no_hash)
+    {
+        let toggled_resolved: Cow<'_, str> =
+            resolve_redirect(&toggled).unwrap_or(Cow::Owned(toggled));
+        if Page::exists_with_fallback(&toggled_resolved) {
+            let new_resolved = if let Some(i) = resolved_href.find('#') {
+                concat_strs!(toggled_resolved.as_ref(), &resolved_href[i..])
+            } else {
+                toggled_resolved.into_owned()
+            };
+            resolved_href = Cow::Owned(new_resolved);
+            resolved_href_no_hash =
+                &resolved_href[..resolved_href.find('#').unwrap_or(resolved_href.len())];
+        }
+    }
 
     let remove_href =
         if !Page::exists_with_fallback(resolved_href_no_hash) && !Page::ignore_link_check(href) {
