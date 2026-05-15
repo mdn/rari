@@ -205,6 +205,7 @@ struct BuildArgs {
         long = "files",
         value_name = "FILES",
         hide = true,
+        conflicts_with = "files",
         help = "DEPRECATED: pass file paths as positional arguments instead"
     )]
     files_flag: Vec<PathBuf>,
