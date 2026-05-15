@@ -464,6 +464,25 @@ pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
     blog_files().authors.get(name).cloned()
 }
 
+/// Returns the per-locale subdirectories to read under `translated_root`.
+///
+/// When `locales` is `None`, the translated root itself is returned so all
+/// available locales are read. Otherwise, returns one path per non-en-US
+/// locale; en-US is read from `content_root` separately.
+pub(crate) fn translated_locale_paths(
+    translated_root: &Path,
+    locales: Option<&[Locale]>,
+) -> Vec<PathBuf> {
+    match locales {
+        None => vec![translated_root.to_path_buf()],
+        Some(set) => set
+            .iter()
+            .filter(|l| **l != Locale::EnUs)
+            .map(|l| translated_root.join(l.as_folder_str()))
+            .collect(),
+    }
+}
+
 /// Reads all documentation pages from the content root and translated content root directories, fills the
 /// internal cache structures and returns a vector of `Page` objects.
 ///
@@ -493,14 +512,7 @@ pub fn read_and_cache_doc_pages(locales: Option<&[Locale]>) -> Result<Vec<Page>,
         )
         .unwrap();
     if let Some(translated_root) = content_translated_root() {
-        let translated_paths: Vec<PathBuf> = match locales {
-            None => vec![translated_root.to_path_buf()],
-            Some(set) => set
-                .iter()
-                .filter(|l| **l != Locale::EnUs)
-                .map(|l| translated_root.join(l.as_folder_str()))
-                .collect(),
-        };
+        let translated_paths = translated_locale_paths(translated_root, locales);
         let translated_docs = if translated_paths.is_empty() {
             Vec::new()
         } else {
