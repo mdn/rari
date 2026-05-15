@@ -489,6 +489,12 @@ pub fn translated_locale_paths(translated_root: &Path, locales: Option<&[Locale]
 /// static variable. Additionally, it initializes `TRANSLATIONS_BY_SLUG` fills `STATIC_DOC_PAGE_FILES_BY_PATH`
 /// static variable.
 ///
+/// When `locales` is `Some`, the translated cache is populated only for the
+/// listed (non-en-US) locales. Downstream lookups by `(Locale, slug)` in
+/// `STATIC_DOC_PAGE_TRANSLATED_FILES` and `TRANSLATIONS_BY_SLUG` will return
+/// `None` for any locale that was filtered out — by design for the `--locale`
+/// workflow, where only the requested locales need to resolve.
+///
 /// # Returns
 ///
 /// * `Result<Vec<Page>, DocError>` - Returns a vector of `Page` objects if successful,
