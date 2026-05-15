@@ -17,7 +17,7 @@ use dialoguer::Confirm;
 use dialoguer::theme::ColorfulTheme;
 use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
-    build_generic_pages, build_spas, build_top_level_meta,
+    build_generic_pages, build_spas_filtered, build_top_level_meta,
 };
 use rari_doc::cached_readers::{
     CACHED_DOC_PAGE_FILES, blog_files, contributor_spotlight_files, curriculum_files,
@@ -491,7 +491,7 @@ fn main() -> Result<(), Error> {
             }
             if args.all || args.all_available || !args.no_basic || args.spas {
                 let start = std::time::Instant::now();
-                let spas = build_spas()?;
+                let spas = build_spas_filtered(requested_locales.as_deref())?;
                 let num = spas.len();
                 urls.extend(spas);
                 info!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);

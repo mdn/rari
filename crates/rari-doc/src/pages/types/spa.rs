@@ -90,17 +90,29 @@ impl SPA {
     }
 
     pub fn all() -> Vec<(String, Locale)> {
+        Self::all_filtered(None)
+    }
+
+    /// Like [`Self::all`], but restricts the produced (slug, locale) pairs to
+    /// the given locale set. Pass `None` to keep the default behavior.
+    pub fn all_filtered(locales: Option<&[Locale]>) -> Vec<(String, Locale)> {
         BASIC_SPAS
             .iter()
             .flat_map(|(slug, build_spa)| {
-                if build_spa.en_us_only || content_translated_root().is_none() {
-                    vec![(slug.clone(), Locale::EnUs)]
-                } else {
-                    Locale::for_generic_and_spas()
-                        .iter()
-                        .map(|locale| (slug.clone(), *locale))
-                        .collect()
-                }
+                let candidates: Vec<Locale> =
+                    if build_spa.en_us_only || content_translated_root().is_none() {
+                        vec![Locale::EnUs]
+                    } else {
+                        Locale::for_generic_and_spas().to_vec()
+                    };
+                candidates
+                    .into_iter()
+                    .filter(|loc| match locales {
+                        None => true,
+                        Some(set) => set.contains(loc),
+                    })
+                    .map(|loc| (slug.clone(), loc))
+                    .collect::<Vec<_>>()
             })
             .collect()
     }

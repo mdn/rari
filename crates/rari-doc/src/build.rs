@@ -377,7 +377,15 @@ pub fn build_contributor_spotlight_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, D
 /// This function will return an error if:
 /// - An error occurs while building any of the SPAs.
 pub fn build_spas<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
-    SPA::all()
+    build_spas_filtered(None)
+}
+
+/// Like [`build_spas`], but restricts emitted SPA variants to the given
+/// locales. Pass `None` to keep the default behavior.
+pub fn build_spas_filtered<'a>(
+    locales: Option<&[Locale]>,
+) -> Result<Vec<SitemapMeta<'a>>, DocError> {
+    SPA::all_filtered(locales)
         .iter()
         .filter_map(|(slug, locale)| SPA::from_slug(slug, *locale))
         .map(|page| {
