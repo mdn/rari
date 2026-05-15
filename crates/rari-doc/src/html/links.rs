@@ -213,7 +213,9 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
             return Ok(());
         };
         if href.starts_with('/') {
-            let href_no_hash = &href[..href.find('#').unwrap_or(href.len())];
+            let hash_idx = href.find('#').unwrap_or(href.len());
+            let href_no_hash = &href[..hash_idx];
+            let fragment = &href[hash_idx..];
             let resolved = resolve_redirect(href_no_hash);
             match resolved.as_deref() {
                 Some(redirect) if href_no_hash.eq_ignore_ascii_case(redirect) => {
@@ -240,6 +242,12 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
             if !Page::ignore_link_check(target) && !Page::exists_with_fallback(target) {
                 let ic = get_issue_counter();
                 tracing::warn!(source = "templ-broken-link", ic = ic, url = href.as_str());
+            }
+            // Tagging with `data-templ-link` below opts this link out of
+            // `fix_link`'s redirect rewrite, so do it here instead — otherwise
+            // the rendered page would keep pointing at the unresolved URL.
+            if let Some(redirect) = resolved.as_deref() {
+                el.set_attribute("href", &format!("{redirect}{fragment}"))?;
             }
             el.set_attribute("data-templ-link", "")?;
         }
