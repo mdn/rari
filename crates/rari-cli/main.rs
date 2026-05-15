@@ -381,15 +381,24 @@ fn main() -> Result<(), Error> {
                     "`-f`/`--files` is deprecated and will be removed in a future release; pass file paths as positional arguments instead",
                 );
             }
-            let mut arg_files = args
+            let (oks, errs): (Vec<_>, Vec<_>) = args
                 .files
                 .iter()
                 .chain(args.files_flag.iter())
                 .map(|path| {
                     path.canonicalize()
-                        .with_context(|| format!("invalid <FILES> argument: {}", path.display()))
+                        .with_context(|| path.display().to_string())
                 })
-                .collect::<Result<Vec<PathBuf>, _>>()?;
+                .partition(Result::is_ok);
+            if !errs.is_empty() {
+                let details = errs
+                    .into_iter()
+                    .map(|r| format!("{:#}", r.unwrap_err()))
+                    .collect::<Vec<_>>()
+                    .join("\n  ");
+                return Err(anyhow!("invalid <FILES> arguments:\n  {details}"));
+            }
+            let mut arg_files: Vec<PathBuf> = oks.into_iter().map(Result::unwrap).collect();
 
             if let Some(file_list) = args.file_list {
                 arg_files.extend(
