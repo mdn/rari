@@ -967,3 +967,99 @@ fn update(version: Option<String>) -> Result<(), Error> {
     info!("\n\nrari updated to `{}`", status.version());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn record(name: &str, locale: Locale, known: bool) -> TemplStatEvent {
+        TemplStatEvent::Record {
+            name: name.to_string(),
+            locale,
+            known,
+        }
+    }
+
+    #[test]
+    fn ingest_templ_event_routes_known_and_invalid() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        assert!(ingest_templ_event(
+            record("Compat", Locale::EnUs, true),
+            &mut known,
+            &mut invalid,
+            &[],
+        ));
+        assert!(ingest_templ_event(
+            record("typo_macro", Locale::Fr, false),
+            &mut known,
+            &mut invalid,
+            &[],
+        ));
+        assert_eq!(known["compat"][&Locale::EnUs], 1);
+        assert_eq!(invalid["typo_macro"][&Locale::Fr], 1);
+        assert!(!known.contains_key("typo_macro"));
+        assert!(!invalid.contains_key("compat"));
+    }
+
+    #[test]
+    fn ingest_templ_event_lowercases_and_accumulates_per_locale() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        for event in [
+            record("CSSxRef", Locale::EnUs, true),
+            record("cssxref", Locale::EnUs, true),
+            record("CSSXREF", Locale::Fr, true),
+        ] {
+            ingest_templ_event(event, &mut known, &mut invalid, &[]);
+        }
+        assert_eq!(known["cssxref"][&Locale::EnUs], 2);
+        assert_eq!(known["cssxref"][&Locale::Fr], 1);
+        assert!(invalid.is_empty());
+    }
+
+    #[test]
+    fn ingest_templ_event_skips_ignored_names() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        ingest_templ_event(
+            record("Echo", Locale::EnUs, true),
+            &mut known,
+            &mut invalid,
+            &["echo"],
+        );
+        assert!(known.is_empty());
+        assert!(invalid.is_empty());
+    }
+
+    #[test]
+    fn ingest_templ_event_returns_false_on_stop() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        assert!(!ingest_templ_event(
+            TemplStatEvent::Stop,
+            &mut known,
+            &mut invalid,
+            &[],
+        ));
+    }
+
+    #[test]
+    fn into_sorted_templ_stats_orders_by_count_then_name() {
+        let mut stats: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
+        stats.insert("zeta".into(), HashMap::from([(Locale::EnUs, 3)]));
+        stats.insert("alpha".into(), HashMap::from([(Locale::EnUs, 5)]));
+        stats.insert("beta".into(), HashMap::from([(Locale::EnUs, 5)]));
+        stats.insert(
+            "gamma".into(),
+            HashMap::from([(Locale::EnUs, 2), (Locale::Fr, 1)]),
+        );
+
+        let sorted = into_sorted_templ_stats(stats);
+        let names: Vec<&str> = sorted.iter().map(|(n, _, _)| n.as_str()).collect();
+        let totals: Vec<usize> = sorted.iter().map(|(_, t, _)| *t).collect();
+
+        assert_eq!(names, ["alpha", "beta", "gamma", "zeta"]);
+        assert_eq!(totals, [5, 5, 3, 3]);
+    }
+}
