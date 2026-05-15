@@ -91,7 +91,11 @@ pub fn img_size(
     file: &Path,
     data_issues: bool,
 ) -> Result<ImgSize, Box<dyn Error + Send + Sync>> {
-    let (line, col, end_line, end_col) = parse_sourcepos(el, page);
+    let sp = parse_sourcepos(el, page);
+    let line = sp.as_ref().map(|s| s.line).unwrap_or(-1);
+    let col = sp.as_ref().map(|s| s.col).unwrap_or(0);
+    let end_line = sp.as_ref().map(|s| s.end_line).unwrap_or(-1);
+    let end_col = sp.as_ref().map(|s| s.end_col).unwrap_or(0);
     let (width, height) = if src.ends_with(".svg") {
         match svg_metadata::Metadata::parse_file(file) {
             // If only width and viewbox are given, use width and scale
@@ -171,16 +175,17 @@ pub fn img_size(
     Ok((width, height))
 }
 
-fn parse_sourcepos(el: &mut Element, page: &impl PageLike) -> (i64, i64, i64, i64) {
-    let Some(pos) = el.get_attribute("data-sourcepos") else {
-        return (-1, 0, -1, 0);
-    };
-    let Some((start, end)) = pos.split_once('-') else {
-        return (-1, 0, -1, 0);
-    };
-    let Some((line, col)) = start.split_once(':') else {
-        return (-1, 0, -1, 0);
-    };
+pub(crate) struct Sourcepos {
+    pub line: i64,
+    pub col: i64,
+    pub end_line: i64,
+    pub end_col: i64,
+}
+
+fn parse_sourcepos(el: &mut Element, page: &impl PageLike) -> Option<Sourcepos> {
+    let pos = el.get_attribute("data-sourcepos")?;
+    let (start, end) = pos.split_once('-')?;
+    let (line, col) = start.split_once(':')?;
     let line = line
         .parse::<i64>()
         .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
@@ -199,7 +204,12 @@ fn parse_sourcepos(el: &mut Element, page: &impl PageLike) -> (i64, i64, i64, i6
             (end_line, end_col)
         })
         .unwrap_or((-1, -1));
-    (line, col, end_line, end_col)
+    Some(Sourcepos {
+        line,
+        col,
+        end_line,
+        end_col,
+    })
 }
 
 #[cfg(test)]
