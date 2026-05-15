@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
@@ -460,7 +460,7 @@ fn main() -> Result<(), Error> {
                     info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
 
                     if full_build {
-                        let seen: std::collections::HashSet<&str> =
+                        let seen: HashSet<&str> =
                             known_sorted.iter().map(|(n, _, _)| n.as_str()).collect();
                         let mut unused: Vec<String> = TEMPL_MAP
                             .iter()
