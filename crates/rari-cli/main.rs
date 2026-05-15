@@ -747,7 +747,12 @@ fn main() -> Result<(), Error> {
                 // Collect content pages
                 if fix_content {
                     let start = std::time::Instant::now();
-                    let docs = read_and_cache_doc_pages(LocaleFilter::All)?;
+                    let only = args.locale.map(|l| [l]);
+                    let locale_filter = match only.as_ref() {
+                        Some(arr) => LocaleFilter::Only(arr.as_slice()),
+                        None => LocaleFilter::All,
+                    };
+                    let docs = read_and_cache_doc_pages(locale_filter)?;
                     info!(
                         "Took: {: >10.3?} for reading {} content pages",
                         start.elapsed(),
