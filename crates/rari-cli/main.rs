@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::sync::mpsc::channel;
 use std::thread::spawn;
 
-use anyhow::{Error, anyhow};
+use anyhow::{Context, Error, anyhow};
 use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::Verbosity;
 use dashmap::DashMap;
@@ -385,7 +385,10 @@ fn main() -> Result<(), Error> {
                 .files
                 .iter()
                 .chain(args.files_flag.iter())
-                .map(|path| path.canonicalize())
+                .map(|path| {
+                    path.canonicalize()
+                        .with_context(|| format!("invalid <FILES> argument: {}", path.display()))
+                })
                 .collect::<Result<Vec<PathBuf>, _>>()?;
 
             if let Some(file_list) = args.file_list {
