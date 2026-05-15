@@ -483,13 +483,8 @@ fn main() -> Result<(), Error> {
                             known_sorted
                                 .iter()
                                 .filter_map(|(name, total, per_locale)| {
-                                    if !per_locale.is_empty()
-                                        && !per_locale.contains_key(&Locale::EnUs)
-                                    {
-                                        Some((name, per_locale, *total))
-                                    } else {
-                                        None
-                                    }
+                                    (!per_locale.contains_key(&Locale::EnUs))
+                                        .then_some((name, per_locale, *total))
                                 })
                                 .collect();
                         translated_only.sort_by(|(_, _, a), (_, _, b)| b.cmp(a));
