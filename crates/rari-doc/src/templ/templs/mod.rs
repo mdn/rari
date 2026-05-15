@@ -61,11 +61,11 @@ pub fn exists(name: &str) -> bool {
     TEMPL_MAPPING.contains_key(name)
 }
 
-fn record_invocation(name: &str, locale: rari_types::locale::Locale, known: bool) {
+fn record_invocation(name: String, locale: rari_types::locale::Locale, known: bool) {
     TEMPL_RECORDER.with(|tx| {
         if let Some(tx) = tx
             && let Err(e) = tx.send(TemplStatEvent::Record {
-                name: name.to_string(),
+                name,
                 locale,
                 known,
             })
@@ -86,11 +86,12 @@ pub fn invoke(
         None if name == "xulelem" => return Ok((Default::default(), TemplType::None)),
         None if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
         None => {
-            record_invocation(&name, env.locale, false);
-            return Ok((format!("<s>unsupported templ: {name}</s>"), TemplType::None));
+            let rendered = format!("<s>unsupported templ: {name}</s>");
+            record_invocation(name, env.locale, false);
+            return Ok((rendered, TemplType::None));
         } //
     };
-    record_invocation(&name, env.locale, true);
+    record_invocation(name, env.locale, true);
     f(env, args).map(|s| (s, is_sidebar))
 }
 
