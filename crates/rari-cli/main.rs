@@ -307,7 +307,9 @@ fn into_sorted_templ_stats(
             (name, total, per_locale)
         })
         .collect();
-    out.sort_by(|(_, a, _), (_, b, _)| b.cmp(a));
+    out.sort_by(|(a_name, a_total, _), (b_name, b_total, _)| {
+        b_total.cmp(a_total).then_with(|| a_name.cmp(b_name))
+    });
     out
 }
 
@@ -487,7 +489,9 @@ fn main() -> Result<(), Error> {
                                         .then_some((name, per_locale, *total))
                                 })
                                 .collect();
-                        translated_only.sort_by(|(_, _, a), (_, _, b)| b.cmp(a));
+                        translated_only.sort_by(|(a_name, _, a_total), (b_name, _, b_total)| {
+                            b_total.cmp(a_total).then_with(|| a_name.cmp(b_name))
+                        });
                         info!("--- templ translated-only ({}) ---", translated_only.len());
                         let mut tw = TabWriter::new(vec![]);
                         for (i, (name, per_locale, total)) in translated_only.iter().enumerate() {
