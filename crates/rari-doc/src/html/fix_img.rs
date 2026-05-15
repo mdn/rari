@@ -72,7 +72,7 @@ pub fn handle_img(
             if el.get_attribute("width").is_some() {
                 return Ok(());
             }
-            let (width, height) = img_size(el, &src, &file, data_issues)?;
+            let (width, height) = img_size(el, page, &src, &file, data_issues)?;
             if let Some(width) = width {
                 el.set_attribute("width", &width)?;
             }
@@ -86,10 +86,12 @@ pub fn handle_img(
 
 pub fn img_size(
     el: &mut Element,
+    page: &impl PageLike,
     src: &str,
     file: &Path,
     data_issues: bool,
 ) -> Result<ImgSize, Box<dyn Error + Send + Sync>> {
+    let (line, col, end_line, end_col) = parse_sourcepos(el, page);
     let (width, height) = if src.ends_with(".svg") {
         match svg_metadata::Metadata::parse_file(file) {
             // If only width and viewbox are given, use width and scale
@@ -130,6 +132,10 @@ pub fn img_size(
                 warn!(
                     source = "image-check",
                     ic = ic,
+                    line = line,
+                    col = col,
+                    end_line = end_line,
+                    end_col = end_col,
                     "Error parsing {}: {e}",
                     file.display()
                 );
@@ -147,6 +153,10 @@ pub fn img_size(
                 warn!(
                     source = "image-check",
                     ic = ic,
+                    line = line,
+                    col = col,
+                    end_line = end_line,
+                    end_col = end_col,
                     "Error opening {}: {e}",
                     file.display()
                 );
@@ -159,6 +169,37 @@ pub fn img_size(
         }
     };
     Ok((width, height))
+}
+
+fn parse_sourcepos(el: &mut Element, page: &impl PageLike) -> (i64, i64, i64, i64) {
+    let Some(pos) = el.get_attribute("data-sourcepos") else {
+        return (-1, 0, -1, 0);
+    };
+    let Some((start, end)) = pos.split_once('-') else {
+        return (-1, 0, -1, 0);
+    };
+    let Some((line, col)) = start.split_once(':') else {
+        return (-1, 0, -1, 0);
+    };
+    let line = line
+        .parse::<i64>()
+        .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
+        .ok()
+        .unwrap_or(-1);
+    let col = col.parse::<i64>().ok().unwrap_or(0);
+    let (end_line, end_col) = end
+        .split_once(':')
+        .map(|(end_line, end_col)| {
+            let end_line = end_line
+                .parse::<i64>()
+                .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
+                .ok()
+                .unwrap_or(-1);
+            let end_col = end_col.parse::<i64>().ok().unwrap_or(0);
+            (end_line, end_col)
+        })
+        .unwrap_or((-1, -1));
+    (line, col, end_line, end_col)
 }
 
 #[cfg(test)]
