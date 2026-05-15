@@ -17,7 +17,7 @@ pub(crate) fn parse_sourcepos(el: &Element, page: &impl PageLike) -> Option<Sour
         let (line, col) = s.split_once(':')?;
         let line = line
             .parse::<i64>()
-            .map(|l| l + i64::try_from(fm_offset).unwrap_or(l - 1))
+            .map(|l| l + i64::try_from(fm_offset).unwrap_or(0))
             .ok()
             .unwrap_or(-1);
         let col = col.parse::<i64>().ok().unwrap_or(0);
