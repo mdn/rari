@@ -8,7 +8,7 @@ use constcat::concat;
 use rari_types::RariEnv;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::{content_translated_root, settings};
-use rari_types::locale::Locale;
+use rari_types::locale::{Locale, LocaleFilter};
 use rari_utils::concat_strs;
 
 use super::spa_homepage::{
@@ -89,10 +89,10 @@ impl SPA {
             .unwrap_or_default()
     }
 
-    /// Returns the `(slug, locale)` pairs for all SPAs. When `locales` is
-    /// `Some`, the result is restricted to that set; pass `None` for every
-    /// available locale.
-    pub fn all(locales: Option<&[Locale]>) -> Vec<(String, Locale)> {
+    /// Returns the `(slug, locale)` pairs for all SPAs. When `filter` is
+    /// `LocaleFilter::Only`, the result is restricted to that set; pass
+    /// `LocaleFilter::All` for every available locale.
+    pub fn all(filter: LocaleFilter<'_>) -> Vec<(String, Locale)> {
         BASIC_SPAS
             .iter()
             .flat_map(|(slug, build_spa)| {
@@ -104,9 +104,9 @@ impl SPA {
                     };
                 candidates
                     .into_iter()
-                    .filter(|loc| match locales {
-                        None => true,
-                        Some(set) => set.contains(loc),
+                    .filter(|loc| match filter {
+                        LocaleFilter::All => true,
+                        LocaleFilter::Only(set) => set.contains(loc),
                     })
                     .map(|loc| (slug.clone(), loc))
                     .collect::<Vec<_>>()
@@ -529,20 +529,20 @@ mod test {
 
     #[test]
     fn all_without_filter_returns_pairs() {
-        let pairs = SPA::all(None);
+        let pairs = SPA::all(LocaleFilter::All);
         assert!(!pairs.is_empty());
         assert!(pairs.iter().any(|(_, locale)| *locale == Locale::EnUs));
     }
 
     #[test]
     fn all_with_en_us_filter_yields_only_en_us() {
-        let pairs = SPA::all(Some(&[Locale::EnUs]));
+        let pairs = SPA::all(LocaleFilter::Only(&[Locale::EnUs]));
         assert!(!pairs.is_empty());
         assert!(pairs.iter().all(|(_, locale)| *locale == Locale::EnUs));
     }
 
     #[test]
     fn all_with_empty_filter_yields_nothing() {
-        assert!(SPA::all(Some(&[])).is_empty());
+        assert!(SPA::all(LocaleFilter::Only(&[])).is_empty());
     }
 }

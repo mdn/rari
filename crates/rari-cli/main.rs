@@ -44,7 +44,7 @@ use rari_types::globals::{
     SETTINGS, blog_root, build_out_root, content_root, content_translated_root,
     contributor_spotlight_root, curriculum_root, generic_content_root,
 };
-use rari_types::locale::Locale;
+use rari_types::locale::{Locale, LocaleFilter};
 use rari_types::settings::Settings;
 use rari_utils::io::read_to_string;
 use self_update::cargo_crate_version;
@@ -485,6 +485,7 @@ fn main() -> Result<(), Error> {
             } else {
                 info!("Building everything 🛠️");
             }
+            let locale_filter = LocaleFilter::from(requested_locales.as_deref());
             if args.all
                 || args.all_available
                 || !args.no_basic
@@ -497,14 +498,11 @@ fn main() -> Result<(), Error> {
                 } else if args.no_cache {
                     let mut files: Vec<PathBuf> = vec![content_root().to_path_buf()];
                     if let Some(translated_root) = content_translated_root() {
-                        files.extend(translated_locale_paths(
-                            translated_root,
-                            requested_locales.as_deref(),
-                        ));
+                        files.extend(translated_locale_paths(translated_root, locale_filter));
                     }
                     read_docs_parallel::<Page, Doc>(&files, None)?
                 } else {
-                    read_and_cache_doc_pages(requested_locales.as_deref())?
+                    read_and_cache_doc_pages(locale_filter)?
                 };
                 info!(
                     "Took: {: >10.3?} for reading {} docs",
@@ -514,7 +512,7 @@ fn main() -> Result<(), Error> {
             }
             if args.all || args.all_available || !args.no_basic || args.spas {
                 let start = std::time::Instant::now();
-                let spas = build_spas(requested_locales.as_deref())?;
+                let spas = build_spas(locale_filter)?;
                 let num = spas.len();
                 urls.extend(spas);
                 info!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
@@ -685,7 +683,7 @@ fn main() -> Result<(), Error> {
             settings.data_issues = true;
             settings.blog_unpublished = true;
             let _ = SETTINGS.set(settings);
-            read_and_cache_doc_pages(None)?;
+            read_and_cache_doc_pages(LocaleFilter::All)?;
             rari_lsp::run()?
         }
         Commands::GitHistory => {
@@ -749,7 +747,7 @@ fn main() -> Result<(), Error> {
                 // Collect content pages
                 if fix_content {
                     let start = std::time::Instant::now();
-                    let docs = read_and_cache_doc_pages(None)?;
+                    let docs = read_and_cache_doc_pages(LocaleFilter::All)?;
                     info!(
                         "Took: {: >10.3?} for reading {} content pages",
                         start.elapsed(),
