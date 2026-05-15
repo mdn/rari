@@ -12,25 +12,19 @@ pub(crate) struct Sourcepos {
 pub(crate) fn parse_sourcepos(el: &mut Element, page: &impl PageLike) -> Option<Sourcepos> {
     let pos = el.get_attribute("data-sourcepos")?;
     let (start, end) = pos.split_once('-')?;
-    let (line, col) = start.split_once(':')?;
-    let line = line
-        .parse::<i64>()
-        .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
-        .ok()
-        .unwrap_or(-1);
-    let col = col.parse::<i64>().ok().unwrap_or(0);
-    let (end_line, end_col) = end
-        .split_once(':')
-        .map(|(end_line, end_col)| {
-            let end_line = end_line
-                .parse::<i64>()
-                .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
-                .ok()
-                .unwrap_or(-1);
-            let end_col = end_col.parse::<i64>().ok().unwrap_or(0);
-            (end_line, end_col)
-        })
-        .unwrap_or((-1, -1));
+    let fm_offset = page.fm_offset();
+    let parse_pair = |s: &str| -> Option<(i64, i64)> {
+        let (line, col) = s.split_once(':')?;
+        let line = line
+            .parse::<i64>()
+            .map(|l| l + i64::try_from(fm_offset).unwrap_or(l - 1))
+            .ok()
+            .unwrap_or(-1);
+        let col = col.parse::<i64>().ok().unwrap_or(0);
+        Some((line, col))
+    };
+    let (line, col) = parse_pair(start)?;
+    let (end_line, end_col) = parse_pair(end).unwrap_or((-1, -1));
     Some(Sourcepos {
         line,
         col,
