@@ -198,8 +198,16 @@ struct ServeArgs {
 
 #[derive(Args)]
 struct BuildArgs {
-    #[arg(short, long, help = "Build only content <FILES>")]
+    #[arg(value_name = "FILES", help = "Build only these content files")]
     files: Vec<PathBuf>,
+    #[arg(
+        short = 'f',
+        long = "files",
+        value_name = "FILES",
+        hide = true,
+        help = "[deprecated] pass file paths as positional arguments instead"
+    )]
+    files_flag: Vec<PathBuf>,
     #[arg(long, help = "Build only content listed in <FILE_LIST>")]
     file_list: Option<PathBuf>,
     #[arg(short, long, help = "Abort build on warnings")]
@@ -366,9 +374,15 @@ fn main() -> Result<(), Error> {
             settings.json_live_samples = args.json_live_samples;
             let _ = SETTINGS.set(settings);
 
+            if !args.files_flag.is_empty() {
+                tracing::warn!(
+                    "`-f`/`--files` is deprecated; pass file paths as positional arguments instead"
+                );
+            }
             let mut arg_files = args
                 .files
                 .iter()
+                .chain(args.files_flag.iter())
                 .map(|path| path.canonicalize())
                 .collect::<Result<Vec<PathBuf>, _>>()?;
 
