@@ -16,6 +16,7 @@ pub struct TestPage {
     pub path: PathBuf,
     pub url: String,
     pub locale: Locale,
+    pub fm_offset: usize,
 }
 
 impl Default for TestPage {
@@ -24,6 +25,7 @@ impl Default for TestPage {
             path: PathBuf::new(),
             url: String::new(),
             locale: Locale::EnUs,
+            fm_offset: 0,
         }
     }
 }
@@ -90,7 +92,7 @@ impl PageLike for TestPage {
     }
 
     fn fm_offset(&self) -> usize {
-        0
+        self.fm_offset
     }
 
     fn raw_content(&self) -> &str {
