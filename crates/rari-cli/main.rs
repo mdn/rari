@@ -392,6 +392,7 @@ fn main() -> Result<(), Error> {
                 TEMPL_RECORDER_SENDER
                     .set(tx.clone())
                     .expect("unable to create templ recorder");
+                const IGNORED: &[&str] = &["echo"];
                 let recorder_handler = spawn(move || {
                     let mut known: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
                     let mut invalid: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
@@ -404,6 +405,9 @@ fn main() -> Result<(), Error> {
                                 known: is_known,
                             } => {
                                 let name = name.to_lowercase();
+                                if IGNORED.contains(&name.as_str()) {
+                                    continue;
+                                }
                                 let bucket = if is_known { &mut known } else { &mut invalid };
                                 *bucket.entry(name).or_default().entry(locale).or_insert(0) += 1;
                             }
@@ -459,7 +463,9 @@ fn main() -> Result<(), Error> {
                         let mut unused: Vec<String> = TEMPL_MAP
                             .iter()
                             .map(|t| t.name.replace('-', "_").to_lowercase())
-                            .filter(|n| !seen.contains(n.as_str()))
+                            .filter(|n| {
+                                !seen.contains(n.as_str()) && !IGNORED.contains(&n.as_str())
+                            })
                             .collect();
                         unused.sort();
                         info!("--- templ unused ({}) ---", unused.len());
