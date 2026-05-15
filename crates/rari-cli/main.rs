@@ -392,6 +392,8 @@ fn main() -> Result<(), Error> {
                 TEMPL_RECORDER_SENDER
                     .set(tx.clone())
                     .expect("unable to create templ recorder");
+                // `echo` is a test-only template that never appears in real content;
+                // suppress it from every section so it does not show up as unused.
                 const IGNORED: &[&str] = &["echo"];
                 let recorder_handler = spawn(move || {
                     let mut known: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
