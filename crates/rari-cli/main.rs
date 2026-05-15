@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::sync::mpsc::channel;
 use std::thread::spawn;
 
-use anyhow::{Context, Error, anyhow};
+use anyhow::{Error, anyhow};
 use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::Verbosity;
 use dashmap::DashMap;
@@ -386,17 +386,25 @@ fn main() -> Result<(), Error> {
                 .iter()
                 .chain(args.files_flag.iter())
                 .map(|path| {
-                    path.canonicalize()
-                        .with_context(|| path.display().to_string())
+                    path.canonicalize().map_err(|e| {
+                        let msg = e.to_string();
+                        let trimmed = msg.split(" (os error").next().unwrap_or(&msg);
+                        anyhow!("{}: {}", path.display(), trimmed)
+                    })
                 })
                 .partition(Result::is_ok);
             if !errs.is_empty() {
+                let header = if errs.len() == 1 {
+                    "<FILES> contains an invalid value"
+                } else {
+                    "<FILES> contains invalid values"
+                };
                 let details = errs
                     .into_iter()
-                    .map(|r| format!("{:#}", r.unwrap_err()))
+                    .map(|r| format!("  - {}", r.unwrap_err()))
                     .collect::<Vec<_>>()
-                    .join("\n  ");
-                return Err(anyhow!("invalid <FILES> arguments:\n  {details}"));
+                    .join("\n");
+                return Err(anyhow!("{header}:\n{details}"));
             }
             let mut arg_files: Vec<PathBuf> = oks.into_iter().map(Result::unwrap).collect();
 
