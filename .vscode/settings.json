@@ -1,0 +1,4 @@
+{
+  "rust-analyzer.check.extraArgs": ["--locked"],
+  "rust-analyzer.cargo.extraArgs": ["--locked"]
+}
