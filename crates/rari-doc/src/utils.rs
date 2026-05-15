@@ -395,7 +395,11 @@ thread_local! {
 
 #[derive(Debug)]
 pub enum TemplStatEvent {
-    Record { name: String, locale: Locale },
+    Record {
+        name: String,
+        locale: Locale,
+        known: bool,
+    },
     Stop,
 }
 

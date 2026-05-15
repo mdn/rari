@@ -393,37 +393,69 @@ fn main() -> Result<(), Error> {
                     .set(tx.clone())
                     .expect("unable to create templ recorder");
                 let recorder_handler = spawn(move || {
-                    let mut stats: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
+                    let mut known: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
+                    let mut invalid: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
                     while let Ok(event) = rx.recv() {
                         match event {
                             TemplStatEvent::Stop => break,
-                            TemplStatEvent::Record { name, locale } => {
+                            TemplStatEvent::Record {
+                                name,
+                                locale,
+                                known: is_known,
+                            } => {
                                 let name = name.to_lowercase();
-                                *stats.entry(name).or_default().entry(locale).or_insert(0) += 1;
+                                let bucket = if is_known { &mut known } else { &mut invalid };
+                                *bucket.entry(name).or_default().entry(locale).or_insert(0) += 1;
                             }
                         }
                     }
 
-                    let mut out: Vec<(String, usize, HashMap<Locale, usize>)> = stats
-                        .into_iter()
-                        .map(|(name, per_locale)| {
-                            let total: usize = per_locale.values().sum();
-                            (name, total, per_locale)
-                        })
-                        .collect();
-                    out.sort_by(|(_, a, _), (_, b, _)| b.cmp(a));
+                    fn into_sorted(
+                        stats: HashMap<String, HashMap<Locale, usize>>,
+                    ) -> Vec<(String, usize, HashMap<Locale, usize>)> {
+                        let mut out: Vec<_> = stats
+                            .into_iter()
+                            .map(|(name, per_locale)| {
+                                let total: usize = per_locale.values().sum();
+                                (name, total, per_locale)
+                            })
+                            .collect();
+                        out.sort_by(|(_, a, _), (_, b, _)| b.cmp(a));
+                        out
+                    }
 
-                    info!("--- templ summary ---");
+                    let known_sorted = into_sorted(known);
+                    let invalid_sorted = into_sorted(invalid);
+
+                    info!("--- templ summary ({}) ---", known_sorted.len());
                     let mut tw = TabWriter::new(vec![]);
-                    for (i, (templ, count, _)) in out.iter().enumerate() {
+                    for (i, (templ, count, _)) in known_sorted.iter().enumerate() {
                         writeln!(&mut tw, "{:2}\t{templ}\t{count:4}", i + 1)
                             .expect("unable to write");
                     }
                     info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
 
+                    info!("--- templ invalid ({}) ---", invalid_sorted.len());
+                    let mut tw = TabWriter::new(vec![]);
+                    for (i, (templ, count, per_locale)) in invalid_sorted.iter().enumerate() {
+                        let mut locales: Vec<String> = per_locale
+                            .keys()
+                            .map(|l| l.as_url_str().to_string())
+                            .collect();
+                        locales.sort();
+                        writeln!(
+                            &mut tw,
+                            "{:2}\t{templ}\t{count:4}\t{}",
+                            i + 1,
+                            locales.join(", ")
+                        )
+                        .expect("unable to write");
+                    }
+                    info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+
                     if full_build {
                         let seen: std::collections::HashSet<&str> =
-                            out.iter().map(|(n, _, _)| n.as_str()).collect();
+                            known_sorted.iter().map(|(n, _, _)| n.as_str()).collect();
                         let mut unused: Vec<String> = TEMPL_MAP
                             .iter()
                             .map(|t| t.name.replace('-', "_").to_lowercase())
@@ -440,7 +472,8 @@ fn main() -> Result<(), Error> {
 
                     if multi_locale {
                         let mut translated_only: Vec<(&String, &HashMap<Locale, usize>, usize)> =
-                            out.iter()
+                            known_sorted
+                                .iter()
                                 .filter_map(|(name, total, per_locale)| {
                                     if !per_locale.is_empty()
                                         && !per_locale.contains_key(&Locale::EnUs)
