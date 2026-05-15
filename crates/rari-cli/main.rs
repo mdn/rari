@@ -375,8 +375,8 @@ fn main() -> Result<(), Error> {
             let _ = SETTINGS.set(settings);
 
             if !args.files_flag.is_empty() {
-                tracing::warn!(
-                    "`-f`/`--files` is deprecated; pass file paths as positional arguments instead"
+                eprintln!(
+                    "warning: `-f`/`--files` is deprecated; pass file paths as positional arguments instead"
                 );
             }
             let mut arg_files = args
