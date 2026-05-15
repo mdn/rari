@@ -205,7 +205,7 @@ struct BuildArgs {
         long = "files",
         value_name = "FILES",
         hide = true,
-        help = "[deprecated] pass file paths as positional arguments instead"
+        help = "DEPRECATED: pass file paths as positional arguments instead"
     )]
     files_flag: Vec<PathBuf>,
     #[arg(long, help = "Build only content listed in <FILE_LIST>")]
