@@ -71,14 +71,14 @@ jobs:
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_BASE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run --release build
+        run: cargo run --release build --json-issues
 
       - name: Build with PR
         working-directory: rari-pr
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_PR }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run --release build
+        run: cargo run --release build --json-issues
 
       - name: Generate diff
         working-directory: rari-pr
