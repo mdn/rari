@@ -473,7 +473,18 @@ fn main() -> Result<(), Error> {
             }
             let mut urls = Vec::new();
             let mut docs = Vec::new();
-            info!("Building everything 🛠️");
+            if let Some(locales) = &requested_locales {
+                info!(
+                    "Building locale(s): {} 🛠️",
+                    locales
+                        .iter()
+                        .map(|l| l.as_url_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            } else {
+                info!("Building everything 🛠️");
+            }
             if args.all
                 || args.all_available
                 || !args.no_basic
