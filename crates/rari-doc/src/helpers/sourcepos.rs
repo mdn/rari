@@ -9,7 +9,7 @@ pub(crate) struct Sourcepos {
     pub end_col: i64,
 }
 
-pub(crate) fn parse_sourcepos(el: &mut Element, page: &impl PageLike) -> Option<Sourcepos> {
+pub(crate) fn parse_sourcepos(el: &Element, page: &impl PageLike) -> Option<Sourcepos> {
     let pos = el.get_attribute("data-sourcepos")?;
     let (start, end) = pos.split_once('-')?;
     let fm_offset = page.fm_offset();
