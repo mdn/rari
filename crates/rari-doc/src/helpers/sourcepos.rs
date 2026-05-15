@@ -72,40 +72,24 @@ mod tests {
     }
 
     #[test]
-    fn parse_happy_path() {
-        let sp = Sourcepos::parse("3:5-7:9").unwrap();
-        assert_eq!((sp.line, sp.col, sp.end_line, sp.end_col), (3, 5, 7, 9));
-    }
-
-    #[test]
-    fn parse_unparseable_start_line_yields_sentinel() {
-        let sp = Sourcepos::parse("abc:5-7:9").unwrap();
-        assert_eq!((sp.line, sp.col), (-1, 5));
-    }
-
-    #[test]
-    fn parse_unparseable_start_col_yields_zero() {
-        let sp = Sourcepos::parse("3:abc-7:9").unwrap();
-        assert_eq!((sp.line, sp.col), (3, 0));
-    }
-
-    #[test]
-    fn parse_malformed_end_falls_back_to_sentinels() {
-        let sp = Sourcepos::parse("3:5-bogus").unwrap();
-        assert_eq!((sp.line, sp.col), (3, 5));
-        assert_eq!((sp.end_line, sp.end_col), (-1, -1));
-    }
-
-    #[test]
-    fn parse_unparseable_end_line_yields_sentinel() {
-        let sp = Sourcepos::parse("3:5-xyz:9").unwrap();
-        assert_eq!((sp.end_line, sp.end_col), (-1, 9));
-    }
-
-    #[test]
-    fn parse_unparseable_end_col_yields_zero() {
-        let sp = Sourcepos::parse("3:5-7:xyz").unwrap();
-        assert_eq!((sp.end_line, sp.end_col), (7, 0));
+    fn parse_well_formed_and_partial_inputs() {
+        let cases = [
+            // (input,      line, col, end_line, end_col)
+            ("3:5-7:9", 3, 5, 7, 9),     // happy path
+            ("abc:5-7:9", -1, 5, 7, 9),  // unparseable start line
+            ("3:abc-7:9", 3, 0, 7, 9),   // unparseable start col
+            ("3:5-xyz:9", 3, 5, -1, 9),  // unparseable end line
+            ("3:5-7:xyz", 3, 5, 7, 0),   // unparseable end col
+            ("3:5-bogus", 3, 5, -1, -1), // malformed end (no `:`)
+        ];
+        for (input, line, col, end_line, end_col) in cases {
+            let sp = Sourcepos::parse(input).unwrap_or_else(|| panic!("input: {input}"));
+            assert_eq!(
+                (sp.line, sp.col, sp.end_line, sp.end_col),
+                (line, col, end_line, end_col),
+                "input: {input}"
+            );
+        }
     }
 
     // ── Sourcepos::shift_lines ────────────────────────────────────────────
