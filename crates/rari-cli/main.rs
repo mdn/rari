@@ -198,7 +198,7 @@ struct ServeArgs {
 
 #[derive(Args)]
 struct BuildArgs {
-    #[arg(value_name = "FILES", help = "Build only these content files")]
+    #[arg(value_name = "FILES", help = "Build only content <FILES>")]
     files: Vec<PathBuf>,
     #[arg(
         short = 'f',
