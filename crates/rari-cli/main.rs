@@ -266,7 +266,7 @@ struct BuildArgs {
     #[arg(
         long,
         value_delimiter = ',',
-        help = "Only build the given locale(s). Repeatable or comma-separated. en-US is always included. Non-en-US values require `content_translated_root`."
+        help = "Only build the given locale(s). Repeatable or comma-separated. en-US is always included. Other locales require `content_translated_root`."
     )]
     locale: Option<Vec<Locale>>,
 }
