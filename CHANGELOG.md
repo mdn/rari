@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.23](https://github.com/mdn/rari/compare/v0.2.22...v0.2.23) (2026-05-15)
+
+
+### Bug Fixes
+
+* **css-syntax:** apply multipliers to literal tokens ([#669](https://github.com/mdn/rari/issues/669)) ([8a66374](https://github.com/mdn/rari/commit/8a6637437b357022990f100379f719e4c409e4d5))
+* **cssinfo,csssyntax:** report links as `templ-*-link` ([#670](https://github.com/mdn/rari/issues/670)) ([1a5c41e](https://github.com/mdn/rari/commit/1a5c41e4516c44b1621754247ff63189fb1ce184))
+
+
+### Miscellaneous
+
+* **deps:** bump base16ct from 0.2.0 to 1.0.0 ([#675](https://github.com/mdn/rari/issues/675)) ([e1b8ae3](https://github.com/mdn/rari/commit/e1b8ae366d2772c0cf8a5db826d58c0c48a88fad))
+* **deps:** bump const_format from 0.2.35 to 0.2.36 ([#676](https://github.com/mdn/rari/issues/676)) ([8eed53c](https://github.com/mdn/rari/commit/8eed53cf6a3fc44cac3ff9a244cdc3390f2f511b))
+* **deps:** bump quick-xml from 0.39.2 to 0.39.4 ([#679](https://github.com/mdn/rari/issues/679)) ([4b86776](https://github.com/mdn/rari/commit/4b867768503c4aa319c70cf718fd575666aea474))
+* **deps:** bump rss from 2.0.12 to 2.0.13 ([#678](https://github.com/mdn/rari/issues/678)) ([4a626b9](https://github.com/mdn/rari/commit/4a626b92fbc4d2e1f76b0d32472bcb729153cdbc))
+* **deps:** bump sha2 from 0.10.9 to 0.11.0 ([#627](https://github.com/mdn/rari/issues/627)) ([e999511](https://github.com/mdn/rari/commit/e99951159a36fc2654ffd6d29f868eb901080e5a))
+* **deps:** bump tar from 7.5.13 to 7.5.15 in /rari-npm in the npm-prod group ([#674](https://github.com/mdn/rari/issues/674)) ([20c3ed1](https://github.com/mdn/rari/commit/20c3ed1307a86668c3370b569f0eb26ddc9e6802))
+* **deps:** bump tar in /rari-npm in the npm-prod group ([20c3ed1](https://github.com/mdn/rari/commit/20c3ed1307a86668c3370b569f0eb26ddc9e6802))
+* **deps:** bump tempfile from 3.20.0 to 3.27.0 ([#677](https://github.com/mdn/rari/issues/677)) ([578b0a2](https://github.com/mdn/rari/commit/578b0a2699661771db91216ef4b0c1934b481ff3))
+
 ## [0.2.22](https://github.com/mdn/rari/compare/v0.2.21...v0.2.22) (2026-05-06)
 
 
