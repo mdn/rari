@@ -297,6 +297,32 @@ fn clear_dependencies_last_checked(base_path: &Path) {
     }
 }
 
+/// Applies one `TemplStatEvent` to the running `known`/`invalid` aggregates.
+///
+/// Returns `false` for `Stop`, signalling the receive loop to terminate.
+fn ingest_templ_event(
+    event: TemplStatEvent,
+    known: &mut HashMap<String, HashMap<Locale, usize>>,
+    invalid: &mut HashMap<String, HashMap<Locale, usize>>,
+    ignored: &[&str],
+) -> bool {
+    match event {
+        TemplStatEvent::Stop => return false,
+        TemplStatEvent::Record {
+            name,
+            locale,
+            known: is_known,
+        } => {
+            let name = name.to_lowercase();
+            if !ignored.contains(&name.as_str()) {
+                let bucket = if is_known { known } else { invalid };
+                *bucket.entry(name).or_default().entry(locale).or_insert(0) += 1;
+            }
+        }
+    }
+    true
+}
+
 fn into_sorted_templ_stats(
     stats: HashMap<String, HashMap<Locale, usize>>,
 ) -> Vec<(String, usize, HashMap<Locale, usize>)> {
@@ -437,20 +463,8 @@ fn main() -> Result<(), Error> {
                     let mut known: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
                     let mut invalid: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
                     while let Ok(event) = rx.recv() {
-                        match event {
-                            TemplStatEvent::Stop => break,
-                            TemplStatEvent::Record {
-                                name,
-                                locale,
-                                known: is_known,
-                            } => {
-                                let name = name.to_lowercase();
-                                if IGNORED.contains(&name.as_str()) {
-                                    continue;
-                                }
-                                let bucket = if is_known { &mut known } else { &mut invalid };
-                                *bucket.entry(name).or_default().entry(locale).or_insert(0) += 1;
-                            }
+                        if !ingest_templ_event(event, &mut known, &mut invalid, IGNORED) {
+                            break;
                         }
                     }
 
