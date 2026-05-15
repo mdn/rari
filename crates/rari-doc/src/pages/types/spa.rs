@@ -89,13 +89,10 @@ impl SPA {
             .unwrap_or_default()
     }
 
-    pub fn all() -> Vec<(String, Locale)> {
-        Self::all_filtered(None)
-    }
-
-    /// Like [`Self::all`], but restricts the produced (slug, locale) pairs to
-    /// the given locale set. Pass `None` to keep the default behavior.
-    pub fn all_filtered(locales: Option<&[Locale]>) -> Vec<(String, Locale)> {
+    /// Returns the `(slug, locale)` pairs for all SPAs. When `locales` is
+    /// `Some`, the result is restricted to that set; pass `None` for every
+    /// available locale.
+    pub fn all(locales: Option<&[Locale]>) -> Vec<(String, Locale)> {
         BASIC_SPAS
             .iter()
             .flat_map(|(slug, build_spa)| {
