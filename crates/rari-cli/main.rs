@@ -302,6 +302,18 @@ fn clear_dependencies_last_checked(base_path: &Path) {
     }
 }
 
+/// Normalize a user-supplied `--locale` list: always include en-US,
+/// deduplicate, and sort for stable iteration.
+fn finalize_requested_locales(input: &[Locale]) -> Vec<Locale> {
+    let mut set: Vec<Locale> = input.to_vec();
+    if !set.contains(&Locale::EnUs) {
+        set.push(Locale::EnUs);
+    }
+    set.sort();
+    set.dedup();
+    set
+}
+
 fn main() -> Result<(), Error> {
     if let Ok(env_file) = dotenvy::from_filename(
         env::var("DOT_FILE")
@@ -388,15 +400,8 @@ fn main() -> Result<(), Error> {
                 );
             }
 
-            let requested_locales: Option<Vec<Locale>> = args.locale.as_ref().map(|ls| {
-                let mut set: Vec<Locale> = ls.to_vec();
-                if !set.contains(&Locale::EnUs) {
-                    set.push(Locale::EnUs);
-                }
-                set.sort();
-                set.dedup();
-                set
-            });
+            let requested_locales: Option<Vec<Locale>> =
+                args.locale.as_deref().map(finalize_requested_locales);
 
             if let Some(locales) = &requested_locales {
                 let needs_translated = locales.iter().any(|l| *l != Locale::EnUs);
@@ -894,4 +899,37 @@ fn update(version: Option<String>) -> Result<(), Error> {
     let status = update.update()?;
     info!("\n\nrari updated to `{}`", status.version());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn finalize_requested_locales_injects_en_us() {
+        let out = finalize_requested_locales(&[Locale::Fr]);
+        assert!(out.contains(&Locale::EnUs));
+        assert!(out.contains(&Locale::Fr));
+    }
+
+    #[test]
+    fn finalize_requested_locales_idempotent_for_en_us_only() {
+        assert_eq!(
+            finalize_requested_locales(&[Locale::EnUs]),
+            vec![Locale::EnUs]
+        );
+    }
+
+    #[test]
+    fn finalize_requested_locales_dedups_and_sorts() {
+        let out = finalize_requested_locales(&[Locale::Fr, Locale::EnUs, Locale::Fr]);
+        let mut expected = vec![Locale::EnUs, Locale::Fr];
+        expected.sort();
+        assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn finalize_requested_locales_empty_input_still_injects_en_us() {
+        assert_eq!(finalize_requested_locales(&[]), vec![Locale::EnUs]);
+    }
 }

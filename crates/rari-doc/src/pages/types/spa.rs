@@ -526,4 +526,23 @@ mod test {
     fn print() {
         println!("{}", serde_json::to_string(&*BASIC_SPAS).unwrap())
     }
+
+    #[test]
+    fn all_without_filter_returns_pairs() {
+        let pairs = SPA::all(None);
+        assert!(!pairs.is_empty());
+        assert!(pairs.iter().any(|(_, locale)| *locale == Locale::EnUs));
+    }
+
+    #[test]
+    fn all_with_en_us_filter_yields_only_en_us() {
+        let pairs = SPA::all(Some(&[Locale::EnUs]));
+        assert!(!pairs.is_empty());
+        assert!(pairs.iter().all(|(_, locale)| *locale == Locale::EnUs));
+    }
+
+    #[test]
+    fn all_with_empty_filter_yields_nothing() {
+        assert!(SPA::all(Some(&[])).is_empty());
+    }
 }
