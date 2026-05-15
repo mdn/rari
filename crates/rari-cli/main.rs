@@ -376,7 +376,7 @@ fn main() -> Result<(), Error> {
 
             if !args.files_flag.is_empty() {
                 eprintln!(
-                    "warning: `-f`/`--files` is deprecated; pass file paths as positional arguments instead"
+                    "warning: `-f`/`--files` is deprecated and will be removed in a future release; pass file paths as positional arguments instead"
                 );
             }
             let mut arg_files = args
