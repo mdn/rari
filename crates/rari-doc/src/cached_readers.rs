@@ -469,10 +469,7 @@ pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
 /// When `locales` is `None`, the translated root itself is returned so all
 /// available locales are read. Otherwise, returns one path per non-en-US
 /// locale; en-US is read from `content_root` separately.
-pub(crate) fn translated_locale_paths(
-    translated_root: &Path,
-    locales: Option<&[Locale]>,
-) -> Vec<PathBuf> {
+pub fn translated_locale_paths(translated_root: &Path, locales: Option<&[Locale]>) -> Vec<PathBuf> {
     match locales {
         None => vec![translated_root.to_path_buf()],
         Some(set) => set

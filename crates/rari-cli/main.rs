@@ -21,7 +21,7 @@ use rari_doc::build::{
 };
 use rari_doc::cached_readers::{
     CACHED_DOC_PAGE_FILES, blog_files, contributor_spotlight_files, curriculum_files,
-    generic_content_files, read_and_cache_doc_pages,
+    generic_content_files, read_and_cache_doc_pages, translated_locale_paths,
 };
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
@@ -462,24 +462,14 @@ fn main() -> Result<(), Error> {
                 docs = if !arg_files.is_empty() {
                     read_docs_parallel::<Page, Doc>(&arg_files, None)?
                 } else if args.no_cache {
-                    let owned: Vec<PathBuf>;
-                    let files: &[PathBuf] = if let Some(locales) = &requested_locales {
-                        let mut paths: Vec<PathBuf> = vec![content_root().to_path_buf()];
-                        if let Some(translated_root) = content_translated_root() {
-                            for loc in locales.iter().filter(|l| **l != Locale::EnUs) {
-                                paths.push(translated_root.join(loc.as_folder_str()));
-                            }
-                        }
-                        owned = paths;
-                        &owned
-                    } else if let Some(translated_root) = content_translated_root() {
-                        owned = vec![content_root().to_path_buf(), translated_root.to_path_buf()];
-                        &owned
-                    } else {
-                        owned = vec![content_root().to_path_buf()];
-                        &owned
-                    };
-                    read_docs_parallel::<Page, Doc>(files, None)?
+                    let mut files: Vec<PathBuf> = vec![content_root().to_path_buf()];
+                    if let Some(translated_root) = content_translated_root() {
+                        files.extend(translated_locale_paths(
+                            translated_root,
+                            requested_locales.as_deref(),
+                        ));
+                    }
+                    read_docs_parallel::<Page, Doc>(&files, None)?
                 } else {
                     read_and_cache_doc_pages(requested_locales.as_deref())?
                 };
