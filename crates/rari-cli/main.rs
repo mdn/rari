@@ -313,6 +313,28 @@ fn into_sorted_templ_stats(
     out
 }
 
+fn print_templ_locales_section<'a, I>(label: &str, rows: I)
+where
+    I: IntoIterator<Item = (&'a str, usize, &'a HashMap<Locale, usize>)>,
+    I::IntoIter: ExactSizeIterator,
+{
+    let rows = rows.into_iter();
+    info!("--- {label} ({}) ---", rows.len());
+    let mut tw = TabWriter::new(vec![]);
+    for (i, (name, count, per_locale)) in rows.enumerate() {
+        let mut locales: Vec<&str> = per_locale.keys().map(|l| l.as_url_str()).collect();
+        locales.sort();
+        writeln!(
+            &mut tw,
+            "{:2}\t{name}\t{count:4}\t{}",
+            i + 1,
+            locales.join(", ")
+        )
+        .expect("unable to write");
+    }
+    info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+}
+
 fn main() -> Result<(), Error> {
     if let Ok(env_file) = dotenvy::from_filename(
         env::var("DOT_FILE")
@@ -443,23 +465,12 @@ fn main() -> Result<(), Error> {
                     }
                     info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
 
-                    info!("--- templ invalid ({}) ---", invalid_sorted.len());
-                    let mut tw = TabWriter::new(vec![]);
-                    for (i, (templ, count, per_locale)) in invalid_sorted.iter().enumerate() {
-                        let mut locales: Vec<String> = per_locale
-                            .keys()
-                            .map(|l| l.as_url_str().to_string())
-                            .collect();
-                        locales.sort();
-                        writeln!(
-                            &mut tw,
-                            "{:2}\t{templ}\t{count:4}\t{}",
-                            i + 1,
-                            locales.join(", ")
-                        )
-                        .expect("unable to write");
-                    }
-                    info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                    print_templ_locales_section(
+                        "templ invalid",
+                        invalid_sorted
+                            .iter()
+                            .map(|(name, count, per_locale)| (name.as_str(), *count, per_locale)),
+                    );
 
                     if full_build {
                         let seen: HashSet<&str> =
@@ -481,34 +492,24 @@ fn main() -> Result<(), Error> {
                     }
 
                     if multi_locale {
-                        let mut translated_only: Vec<(&String, &HashMap<Locale, usize>, usize)> =
+                        let mut translated_only: Vec<(&str, usize, &HashMap<Locale, usize>)> =
                             known_sorted
                                 .iter()
                                 .filter_map(|(name, total, per_locale)| {
-                                    (!per_locale.contains_key(&Locale::EnUs))
-                                        .then_some((name, per_locale, *total))
+                                    (!per_locale.contains_key(&Locale::EnUs)).then_some((
+                                        name.as_str(),
+                                        *total,
+                                        per_locale,
+                                    ))
                                 })
                                 .collect();
-                        translated_only.sort_by(|(a_name, _, a_total), (b_name, _, b_total)| {
+                        translated_only.sort_by(|(a_name, a_total, _), (b_name, b_total, _)| {
                             b_total.cmp(a_total).then_with(|| a_name.cmp(b_name))
                         });
-                        info!("--- templ translated-only ({}) ---", translated_only.len());
-                        let mut tw = TabWriter::new(vec![]);
-                        for (i, (name, per_locale, total)) in translated_only.iter().enumerate() {
-                            let mut locales: Vec<String> = per_locale
-                                .keys()
-                                .map(|l| l.as_url_str().to_string())
-                                .collect();
-                            locales.sort();
-                            writeln!(
-                                &mut tw,
-                                "{:2}\t{name}\t{total:4}\t{}",
-                                i + 1,
-                                locales.join(", ")
-                            )
-                            .expect("unable to write");
-                        }
-                        info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                        print_templ_locales_section(
+                            "templ translated-only",
+                            translated_only.iter().copied(),
+                        );
                     }
                 });
                 Some((recorder_handler, tx))
