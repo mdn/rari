@@ -483,6 +483,15 @@ pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
 /// This function will return an error if:
 /// - An error occurs while reading the documentation pages from the content root or translated content root directories.
 pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
+    read_and_cache_doc_pages_filtered(None)
+}
+
+/// Like [`read_and_cache_doc_pages`], but restricts the translated content read
+/// to the given locales. en-US is always read from `content_root`. Pass `None`
+/// to read every available locale (current default behavior).
+pub fn read_and_cache_doc_pages_filtered(
+    locales: Option<&[Locale]>,
+) -> Result<Vec<Page>, DocError> {
     let mut docs = read_docs_parallel::<Page, Doc>(&[content_root()], None)?;
     STATIC_DOC_PAGE_FILES
         .set(
@@ -493,7 +502,19 @@ pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
         )
         .unwrap();
     if let Some(translated_root) = content_translated_root() {
-        let translated_docs = read_docs_parallel::<Page, Doc>(&[translated_root], None)?;
+        let translated_paths: Vec<PathBuf> = match locales {
+            None => vec![translated_root.to_path_buf()],
+            Some(set) => set
+                .iter()
+                .filter(|l| **l != Locale::EnUs)
+                .map(|l| translated_root.join(l.as_folder_str()))
+                .collect(),
+        };
+        let translated_docs = if translated_paths.is_empty() {
+            Vec::new()
+        } else {
+            read_docs_parallel::<Page, Doc>(&translated_paths, None)?
+        };
         STATIC_DOC_PAGE_TRANSLATED_FILES
             .set(
                 translated_docs

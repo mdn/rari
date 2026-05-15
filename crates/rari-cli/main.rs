@@ -21,7 +21,7 @@ use rari_doc::build::{
 };
 use rari_doc::cached_readers::{
     CACHED_DOC_PAGE_FILES, blog_files, contributor_spotlight_files, curriculum_files,
-    generic_content_files, read_and_cache_doc_pages,
+    generic_content_files, read_and_cache_doc_pages, read_and_cache_doc_pages_filtered,
 };
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
@@ -263,6 +263,12 @@ struct BuildArgs {
         help = "Noop flag to legacy compatibility (has no effect on build)"
     )]
     noop: bool,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        help = "Only build the given locale(s). Repeatable or comma-separated. en-US is always included if any other locale is requested."
+    )]
+    locale: Option<Vec<Locale>>,
 }
 
 #[derive(Debug)]
@@ -382,6 +388,25 @@ fn main() -> Result<(), Error> {
                 );
             }
 
+            let requested_locales: Option<Vec<Locale>> = args.locale.as_ref().map(|ls| {
+                let mut set: Vec<Locale> = ls.to_vec();
+                if !set.contains(&Locale::EnUs) {
+                    set.push(Locale::EnUs);
+                }
+                set.sort();
+                set.dedup();
+                set
+            });
+
+            if let Some(locales) = &requested_locales {
+                let needs_translated = locales.iter().any(|l| *l != Locale::EnUs);
+                if needs_translated && content_translated_root().is_none() {
+                    return Err(anyhow!(
+                        "--locale requires content_translated_root to be configured for non en-US locales"
+                    ));
+                }
+            }
+
             let templ_stats = if args.templ_stats {
                 let (tx, rx) = channel::<String>();
                 TEMPL_RECORDER_SENDER
@@ -437,14 +462,26 @@ fn main() -> Result<(), Error> {
                 docs = if !arg_files.is_empty() {
                     read_docs_parallel::<Page, Doc>(&arg_files, None)?
                 } else if args.no_cache {
-                    let files: &[_] = if let Some(translated_root) = content_translated_root() {
-                        &[content_root(), translated_root]
+                    let owned: Vec<PathBuf>;
+                    let files: &[PathBuf] = if let Some(locales) = &requested_locales {
+                        let mut paths: Vec<PathBuf> = vec![content_root().to_path_buf()];
+                        if let Some(translated_root) = content_translated_root() {
+                            for loc in locales.iter().filter(|l| **l != Locale::EnUs) {
+                                paths.push(translated_root.join(loc.as_folder_str()));
+                            }
+                        }
+                        owned = paths;
+                        &owned
+                    } else if let Some(translated_root) = content_translated_root() {
+                        owned = vec![content_root().to_path_buf(), translated_root.to_path_buf()];
+                        &owned
                     } else {
-                        &[content_root()]
+                        owned = vec![content_root().to_path_buf()];
+                        &owned
                     };
                     read_docs_parallel::<Page, Doc>(files, None)?
                 } else {
-                    read_and_cache_doc_pages()?
+                    read_and_cache_doc_pages_filtered(requested_locales.as_deref())?
                 };
                 info!(
                     "Took: {: >10.3?} for reading {} docs",
