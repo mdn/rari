@@ -29,7 +29,8 @@ use rari_doc::pages::page::Page;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
-use rari_doc::utils::{TEMPL_RECORDER_SENDER, locale_and_typ_from_path};
+use rari_doc::templ::templs::TEMPL_MAP;
+use rari_doc::utils::{TEMPL_RECORDER_SENDER, TemplStatEvent, locale_and_typ_from_path};
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
 use rari_tools::fix::fixer::fix_all;
@@ -382,33 +383,93 @@ fn main() -> Result<(), Error> {
                 );
             }
 
+            let full_build = arg_files.is_empty()
+                && (args.all || args.all_available || !args.no_basic || args.content);
+            let multi_locale = full_build && content_translated_root().is_some();
+
             let templ_stats = if args.templ_stats {
-                let (tx, rx) = channel::<String>();
+                let (tx, rx) = channel::<TemplStatEvent>();
                 TEMPL_RECORDER_SENDER
                     .set(tx.clone())
                     .expect("unable to create templ recorder");
                 let recorder_handler = spawn(move || {
-                    let mut stats = HashMap::new();
-                    while let Ok(t) = rx.recv() {
-                        if t == "∞" {
-                            break;
-                        }
-                        let t = t.to_lowercase();
-                        if let Some(n) = stats.get_mut(&t) {
-                            *n += 1usize;
-                        } else {
-                            stats.insert(t, 1usize);
+                    let mut stats: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
+                    while let Ok(event) = rx.recv() {
+                        match event {
+                            TemplStatEvent::Stop => break,
+                            TemplStatEvent::Record { name, locale } => {
+                                let name = name.to_lowercase();
+                                *stats.entry(name).or_default().entry(locale).or_insert(0) += 1;
+                            }
                         }
                     }
-                    let mut out = stats.into_iter().collect::<Vec<(String, usize)>>();
-                    out.sort_by(|(_, a), (_, b)| b.cmp(a));
+
+                    let mut out: Vec<(String, usize, HashMap<Locale, usize>)> = stats
+                        .into_iter()
+                        .map(|(name, per_locale)| {
+                            let total: usize = per_locale.values().sum();
+                            (name, total, per_locale)
+                        })
+                        .collect();
+                    out.sort_by(|(_, a, _), (_, b, _)| b.cmp(a));
+
                     info!("--- templ summary ---");
                     let mut tw = TabWriter::new(vec![]);
-                    for (i, (templ, count)) in out.iter().enumerate() {
+                    for (i, (templ, count, _)) in out.iter().enumerate() {
                         writeln!(&mut tw, "{:2}\t{templ}\t{count:4}", i + 1)
                             .expect("unable to write");
                     }
                     info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+
+                    if full_build {
+                        let seen: std::collections::HashSet<&str> =
+                            out.iter().map(|(n, _, _)| n.as_str()).collect();
+                        let mut unused: Vec<String> = TEMPL_MAP
+                            .iter()
+                            .map(|t| t.name.replace('-', "_").to_lowercase())
+                            .filter(|n| !seen.contains(n.as_str()))
+                            .collect();
+                        unused.sort();
+                        info!("--- templ unused ({}) ---", unused.len());
+                        let mut tw = TabWriter::new(vec![]);
+                        for (i, name) in unused.iter().enumerate() {
+                            writeln!(&mut tw, "{:2}\t{name}", i + 1).expect("unable to write");
+                        }
+                        info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                    }
+
+                    if multi_locale {
+                        let mut translated_only: Vec<(&String, &HashMap<Locale, usize>, usize)> =
+                            out.iter()
+                                .filter_map(|(name, total, per_locale)| {
+                                    if !per_locale.is_empty()
+                                        && !per_locale.contains_key(&Locale::EnUs)
+                                    {
+                                        Some((name, per_locale, *total))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                        translated_only.sort_by(|(_, _, a), (_, _, b)| b.cmp(a));
+                        info!("--- templ translated-only ({}) ---", translated_only.len());
+                        let mut tw = TabWriter::new(vec![]);
+                        for (i, (name, per_locale, total)) in translated_only.iter().enumerate() {
+                            let mut locales: Vec<String> = per_locale
+                                .keys()
+                                .map(|l| l.as_url_str().to_string())
+                                .collect();
+                            locales.sort();
+                            writeln!(
+                                &mut tw,
+                                "{:2}\t{name}\t{total:4}\t{}",
+                                i + 1,
+                                locales.join(", ")
+                            )
+                            .expect("unable to write");
+                        }
+                        info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                    }
                 });
                 Some((recorder_handler, tx))
             } else {
@@ -535,7 +596,7 @@ fn main() -> Result<(), Error> {
                 );
             }
             if let Some((recorder_handler, tx)) = templ_stats {
-                tx.send("∞".to_string())?;
+                tx.send(TemplStatEvent::Stop)?;
                 recorder_handler
                     .join()
                     .expect("unable to close templ recorder");
