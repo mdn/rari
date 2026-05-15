@@ -297,6 +297,20 @@ fn clear_dependencies_last_checked(base_path: &Path) {
     }
 }
 
+fn into_sorted_templ_stats(
+    stats: HashMap<String, HashMap<Locale, usize>>,
+) -> Vec<(String, usize, HashMap<Locale, usize>)> {
+    let mut out: Vec<_> = stats
+        .into_iter()
+        .map(|(name, per_locale)| {
+            let total: usize = per_locale.values().sum();
+            (name, total, per_locale)
+        })
+        .collect();
+    out.sort_by(|(_, a, _), (_, b, _)| b.cmp(a));
+    out
+}
+
 fn main() -> Result<(), Error> {
     if let Ok(env_file) = dotenvy::from_filename(
         env::var("DOT_FILE")
@@ -416,22 +430,8 @@ fn main() -> Result<(), Error> {
                         }
                     }
 
-                    fn into_sorted(
-                        stats: HashMap<String, HashMap<Locale, usize>>,
-                    ) -> Vec<(String, usize, HashMap<Locale, usize>)> {
-                        let mut out: Vec<_> = stats
-                            .into_iter()
-                            .map(|(name, per_locale)| {
-                                let total: usize = per_locale.values().sum();
-                                (name, total, per_locale)
-                            })
-                            .collect();
-                        out.sort_by(|(_, a, _), (_, b, _)| b.cmp(a));
-                        out
-                    }
-
-                    let known_sorted = into_sorted(known);
-                    let invalid_sorted = into_sorted(invalid);
+                    let known_sorted = into_sorted_templ_stats(known);
+                    let invalid_sorted = into_sorted_templ_stats(invalid);
 
                     info!("--- templ summary ({}) ---", known_sorted.len());
                     let mut tw = TabWriter::new(vec![]);
