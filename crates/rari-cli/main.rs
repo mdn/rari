@@ -405,6 +405,23 @@ fn main() -> Result<(), Error> {
                         "--locale requires content_translated_root to be configured for non en-US locales"
                     ));
                 }
+                let active = Locale::translated();
+                let invalid: Vec<&str> = locales
+                    .iter()
+                    .filter(|l| **l != Locale::EnUs && !active.contains(l))
+                    .map(|l| l.as_url_str())
+                    .collect();
+                if !invalid.is_empty() {
+                    return Err(anyhow!(
+                        "--locale: unsupported locale(s): {}. Supported: en-US, {}",
+                        invalid.join(", "),
+                        active
+                            .iter()
+                            .map(|l| l.as_url_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ));
+                }
             }
 
             let templ_stats = if args.templ_stats {
