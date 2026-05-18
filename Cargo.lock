@@ -45,12 +45,12 @@ dependencies = [
 
 [[package]]
 name = "ansi-to-html"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12e283a4fc285735ef99577e81a125f738429516161ac33977e466d0d8d40764"
+checksum = "1747e9bde0e06cdfa780fcba909df1fa220f82421ead1fd4a93427763d2cbda6"
 dependencies = [
+ "memchr",
  "regex",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2109,9 +2109,9 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "memchr"
-version = "2.7.5"
+version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
+checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
 name = "memoize"
