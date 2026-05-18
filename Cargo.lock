@@ -3043,7 +3043,7 @@ version = "2.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0e38781082c53bdde56e6081698c06831f69a27eac2593ed6b6cb2511424ad5"
 dependencies = [
- "quick-xml 0.39.2",
+ "quick-xml 0.39.4",
 ]
 
 [[package]]
