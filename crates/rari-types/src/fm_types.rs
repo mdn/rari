@@ -97,6 +97,7 @@ pub enum PageType {
     WebassemblyInstanceProperty,
     WebassemblyInstanceMethod,
     WebassemblyStaticMethod,
+    WebassemblyStaticProperty,
     WebassemblyInstruction,
     WebdriverCommand,
     WebdriverCapability,
