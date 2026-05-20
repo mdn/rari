@@ -161,6 +161,8 @@ struct BuildArgs {
     verbose: bool,
     #[arg(long)]
     sidebars: bool,
+    #[arg(long)]
+    flaws: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -183,7 +185,6 @@ fn is_html(s: &str) -> bool {
 }
 
 const IGNORED_KEYS: &[&str] = &[
-    "doc.flaws",
     "doc.modified",
     "doc.popularity",
     "doc.source.github_url",
@@ -245,6 +246,7 @@ fn full_diff(
     if lhs != rhs {
         if IGNORED_KEYS.iter().any(|i| key.starts_with(i))
             || key == "doc.sidebarHTML" && !args.sidebars
+            || key.starts_with("doc.flaws") && (key.ends_with(".id") || !args.flaws)
         {
             return;
         }

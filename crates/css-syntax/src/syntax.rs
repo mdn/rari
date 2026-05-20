@@ -932,6 +932,26 @@ mod test {
     }
 
     #[test]
+    fn test_render_if_function() -> Result<(), SyntaxError> {
+        // Regression test for https://github.com/mdn/rari/issues/668
+        // The if() syntax contains `;?` (a literal token followed by an optional
+        // multiplier), which previously failed with "Parse error: Unexpected input".
+        let result = render_formal_syntax(
+            SyntaxInput::Css(CssType::Function("if")),
+            Some("css.types.if"),
+            "en-US",
+            "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
+            &TOOLTIPS,
+            None,
+        )?;
+        assert!(result.contains("&lt;if()&gt;"));
+        assert!(result.contains("if-branch"));
+        // Question-mark multiplier on `;` must be rendered as a linked token.
+        assert!(result.contains("question_mark"));
+        Ok(())
+    }
+
+    #[test]
     fn test_render_cursor_property() -> Result<(), SyntaxError> {
         // Regression test for https://github.com/mdn/rari/issues/596
         // The cursor-image type syntax uses a stacked multiplier ({2}?) which
