@@ -195,6 +195,7 @@ mod tests {
             "Properties/background-color",
             "Properties/color",
             "Selectors/:hover",
+            "Selectors/:host_function",
             "Values/calc",
             "Values/color_value",
             "Values/fit-content_function",
@@ -292,6 +293,24 @@ mod tests {
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Selectors, ":hover"),
             Some("Selectors/:hover")
+        );
+    }
+
+    #[test]
+    fn selector_function_resolves_via_function_suffix_alias() {
+        // `:host()` is special-cased to slug `:host_function` and looked up
+        // as `Selectors/:host_function` — exact match.
+        let map = fixture();
+        assert_eq!(
+            resolve_from_map(&map, CssRefCategory::Selectors, ":host_function"),
+            Some("Selectors/:host_function")
+        );
+        // The suffix-less alias also resolves (to the same page), so
+        // `{{cssxref(":host")}}` lands on the function page when no bare
+        // `:host` selector page exists.
+        assert_eq!(
+            resolve_from_map(&map, CssRefCategory::Selectors, ":host"),
+            Some("Selectors/:host_function")
         );
     }
 
