@@ -314,6 +314,35 @@ fn finalize_requested_locales(input: &[Locale]) -> Vec<Locale> {
     set
 }
 
+/// Validate a `--locale` argument list: reject locales not in `Locale::translated()` and
+/// require `content_translated_root` for any non-en-US locale.
+fn validate_locale_arg(locales: &[Locale]) -> Result<(), Error> {
+    let needs_translated = locales.iter().any(|l| *l != Locale::EnUs);
+    if needs_translated && content_translated_root().is_none() {
+        return Err(anyhow!(
+            "--locale requires content_translated_root to be configured for non en-US locales"
+        ));
+    }
+    let active = Locale::translated();
+    let invalid: Vec<&str> = locales
+        .iter()
+        .filter(|l| **l != Locale::EnUs && !active.contains(l))
+        .map(|l| l.as_url_str())
+        .collect();
+    if !invalid.is_empty() {
+        return Err(anyhow!(
+            "--locale: unsupported locale(s): {}. Supported: en-US, {}",
+            invalid.join(", "),
+            active
+                .iter()
+                .map(|l| l.as_url_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), Error> {
     if let Ok(env_file) = dotenvy::from_filename(
         env::var("DOT_FILE")
@@ -404,29 +433,7 @@ fn main() -> Result<(), Error> {
                 args.locale.as_deref().map(finalize_requested_locales);
 
             if let Some(locales) = &requested_locales {
-                let needs_translated = locales.iter().any(|l| *l != Locale::EnUs);
-                if needs_translated && content_translated_root().is_none() {
-                    return Err(anyhow!(
-                        "--locale requires content_translated_root to be configured for non en-US locales"
-                    ));
-                }
-                let active = Locale::translated();
-                let invalid: Vec<&str> = locales
-                    .iter()
-                    .filter(|l| **l != Locale::EnUs && !active.contains(l))
-                    .map(|l| l.as_url_str())
-                    .collect();
-                if !invalid.is_empty() {
-                    return Err(anyhow!(
-                        "--locale: unsupported locale(s): {}. Supported: en-US, {}",
-                        invalid.join(", "),
-                        active
-                            .iter()
-                            .map(|l| l.as_url_str())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    ));
-                }
+                validate_locale_arg(locales)?;
             }
 
             let templ_stats = if args.templ_stats {
@@ -744,14 +751,15 @@ fn main() -> Result<(), Error> {
 
                 let mut all_pages = Vec::new();
 
+                if let Some(locale) = args.locale {
+                    validate_locale_arg(&[locale])?;
+                }
+
                 // Collect content pages
                 if fix_content {
                     let start = std::time::Instant::now();
-                    let only = args.locale.map(|l| [l]);
-                    let locale_filter = match only.as_ref() {
-                        Some(arr) => LocaleFilter::Only(arr.as_slice()),
-                        None => LocaleFilter::All,
-                    };
+                    let locale_filter =
+                        LocaleFilter::from(args.locale.as_ref().map(std::slice::from_ref));
                     let docs = read_and_cache_doc_pages(locale_filter)?;
                     info!(
                         "Took: {: >10.3?} for reading {} content pages",
