@@ -528,10 +528,16 @@ mod test {
     }
 
     #[test]
-    fn all_without_filter_returns_pairs() {
-        let pairs = SPA::all(LocaleFilter::All);
-        assert!(!pairs.is_empty());
-        assert!(pairs.iter().any(|(_, locale)| *locale == Locale::EnUs));
+    fn all_without_filter_includes_all_en_us_pairs() {
+        // All is always a superset of Only([EnUs]): every en-US SPA must appear
+        // in the unrestricted result regardless of translated-root configuration.
+        let all = SPA::all(LocaleFilter::All);
+        let en_us_only = SPA::all(LocaleFilter::Only(&[Locale::EnUs]));
+        assert!(!all.is_empty());
+        assert!(all.len() >= en_us_only.len());
+        for pair in &en_us_only {
+            assert!(all.contains(pair));
+        }
     }
 
     #[test]
@@ -539,6 +545,15 @@ mod test {
         let pairs = SPA::all(LocaleFilter::Only(&[Locale::EnUs]));
         assert!(!pairs.is_empty());
         assert!(pairs.iter().all(|(_, locale)| *locale == Locale::EnUs));
+    }
+
+    #[test]
+    fn all_with_fr_filter_yields_only_fr_locales() {
+        // Only fr locales must appear; en-US (or any other locale) must not.
+        // When no translated root is configured the result is empty, which
+        // satisfies the assertion trivially.
+        let pairs = SPA::all(LocaleFilter::Only(&[Locale::Fr]));
+        assert!(pairs.iter().all(|(_, locale)| *locale == Locale::Fr));
     }
 
     #[test]
