@@ -37,15 +37,18 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
     let canonical = sub_slug.to_string();
 
     // After the Web API reorg (https://github.com/orgs/mdn/discussions/796),
-    // pages live at `Web/API/<Group>_API/Reference/<Name>`. The grouping
-    // segments aren't part of how users reference these pages in templates,
-    // so index by the portion after `/Reference/` when present.
-    let indexable = sub_slug
-        .split_once("/Reference/")
-        .map(|(_, after)| after)
-        .unwrap_or(sub_slug);
+    // pages live at `Web/API/<Group>_API/Reference/<Name>`. Index by the
+    // post-`/Reference/` segment so authors can use the bare interface name
+    // (e.g. `SyncEvent`) without the grouping prefix.
+    let indexable = if let Some((_, after)) = sub_slug.split_once("/Reference/") {
+        // Reorg page: index only by the post-Reference leaf; the full path
+        // is the canonical target URL.
+        after
+    } else {
+        // Normal page: the sub-slug is both the key and the canonical slug.
+        sub_slug
+    };
 
-    // Full indexable key (e.g. `Window/structuredClone` or `SyncEvent`).
     insert_unique(map, indexable, canonical.clone());
 
     // Static methods/properties live at `<Interface>/<Name>_static` but are
