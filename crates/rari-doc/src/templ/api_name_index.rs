@@ -7,18 +7,20 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
+use indexmap::IndexSet;
+
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
 
 const WEB_API_PREFIX: &str = "Web/API/";
 
-static API_NAME_INDEX: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(build_index);
+static API_NAME_INDEX: LazyLock<HashMap<String, IndexSet<String>>> = LazyLock::new(build_index);
 
-fn build_index() -> HashMap<String, Vec<String>> {
+fn build_index() -> HashMap<String, IndexSet<String>> {
     let pages = get_sub_pages("/en-US/docs/Web/API", None, SubPagesSorter::Slug)
         .expect("failed to build domxref API name index");
 
-    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    let mut map: HashMap<String, IndexSet<String>> = HashMap::new();
     for page in pages {
         let Some(sub_slug) = page.slug().strip_prefix(WEB_API_PREFIX) else {
             continue;
@@ -30,7 +32,7 @@ fn build_index() -> HashMap<String, Vec<String>> {
 
 /// Add the index entries (full key, plus optional `_static` and `Window/*`
 /// leaf aliases) for a single `Web/API/<sub_slug>` page.
-fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
+fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str) {
     if sub_slug.is_empty() {
         return;
     }
@@ -49,7 +51,7 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
         sub_slug
     };
 
-    insert_unique(map, indexable, canonical.clone());
+    insert(map, indexable, canonical.clone());
 
     // Static methods/properties live at `<Interface>/<Name>_static` but are
     // commonly referenced without the suffix (e.g. `VideoDecoder.isConfigSupported()`).
@@ -60,7 +62,7 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
     // ends in `_static` outside that convention; if one is ever added it would
     // get a spurious suffix-stripped alias.
     if let Some(without_static) = indexable.strip_suffix("_static") {
-        insert_unique(map, without_static, canonical.clone());
+        insert(map, without_static, canonical.clone());
     }
 
     // Leaf-only key for `Window/*` members (e.g. `fetch` → `Window/fetch`).
@@ -68,15 +70,12 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
     if let Some(leaf) = indexable.strip_prefix("Window/")
         && !leaf.contains('/')
     {
-        insert_unique(map, leaf, canonical);
+        insert(map, leaf, canonical);
     }
 }
 
-fn insert_unique(map: &mut HashMap<String, Vec<String>>, key: &str, value: String) {
-    let entry = map.entry(key.to_lowercase()).or_default();
-    if !entry.iter().any(|v| v == &value) {
-        entry.push(value);
-    }
+fn insert(map: &mut HashMap<String, IndexSet<String>>, key: &str, value: String) {
+    map.entry(key.to_lowercase()).or_default().insert(value);
 }
 
 /// Look up an API name in the index. Input must already be normalized
@@ -98,7 +97,7 @@ fn segments(value: &str) -> usize {
 }
 
 fn resolve_from_map<'a>(
-    map: &'a HashMap<String, Vec<String>>,
+    map: &'a HashMap<String, IndexSet<String>>,
     normalized: &str,
 ) -> Option<&'a str> {
     let key = normalized.to_lowercase();
@@ -124,8 +123,8 @@ mod tests {
 
     /// Build an index from a representative set of Web/API sub-slugs using
     /// the real `index_one` per-slug logic.
-    fn fixture() -> HashMap<String, Vec<String>> {
-        let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    fn fixture() -> HashMap<String, IndexSet<String>> {
+        let mut map: HashMap<String, IndexSet<String>> = HashMap::new();
         for sub_slug in [
             "BackgroundFetchManager/fetch",
             "Background_Synchronization_API/Reference/SyncEvent",
