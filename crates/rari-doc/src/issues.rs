@@ -647,4 +647,61 @@ mod tests {
         assert_eq!(source.label, "Unknown macro");
         assert_eq!(source.name, None);
     }
+
+    /// Regression test: nested templ spans must not corrupt position fields.
+    ///
+    /// When `cssxref` is rendered inside `cssinfo` via `render_and_decode_ref`,
+    /// the inner call uses `offset=0`, so macros on the first row get `line=0`.
+    /// The old per-field merge would take `col=23` from the inner synthetic span
+    /// while `end_col=11` came from the outer markdown-positioned span, producing
+    /// an inverted range. The fix takes all four position fields atomically from
+    /// the first scope frame with `line != 0`.
+    #[test]
+    fn test_position_fields_are_taken_atomically_from_first_real_span() {
+        use tracing::{Level, span};
+        use tracing_subscriber::layer::SubscriberExt;
+
+        let layer = InMemoryLayer::default();
+        let subscriber = tracing_subscriber::registry().with(layer.clone());
+        let _guard = tracing::subscriber::set_default(subscriber);
+
+        // Outer span: real markdown position — col=0 (first column)
+        let outer = span!(
+            Level::ERROR,
+            "templ",
+            templ = "cssinfo",
+            line = 5i64,
+            col = 0i64,
+            end_line = 5i64,
+            end_col = 11i64
+        );
+        let _o = outer.enter();
+
+        // Inner span: synthetic-string position (line=0 sentinel) — must be skipped
+        let inner = span!(
+            Level::ERROR,
+            "templ",
+            templ = "cssxref",
+            line = 0i64,
+            col = 23i64,
+            end_line = 0i64,
+            end_col = 35i64
+        );
+        let _i = inner.enter();
+
+        tracing::warn!(file = "test.md");
+
+        let events = layer.get_events();
+        let issues = events.get("test.md").expect("expected issues for test.md");
+        assert_eq!(issues.len(), 1);
+        let issue = &issues[0];
+        assert_eq!(issue.line, 5, "line must come from outer span");
+        // col=0 (outer, first column) must win over col=23 from the inner synthetic span
+        assert_eq!(
+            issue.col, 0,
+            "col must come from outer span, not inner col=23"
+        );
+        assert_eq!(issue.end_line, 5, "end_line must come from outer span");
+        assert_eq!(issue.end_col, 11, "end_col must come from outer span");
+    }
 }
