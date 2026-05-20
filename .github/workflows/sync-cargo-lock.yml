@@ -2,6 +2,11 @@ name: Sync Cargo.lock
 
 on:
   workflow_dispatch:
+
+  push:
+    branches:
+      - ci-sync-cargo-lock
+
   schedule:
     - cron: "30 4 * * 1-5"
 
