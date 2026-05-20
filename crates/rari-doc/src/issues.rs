@@ -171,13 +171,9 @@ where
             if entries.req != 0 {
                 issue.req = entries.req;
             }
-            // Position fields form an atomic group: a nested `templ` span (e.g. cssxref
-            // rendered inside cssinfo) carries positions inside a synthetic intermediate
-            // string, not the markdown source — mixing its `col` with the outer span's
-            // `end_col` produces nonsense (col=23, end_col=11). Take positions from the
-            // first scope frame that has a real `line` set, and don't let later frames
-            // partially overwrite. `scope()` iterates innermost-first, so this means
-            // innermost-with-real-positions wins.
+            // Position fields form an atomic group: mixing `col`/`end_col` from different
+            // scope frames produces nonsense. Take all four from the first frame with a
+            // real `line`; inner synthetic-string spans carry `line=0` and are skipped.
             if issue.line == 0 && entries.line != 0 {
                 issue.line = entries.line;
                 issue.col = entries.col;
