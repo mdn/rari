@@ -315,7 +315,6 @@ pub fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'stati
                 Cow::Borrowed("Intl.Segmenter"),
             ],
             TYPED_ARRAY,
-            &[Cow::Borrowed("Proxy"), Cow::Borrowed("Proxy/Proxy")],
         ]
     });
     for g in GROUP_DATA.iter() {
