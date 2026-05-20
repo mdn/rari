@@ -179,6 +179,12 @@ mod tests {
             resolve_from_map(&map, "DocumentPictureInPicture/window"),
             Some("DocumentPictureInPicture/window")
         );
+        // `WorkerGlobalScope/structuredClone` is not a Window member, so it
+        // has no leaf-only shortcut and must be referenced by full sub-path.
+        assert_eq!(
+            resolve_from_map(&map, "WorkerGlobalScope/structuredClone"),
+            Some("WorkerGlobalScope/structuredClone")
+        );
     }
 
     #[test]
