@@ -5,7 +5,7 @@
 //! sub-path under `Web/CSS/Reference/`, replacing per-call
 //! `RariApi::get_page_nowarn` lookups during URL construction.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
@@ -33,6 +33,19 @@ impl CssRefCategory {
             Self::AtRules => "at-rules",
         }
     }
+
+    /// Match a `Reference/<Category>/` path segment (e.g. `Properties`,
+    /// `At-rules`) — case-insensitive — to its enum variant. Returns `None`
+    /// for any segment that isn't one of the four known buckets.
+    fn from_segment(segment: &str) -> Option<Self> {
+        match segment.to_ascii_lowercase().as_str() {
+            "properties" => Some(Self::Properties),
+            "values" => Some(Self::Values),
+            "selectors" => Some(Self::Selectors),
+            "at-rules" => Some(Self::AtRules),
+            _ => None,
+        }
+    }
 }
 
 static CSS_FEATURE_INDEX: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(build_index);
@@ -45,10 +58,25 @@ fn build_index() -> HashMap<String, Vec<String>> {
         .expect("failed to build cssxref CSS feature index from /en-US/docs/Web/CSS/Reference");
 
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    let mut unknown_categories: HashSet<String> = HashSet::new();
     for page in pages {
         let Some(after_ref) = page.slug().strip_prefix(WEB_CSS_REFERENCE_PREFIX) else {
             continue;
         };
+        // The first segment must be one of the four known categories. Surface
+        // any unknown bucket once so a new `Reference/<Category>/` folder
+        // doesn't silently fail to resolve via `cssxref`.
+        if let Some((category, _)) = after_ref.split_once('/')
+            && CssRefCategory::from_segment(category).is_none()
+        {
+            if unknown_categories.insert(category.to_string()) {
+                tracing::warn!(
+                    "cssxref index: skipping unknown Reference/{category}/ bucket — \
+                     add a CssRefCategory variant if it should be indexed",
+                );
+            }
+            continue;
+        }
         index_one(&mut map, after_ref);
     }
     map
