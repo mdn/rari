@@ -130,7 +130,7 @@ pub fn cssxref_internal(
             .or_else(|| resolve_css_feature(CssRefCategory::Values, slug))
             .or_else(|| resolve_css_feature(CssRefCategory::Selectors, slug))
     }
-    .map_or_else(|| slug.to_string(), str::to_string);
+    .map_or_else(|| slug.to_string(), |s| format!("Reference/{s}"));
 
     let fragment = embedded_anchor
         .map(|a| format!("#{a}"))

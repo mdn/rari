@@ -1,9 +1,9 @@
-//! Lazy index of all en-US `Web/CSS/*` page slugs.
+//! Lazy index of all en-US `Web/CSS/Reference/*` page slugs.
 //!
 //! Used by the `cssxref` template to resolve CSS feature names (properties,
 //! types, functions, selectors, at-rules, descriptors) to their canonical
-//! sub-path under `Web/CSS/`, replacing per-call `RariApi::get_page_nowarn`
-//! lookups during URL construction.
+//! sub-path under `Web/CSS/Reference/`, replacing per-call
+//! `RariApi::get_page_nowarn` lookups during URL construction.
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
@@ -11,8 +11,7 @@ use std::sync::LazyLock;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
 
-const WEB_CSS_PREFIX: &str = "Web/CSS/";
-const REFERENCE_PREFIX: &str = "Reference/";
+const WEB_CSS_REFERENCE_PREFIX: &str = "Web/CSS/Reference/";
 
 /// One of the four `Web/CSS/Reference/<Category>/` buckets a `cssxref` lookup
 /// can target. The `as_str` form is the lowercase path segment used as the
@@ -42,25 +41,24 @@ fn build_index() -> HashMap<String, Vec<String>> {
     // Slugs are locale-invariant in MDN content, so it's enough to walk the
     // en-US tree — the resulting paths are reused unchanged across locales
     // when constructing URLs.
-    let pages = get_sub_pages("/en-US/docs/Web/CSS", None, SubPagesSorter::Slug)
-        .expect("failed to build cssxref CSS feature index from /en-US/docs/Web/CSS");
+    let pages = get_sub_pages("/en-US/docs/Web/CSS/Reference", None, SubPagesSorter::Slug)
+        .expect("failed to build cssxref CSS feature index from /en-US/docs/Web/CSS/Reference");
 
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
     for page in pages {
-        let Some(sub_slug) = page.slug().strip_prefix(WEB_CSS_PREFIX) else {
+        let Some(after_ref) = page.slug().strip_prefix(WEB_CSS_REFERENCE_PREFIX) else {
             continue;
         };
-        index_one(&mut map, sub_slug);
+        index_one(&mut map, after_ref);
     }
     map
 }
 
-/// Add the index entries for a single `Web/CSS/<sub_slug>` page.
+/// Add the index entries for a single `Web/CSS/Reference/<after_ref>` page.
 ///
 /// Each page is indexed under:
-/// - if under `Reference/`, the category-relative key (e.g. `Properties/color`,
-///   `Values/color_value`, `Selectors/:hover`, `At-rules/@media`,
-///   `At-rules/@media/color`)
+/// - the category-relative key (e.g. `Properties/color`, `Values/color_value`,
+///   `Selectors/:hover`, `At-rules/@media`, `At-rules/@media/color`)
 /// - for pages whose name ends in `_value` or `_function`, an alias without
 ///   the suffix (e.g. `Values/color_value` is also indexed under
 ///   `Values/color`, so `{{cssxref("<color>")}}` resolves correctly after
@@ -73,20 +71,14 @@ fn build_index() -> HashMap<String, Vec<String>> {
 ///   (`Values/radial-gradient`) so callers don't need to know the
 ///   grouping. The `_value` / `_function` suffix-stripping also applies to
 ///   the leaf alias.
-///
-/// The full sub-path (e.g. `Reference/Properties/color`) is intentionally
-/// not indexed: no content uses `{{cssxref("Reference/…")}}` in practice.
-fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
-    if sub_slug.is_empty() {
+fn index_one(map: &mut HashMap<String, Vec<String>>, after_ref: &str) {
+    if after_ref.is_empty() {
         return;
     }
 
-    let Some(after_ref) = sub_slug.strip_prefix(REFERENCE_PREFIX) else {
-        return;
-    };
     map.entry(after_ref.to_lowercase())
         .or_default()
-        .push(sub_slug.to_string());
+        .push(after_ref.to_string());
 
     let Some((category, name)) = after_ref.split_once('/') else {
         return;
@@ -96,15 +88,15 @@ fn index_one(map: &mut HashMap<String, Vec<String>>, sub_slug: &str) {
     // properties of the same name (Values pages) and also appear on
     // selector-function pages (e.g. `Selectors/:host_function`). Index a
     // suffix-less alias so callers don't need to know the convention.
-    add_suffix_aliases(map, category, name, sub_slug);
+    add_suffix_aliases(map, category, name, after_ref);
 
     // Nested pages like `Values/gradient/radial-gradient` are otherwise only
     // reachable by callers that already know the grouping. Index the leaf
     // segment too so `{{cssxref("radial-gradient")}}` resolves.
     if let Some((_, leaf)) = name.rsplit_once('/') {
         let alias = format!("{category}/{leaf}").to_lowercase();
-        map.entry(alias).or_default().push(sub_slug.to_string());
-        add_suffix_aliases(map, category, leaf, sub_slug);
+        map.entry(alias).or_default().push(after_ref.to_string());
+        add_suffix_aliases(map, category, leaf, after_ref);
     }
 }
 
@@ -112,12 +104,12 @@ fn add_suffix_aliases(
     map: &mut HashMap<String, Vec<String>>,
     category: &str,
     name: &str,
-    sub_slug: &str,
+    after_ref: &str,
 ) {
     for suffix in ["_value", "_function"] {
         if let Some(without) = name.strip_suffix(suffix) {
             let alias = format!("{category}/{without}").to_lowercase();
-            map.entry(alias).or_default().push(sub_slug.to_string());
+            map.entry(alias).or_default().push(after_ref.to_string());
         }
     }
 }
@@ -154,14 +146,9 @@ fn resolve_from_map<'a>(
     candidates
         .iter()
         .min_by_key(|v| {
-            // Every indexed canonical starts with `Reference/` (see `index_one`).
-            let after_ref = &v[REFERENCE_PREFIX.len()..];
             // ASCII-only comparison: CSS slugs never contain non-ASCII
             // characters, and the bucket key is already lowercase.
-            (
-                !after_ref.eq_ignore_ascii_case(&key),
-                !v.ends_with("_value"),
-            )
+            (!v.eq_ignore_ascii_case(&key), !v.ends_with("_value"))
         })
         .map(String::as_str)
 }
@@ -170,24 +157,24 @@ fn resolve_from_map<'a>(
 mod tests {
     use super::*;
 
-    /// Build an index from a representative set of Web/CSS sub-slugs using
-    /// the real `index_one` per-slug logic.
+    /// Build an index from a representative set of Web/CSS/Reference sub-slugs
+    /// using the real `index_one` per-slug logic.
     fn fixture() -> HashMap<String, Vec<String>> {
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
-        for sub_slug in [
-            "Reference/At-rules/@media",
-            "Reference/At-rules/@media/color",
-            "Reference/Properties/background-color",
-            "Reference/Properties/color",
-            "Reference/Selectors/:hover",
-            "Reference/Values/calc",
-            "Reference/Values/color_value",
-            "Reference/Values/fit-content_function",
-            "Reference/Values/gradient/radial-gradient",
-            "Reference/Values/url_function",
-            "Reference/Values/url_value",
+        for after_ref in [
+            "At-rules/@media",
+            "At-rules/@media/color",
+            "Properties/background-color",
+            "Properties/color",
+            "Selectors/:hover",
+            "Values/calc",
+            "Values/color_value",
+            "Values/fit-content_function",
+            "Values/gradient/radial-gradient",
+            "Values/url_function",
+            "Values/url_value",
         ] {
-            index_one(&mut map, sub_slug);
+            index_one(&mut map, after_ref);
         }
         map
     }
@@ -197,11 +184,11 @@ mod tests {
         let map = fixture();
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Properties, "color"),
-            Some("Reference/Properties/color")
+            Some("Properties/color")
         );
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Properties, "background-color"),
-            Some("Reference/Properties/background-color")
+            Some("Properties/background-color")
         );
     }
 
@@ -211,7 +198,7 @@ mod tests {
         // `<color>` is normalized to slug `color` and looked up as `Values/color`.
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "color"),
-            Some("Reference/Values/color_value")
+            Some("Values/color_value")
         );
     }
 
@@ -221,7 +208,7 @@ mod tests {
         // `calc()` is normalized to `calc` and looked up as `Values/calc`.
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "calc"),
-            Some("Reference/Values/calc")
+            Some("Values/calc")
         );
     }
 
@@ -232,12 +219,12 @@ mod tests {
         // and looked up as `Values/fit-content_function` — exact match.
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "fit-content_function"),
-            Some("Reference/Values/fit-content_function")
+            Some("Values/fit-content_function")
         );
         // But the suffix-less alias also resolves (to the same page).
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "fit-content"),
-            Some("Reference/Values/fit-content_function")
+            Some("Values/fit-content_function")
         );
     }
 
@@ -250,11 +237,11 @@ mod tests {
         let map = fixture();
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "url_value"),
-            Some("Reference/Values/url_value")
+            Some("Values/url_value")
         );
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "url_function"),
-            Some("Reference/Values/url_function")
+            Some("Values/url_function")
         );
     }
 
@@ -267,7 +254,7 @@ mod tests {
         let map = fixture();
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "url"),
-            Some("Reference/Values/url_value")
+            Some("Values/url_value")
         );
     }
 
@@ -276,7 +263,7 @@ mod tests {
         let map = fixture();
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Selectors, ":hover"),
-            Some("Reference/Selectors/:hover")
+            Some("Selectors/:hover")
         );
     }
 
@@ -285,11 +272,11 @@ mod tests {
         let map = fixture();
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::AtRules, "@media"),
-            Some("Reference/At-rules/@media")
+            Some("At-rules/@media")
         );
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::AtRules, "@media/color"),
-            Some("Reference/At-rules/@media/color")
+            Some("At-rules/@media/color")
         );
     }
 
@@ -298,7 +285,7 @@ mod tests {
         let map = fixture();
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Properties, "COLOR"),
-            Some("Reference/Properties/color")
+            Some("Properties/color")
         );
     }
 
@@ -312,11 +299,11 @@ mod tests {
         let map = fixture();
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Properties, "color"),
-            Some("Reference/Properties/color")
+            Some("Properties/color")
         );
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "color"),
-            Some("Reference/Values/color_value")
+            Some("Values/color_value")
         );
     }
 
@@ -328,11 +315,11 @@ mod tests {
         let map = fixture();
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "gradient/radial-gradient"),
-            Some("Reference/Values/gradient/radial-gradient")
+            Some("Values/gradient/radial-gradient")
         );
         assert_eq!(
             resolve_from_map(&map, CssRefCategory::Values, "radial-gradient"),
-            Some("Reference/Values/gradient/radial-gradient")
+            Some("Values/gradient/radial-gradient")
         );
     }
 
