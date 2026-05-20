@@ -315,7 +315,7 @@ pub fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'stati
                 Cow::Borrowed("Intl.Segmenter"),
             ],
             TYPED_ARRAY,
-            &[Cow::Borrowed("Proxy"), Cow::Borrowed("Proxy/handler")],
+            &[Cow::Borrowed("Proxy"), Cow::Borrowed("Proxy/Proxy")],
         ]
     });
     for g in GROUP_DATA.iter() {
@@ -372,7 +372,7 @@ fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
         return "Intl/Segmenter/segment/Segments".into();
     }
     if sub_path.starts_with("Proxy/Proxy") {
-        return "Proxy/handler".into();
+        return "Proxy/Proxy".into();
     }
     for namespace in &["Intl/", "Temporal/"] {
         if let Some(sub_sub_path) = sub_path.strip_prefix(namespace) {
