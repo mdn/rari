@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.2.22"
+version = "0.2.23"
 edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
@@ -87,7 +87,7 @@ reqwest = { version = "0.12", default-features = false, features = [
 indoc = "2"
 base64 = "0.22"
 sha2 = "0.11"
-base16ct = { version = "0.2", features = ["alloc"] }
+base16ct = { version = "1.0", features = ["alloc"] }
 dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"
 schemars = { version = "1", features = ["chrono04", "url2"] }
