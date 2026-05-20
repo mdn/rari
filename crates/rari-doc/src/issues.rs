@@ -56,7 +56,7 @@ pub struct IssueEntries {
     req: u64,
     ic: i64,
     col: i64,
-    /// 1-based line number; `0` means no real markdown position (e.g. synthetic
+    /// Line number; `0` means no real markdown position (e.g. synthetic
     /// intermediate strings from nested `render_and_decode_ref` calls). Treated
     /// as unset in `populate_issue_from_scope` — position fields are atomic.
     line: i64,
