@@ -38,9 +38,34 @@ const STATEMENTS_PREFIX: &str = "Statements/";
 /// class, the `Functions/set` getter syntax, etc.
 const NAMESPACE_PREFIXES: &[&str] = &["Global_Objects/Intl/", "Global_Objects/Temporal/"];
 
-static JS_REF_INDEX: LazyLock<HashMap<String, IndexSet<String>>> = LazyLock::new(build_index);
+/// Two parallel maps backing [`resolve_js_ref`]:
+///
+/// - `primary` is keyed by canonical (case-preserved) sub-paths.
+/// - `lowercase` is keyed by case-folded keys, with values unioned across
+///   every case-variant in `primary`. Built once so the case-insensitive
+///   fallback in [`resolve_from_index`] stays O(1).
+struct JsRefIndex {
+    primary: HashMap<String, IndexSet<String>>,
+    lowercase: HashMap<String, IndexSet<String>>,
+}
 
-fn build_index() -> HashMap<String, IndexSet<String>> {
+impl JsRefIndex {
+    /// Derive the lowercase fallback map from an already-built primary map.
+    fn from_primary(primary: HashMap<String, IndexSet<String>>) -> Self {
+        let mut lowercase: HashMap<String, IndexSet<String>> = HashMap::new();
+        for (k, v) in &primary {
+            let bucket = lowercase.entry(k.to_lowercase()).or_default();
+            for s in v {
+                bucket.insert(s.clone());
+            }
+        }
+        Self { primary, lowercase }
+    }
+}
+
+static JS_REF_INDEX: LazyLock<JsRefIndex> = LazyLock::new(build_index);
+
+fn build_index() -> JsRefIndex {
     let pages = get_sub_pages(
         "/en-US/docs/Web/JavaScript/Reference",
         None,
@@ -48,14 +73,14 @@ fn build_index() -> HashMap<String, IndexSet<String>> {
     )
     .expect("failed to build jsxref reference index");
 
-    let mut map: HashMap<String, IndexSet<String>> = HashMap::new();
+    let mut primary: HashMap<String, IndexSet<String>> = HashMap::new();
     for page in &pages {
         let Some(sub_slug) = page.slug().strip_prefix(JS_REF_PREFIX) else {
             continue;
         };
-        index_one(&mut map, sub_slug);
+        index_one(&mut primary, sub_slug);
     }
-    map
+    JsRefIndex::from_primary(primary)
 }
 
 /// Add the index entries (full sub-path, `Global_Objects/*` strip,
@@ -82,7 +107,7 @@ fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str) {
     // keywords (`function`, `class`, `import`, `async_function`) exist as
     // both an operator (expression) and a statement (declaration); those
     // buckets end up with two candidates and `resolve_js_ref` refuses to
-    // pick one — see [`resolve_from_map`].
+    // pick one — see [`resolve_from_index`].
     if let Some(rest) = sub_slug.strip_prefix(OPERATORS_PREFIX)
         && !rest.contains('/')
     {
@@ -130,47 +155,27 @@ fn insert(map: &mut HashMap<String, IndexSet<String>>, key: &str, value: String)
 /// The returned `&'static str` borrows from `JS_REF_INDEX`, which is a
 /// `LazyLock` that lives for the rest of the process.
 pub fn resolve_js_ref(normalized: &str) -> Option<&'static str> {
-    resolve_from_map(&JS_REF_INDEX, normalized)
+    resolve_from_index(&JS_REF_INDEX, normalized)
 }
 
-fn resolve_from_map<'a>(
-    map: &'a HashMap<String, IndexSet<String>>,
-    normalized: &str,
-) -> Option<&'a str> {
-    if let Some(candidates) = map.get(normalized) {
+fn resolve_from_index<'a>(idx: &'a JsRefIndex, normalized: &str) -> Option<&'a str> {
+    if let Some(candidates) = idx.primary.get(normalized) {
         if candidates.len() > 1 {
             warn_ambiguous(normalized, candidates);
             return None;
         }
         return candidates.iter().next().map(String::as_str);
     }
-    case_insensitive_fallback(map, normalized)
-}
-
-/// Scan the index for entries whose key matches `normalized` case-folded.
-/// Used only when the case-sensitive lookup misses; surfaces wrong-case
-/// references as `templ-ill-cased-arg` flaws while still resolving them.
-fn case_insensitive_fallback<'a>(
-    map: &'a HashMap<String, IndexSet<String>>,
-    normalized: &str,
-) -> Option<&'a str> {
-    let lower = normalized.to_lowercase();
-    let mut union: IndexSet<&'a String> = IndexSet::new();
-    for (k, v) in map {
-        if k.to_lowercase() == lower {
-            union.extend(v.iter());
-        }
-    }
-    match union.len() {
+    let candidates = idx.lowercase.get(&normalized.to_lowercase())?;
+    match candidates.len() {
         0 => None,
         1 => {
-            let canonical = union.into_iter().next().unwrap();
+            let canonical = candidates.iter().next().unwrap();
             warn_ill_cased(normalized, canonical);
             Some(canonical.as_str())
         }
         _ => {
-            let owned: IndexSet<String> = union.into_iter().cloned().collect();
-            warn_ambiguous(normalized, &owned);
+            warn_ambiguous(normalized, candidates);
             None
         }
     }
@@ -208,7 +213,7 @@ mod tests {
 
     /// Build an index from a representative set of `Web/JavaScript/Reference/`
     /// sub-slugs using the real `index_one` per-slug logic.
-    fn fixture() -> HashMap<String, IndexSet<String>> {
+    fn fixture() -> JsRefIndex {
         let entries = [
             // Top-level reference categories
             "Statements/for...of",
@@ -241,244 +246,245 @@ mod tests {
             "Global_Objects/Reflect/set",
         ];
 
-        let mut map: HashMap<String, IndexSet<String>> = HashMap::new();
+        let mut primary: HashMap<String, IndexSet<String>> = HashMap::new();
         for sub_slug in entries {
-            index_one(&mut map, sub_slug);
+            index_one(&mut primary, sub_slug);
         }
-        map
+        JsRefIndex::from_primary(primary)
     }
 
     #[test]
     fn full_path_resolves() {
-        let map = fixture();
+        let idx = fixture();
         assert_eq!(
-            resolve_from_map(&map, "Statements/for...of"),
+            resolve_from_index(&idx, "Statements/for...of"),
             Some("Statements/for...of")
         );
         assert_eq!(
-            resolve_from_map(&map, "Operators/typeof"),
+            resolve_from_index(&idx, "Operators/typeof"),
             Some("Operators/typeof")
         );
     }
 
     #[test]
     fn global_object_resolves_by_bare_name() {
-        let map = fixture();
+        let idx = fixture();
         assert_eq!(
-            resolve_from_map(&map, "Array"),
+            resolve_from_index(&idx, "Array"),
             Some("Global_Objects/Array")
         );
         assert_eq!(
-            resolve_from_map(&map, "undefined"),
+            resolve_from_index(&idx, "undefined"),
             Some("Global_Objects/undefined")
         );
     }
 
     #[test]
     fn global_object_member_resolves_by_dotted_path() {
-        let map = fixture();
+        let idx = fixture();
         // Caller normalizes `Array.from` → `Array/from`.
         assert_eq!(
-            resolve_from_map(&map, "Array/from"),
+            resolve_from_index(&idx, "Array/from"),
             Some("Global_Objects/Array/from")
         );
         // Caller normalizes `Array.prototype.map` → `Array/map`.
         assert_eq!(
-            resolve_from_map(&map, "Array/map"),
+            resolve_from_index(&idx, "Array/map"),
             Some("Global_Objects/Array/map")
         );
     }
 
     #[test]
     fn case_sensitive_match_wins_when_available() {
-        let map = fixture();
+        let idx = fixture();
         // Exact-case input resolves directly without triggering the fallback.
         assert_eq!(
-            resolve_from_map(&map, "Array"),
+            resolve_from_index(&idx, "Array"),
             Some("Global_Objects/Array")
         );
     }
 
     #[test]
     fn case_insensitive_fallback_resolves_wrong_case() {
-        let map = fixture();
+        let idx = fixture();
         // Wrong case still resolves via the case-insensitive fallback (the
         // resolver also emits a `templ-ill-cased-arg` flaw — not asserted
         // here, but exercised in the build).
         assert_eq!(
-            resolve_from_map(&map, "array"),
+            resolve_from_index(&idx, "array"),
             Some("Global_Objects/Array")
         );
         assert_eq!(
-            resolve_from_map(&map, "ARRAY/FROM"),
+            resolve_from_index(&idx, "ARRAY/FROM"),
             Some("Global_Objects/Array/from")
         );
     }
 
     #[test]
     fn pascal_case_class_does_not_collide_with_lowercase_keyword_or_method() {
-        let map = fixture();
+        let idx = fixture();
         // `Set` (PascalCase) → the global `Set` class. The case-sensitive
         // match wins without falling back, so `Reflect/set` and
         // `Functions/set` don't compete here.
-        assert_eq!(resolve_from_map(&map, "Set"), Some("Global_Objects/Set"));
+        assert_eq!(resolve_from_index(&idx, "Set"), Some("Global_Objects/Set"));
         assert_eq!(
-            resolve_from_map(&map, "Functions/set"),
+            resolve_from_index(&idx, "Functions/set"),
             Some("Functions/set")
         );
 
         // `Function` (PascalCase) → the global `Function` class without
         // ambiguity from `Operators/function` / `Statements/function`.
         assert_eq!(
-            resolve_from_map(&map, "Function"),
+            resolve_from_index(&idx, "Function"),
             Some("Global_Objects/Function")
         );
         // `function` (lowercase) is genuinely ambiguous — both Operators
         // and Statements have a case-sensitive bucket. The case-insensitive
         // fallback isn't triggered (case-sensitive matched), but the bucket
         // has two candidates → refused.
-        assert_eq!(resolve_from_map(&map, "function"), None);
+        assert_eq!(resolve_from_index(&idx, "function"), None);
     }
 
     #[test]
     fn namespace_class_resolves_without_namespace_prefix() {
-        let map = fixture();
+        let idx = fixture();
         // `Intl.Collator` (the class) resolves to the parent page, not the
         // constructor at `Intl/Collator/Collator`.
         assert_eq!(
-            resolve_from_map(&map, "Collator"),
+            resolve_from_index(&idx, "Collator"),
             Some("Global_Objects/Intl/Collator")
         );
         assert_eq!(
-            resolve_from_map(&map, "Instant"),
+            resolve_from_index(&idx, "Instant"),
             Some("Global_Objects/Temporal/Instant")
         );
     }
 
     #[test]
     fn namespace_member_resolves_via_class_relative_path() {
-        let map = fixture();
+        let idx = fixture();
         // Constructor: `Collator/Collator` → `Intl/Collator/Collator`.
         assert_eq!(
-            resolve_from_map(&map, "Collator/Collator"),
+            resolve_from_index(&idx, "Collator/Collator"),
             Some("Global_Objects/Intl/Collator/Collator")
         );
         // Instance method: `Collator/compare` → `Intl/Collator/compare`.
         assert_eq!(
-            resolve_from_map(&map, "Collator/compare"),
+            resolve_from_index(&idx, "Collator/compare"),
             Some("Global_Objects/Intl/Collator/compare")
         );
     }
 
     #[test]
     fn static_api_namespace_members_require_full_path() {
-        let map = fixture();
+        let idx = fixture();
         // `Reflect/set` is not aliased to bare `set` (Reflect isn't a
         // class-style namespace), but the full path still resolves.
         assert_eq!(
-            resolve_from_map(&map, "Reflect/set"),
+            resolve_from_index(&idx, "Reflect/set"),
             Some("Global_Objects/Reflect/set")
         );
     }
 
     #[test]
     fn namespace_member_also_resolves_via_full_namespace_path() {
-        let map = fixture();
+        let idx = fixture();
         assert_eq!(
-            resolve_from_map(&map, "Intl/Collator"),
+            resolve_from_index(&idx, "Intl/Collator"),
             Some("Global_Objects/Intl/Collator")
         );
         assert_eq!(
-            resolve_from_map(&map, "Intl/Collator/compare"),
+            resolve_from_index(&idx, "Intl/Collator/compare"),
             Some("Global_Objects/Intl/Collator/compare")
         );
     }
 
     #[test]
     fn full_global_objects_prefix_also_resolves() {
-        let map = fixture();
+        let idx = fixture();
         assert_eq!(
-            resolve_from_map(&map, "Global_Objects/Array"),
+            resolve_from_index(&idx, "Global_Objects/Array"),
             Some("Global_Objects/Array")
         );
         assert_eq!(
-            resolve_from_map(&map, "Global_Objects/Intl/Collator"),
+            resolve_from_index(&idx, "Global_Objects/Intl/Collator"),
             Some("Global_Objects/Intl/Collator")
         );
     }
 
     #[test]
     fn operator_leaf_resolves_bare() {
-        let map = fixture();
-        assert_eq!(resolve_from_map(&map, "null"), Some("Operators/null"));
-        assert_eq!(resolve_from_map(&map, "typeof"), Some("Operators/typeof"));
+        let idx = fixture();
+        assert_eq!(resolve_from_index(&idx, "null"), Some("Operators/null"));
+        assert_eq!(resolve_from_index(&idx, "typeof"), Some("Operators/typeof"));
         // The full sub-path still works for `.`-containing leaves.
         assert_eq!(
-            resolve_from_map(&map, "Operators/new.target"),
+            resolve_from_index(&idx, "Operators/new.target"),
             Some("Operators/new.target")
         );
     }
 
     #[test]
     fn statement_leaf_resolves_bare() {
-        let map = fixture();
-        assert_eq!(resolve_from_map(&map, "const"), Some("Statements/const"));
+        let idx = fixture();
+        assert_eq!(resolve_from_index(&idx, "const"), Some("Statements/const"));
         // `for...of` still resolves via the full `Statements/` sub-path
         // (its `.` makes a bare-leaf shortcut ambiguous with paths).
         assert_eq!(
-            resolve_from_map(&map, "Statements/for...of"),
+            resolve_from_index(&idx, "Statements/for...of"),
             Some("Statements/for...of")
         );
     }
 
     #[test]
     fn ambiguous_leaf_returns_none() {
-        let map = fixture();
+        let idx = fixture();
         // `function` (lowercase) exists as both `Operators/function`
         // (expression) and `Statements/function` (declaration). The
         // resolver refuses to pick one; the qualified forms still resolve.
-        assert_eq!(resolve_from_map(&map, "function"), None);
+        assert_eq!(resolve_from_index(&idx, "function"), None);
         assert_eq!(
-            resolve_from_map(&map, "Operators/function"),
+            resolve_from_index(&idx, "Operators/function"),
             Some("Operators/function")
         );
         assert_eq!(
-            resolve_from_map(&map, "Statements/function"),
+            resolve_from_index(&idx, "Statements/function"),
             Some("Statements/function")
         );
     }
 
     #[test]
     fn miss_returns_none() {
-        let map = fixture();
-        assert_eq!(resolve_from_map(&map, "DoesNotExist"), None);
+        let idx = fixture();
+        assert_eq!(resolve_from_index(&idx, "DoesNotExist"), None);
         // A member of a namespace class is NOT addressable by leaf alone —
         // it must be qualified with at least the class.
-        assert_eq!(resolve_from_map(&map, "compare"), None);
+        assert_eq!(resolve_from_index(&idx, "compare"), None);
     }
 
     #[test]
     fn case_insensitive_fallback_refuses_when_folds_collide() {
-        let map = fixture();
+        let idx = fixture();
         // `SET` (uppercase) doesn't match case-sensitive; the case-folded
         // fallback would match both `Set` (the global class) and *would*
         // match `set` if any entry had that key. In our fixture there's
         // no lowercase `set` key, so `SET` resolves cleanly to `Set`.
-        assert_eq!(resolve_from_map(&map, "SET"), Some("Global_Objects/Set"));
+        assert_eq!(resolve_from_index(&idx, "SET"), Some("Global_Objects/Set"));
 
         // Constructing a synthetic collision: insert both `Foo` and `foo`
         // mapping to different canonicals — the case-insensitive fallback
         // must refuse.
-        let mut map = HashMap::new();
-        index_one(&mut map, "Global_Objects/Foo");
+        let mut primary: HashMap<String, IndexSet<String>> = HashMap::new();
+        index_one(&mut primary, "Global_Objects/Foo");
         // Manually inject a sibling whose lowercase key collides with `Foo`.
         insert(
-            &mut map,
+            &mut primary,
             "foo",
             "Global_Objects/SomethingElse/foo".to_string(),
         );
+        let idx = JsRefIndex::from_primary(primary);
         // `FOO` matches neither case-sensitively; the fallback merges
         // `Foo` and `foo` buckets → 2 candidates → refusal.
-        assert_eq!(resolve_from_map(&map, "FOO"), None);
+        assert_eq!(resolve_from_index(&idx, "FOO"), None);
     }
 }
