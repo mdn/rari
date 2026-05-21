@@ -14,7 +14,7 @@
 //! PascalCase class references across content + translated-content.
 
 use std::collections::HashMap;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 
 use indexmap::IndexSet;
 
@@ -44,19 +44,23 @@ const NAMESPACE_PREFIXES: &[&str] = &["Global_Objects/Intl/", "Global_Objects/Te
 /// - `lowercase` is keyed by case-folded keys, with values unioned across
 ///   every case-variant in `primary`. Built once so the case-insensitive
 ///   fallback in [`resolve_from_index`] stays O(1).
+///
+/// Values are `Arc<str>` so the canonical sub-path heap buffer is shared
+/// between the two maps and across the multiple primary keys that point
+/// to the same page (e.g. `Statements/const` and the bare `const` leaf).
 struct JsRefIndex {
-    primary: HashMap<String, IndexSet<String>>,
-    lowercase: HashMap<String, IndexSet<String>>,
+    primary: HashMap<String, IndexSet<Arc<str>>>,
+    lowercase: HashMap<String, IndexSet<Arc<str>>>,
 }
 
 impl JsRefIndex {
     /// Derive the lowercase fallback map from an already-built primary map.
-    fn from_primary(primary: HashMap<String, IndexSet<String>>) -> Self {
-        let mut lowercase: HashMap<String, IndexSet<String>> = HashMap::new();
+    fn from_primary(primary: HashMap<String, IndexSet<Arc<str>>>) -> Self {
+        let mut lowercase: HashMap<String, IndexSet<Arc<str>>> = HashMap::new();
         for (k, v) in &primary {
             let bucket = lowercase.entry(k.to_lowercase()).or_default();
             for s in v {
-                bucket.insert(s.clone());
+                bucket.insert(Arc::clone(s));
             }
         }
         Self { primary, lowercase }
@@ -73,7 +77,7 @@ fn build_index() -> JsRefIndex {
     )
     .expect("failed to build jsxref reference index");
 
-    let mut primary: HashMap<String, IndexSet<String>> = HashMap::new();
+    let mut primary: HashMap<String, IndexSet<Arc<str>>> = HashMap::new();
     for page in &pages {
         let Some(sub_slug) = page.slug().strip_prefix(JS_REF_PREFIX) else {
             continue;
@@ -87,19 +91,19 @@ fn build_index() -> JsRefIndex {
 /// `Operators/*` and `Statements/*` leaf shortcuts, and namespace strip
 /// for class-style namespaces) for a single
 /// `Web/JavaScript/Reference/<sub_slug>` page.
-fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str) {
+fn index_one(map: &mut HashMap<String, IndexSet<Arc<str>>>, sub_slug: &str) {
     if sub_slug.is_empty() {
         return;
     }
-    let canonical = sub_slug.to_string();
+    let canonical: Arc<str> = Arc::from(sub_slug);
 
     // Full sub-path key (e.g. `Statements/for...of`, `Operators/typeof`).
-    insert(map, sub_slug, canonical.clone());
+    insert(map, sub_slug, Arc::clone(&canonical));
 
     // `Global_Objects/*` strip so authors can write the bare global-object
     // name or dotted member (e.g. `Array`, `Array/from`, `undefined`).
     if let Some(rest) = sub_slug.strip_prefix(GLOBAL_OBJECTS_PREFIX) {
-        insert(map, rest, canonical.clone());
+        insert(map, rest, Arc::clone(&canonical));
     }
 
     // `Operators/*` and `Statements/*` leaf shortcuts so authors can write
@@ -111,12 +115,12 @@ fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str) {
     if let Some(rest) = sub_slug.strip_prefix(OPERATORS_PREFIX)
         && !rest.contains('/')
     {
-        insert(map, rest, canonical.clone());
+        insert(map, rest, Arc::clone(&canonical));
     }
     if let Some(rest) = sub_slug.strip_prefix(STATEMENTS_PREFIX)
         && !rest.contains('/')
     {
-        insert(map, rest, canonical.clone());
+        insert(map, rest, Arc::clone(&canonical));
     }
 
     // Namespace strip: for pages under a class-style namespace (Intl,
@@ -132,7 +136,7 @@ fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str) {
     }
 }
 
-fn insert(map: &mut HashMap<String, IndexSet<String>>, key: &str, value: String) {
+fn insert(map: &mut HashMap<String, IndexSet<Arc<str>>>, key: &str, value: Arc<str>) {
     map.entry(key.to_string()).or_default().insert(value);
 }
 
@@ -164,7 +168,7 @@ fn resolve_from_index<'a>(idx: &'a JsRefIndex, normalized: &str) -> Option<&'a s
             warn_ambiguous(normalized, candidates);
             return None;
         }
-        return candidates.iter().next().map(String::as_str);
+        return candidates.iter().next().map(Arc::as_ref);
     }
     let candidates = idx.lowercase.get(&normalized.to_lowercase())?;
     match candidates.len() {
@@ -172,7 +176,7 @@ fn resolve_from_index<'a>(idx: &'a JsRefIndex, normalized: &str) -> Option<&'a s
         1 => {
             let canonical = candidates.iter().next().unwrap();
             warn_ill_cased(normalized, canonical);
-            Some(canonical.as_str())
+            Some(canonical.as_ref())
         }
         _ => {
             warn_ambiguous(normalized, candidates);
@@ -181,7 +185,7 @@ fn resolve_from_index<'a>(idx: &'a JsRefIndex, normalized: &str) -> Option<&'a s
     }
 }
 
-fn warn_ambiguous(normalized: &str, candidates: &IndexSet<String>) {
+fn warn_ambiguous(normalized: &str, candidates: &IndexSet<Arc<str>>) {
     let ic = get_issue_counter();
     let options = candidates
         .iter()
@@ -246,7 +250,7 @@ mod tests {
             "Global_Objects/Reflect/set",
         ];
 
-        let mut primary: HashMap<String, IndexSet<String>> = HashMap::new();
+        let mut primary: HashMap<String, IndexSet<Arc<str>>> = HashMap::new();
         for sub_slug in entries {
             index_one(&mut primary, sub_slug);
         }
@@ -474,13 +478,13 @@ mod tests {
         // Constructing a synthetic collision: insert both `Foo` and `foo`
         // mapping to different canonicals — the case-insensitive fallback
         // must refuse.
-        let mut primary: HashMap<String, IndexSet<String>> = HashMap::new();
+        let mut primary: HashMap<String, IndexSet<Arc<str>>> = HashMap::new();
         index_one(&mut primary, "Global_Objects/Foo");
         // Manually inject a sibling whose lowercase key collides with `Foo`.
         insert(
             &mut primary,
             "foo",
-            "Global_Objects/SomethingElse/foo".to_string(),
+            Arc::from("Global_Objects/SomethingElse/foo"),
         );
         let idx = JsRefIndex::from_primary(primary);
         // `FOO` matches neither case-sensitively; the fallback merges
