@@ -114,14 +114,18 @@ fn insert(map: &mut HashMap<String, IndexSet<String>>, key: &str, value: String)
 /// Look up a JS reference name in the index. Input must already be normalized
 /// (`()` stripped, `.prototype.` → `.`, then `.` → `/` if no `/` is present).
 ///
-/// Lookups are **case-sensitive**. When a bucket holds multiple candidates
-/// (e.g. `function` → `Operators/function` *and* `Statements/function`),
-/// `resolve_js_ref` returns `None` and emits a `templ-invalid-arg` tracing
-/// event listing the candidates so the author can add the qualifying
-/// category prefix. The caller falls back to a literal URL, which the link
-/// validator may additionally flag — that's intentional: the
-/// `templ-invalid-arg` flaw explains *why*, the resulting
-/// `templ-redirected-link` / `templ-broken-link` flaw points to *where*.
+/// Resolution proceeds in two passes:
+///
+/// 1. **Case-sensitive** match. When a bucket holds multiple candidates
+///    (e.g. `function` → `Operators/function` *and* `Statements/function`),
+///    the resolver returns `None` and emits a `templ-invalid-arg` tracing
+///    event listing the candidates.
+/// 2. **Case-insensitive fallback** on miss. If exactly one canonical
+///    sub-path matches case-insensitively (e.g. `Undefined` →
+///    `Global_Objects/undefined`), the resolver returns it *and* emits a
+///    `templ-ill-cased-arg` event so the author can fix the casing.
+///    Multiple case-folded matches re-trigger the `templ-invalid-arg`
+///    branch.
 ///
 /// The returned `&'static str` borrows from `JS_REF_INDEX`, which is a
 /// `LazyLock` that lives for the rest of the process.
@@ -133,12 +137,43 @@ fn resolve_from_map<'a>(
     map: &'a HashMap<String, IndexSet<String>>,
     normalized: &str,
 ) -> Option<&'a str> {
-    let candidates = map.get(normalized)?;
-    if candidates.len() > 1 {
-        warn_ambiguous(normalized, candidates);
-        return None;
+    if let Some(candidates) = map.get(normalized) {
+        if candidates.len() > 1 {
+            warn_ambiguous(normalized, candidates);
+            return None;
+        }
+        return candidates.iter().next().map(String::as_str);
     }
-    candidates.iter().next().map(String::as_str)
+    case_insensitive_fallback(map, normalized)
+}
+
+/// Scan the index for entries whose key matches `normalized` case-folded.
+/// Used only when the case-sensitive lookup misses; surfaces wrong-case
+/// references as `templ-ill-cased-arg` flaws while still resolving them.
+fn case_insensitive_fallback<'a>(
+    map: &'a HashMap<String, IndexSet<String>>,
+    normalized: &str,
+) -> Option<&'a str> {
+    let lower = normalized.to_lowercase();
+    let mut union: IndexSet<&'a String> = IndexSet::new();
+    for (k, v) in map {
+        if k.to_lowercase() == lower {
+            union.extend(v.iter());
+        }
+    }
+    match union.len() {
+        0 => None,
+        1 => {
+            let canonical = union.into_iter().next().unwrap();
+            warn_ill_cased(normalized, canonical);
+            Some(canonical.as_str())
+        }
+        _ => {
+            let owned: IndexSet<String> = union.into_iter().cloned().collect();
+            warn_ambiguous(normalized, &owned);
+            None
+        }
+    }
 }
 
 fn warn_ambiguous(normalized: &str, candidates: &IndexSet<String>) {
@@ -153,6 +188,17 @@ fn warn_ambiguous(normalized: &str, candidates: &IndexSet<String>) {
         ic = ic,
         arg = normalized,
         "ambiguous jsxref `{normalized}`: matches {options}; qualify with the full sub-path"
+    );
+}
+
+fn warn_ill_cased(normalized: &str, canonical: &str) {
+    let ic = get_issue_counter();
+    tracing::warn!(
+        source = "templ-ill-cased-arg",
+        ic = ic,
+        arg = normalized,
+        canonical = canonical,
+        "ill-cased jsxref `{normalized}`: canonical sub-path is `{canonical}`"
     );
 }
 
@@ -244,35 +290,53 @@ mod tests {
     }
 
     #[test]
-    fn lookups_are_case_sensitive() {
+    fn case_sensitive_match_wins_when_available() {
         let map = fixture();
-        // Wrong case → miss. Authors are expected to match the canonical
-        // sub-path casing.
-        assert_eq!(resolve_from_map(&map, "array"), None);
-        assert_eq!(resolve_from_map(&map, "ARRAY/FROM"), None);
+        // Exact-case input resolves directly without triggering the fallback.
+        assert_eq!(
+            resolve_from_map(&map, "Array"),
+            Some("Global_Objects/Array")
+        );
+    }
+
+    #[test]
+    fn case_insensitive_fallback_resolves_wrong_case() {
+        let map = fixture();
+        // Wrong case still resolves via the case-insensitive fallback (the
+        // resolver also emits a `templ-ill-cased-arg` flaw — not asserted
+        // here, but exercised in the build).
+        assert_eq!(
+            resolve_from_map(&map, "array"),
+            Some("Global_Objects/Array")
+        );
+        assert_eq!(
+            resolve_from_map(&map, "ARRAY/FROM"),
+            Some("Global_Objects/Array/from")
+        );
     }
 
     #[test]
     fn pascal_case_class_does_not_collide_with_lowercase_keyword_or_method() {
         let map = fixture();
-        // `Set` (PascalCase) → the global `Set` class. `set` (lowercase)
-        // resolves to nothing since `Reflect/set` is not aliased
-        // (Reflect isn't in `NAMESPACE_PREFIXES`) and `Functions/set` is
-        // only addressable by its full sub-path.
+        // `Set` (PascalCase) → the global `Set` class. The case-sensitive
+        // match wins without falling back, so `Reflect/set` and
+        // `Functions/set` don't compete here.
         assert_eq!(resolve_from_map(&map, "Set"), Some("Global_Objects/Set"));
-        assert_eq!(resolve_from_map(&map, "set"), None);
         assert_eq!(
             resolve_from_map(&map, "Functions/set"),
             Some("Functions/set")
         );
 
-        // `Function` (PascalCase) → the global `Function` class.
-        // `function` (lowercase) → ambiguous between the operator and the
-        // statement; refused.
+        // `Function` (PascalCase) → the global `Function` class without
+        // ambiguity from `Operators/function` / `Statements/function`.
         assert_eq!(
             resolve_from_map(&map, "Function"),
             Some("Global_Objects/Function")
         );
+        // `function` (lowercase) is genuinely ambiguous — both Operators
+        // and Statements have a case-sensitive bucket. The case-insensitive
+        // fallback isn't triggered (case-sensitive matched), but the bucket
+        // has two candidates → refused.
         assert_eq!(resolve_from_map(&map, "function"), None);
     }
 
@@ -391,5 +455,30 @@ mod tests {
         // A member of a namespace class is NOT addressable by leaf alone —
         // it must be qualified with at least the class.
         assert_eq!(resolve_from_map(&map, "compare"), None);
+    }
+
+    #[test]
+    fn case_insensitive_fallback_refuses_when_folds_collide() {
+        let map = fixture();
+        // `SET` (uppercase) doesn't match case-sensitive; the case-folded
+        // fallback would match both `Set` (the global class) and *would*
+        // match `set` if any entry had that key. In our fixture there's
+        // no lowercase `set` key, so `SET` resolves cleanly to `Set`.
+        assert_eq!(resolve_from_map(&map, "SET"), Some("Global_Objects/Set"));
+
+        // Constructing a synthetic collision: insert both `Foo` and `foo`
+        // mapping to different canonicals — the case-insensitive fallback
+        // must refuse.
+        let mut map = HashMap::new();
+        index_one(&mut map, "Global_Objects/Foo");
+        // Manually inject a sibling whose lowercase key collides with `Foo`.
+        insert(
+            &mut map,
+            "foo",
+            "Global_Objects/SomethingElse/foo".to_string(),
+        );
+        // `FOO` matches neither case-sensitively; the fallback merges
+        // `Foo` and `foo` buckets → 2 candidates → refusal.
+        assert_eq!(resolve_from_map(&map, "FOO"), None);
     }
 }
