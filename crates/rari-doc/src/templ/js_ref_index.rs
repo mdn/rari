@@ -17,6 +17,7 @@ use crate::pages::page::PageLike;
 
 const JS_REF_PREFIX: &str = "Web/JavaScript/Reference/";
 const GLOBAL_OBJECTS_PREFIX: &str = "Global_Objects/";
+const OPERATORS_PREFIX: &str = "Operators/";
 
 static JS_REF_INDEX: LazyLock<HashMap<String, IndexSet<String>>> = LazyLock::new(build_index);
 
@@ -69,6 +70,14 @@ fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str, ns_pre
     // `Global_Objects/*` strip so authors can write the bare global-object
     // name or dotted member (e.g. `Array`, `Array/from`, `undefined`).
     if let Some(rest) = sub_slug.strip_prefix(GLOBAL_OBJECTS_PREFIX) {
+        insert(map, rest, canonical.clone());
+    }
+
+    // `Operators/*` leaf shortcut so authors can write bare keywords (e.g.
+    // `null`, `typeof`, `instanceof`). Operator leaves are mostly unique.
+    if let Some(rest) = sub_slug.strip_prefix(OPERATORS_PREFIX)
+        && !rest.contains('/')
+    {
         insert(map, rest, canonical.clone());
     }
 
@@ -132,6 +141,8 @@ mod tests {
             ("Statements/for...of", PageType::JavascriptStatement),
             ("Statements/try...catch", PageType::JavascriptStatement),
             ("Operators/typeof", PageType::JavascriptOperator),
+            ("Operators/null", PageType::JavascriptLanguageFeature),
+            ("Operators/new.target", PageType::JavascriptLanguageFeature),
             // Global objects and members
             ("Global_Objects/Array", PageType::JavascriptClass),
             (
@@ -285,6 +296,19 @@ mod tests {
         assert_eq!(
             resolve_from_map(&map, "Global_Objects/Intl/Collator"),
             Some("Global_Objects/Intl/Collator")
+        );
+    }
+
+    #[test]
+    fn operator_leaf_resolves_bare() {
+        let map = fixture();
+        // Bare operator keywords resolve via the `Operators/*` leaf shortcut.
+        assert_eq!(resolve_from_map(&map, "null"), Some("Operators/null"));
+        assert_eq!(resolve_from_map(&map, "typeof"), Some("Operators/typeof"));
+        // The full sub-path still works for `.`-containing leaves.
+        assert_eq!(
+            resolve_from_map(&map, "Operators/new.target"),
+            Some("Operators/new.target")
         );
     }
 
