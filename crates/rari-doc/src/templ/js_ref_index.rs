@@ -13,11 +13,13 @@ use indexmap::IndexSet;
 use rari_types::fm_types::PageType;
 
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
+use crate::issues::get_issue_counter;
 use crate::pages::page::PageLike;
 
 const JS_REF_PREFIX: &str = "Web/JavaScript/Reference/";
 const GLOBAL_OBJECTS_PREFIX: &str = "Global_Objects/";
 const OPERATORS_PREFIX: &str = "Operators/";
+const STATEMENTS_PREFIX: &str = "Statements/";
 
 static JS_REF_INDEX: LazyLock<HashMap<String, IndexSet<String>>> = LazyLock::new(build_index);
 
@@ -55,9 +57,9 @@ fn build_index() -> HashMap<String, IndexSet<String>> {
     map
 }
 
-/// Add the index entries (full sub-path, `Global_Objects/*` strip, and
-/// namespace strip when applicable) for a single
-/// `Web/JavaScript/Reference/<sub_slug>` page.
+/// Add the index entries (full sub-path, `Global_Objects/*` strip,
+/// `Operators/*` and `Statements/*` leaf shortcuts, and namespace strip
+/// when applicable) for a single `Web/JavaScript/Reference/<sub_slug>` page.
 fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str, ns_prefixes: &[String]) {
     if sub_slug.is_empty() {
         return;
@@ -73,9 +75,18 @@ fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str, ns_pre
         insert(map, rest, canonical.clone());
     }
 
-    // `Operators/*` leaf shortcut so authors can write bare keywords (e.g.
-    // `null`, `typeof`, `instanceof`). Operator leaves are mostly unique.
+    // `Operators/*` and `Statements/*` leaf shortcuts so authors can write
+    // bare keywords (e.g. `null`, `typeof`, `const`, `return`). A handful of
+    // keywords (`function`, `class`, `import`, `async_function`) exist as
+    // both an operator (expression) and a statement (declaration); those
+    // buckets end up with two candidates and `resolve_js_ref` refuses to
+    // pick one — see [`resolve_from_map`].
     if let Some(rest) = sub_slug.strip_prefix(OPERATORS_PREFIX)
+        && !rest.contains('/')
+    {
+        insert(map, rest, canonical.clone());
+    }
+    if let Some(rest) = sub_slug.strip_prefix(STATEMENTS_PREFIX)
         && !rest.contains('/')
     {
         insert(map, rest, canonical.clone());
@@ -102,18 +113,19 @@ fn insert(map: &mut HashMap<String, IndexSet<String>>, key: &str, value: String)
 /// Look up a JS reference name in the index. Input must already be normalized
 /// (`()` stripped, `.prototype.` → `.`, then `.` → `/` if no `/` is present).
 ///
-/// Lookup is case-insensitive. When the bucket contains multiple candidates,
-/// the one with the fewest path segments wins, so a top-level page (e.g.
-/// `Global_Objects/Intl/Collator`) is preferred over a nested clash.
+/// Lookup is case-insensitive. When the bucket holds multiple candidates
+/// (e.g. `function` → `Operators/function` *and* `Statements/function`),
+/// `resolve_js_ref` returns `None` and emits a `templ-invalid-arg` tracing
+/// event listing the candidates so the author can add the qualifying
+/// category prefix. The caller falls back to a literal URL, which the link
+/// validator may additionally flag — that's intentional: the
+/// `templ-invalid-arg` flaw explains *why*, the resulting
+/// `templ-redirected-link` / `templ-broken-link` flaw points to *where*.
 ///
 /// The returned `&'static str` borrows from `JS_REF_INDEX`, which is a
 /// `LazyLock` that lives for the rest of the process.
 pub fn resolve_js_ref(normalized: &str) -> Option<&'static str> {
     resolve_from_map(&JS_REF_INDEX, normalized)
-}
-
-fn segments(value: &str) -> usize {
-    value.matches('/').count()
 }
 
 fn resolve_from_map<'a>(
@@ -122,10 +134,26 @@ fn resolve_from_map<'a>(
 ) -> Option<&'a str> {
     let key = normalized.to_lowercase();
     let candidates = map.get(&key)?;
-    candidates
+    if candidates.len() > 1 {
+        warn_ambiguous(normalized, candidates);
+        return None;
+    }
+    candidates.iter().next().map(String::as_str)
+}
+
+fn warn_ambiguous(normalized: &str, candidates: &IndexSet<String>) {
+    let ic = get_issue_counter();
+    let options = candidates
         .iter()
-        .min_by_key(|v| segments(v))
-        .map(String::as_str)
+        .map(|s| format!("`{s}`"))
+        .collect::<Vec<_>>()
+        .join(" or ");
+    tracing::warn!(
+        source = "templ-invalid-arg",
+        ic = ic,
+        arg = normalized,
+        "ambiguous jsxref `{normalized}`: matches {options}; qualify with the full sub-path"
+    );
 }
 
 #[cfg(test)]
@@ -140,9 +168,12 @@ mod tests {
             // Top-level reference categories
             ("Statements/for...of", PageType::JavascriptStatement),
             ("Statements/try...catch", PageType::JavascriptStatement),
+            ("Statements/const", PageType::JavascriptStatement),
+            ("Statements/function", PageType::JavascriptStatement),
             ("Operators/typeof", PageType::JavascriptOperator),
             ("Operators/null", PageType::JavascriptLanguageFeature),
             ("Operators/new.target", PageType::JavascriptLanguageFeature),
+            ("Operators/function", PageType::JavascriptOperator),
             // Global objects and members
             ("Global_Objects/Array", PageType::JavascriptClass),
             (
@@ -309,6 +340,35 @@ mod tests {
         assert_eq!(
             resolve_from_map(&map, "Operators/new.target"),
             Some("Operators/new.target")
+        );
+    }
+
+    #[test]
+    fn statement_leaf_resolves_bare() {
+        let map = fixture();
+        assert_eq!(resolve_from_map(&map, "const"), Some("Statements/const"));
+        // `for...of` still resolves via the full `Statements/` sub-path
+        // (its `.` makes a bare-leaf shortcut ambiguous with paths).
+        assert_eq!(
+            resolve_from_map(&map, "Statements/for...of"),
+            Some("Statements/for...of")
+        );
+    }
+
+    #[test]
+    fn ambiguous_leaf_returns_none() {
+        let map = fixture();
+        // `function` exists as both `Operators/function` (expression) and
+        // `Statements/function` (declaration). The resolver refuses to pick
+        // one; the qualified forms still resolve unambiguously.
+        assert_eq!(resolve_from_map(&map, "function"), None);
+        assert_eq!(
+            resolve_from_map(&map, "Operators/function"),
+            Some("Operators/function")
+        );
+        assert_eq!(
+            resolve_from_map(&map, "Statements/function"),
+            Some("Statements/function")
         );
     }
 
