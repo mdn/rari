@@ -2,15 +2,21 @@
 //!
 //! Used by the `jsxref` template to resolve JavaScript references that may be
 //! written as a full sub-path (e.g. `Statements/for...of`), a dotted member
-//! expression (e.g. `Array.prototype.map`), or — for members of namespace
-//! classes like `Intl` and `Temporal` — without the namespace prefix
-//! (e.g. `Collator` for `Intl.Collator`).
+//! expression (e.g. `Array.prototype.map`), or — for members of the
+//! class-style namespaces `Intl` and `Temporal` — without the namespace
+//! prefix (e.g. `Collator` for `Intl.Collator`).
+//!
+//! Lookups are **case-sensitive**, mirroring JavaScript's naming convention
+//! where casing carries meaning: `Set` is the global class,
+//! `set` is the `Reflect.set` static method or the `set` getter syntax;
+//! `Function` is the global class, `function` is the keyword. The previous
+//! case-insensitive scheme produced spurious "ambiguous" reports for ~826
+//! PascalCase class references across content + translated-content.
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use indexmap::IndexSet;
-use rari_types::fm_types::PageType;
 
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::issues::get_issue_counter;
@@ -20,6 +26,17 @@ const JS_REF_PREFIX: &str = "Web/JavaScript/Reference/";
 const GLOBAL_OBJECTS_PREFIX: &str = "Global_Objects/";
 const OPERATORS_PREFIX: &str = "Operators/";
 const STATEMENTS_PREFIX: &str = "Statements/";
+
+/// Namespaces whose direct children are *classes* (`Intl.Collator`,
+/// `Temporal.Instant`, etc.) and should be addressable without the
+/// namespace prefix.
+///
+/// Excludes static-API namespaces like `Reflect`, `Atomics`, `Math`, and
+/// `JSON` whose children are *methods* (e.g. `Reflect.set`, `Math.sin`).
+/// Stripping the namespace there would alias `set`/`sin`/etc. to a JS
+/// reference page, creating spurious collisions with the global `Set`
+/// class, the `Functions/set` getter syntax, etc.
+const NAMESPACE_PREFIXES: &[&str] = &["Global_Objects/Intl/", "Global_Objects/Temporal/"];
 
 static JS_REF_INDEX: LazyLock<HashMap<String, IndexSet<String>>> = LazyLock::new(build_index);
 
@@ -31,36 +48,21 @@ fn build_index() -> HashMap<String, IndexSet<String>> {
     )
     .expect("failed to build jsxref reference index");
 
-    // Identify top-level namespace pages (e.g. `Global_Objects/Intl`,
-    // `Global_Objects/Temporal`). Their direct children are full-fledged
-    // classes that authors should be able to reference without the
-    // namespace prefix.
-    let ns_prefixes: Vec<String> = pages
-        .iter()
-        .filter(|p| p.page_type() == PageType::JavascriptNamespace)
-        .filter_map(|p| {
-            p.slug()
-                .strip_prefix(JS_REF_PREFIX)
-                .and_then(|s| s.strip_prefix(GLOBAL_OBJECTS_PREFIX))
-                .filter(|rest| !rest.contains('/'))
-                .map(|rest| format!("{GLOBAL_OBJECTS_PREFIX}{rest}/"))
-        })
-        .collect();
-
     let mut map: HashMap<String, IndexSet<String>> = HashMap::new();
     for page in &pages {
         let Some(sub_slug) = page.slug().strip_prefix(JS_REF_PREFIX) else {
             continue;
         };
-        index_one(&mut map, sub_slug, &ns_prefixes);
+        index_one(&mut map, sub_slug);
     }
     map
 }
 
 /// Add the index entries (full sub-path, `Global_Objects/*` strip,
 /// `Operators/*` and `Statements/*` leaf shortcuts, and namespace strip
-/// when applicable) for a single `Web/JavaScript/Reference/<sub_slug>` page.
-fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str, ns_prefixes: &[String]) {
+/// for class-style namespaces) for a single
+/// `Web/JavaScript/Reference/<sub_slug>` page.
+fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str) {
     if sub_slug.is_empty() {
         return;
     }
@@ -92,14 +94,13 @@ fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str, ns_pre
         insert(map, rest, canonical.clone());
     }
 
-    // Namespace strip: for pages under a namespace class (Intl, Temporal),
-    // also index by the path with the namespace removed so authors can write
-    // `Collator` instead of `Intl/Collator`. The path structure naturally
-    // distinguishes class (`Collator`) from constructor (`Collator/Collator`)
-    // and members (`Collator/compare`), so there's no class-vs-descendant
-    // clash to resolve.
-    for ns in ns_prefixes {
-        if let Some(rest) = sub_slug.strip_prefix(ns.as_str()) {
+    // Namespace strip: for pages under a class-style namespace (Intl,
+    // Temporal), also index by the path with the namespace removed so
+    // authors can write `Collator` instead of `Intl/Collator`. The path
+    // structure naturally distinguishes class (`Collator`) from constructor
+    // (`Collator/Collator`) and members (`Collator/compare`).
+    for ns in NAMESPACE_PREFIXES {
+        if let Some(rest) = sub_slug.strip_prefix(ns) {
             insert(map, rest, canonical);
             break;
         }
@@ -107,13 +108,13 @@ fn index_one(map: &mut HashMap<String, IndexSet<String>>, sub_slug: &str, ns_pre
 }
 
 fn insert(map: &mut HashMap<String, IndexSet<String>>, key: &str, value: String) {
-    map.entry(key.to_lowercase()).or_default().insert(value);
+    map.entry(key.to_string()).or_default().insert(value);
 }
 
 /// Look up a JS reference name in the index. Input must already be normalized
 /// (`()` stripped, `.prototype.` → `.`, then `.` → `/` if no `/` is present).
 ///
-/// Lookup is case-insensitive. When the bucket holds multiple candidates
+/// Lookups are **case-sensitive**. When a bucket holds multiple candidates
 /// (e.g. `function` → `Operators/function` *and* `Statements/function`),
 /// `resolve_js_ref` returns `None` and emits a `templ-invalid-arg` tracing
 /// event listing the candidates so the author can add the qualifying
@@ -132,8 +133,7 @@ fn resolve_from_map<'a>(
     map: &'a HashMap<String, IndexSet<String>>,
     normalized: &str,
 ) -> Option<&'a str> {
-    let key = normalized.to_lowercase();
-    let candidates = map.get(&key)?;
+    let candidates = map.get(normalized)?;
     if candidates.len() > 1 {
         warn_ambiguous(normalized, candidates);
         return None;
@@ -161,61 +161,43 @@ mod tests {
     use super::*;
 
     /// Build an index from a representative set of `Web/JavaScript/Reference/`
-    /// sub-slugs using the real `index_one` per-slug logic. Namespace
-    /// detection is reproduced here from the per-fixture page-type metadata.
+    /// sub-slugs using the real `index_one` per-slug logic.
     fn fixture() -> HashMap<String, IndexSet<String>> {
-        let entries: &[(&str, PageType)] = &[
+        let entries = [
             // Top-level reference categories
-            ("Statements/for...of", PageType::JavascriptStatement),
-            ("Statements/try...catch", PageType::JavascriptStatement),
-            ("Statements/const", PageType::JavascriptStatement),
-            ("Statements/function", PageType::JavascriptStatement),
-            ("Operators/typeof", PageType::JavascriptOperator),
-            ("Operators/null", PageType::JavascriptLanguageFeature),
-            ("Operators/new.target", PageType::JavascriptLanguageFeature),
-            ("Operators/function", PageType::JavascriptOperator),
+            "Statements/for...of",
+            "Statements/try...catch",
+            "Statements/const",
+            "Statements/function",
+            "Operators/typeof",
+            "Operators/null",
+            "Operators/new.target",
+            "Operators/function",
             // Global objects and members
-            ("Global_Objects/Array", PageType::JavascriptClass),
-            (
-                "Global_Objects/Array/from",
-                PageType::JavascriptStaticMethod,
-            ),
-            (
-                "Global_Objects/Array/map",
-                PageType::JavascriptInstanceMethod,
-            ),
-            (
-                "Global_Objects/undefined",
-                PageType::JavascriptLanguageFeature,
-            ),
-            // Namespace and members
-            ("Global_Objects/Intl", PageType::JavascriptNamespace),
-            ("Global_Objects/Intl/Collator", PageType::JavascriptClass),
-            (
-                "Global_Objects/Intl/Collator/Collator",
-                PageType::JavascriptConstructor,
-            ),
-            (
-                "Global_Objects/Intl/Collator/compare",
-                PageType::JavascriptInstanceMethod,
-            ),
-            ("Global_Objects/Temporal", PageType::JavascriptNamespace),
-            ("Global_Objects/Temporal/Instant", PageType::JavascriptClass),
+            "Global_Objects/Array",
+            "Global_Objects/Array/from",
+            "Global_Objects/Array/map",
+            "Global_Objects/undefined",
+            "Global_Objects/Set",
+            "Global_Objects/Function",
+            "Functions/set",
+            // Class-style namespace (in NAMESPACE_PREFIXES)
+            "Global_Objects/Intl",
+            "Global_Objects/Intl/Collator",
+            "Global_Objects/Intl/Collator/Collator",
+            "Global_Objects/Intl/Collator/compare",
+            "Global_Objects/Temporal",
+            "Global_Objects/Temporal/Instant",
+            // Static-API namespace (NOT in NAMESPACE_PREFIXES) — `Reflect.set`
+            // must not alias to `set`, since `set` collides semantically with
+            // `Functions/set` and the global `Set` class.
+            "Global_Objects/Reflect",
+            "Global_Objects/Reflect/set",
         ];
 
-        let ns_prefixes: Vec<String> = entries
-            .iter()
-            .filter(|(_, pt)| *pt == PageType::JavascriptNamespace)
-            .filter_map(|(slug, _)| {
-                slug.strip_prefix(GLOBAL_OBJECTS_PREFIX)
-                    .filter(|rest| !rest.contains('/'))
-                    .map(|rest| format!("{GLOBAL_OBJECTS_PREFIX}{rest}/"))
-            })
-            .collect();
-
         let mut map: HashMap<String, IndexSet<String>> = HashMap::new();
-        for (sub_slug, _) in entries {
-            index_one(&mut map, sub_slug, &ns_prefixes);
+        for sub_slug in entries {
+            index_one(&mut map, sub_slug);
         }
         map
     }
@@ -262,16 +244,36 @@ mod tests {
     }
 
     #[test]
-    fn case_insensitive_lookup() {
+    fn lookups_are_case_sensitive() {
         let map = fixture();
+        // Wrong case → miss. Authors are expected to match the canonical
+        // sub-path casing.
+        assert_eq!(resolve_from_map(&map, "array"), None);
+        assert_eq!(resolve_from_map(&map, "ARRAY/FROM"), None);
+    }
+
+    #[test]
+    fn pascal_case_class_does_not_collide_with_lowercase_keyword_or_method() {
+        let map = fixture();
+        // `Set` (PascalCase) → the global `Set` class. `set` (lowercase)
+        // resolves to nothing since `Reflect/set` is not aliased
+        // (Reflect isn't in `NAMESPACE_PREFIXES`) and `Functions/set` is
+        // only addressable by its full sub-path.
+        assert_eq!(resolve_from_map(&map, "Set"), Some("Global_Objects/Set"));
+        assert_eq!(resolve_from_map(&map, "set"), None);
         assert_eq!(
-            resolve_from_map(&map, "array"),
-            Some("Global_Objects/Array")
+            resolve_from_map(&map, "Functions/set"),
+            Some("Functions/set")
         );
+
+        // `Function` (PascalCase) → the global `Function` class.
+        // `function` (lowercase) → ambiguous between the operator and the
+        // statement; refused.
         assert_eq!(
-            resolve_from_map(&map, "ARRAY/FROM"),
-            Some("Global_Objects/Array/from")
+            resolve_from_map(&map, "Function"),
+            Some("Global_Objects/Function")
         );
+        assert_eq!(resolve_from_map(&map, "function"), None);
     }
 
     #[test]
@@ -305,6 +307,17 @@ mod tests {
     }
 
     #[test]
+    fn static_api_namespace_members_require_full_path() {
+        let map = fixture();
+        // `Reflect/set` is not aliased to bare `set` (Reflect isn't a
+        // class-style namespace), but the full path still resolves.
+        assert_eq!(
+            resolve_from_map(&map, "Reflect/set"),
+            Some("Global_Objects/Reflect/set")
+        );
+    }
+
+    #[test]
     fn namespace_member_also_resolves_via_full_namespace_path() {
         let map = fixture();
         assert_eq!(
@@ -333,7 +346,6 @@ mod tests {
     #[test]
     fn operator_leaf_resolves_bare() {
         let map = fixture();
-        // Bare operator keywords resolve via the `Operators/*` leaf shortcut.
         assert_eq!(resolve_from_map(&map, "null"), Some("Operators/null"));
         assert_eq!(resolve_from_map(&map, "typeof"), Some("Operators/typeof"));
         // The full sub-path still works for `.`-containing leaves.
@@ -358,9 +370,9 @@ mod tests {
     #[test]
     fn ambiguous_leaf_returns_none() {
         let map = fixture();
-        // `function` exists as both `Operators/function` (expression) and
-        // `Statements/function` (declaration). The resolver refuses to pick
-        // one; the qualified forms still resolve unambiguously.
+        // `function` (lowercase) exists as both `Operators/function`
+        // (expression) and `Statements/function` (declaration). The
+        // resolver refuses to pick one; the qualified forms still resolve.
         assert_eq!(resolve_from_map(&map, "function"), None);
         assert_eq!(
             resolve_from_map(&map, "Operators/function"),
