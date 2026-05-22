@@ -36,7 +36,7 @@ use rari_types::{Arg, RariEnv};
 use tracing::error;
 
 use crate::error::DocError;
-use crate::utils::TEMPL_RECORDER;
+use crate::utils::{TEMPL_RECORDER, TemplStatEvent};
 
 #[derive(Debug)]
 pub struct Templ {
@@ -61,6 +61,20 @@ pub fn exists(name: &str) -> bool {
     TEMPL_MAPPING.contains_key(name)
 }
 
+fn record_invocation(name: String, locale: rari_types::locale::Locale, known: bool) {
+    TEMPL_RECORDER.with(|tx| {
+        if let Some(tx) = tx
+            && let Err(e) = tx.send(TemplStatEvent::Record {
+                name,
+                locale,
+                known,
+            })
+        {
+            error!("templ recorder: {e}");
+        }
+    });
+}
+
 pub fn invoke(
     env: &RariEnv,
     name: &str,
@@ -72,16 +86,12 @@ pub fn invoke(
         None if name == "xulelem" => return Ok((Default::default(), TemplType::None)),
         None if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
         None => {
-            TEMPL_RECORDER.with(|tx| {
-                if let Some(tx) = tx
-                    && let Err(e) = tx.send(name.to_string())
-                {
-                    error!("templ recorder: {e}");
-                }
-            });
-            return Ok((format!("<s>unsupported templ: {name}</s>"), TemplType::None));
+            let rendered = format!("<s>unsupported templ: {name}</s>");
+            record_invocation(name, env.locale, false);
+            return Ok((rendered, TemplType::None));
         } //
     };
+    record_invocation(name, env.locale, true);
     f(env, args).map(|s| (s, is_sidebar))
 }
 

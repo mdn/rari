@@ -393,9 +393,19 @@ thread_local! {
     };
 }
 
-pub static TEMPL_RECORDER_SENDER: OnceLock<Sender<String>> = OnceLock::new();
+#[derive(Debug)]
+pub enum TemplStatEvent {
+    Record {
+        name: String,
+        locale: Locale,
+        known: bool,
+    },
+    Stop,
+}
+
+pub static TEMPL_RECORDER_SENDER: OnceLock<Sender<TemplStatEvent>> = OnceLock::new();
 thread_local! {
-    pub static TEMPL_RECORDER: Option<Sender<String>> = {
+    pub static TEMPL_RECORDER: Option<Sender<TemplStatEvent>> = {
         TEMPL_RECORDER_SENDER.get().cloned()
     };
 }
