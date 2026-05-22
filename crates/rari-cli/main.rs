@@ -215,6 +215,7 @@ struct BuildArgs {
     #[arg(
         long,
         value_name = "NEEDLE",
+        value_parser = clap::builder::NonEmptyStringValueParser::new(),
         conflicts_with_all = ["files", "files_flag", "file_list"],
         help = "Build only docs whose Markdown source contains <NEEDLE> (ASCII case-insensitive)"
     )]
@@ -538,9 +539,6 @@ fn main() -> Result<(), Error> {
             }
 
             if let Some(needle) = args.grep.as_deref() {
-                if needle.is_empty() {
-                    return Err(anyhow!("--grep requires a non-empty <NEEDLE>"));
-                }
                 let matches = rari_doc::walker::grep_doc_files(needle)?;
                 info!("--grep matched {} file(s)", matches.len());
                 if matches.is_empty() {
