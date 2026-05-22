@@ -216,7 +216,7 @@ struct BuildArgs {
         long,
         value_name = "NEEDLE",
         conflicts_with_all = ["files", "files_flag", "file_list"],
-        help = "Build only docs whose Markdown source contains <NEEDLE> (case-insensitive)"
+        help = "Build only docs whose Markdown source contains <NEEDLE> (ASCII case-insensitive)"
     )]
     grep: Option<String>,
     #[arg(short, long, help = "Abort build on warnings")]
