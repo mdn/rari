@@ -588,14 +588,14 @@ dependencies = [
 
 [[package]]
 name = "css-definition-syntax"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "thiserror 2.0.18",
 ]
 
 [[package]]
 name = "css-syntax"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "anyhow",
  "css-definition-syntax",
@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "css-syntax-types"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "regress",
  "serde",
@@ -867,7 +867,7 @@ dependencies = [
 
 [[package]]
 name = "diff-test"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "ansi-to-html",
  "anyhow",
@@ -878,7 +878,7 @@ dependencies = [
  "jsonpath_lib",
  "lol_html",
  "prettydiff",
- "quick-xml 0.39.4",
+ "quick-xml 0.40.1",
  "rayon",
  "regex",
  "serde_json",
@@ -2359,9 +2359,9 @@ dependencies = [
 
 [[package]]
 name = "portable-atomic"
-version = "1.11.1"
+version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f84267b20a16ea918e43c6a88433c2d54fa145c92a811b5b047ccbe153674483"
+checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
 
 [[package]]
 name = "potential_utf"
@@ -2486,6 +2486,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdcc8dd4e2f670d309a5f0e83fe36dfdc05af317008fea29144da1a2ac858e5e"
 dependencies = [
  "encoding_rs",
+ "memchr",
+]
+
+[[package]]
+name = "quick-xml"
+version = "0.40.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2474bd2e5029e7ccb6abb2ba48cf2383a333851dedf495901544281590c7da7f"
+dependencies = [
  "memchr",
  "serde",
 ]
@@ -2623,7 +2632,7 @@ checksum = "0c8d0fd677905edcbeedbf2edb6494d676f0e98d54d5cf9bda0b061cb8fb8aba"
 
 [[package]]
 name = "rari"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "anyhow",
  "axum",
@@ -2653,7 +2662,7 @@ dependencies = [
 
 [[package]]
 name = "rari-data"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "indexmap",
  "rari-utils",
@@ -2667,7 +2676,7 @@ dependencies = [
 
 [[package]]
 name = "rari-deps"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "chrono",
  "css-syntax-types",
@@ -2688,7 +2697,7 @@ dependencies = [
 
 [[package]]
 name = "rari-doc"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "base16ct",
  "chrono",
@@ -2743,11 +2752,11 @@ dependencies = [
 
 [[package]]
 name = "rari-linter"
-version = "0.2.23"
+version = "0.2.24"
 
 [[package]]
 name = "rari-lsp"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -2766,7 +2775,7 @@ dependencies = [
 
 [[package]]
 name = "rari-md"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "anyhow",
  "base64",
@@ -2779,11 +2788,11 @@ dependencies = [
 
 [[package]]
 name = "rari-sitemap"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "chrono",
  "flate2",
- "quick-xml 0.39.4",
+ "quick-xml 0.40.1",
  "rari-doc",
  "rari-types",
  "rari-utils",
@@ -2793,7 +2802,7 @@ dependencies = [
 
 [[package]]
 name = "rari-templ-func"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "anyhow",
  "darling 0.23.0",
@@ -2804,7 +2813,7 @@ dependencies = [
 
 [[package]]
 name = "rari-tools"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "assert-json-diff",
  "base16ct",
@@ -2833,7 +2842,7 @@ dependencies = [
 
 [[package]]
 name = "rari-types"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "chrono",
  "config",
@@ -2854,7 +2863,7 @@ dependencies = [
 
 [[package]]
 name = "rari-utils"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "thiserror 2.0.18",
 ]
