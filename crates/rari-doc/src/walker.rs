@@ -62,6 +62,13 @@ pub(crate) fn walk_builder(
 /// as [`walk_builder`]. Files that cannot be read are logged and skipped.
 /// An empty `needle` returns an empty result without walking.
 pub fn grep_doc_files(needle: &str) -> Result<Vec<PathBuf>, DocError> {
+    grep_doc_files_in(&[] as &[&Path], needle)
+}
+
+pub(crate) fn grep_doc_files_in(
+    paths: &[impl AsRef<Path>],
+    needle: &str,
+) -> Result<Vec<PathBuf>, DocError> {
     if needle.is_empty() {
         return Ok(Vec::new());
     }
@@ -69,34 +76,80 @@ pub fn grep_doc_files(needle: &str) -> Result<Vec<PathBuf>, DocError> {
     let finder = memchr::memmem::Finder::new(needle_lower.as_bytes());
     let (tx, rx) = crossbeam_channel::bounded::<PathBuf>(100);
     let collector = std::thread::spawn(move || rx.into_iter().collect::<Vec<_>>());
-    walk_builder(&[] as &[&Path], None)?
-        .build_parallel()
-        .run(|| {
-            let tx = tx.clone();
-            let finder = finder.clone();
-            Box::new(move |result| {
-                if let Ok(entry) = result
-                    && entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
-                {
-                    let path = entry.into_path();
-                    match std::fs::read(&path) {
-                        Ok(mut bytes) => {
-                            bytes.make_ascii_lowercase();
-                            if finder.find(&bytes).is_some() {
-                                let _ = tx.send(path);
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                file = %path.display(),
-                                "failed to read for --grep: {e}",
-                            );
+    walk_builder(paths, None)?.build_parallel().run(|| {
+        let tx = tx.clone();
+        let finder = finder.clone();
+        Box::new(move |result| {
+            if let Ok(entry) = result
+                && entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
+            {
+                let path = entry.into_path();
+                match std::fs::read(&path) {
+                    Ok(mut bytes) => {
+                        bytes.make_ascii_lowercase();
+                        if finder.find(&bytes).is_some() {
+                            let _ = tx.send(path);
                         }
                     }
+                    Err(e) => {
+                        tracing::warn!(
+                            file = %path.display(),
+                            "failed to read for --grep: {e}",
+                        );
+                    }
                 }
-                ignore::WalkState::Continue
-            })
-        });
+            }
+            ignore::WalkState::Continue
+        })
+    });
     drop(tx);
     Ok(collector.join().unwrap())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::*;
+
+    fn write(dir: &Path, rel: &str, contents: &[u8]) -> PathBuf {
+        let path = dir.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, contents).unwrap();
+        path
+    }
+
+    #[test]
+    fn empty_needle_returns_empty() {
+        let result = grep_doc_files_in(&[] as &[&Path], "").unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn ascii_case_folding_matches_mixed_case() {
+        let dir = tempfile::tempdir().unwrap();
+        let upper = write(dir.path(), "a/index.md", b"contains SVGRef token");
+        let lower = write(dir.path(), "b/index.md", b"contains svgref token");
+        let _miss = write(dir.path(), "c/index.md", b"no match here");
+
+        let mut matches = grep_doc_files_in(&[dir.path()], "svgref").unwrap();
+        matches.sort();
+        let mut expected = vec![upper, lower];
+        expected.sort();
+        assert_eq!(matches, expected);
+
+        let mut matches = grep_doc_files_in(&[dir.path()], "SVGREF").unwrap();
+        matches.sort();
+        assert_eq!(matches, expected);
+    }
+
+    #[test]
+    fn non_ascii_needle_matches_exact_utf8_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        let lowercase = write(dir.path(), "a/index.md", "café au lait".as_bytes());
+        let _uppercase = write(dir.path(), "b/index.md", "CAFÉ au lait".as_bytes());
+
+        let matches = grep_doc_files_in(&[dir.path()], "café").unwrap();
+        assert_eq!(matches, vec![lowercase]);
+    }
 }
