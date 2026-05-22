@@ -198,8 +198,17 @@ struct ServeArgs {
 
 #[derive(Args)]
 struct BuildArgs {
-    #[arg(short, long, help = "Build only content <FILES>")]
+    #[arg(value_name = "FILES", help = "Build only content <FILES>")]
     files: Vec<PathBuf>,
+    #[arg(
+        short = 'f',
+        long = "files",
+        value_name = "FILES",
+        hide = true,
+        conflicts_with = "files",
+        help = "DEPRECATED: pass file paths as positional arguments instead"
+    )]
+    files_flag: Vec<PathBuf>,
     #[arg(long, help = "Build only content listed in <FILE_LIST>")]
     file_list: Option<PathBuf>,
     #[arg(short, long, help = "Abort build on warnings")]
@@ -366,11 +375,38 @@ fn main() -> Result<(), Error> {
             settings.json_live_samples = args.json_live_samples;
             let _ = SETTINGS.set(settings);
 
-            let mut arg_files = args
+            if !args.files_flag.is_empty() {
+                tracing::warn!(
+                    ignore = true,
+                    "`-f`/`--files` is deprecated and will be removed in a future release; pass file paths as positional arguments instead",
+                );
+            }
+            let (oks, errs): (Vec<_>, Vec<_>) = args
                 .files
                 .iter()
-                .map(|path| path.canonicalize())
-                .collect::<Result<Vec<PathBuf>, _>>()?;
+                .chain(args.files_flag.iter())
+                .map(|path| {
+                    path.canonicalize().map_err(|e| {
+                        let msg = e.to_string();
+                        let trimmed = msg.split(" (os error").next().unwrap_or(&msg);
+                        anyhow!("{}: {}", path.display(), trimmed)
+                    })
+                })
+                .partition(Result::is_ok);
+            if !errs.is_empty() {
+                let header = if errs.len() == 1 {
+                    "<FILES> contains an invalid value"
+                } else {
+                    "<FILES> contains invalid values"
+                };
+                let details = errs
+                    .into_iter()
+                    .map(|r| format!("  - {}", r.unwrap_err()))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                return Err(anyhow!("{header}:\n{details}"));
+            }
+            let mut arg_files: Vec<PathBuf> = oks.into_iter().map(Result::unwrap).collect();
 
             if let Some(file_list) = args.file_list {
                 arg_files.extend(
