@@ -549,10 +549,11 @@ mod test {
 
     #[test]
     fn all_with_fr_filter_yields_only_fr_locales() {
-        // Only fr locales must appear; en-US (or any other locale) must not.
-        // When no translated root is configured the result is empty, which
-        // satisfies the assertion trivially.
+        // Tests run with `rari-types/testing` enabled, which points
+        // `CONTENT_TRANSLATED_ROOT` at `tests/data/translated_content/files`,
+        // so non-en-US locales are available and Fr SPAs must be emitted.
         let pairs = SPA::all(LocaleFilter::Only(&[Locale::Fr]));
+        assert!(!pairs.is_empty());
         assert!(pairs.iter().all(|(_, locale)| *locale == Locale::Fr));
     }
 
