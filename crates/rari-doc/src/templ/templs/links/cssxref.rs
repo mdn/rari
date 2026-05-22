@@ -30,7 +30,7 @@ use crate::templ::css_feature_index::{CssRefCategory, resolve_css_feature};
 ///
 /// # URL Structure
 /// The macro resolves the (normalized) name against an index of all
-/// `Web/CSS/*` pages (see [`crate::templ::css_feature_index`]). The input
+/// `Web/CSS/Reference/*` pages (see [`crate::templ::css_feature_index`]). The input
 /// syntax narrows the category looked up:
 /// - Data types (`<...>` or `&lt;...&gt;`): `Reference/Values/{slug}`
 /// - Pseudo-classes/elements (`:...`): `Reference/Selectors/{slug}`
