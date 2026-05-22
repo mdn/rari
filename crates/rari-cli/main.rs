@@ -543,7 +543,7 @@ fn main() -> Result<(), Error> {
                 }
                 let matches = rari_doc::walker::grep_doc_files(needle)?;
                 info!("--grep matched {} file(s)", matches.len());
-                if matches.is_empty() && arg_files.is_empty() {
+                if matches.is_empty() {
                     info!("nothing to build");
                     return Ok(());
                 }
