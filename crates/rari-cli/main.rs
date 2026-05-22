@@ -212,6 +212,13 @@ struct BuildArgs {
     files_flag: Vec<PathBuf>,
     #[arg(long, help = "Build only content listed in <FILE_LIST>")]
     file_list: Option<PathBuf>,
+    #[arg(
+        long,
+        value_name = "NEEDLE",
+        conflicts_with_all = ["files", "files_flag", "file_list"],
+        help = "Build only docs whose Markdown source contains <NEEDLE> (case-insensitive)"
+    )]
+    grep: Option<String>,
     #[arg(short, long, help = "Abort build on warnings")]
     deny_warnings: bool,
     #[arg(long, help = "Disable caching (only for debugging)")]
@@ -528,6 +535,19 @@ fn main() -> Result<(), Error> {
                         .map(|line| Ok(PathBuf::from_str(line)?.canonicalize()?))
                         .collect::<Result<Vec<PathBuf>, Error>>()?,
                 );
+            }
+
+            if let Some(needle) = args.grep.as_deref() {
+                if needle.is_empty() {
+                    return Err(anyhow!("--grep requires a non-empty <NEEDLE>"));
+                }
+                let matches = rari_doc::walker::grep_doc_files(needle)?;
+                info!("--grep matched {} file(s)", matches.len());
+                if matches.is_empty() && arg_files.is_empty() {
+                    info!("nothing to build");
+                    return Ok(());
+                }
+                arg_files.extend(matches);
             }
 
             let full_build = arg_files.is_empty()

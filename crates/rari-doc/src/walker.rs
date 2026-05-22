@@ -1,8 +1,10 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use ignore::WalkBuilder;
 use ignore::types::TypesBuilder;
 use rari_types::globals::{content_root, content_translated_root, settings};
+
+use crate::error::DocError;
 
 /// Creates a `WalkBuilder` for walking through the specified paths globbing "index.md" files. The glob can be overridden.
 ///
@@ -50,4 +52,54 @@ pub(crate) fn walk_builder(
     builder.git_ignore(!settings().reader_ignores_gitignore);
     builder.types(types.build()?);
     Ok(builder)
+}
+
+/// Walks `content_root()` (and `content_translated_root()` when configured)
+/// and returns the paths of every `index.md` whose raw bytes contain
+/// `needle` as an ASCII case-insensitive substring.
+///
+/// Uses the same `markdown:index.md` type filter and `.gitignore` handling
+/// as [`walk_builder`]. Files that cannot be read are logged and skipped.
+/// An empty `needle` returns an empty result without walking.
+pub fn grep_doc_files(needle: &str) -> Result<Vec<PathBuf>, DocError> {
+    if needle.is_empty() {
+        return Ok(Vec::new());
+    }
+    let needle_bytes = needle.as_bytes();
+    let paths: Vec<&Path> = if let Some(translated) = content_translated_root() {
+        vec![content_root(), translated]
+    } else {
+        vec![content_root()]
+    };
+    let (tx, rx) = crossbeam_channel::bounded::<PathBuf>(100);
+    let collector = std::thread::spawn(move || rx.into_iter().collect::<Vec<_>>());
+    walk_builder(&paths, None)?.build_parallel().run(|| {
+        let tx = tx.clone();
+        Box::new(move |result| {
+            if let Ok(entry) = result
+                && entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
+            {
+                let path = entry.into_path();
+                match std::fs::read(&path) {
+                    Ok(bytes) => {
+                        if bytes
+                            .windows(needle_bytes.len())
+                            .any(|w| w.eq_ignore_ascii_case(needle_bytes))
+                        {
+                            let _ = tx.send(path);
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            file = %path.display(),
+                            "failed to read for --grep: {e}",
+                        );
+                    }
+                }
+            }
+            ignore::WalkState::Continue
+        })
+    });
+    drop(tx);
+    Ok(collector.join().unwrap())
 }
