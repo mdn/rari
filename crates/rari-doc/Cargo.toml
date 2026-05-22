@@ -48,6 +48,7 @@ cssparser = "0.37"
 
 icu_locale_core = "2"
 ignore = "0.4"
+memchr = "2"
 crossbeam-channel = "0.5"
 rayon = "1"
 enum_dispatch = "0.3"

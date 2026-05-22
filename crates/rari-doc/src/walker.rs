@@ -65,7 +65,8 @@ pub fn grep_doc_files(needle: &str) -> Result<Vec<PathBuf>, DocError> {
     if needle.is_empty() {
         return Ok(Vec::new());
     }
-    let needle_bytes = needle.as_bytes();
+    let needle_lower = needle.to_ascii_lowercase();
+    let finder = memchr::memmem::Finder::new(needle_lower.as_bytes());
     let paths: Vec<&Path> = if let Some(translated) = content_translated_root() {
         vec![content_root(), translated]
     } else {
@@ -75,17 +76,16 @@ pub fn grep_doc_files(needle: &str) -> Result<Vec<PathBuf>, DocError> {
     let collector = std::thread::spawn(move || rx.into_iter().collect::<Vec<_>>());
     walk_builder(&paths, None)?.build_parallel().run(|| {
         let tx = tx.clone();
+        let finder = finder.clone();
         Box::new(move |result| {
             if let Ok(entry) = result
                 && entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
             {
                 let path = entry.into_path();
                 match std::fs::read(&path) {
-                    Ok(bytes) => {
-                        if bytes
-                            .windows(needle_bytes.len())
-                            .any(|w| w.eq_ignore_ascii_case(needle_bytes))
-                        {
+                    Ok(mut bytes) => {
+                        bytes.make_ascii_lowercase();
+                        if finder.find(&bytes).is_some() {
                             let _ = tx.send(path);
                         }
                     }
