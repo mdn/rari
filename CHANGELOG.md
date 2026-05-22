@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.25](https://github.com/mdn/rari/compare/v0.2.24...v0.2.25) (2026-05-22)
+
+
+### Features
+
+* **cli:** accept positional FILES on build, deprecate -f/--files ([#697](https://github.com/mdn/rari/issues/697)) ([7869bf8](https://github.com/mdn/rari/commit/7869bf80ae7421aa1e1411a692d2876617ef7bb5))
+* **cssxref:** build Web/CSS/Reference index to resolve links ([#682](https://github.com/mdn/rari/issues/682)) ([1f50664](https://github.com/mdn/rari/commit/1f50664e4f23f03320ed74be3e1fbf468830b93a))
+* **domxref:** build Web/API index to resolve links ([#672](https://github.com/mdn/rari/issues/672)) ([d9f465e](https://github.com/mdn/rari/commit/d9f465e79b392d6bc4ee1553803933d43c7b672f))
+* **templ-stats:** report unused, translated-only, and invalid templates ([#695](https://github.com/mdn/rari/issues/695)) ([8164bc7](https://github.com/mdn/rari/commit/8164bc78c7ad671887494cca8cd9291954d92f8d))
+
+
+### Bug Fixes
+
+* **vscode:** run cargo with --locked ([#694](https://github.com/mdn/rari/issues/694)) ([72e0779](https://github.com/mdn/rari/commit/72e0779e3a825e702ebfe6d4e54e9ecedddeb90f))
+
 ## [0.2.24](https://github.com/mdn/rari/compare/v0.2.23...v0.2.24) (2026-05-20)
 
 
