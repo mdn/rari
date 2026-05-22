@@ -3,6 +3,7 @@ use rari_types::AnyArg;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
+use crate::templ::js_ref_index::resolve_js_ref;
 
 /// Creates a link to a JavaScript reference page on MDN.
 ///
@@ -27,10 +28,20 @@ use crate::templ::api::RariApi;
 /// # Special handling
 /// - Removes `()` from method names for URL generation
 /// - Converts `.prototype.` notation to `/` for URL paths
-/// - Tries main JavaScript Reference first, then Global Objects
-/// - Handles special cases like `try...catch` statements
 /// - Falls back to URI component decoding if no page found
 /// - Formats links with `<code>` tags unless `no_code` is true
+///
+/// # Name resolution
+/// The normalized `api_name` is resolved against an index of all
+/// `Web/JavaScript/Reference/*` pages (see [`crate::templ::js_ref_index`]).
+/// Authors can use:
+/// - A full sub-path: `{{JSxRef("Statements/for...of")}}`
+/// - A bare global-object name or dotted member:
+///   `{{JSxRef("Array")}}`, `{{JSxRef("Array.prototype.map")}}`
+/// - **For namespace-class members only** (`Intl`, `Temporal`), a path with
+///   the namespace omitted: `{{JSxRef("Collator")}}` resolves to
+///   `Intl/Collator`, `{{JSxRef("Collator/compare")}}` to
+///   `Intl/Collator/compare`.
 #[rari_f(register = "crate::Templ")]
 pub fn jsxref(
     api_name: String,
@@ -39,30 +50,21 @@ pub fn jsxref(
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let display = display.as_deref().filter(|s| !s.is_empty());
-    let global_objects = "Global_Objects";
     let display = display.unwrap_or(api_name.as_str());
-    let mut url = format!("/{}/docs/Web/JavaScript/Reference/", &env.locale);
-    let mut base_path = url.clone();
 
-    let mut slug = api_name.replace("()", "").replace(".prototype.", ".");
-    if !slug.contains("/") && slug.contains('.') {
-        // Handle try...catch case
-        slug = slug.replace('.', "/");
-    }
-
-    let page_url = format!("{url}{slug}");
-    let object_page_url = format!("{url}{global_objects}/{slug}");
-
-    let page = RariApi::get_page_nowarn(&page_url);
-    let object_page = RariApi::get_page_nowarn(&object_page_url);
-    if let Ok(_page) = page {
-        url.push_str(&slug)
-    } else if let Ok(_object_page) = object_page {
-        base_path.extend([global_objects, "/"]);
-        url.extend([global_objects, "/", &slug]);
+    let normalized = api_name.replace("()", "").replace(".prototype.", ".");
+    let normalized = if !normalized.contains('/') && normalized.contains('.') {
+        normalized.replace('.', "/")
     } else {
-        url.push_str(&RariApi::decode_uri_component(&api_name));
-    }
+        normalized
+    };
+
+    let base = format!("/{}/docs/Web/JavaScript/Reference/", env.locale);
+    let mut url = if let Some(resolved) = resolve_js_ref(&normalized) {
+        format!("{base}{resolved}")
+    } else {
+        format!("{base}{}", RariApi::decode_uri_component(&api_name))
+    };
 
     if let Some(anchor) = anchor {
         if !anchor.starts_with('#') {

@@ -4,6 +4,7 @@
 //! of the parsing and rendering.
 
 pub mod api;
+pub mod js_ref_index;
 pub mod legacy;
 pub mod parser;
 pub mod render;

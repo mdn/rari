@@ -298,6 +298,7 @@ pub enum IssueType {
     TemplRedirectedLink,
     TemplBrokenLink,
     TemplIllCasedLink,
+    TemplIllCasedArg,
     TemplInvalidArg,
     RedirectedLink,
     BrokenLink,
@@ -314,6 +315,7 @@ impl FromStr for IssueType {
             "templ-redirected-link" => Self::TemplRedirectedLink,
             "templ-broken-link" => Self::TemplBrokenLink,
             "templ-ill-cased-link" => Self::TemplIllCasedLink,
+            "templ-ill-cased-arg" => Self::TemplIllCasedArg,
             "templ-invalid-arg" => Self::TemplInvalidArg,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
@@ -542,6 +544,25 @@ impl DIssue {
                         "{} received argument ({}) which is not valid.",
                         source.label,
                         additional.get("arg").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: source.name,
+                        href: None,
+                    }
+                }
+                IssueType::TemplIllCasedArg => {
+                    let source = issue_source(&mut additional);
+                    di.fixed = false;
+                    di.fixable = Some(false);
+                    di.explanation = Some(format!(
+                        "{} received argument ({}) with the wrong case; use ({}) instead.",
+                        source.label,
+                        additional.get("arg").map(|s| s.as_str()).unwrap_or("?"),
+                        additional
+                            .get("canonical")
+                            .map(|s| s.as_str())
+                            .unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
