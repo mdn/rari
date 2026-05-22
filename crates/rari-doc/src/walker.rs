@@ -67,39 +67,36 @@ pub fn grep_doc_files(needle: &str) -> Result<Vec<PathBuf>, DocError> {
     }
     let needle_lower = needle.to_ascii_lowercase();
     let finder = memchr::memmem::Finder::new(needle_lower.as_bytes());
-    let paths: Vec<&Path> = if let Some(translated) = content_translated_root() {
-        vec![content_root(), translated]
-    } else {
-        vec![content_root()]
-    };
     let (tx, rx) = crossbeam_channel::bounded::<PathBuf>(100);
     let collector = std::thread::spawn(move || rx.into_iter().collect::<Vec<_>>());
-    walk_builder(&paths, None)?.build_parallel().run(|| {
-        let tx = tx.clone();
-        let finder = finder.clone();
-        Box::new(move |result| {
-            if let Ok(entry) = result
-                && entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
-            {
-                let path = entry.into_path();
-                match std::fs::read(&path) {
-                    Ok(mut bytes) => {
-                        bytes.make_ascii_lowercase();
-                        if finder.find(&bytes).is_some() {
-                            let _ = tx.send(path);
+    walk_builder(&[] as &[&Path], None)?
+        .build_parallel()
+        .run(|| {
+            let tx = tx.clone();
+            let finder = finder.clone();
+            Box::new(move |result| {
+                if let Ok(entry) = result
+                    && entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
+                {
+                    let path = entry.into_path();
+                    match std::fs::read(&path) {
+                        Ok(mut bytes) => {
+                            bytes.make_ascii_lowercase();
+                            if finder.find(&bytes).is_some() {
+                                let _ = tx.send(path);
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                file = %path.display(),
+                                "failed to read for --grep: {e}",
+                            );
                         }
                     }
-                    Err(e) => {
-                        tracing::warn!(
-                            file = %path.display(),
-                            "failed to read for --grep: {e}",
-                        );
-                    }
                 }
-            }
-            ignore::WalkState::Continue
-        })
-    });
+                ignore::WalkState::Continue
+            })
+        });
     drop(tx);
     Ok(collector.join().unwrap())
 }
