@@ -80,7 +80,7 @@ pub fn remove(
         let mut docs_path = PathBuf::from(root_for_locale(locale)?);
         docs_path.push(locale.as_folder_str());
 
-        let docs = read_docs_parallel::<Page, Doc>(&[docs_path], None)?;
+        let docs = read_docs_parallel::<Page, Doc>(&[docs_path], None, None)?;
 
         let referencing_docs: BTreeSet<String> = docs
             .into_par_iter()
