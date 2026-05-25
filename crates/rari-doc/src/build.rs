@@ -14,8 +14,10 @@ use chrono::NaiveDateTime;
 use itertools::Itertools;
 use rari_types::globals::{
     base_url, blog_root, build_out_root, contributor_spotlight_root, curriculum_root,
-    generic_content_root, git_history, settings,
+    generic_content_root, settings,
 };
+
+use crate::git_history::git_history;
 use rari_types::locale::{Locale, default_locale};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sha2::{Digest, Sha256};

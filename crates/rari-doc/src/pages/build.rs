@@ -4,7 +4,9 @@ use std::path::Path;
 
 use rari_md::m2h;
 use rari_types::fm_types::PageType;
-use rari_types::globals::{base_url, content_branch, git_history, popularities};
+use rari_types::globals::{base_url, content_branch, popularities};
+
+use crate::git_history::git_history;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use scraper::Html;

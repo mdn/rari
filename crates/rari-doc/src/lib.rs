@@ -12,6 +12,7 @@
 //! - `contributors`: Handles generating contributors.txt.
 //! - `find`: Search for docs.
 //! - `error`: Defines error types used throughout the crate.
+//! - `git_history`: Loads `_git_history.json` artifacts.
 //! - `helpers`: Contains helper functions and utilities.
 //! - `html`: Manages HTML rendering and processing.
 //! - `pages`: Handles the creation and management of documentation pages.
@@ -42,6 +43,7 @@ pub mod cached_readers;
 pub mod contributors;
 pub mod error;
 pub mod find;
+pub mod git_history;
 pub mod helpers;
 pub mod html;
 pub mod issues;
