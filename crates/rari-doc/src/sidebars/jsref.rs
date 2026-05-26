@@ -20,9 +20,9 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
     let constructor_label = l10n_json_data("Common", "Constructor", locale)?;
     let static_methods_label = l10n_json_data("Common", "Static_methods", locale)?;
     let static_properties_label = l10n_json_data("Common", "Static_properties", locale)?;
-    let handler_methods_label = l10n_json_data("Common", "Handler_methods", locale)?;
     let instance_methods_label = l10n_json_data("Common", "Instance_methods", locale)?;
     let instance_properties_label = l10n_json_data("Common", "Instance_properties", locale)?;
+    let handler_methods_label = l10n_json_data("Common", "Handler_methods", locale)?;
     let inheritance_label = l10n_json_data("Common", "Inheritance", locale)?;
     let related_labl = l10n_json_data("Common", "Related_pages_wo_group", locale)?;
 
@@ -92,10 +92,10 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         for (label, list) in &[
             (constructor_label, item.constructors),
             (static_methods_label, item.static_methods),
-            (handler_methods_label, item.handler_methods),
             (static_properties_label, item.static_properties),
             (instance_methods_label, item.instance_methods),
             (instance_properties_label, item.instance_properties),
+            (handler_methods_label, item.handler_methods),
         ] {
             let children: Vec<_> = list
                 .iter()
@@ -165,9 +165,9 @@ struct JSRefItem {
     pub constructors: Vec<Page>,
     pub static_methods: Vec<Page>,
     pub static_properties: Vec<Page>,
-    pub handler_methods: Vec<Page>,
     pub instance_methods: Vec<Page>,
     pub instance_properties: Vec<Page>,
+    pub handler_methods: Vec<Page>,
 }
 
 fn is_prototyp_member_page(page_typ: PageType) -> bool {
@@ -286,9 +286,9 @@ impl JSRefItem {
             constructors,
             static_methods,
             static_properties,
-            handler_methods,
             instance_methods,
             instance_properties,
+            handler_methods,
         }
     }
 }
