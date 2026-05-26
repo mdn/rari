@@ -259,13 +259,13 @@ impl JSRefItem {
                 // Proxy handler methods (a.k.a. traps) are documented as
                 // sub-pages of the `Proxy()` constructor (slug `Proxy/Proxy/*`).
                 // Surface them so all `Proxy/*` pages share one sidebar.
-                let pages = get_sub_pages(
+                let handler_pages = get_sub_pages(
                     "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy",
                     Some(1),
                     Default::default(),
                 )
                 .unwrap_or_default();
-                for page in pages {
+                for page in handler_pages {
                     if page.page_type() == PageType::JavascriptInstanceMethod {
                         handler_methods.push(page);
                     }
