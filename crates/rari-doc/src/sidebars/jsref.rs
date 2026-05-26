@@ -268,6 +268,13 @@ impl JSRefItem {
                 for page in handler_pages {
                     if page.page_type() == PageType::JavascriptInstanceMethod {
                         handler_methods.push(page);
+                    } else {
+                        tracing::warn!(
+                            "jsref sidebar: unexpected page type {:?} for {} — \
+                             expected JavascriptInstanceMethod (Proxy handler trap)",
+                            page.page_type(),
+                            page.slug(),
+                        );
                     }
                 }
             }
