@@ -20,6 +20,7 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
     let constructor_label = l10n_json_data("Common", "Constructor", locale)?;
     let static_methods_label = l10n_json_data("Common", "Static_methods", locale)?;
     let static_properties_label = l10n_json_data("Common", "Static_properties", locale)?;
+    let handler_methods_label = l10n_json_data("Common", "Handler_methods", locale)?;
     let instance_methods_label = l10n_json_data("Common", "Instance_methods", locale)?;
     let instance_properties_label = l10n_json_data("Common", "Instance_properties", locale)?;
     let inheritance_label = l10n_json_data("Common", "Inheritance", locale)?;
@@ -91,6 +92,7 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         for (label, list) in &[
             (constructor_label, item.constructors),
             (static_methods_label, item.static_methods),
+            (handler_methods_label, item.handler_methods),
             (static_properties_label, item.static_properties),
             (instance_methods_label, item.instance_methods),
             (instance_properties_label, item.instance_properties),
@@ -163,6 +165,7 @@ struct JSRefItem {
     pub constructors: Vec<Page>,
     pub static_methods: Vec<Page>,
     pub static_properties: Vec<Page>,
+    pub handler_methods: Vec<Page>,
     pub instance_methods: Vec<Page>,
     pub instance_properties: Vec<Page>,
 }
@@ -194,6 +197,7 @@ impl JSRefItem {
         let mut instance_methods = vec![];
         let mut static_properties = vec![];
         let mut static_methods = vec![];
+        let mut handler_methods = vec![];
         if obj == BASE {
             let instance_props = get_sub_pages(
                 "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
@@ -250,6 +254,23 @@ impl JSRefItem {
                     _ => {}
                 }
             }
+
+            if obj == "Proxy" {
+                // Proxy handler methods (a.k.a. traps) are documented as
+                // sub-pages of the `Proxy()` constructor (slug `Proxy/Proxy/*`).
+                // Surface them so all `Proxy/*` pages share one sidebar.
+                let pages = get_sub_pages(
+                    "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy",
+                    Some(1),
+                    Default::default(),
+                )
+                .unwrap_or_default();
+                for page in pages {
+                    if page.page_type() == PageType::JavascriptInstanceMethod {
+                        handler_methods.push(page);
+                    }
+                }
+            }
         }
         Self {
             title,
@@ -258,6 +279,7 @@ impl JSRefItem {
             constructors,
             static_methods,
             static_properties,
+            handler_methods,
             instance_methods,
             instance_properties,
         }
@@ -315,7 +337,6 @@ pub fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'stati
                 Cow::Borrowed("Intl.Segmenter"),
             ],
             TYPED_ARRAY,
-            &[Cow::Borrowed("Proxy"), Cow::Borrowed("Proxy/handler")],
         ]
     });
     for g in GROUP_DATA.iter() {
@@ -370,9 +391,6 @@ fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
         .unwrap_or_default();
     if sub_path.starts_with("Intl/Segmenter/segment/Segments") {
         return "Intl/Segmenter/segment/Segments".into();
-    }
-    if sub_path.starts_with("Proxy/Proxy") {
-        return "Proxy/handler".into();
     }
     for namespace in &["Intl/", "Temporal/"] {
         if let Some(sub_sub_path) = sub_path.strip_prefix(namespace) {
@@ -442,6 +460,18 @@ mod test {
         assert_eq!(
             slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Array"),
             "Array"
+        );
+        assert_eq!(
+            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Proxy"),
+            "Proxy"
+        );
+        assert_eq!(
+            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Proxy/Proxy"),
+            "Proxy"
+        );
+        assert_eq!(
+            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get"),
+            "Proxy"
         );
     }
 
