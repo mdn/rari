@@ -21,7 +21,7 @@ use rari_doc::build::{
 };
 use rari_doc::cached_readers::{
     CACHED_DOC_PAGE_FILES, blog_files, contributor_spotlight_files, curriculum_files,
-    generic_content_files, read_and_cache_doc_pages,
+    generic_content_files, read_and_cache_doc_pages, translated_locale_paths,
 };
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
@@ -45,7 +45,7 @@ use rari_types::globals::{
     SETTINGS, blog_root, build_out_root, content_root, content_translated_root,
     contributor_spotlight_root, curriculum_root, generic_content_root,
 };
-use rari_types::locale::Locale;
+use rari_types::locale::{Locale, LocaleFilter};
 use rari_types::settings::Settings;
 use rari_utils::io::read_to_string;
 use self_update::cargo_crate_version;
@@ -273,6 +273,12 @@ struct BuildArgs {
         help = "Noop flag to legacy compatibility (has no effect on build)"
     )]
     noop: bool,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        help = "Only build the given locale(s). Repeatable or comma-separated. en-US is always included. Other locales require `content_translated_root`."
+    )]
+    locale: Option<Vec<Locale>>,
 }
 
 #[derive(Debug)]
@@ -368,6 +374,47 @@ where
         .expect("unable to write");
     }
     info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+}
+
+/// Normalize a user-supplied `--locale` list: always include en-US,
+/// deduplicate, and sort for stable iteration.
+fn finalize_requested_locales(input: &[Locale]) -> Vec<Locale> {
+    let mut set: Vec<Locale> = input.to_vec();
+    if !set.contains(&Locale::EnUs) {
+        set.push(Locale::EnUs);
+    }
+    set.sort();
+    set.dedup();
+    set
+}
+
+/// Validate a `--locale` argument list: reject locales not in `Locale::translated()` and
+/// require `content_translated_root` for any non-en-US locale.
+fn validate_locale_arg(locales: &[Locale]) -> Result<(), Error> {
+    let needs_translated = locales.iter().any(|l| *l != Locale::EnUs);
+    if needs_translated && content_translated_root().is_none() {
+        return Err(anyhow!(
+            "--locale requires content_translated_root to be configured for non en-US locales"
+        ));
+    }
+    let active = Locale::translated();
+    let invalid: Vec<&str> = locales
+        .iter()
+        .filter(|l| **l != Locale::EnUs && !active.contains(l))
+        .map(|l| l.as_url_str())
+        .collect();
+    if !invalid.is_empty() {
+        return Err(anyhow!(
+            "--locale: unsupported locale(s): {}. Supported: en-US, {}",
+            invalid.join(", "),
+            active
+                .iter()
+                .map(|l| l.as_url_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    Ok(())
 }
 
 fn main() -> Result<(), Error> {
@@ -487,6 +534,13 @@ fn main() -> Result<(), Error> {
                 && (args.all || args.all_available || !args.no_basic || args.content);
             let multi_locale = full_build && content_translated_root().is_some();
 
+            let requested_locales: Option<Vec<Locale>> =
+                args.locale.as_deref().map(finalize_requested_locales);
+
+            if let Some(locales) = &requested_locales {
+                validate_locale_arg(locales)?;
+            }
+
             let templ_stats = if args.templ_stats {
                 let (tx, rx) = channel::<TemplStatEvent>();
                 TEMPL_RECORDER_SENDER
@@ -578,7 +632,19 @@ fn main() -> Result<(), Error> {
             }
             let mut urls = Vec::new();
             let mut docs = Vec::new();
-            info!("Building everything 🛠️");
+            if let Some(locales) = &requested_locales {
+                info!(
+                    "Building locale(s): {} 🛠️",
+                    locales
+                        .iter()
+                        .map(|l| l.as_url_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            } else {
+                info!("Building everything 🛠️");
+            }
+            let locale_filter = LocaleFilter::from(requested_locales.as_deref());
             if args.all
                 || args.all_available
                 || !args.no_basic
@@ -589,14 +655,13 @@ fn main() -> Result<(), Error> {
                 docs = if !arg_files.is_empty() {
                     read_docs_parallel::<Page, Doc>(&arg_files, None)?
                 } else if args.no_cache {
-                    let files: &[_] = if let Some(translated_root) = content_translated_root() {
-                        &[content_root(), translated_root]
-                    } else {
-                        &[content_root()]
-                    };
-                    read_docs_parallel::<Page, Doc>(files, None)?
+                    let mut files: Vec<PathBuf> = vec![content_root().to_path_buf()];
+                    if let Some(translated_root) = content_translated_root() {
+                        files.extend(translated_locale_paths(translated_root, locale_filter));
+                    }
+                    read_docs_parallel::<Page, Doc>(&files, None)?
                 } else {
-                    read_and_cache_doc_pages()?
+                    read_and_cache_doc_pages(locale_filter)?
                 };
                 info!(
                     "Took: {: >10.3?} for reading {} docs",
@@ -606,7 +671,7 @@ fn main() -> Result<(), Error> {
             }
             if args.all || args.all_available || !args.no_basic || args.spas {
                 let start = std::time::Instant::now();
-                let spas = build_spas()?;
+                let spas = build_spas(locale_filter)?;
                 let num = spas.len();
                 urls.extend(spas);
                 info!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
@@ -777,7 +842,7 @@ fn main() -> Result<(), Error> {
             settings.data_issues = true;
             settings.blog_unpublished = true;
             let _ = SETTINGS.set(settings);
-            read_and_cache_doc_pages()?;
+            read_and_cache_doc_pages(LocaleFilter::All)?;
             rari_lsp::run()?
         }
         Commands::GitHistory => {
@@ -838,10 +903,16 @@ fn main() -> Result<(), Error> {
 
                 let mut all_pages = Vec::new();
 
+                if let Some(locale) = args.locale {
+                    validate_locale_arg(&[locale])?;
+                }
+
                 // Collect content pages
                 if fix_content {
                     let start = std::time::Instant::now();
-                    let docs = read_and_cache_doc_pages()?;
+                    let locale_filter =
+                        LocaleFilter::from(args.locale.as_ref().map(std::slice::from_ref));
+                    let docs = read_and_cache_doc_pages(locale_filter)?;
                     info!(
                         "Took: {: >10.3?} for reading {} content pages",
                         start.elapsed(),
@@ -1097,5 +1168,33 @@ mod tests {
 
         assert_eq!(names, ["alpha", "beta", "gamma", "zeta"]);
         assert_eq!(totals, [5, 5, 3, 3]);
+    }
+
+    #[test]
+    fn finalize_requested_locales_injects_en_us() {
+        let out = finalize_requested_locales(&[Locale::Fr]);
+        assert!(out.contains(&Locale::EnUs));
+        assert!(out.contains(&Locale::Fr));
+    }
+
+    #[test]
+    fn finalize_requested_locales_idempotent_for_en_us_only() {
+        assert_eq!(
+            finalize_requested_locales(&[Locale::EnUs]),
+            vec![Locale::EnUs]
+        );
+    }
+
+    #[test]
+    fn finalize_requested_locales_dedups_and_sorts() {
+        let out = finalize_requested_locales(&[Locale::Fr, Locale::EnUs, Locale::Fr]);
+        let mut expected = vec![Locale::EnUs, Locale::Fr];
+        expected.sort();
+        assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn finalize_requested_locales_empty_input_still_injects_en_us() {
+        assert_eq!(finalize_requested_locales(&[]), vec![Locale::EnUs]);
     }
 }
