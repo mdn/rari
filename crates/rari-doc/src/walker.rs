@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 use ignore::WalkBuilder;
 use ignore::types::TypesBuilder;
 use rari_types::globals::{content_root, content_translated_root, settings};
+use rari_types::locale::{Locale, LocaleFilter};
 
+use crate::cached_readers::translated_locale_paths;
 use crate::error::DocError;
 
 /// Creates a `WalkBuilder` for walking through the specified paths globbing "index.md" files. The glob can be overridden.
@@ -58,11 +60,28 @@ pub(crate) fn walk_builder(
 /// and returns the paths of every `index.md` whose raw bytes contain
 /// `needle` as an ASCII case-insensitive substring.
 ///
+/// `filter` restricts the walk to the selected locales:
+/// - `LocaleFilter::All` walks every configured root.
+/// - `LocaleFilter::Only(locales)` walks `content_root` only if `en-US`
+///   is in the set, plus one translated subdirectory per non-en-US locale.
+///
 /// Uses the same `markdown:index.md` type filter and `.gitignore` handling
 /// as [`walk_builder`]. Files that cannot be read are logged and skipped.
 /// An empty `needle` returns an empty result without walking.
-pub fn grep_doc_files(needle: &str) -> Result<Vec<PathBuf>, DocError> {
-    grep_doc_files_in(&[] as &[&Path], needle)
+pub fn grep_doc_files(needle: &str, filter: LocaleFilter<'_>) -> Result<Vec<PathBuf>, DocError> {
+    match filter {
+        LocaleFilter::All => grep_doc_files_in(&[] as &[&Path], needle),
+        LocaleFilter::Only(locales) => {
+            let mut paths: Vec<PathBuf> = Vec::new();
+            if locales.contains(&Locale::EnUs) {
+                paths.push(content_root().to_path_buf());
+            }
+            if let Some(translated_root) = content_translated_root() {
+                paths.extend(translated_locale_paths(translated_root, filter));
+            }
+            grep_doc_files_in(&paths, needle)
+        }
+    }
 }
 
 pub(crate) fn grep_doc_files_in(

@@ -538,8 +538,18 @@ fn main() -> Result<(), Error> {
                 );
             }
 
+            let requested_locales: Option<Vec<Locale>> =
+                args.locale.as_deref().map(finalize_requested_locales);
+
+            if let Some(locales) = &requested_locales {
+                validate_locale_arg(locales)?;
+            }
+
             if let Some(needle) = args.grep.as_deref() {
-                let matches = rari_doc::walker::grep_doc_files(needle)?;
+                let matches = rari_doc::walker::grep_doc_files(
+                    needle,
+                    LocaleFilter::from(requested_locales.as_deref()),
+                )?;
                 info!("--grep matched {} file(s)", matches.len());
                 if matches.is_empty() {
                     info!("nothing to build");
@@ -551,13 +561,6 @@ fn main() -> Result<(), Error> {
             let full_build = arg_files.is_empty()
                 && (args.all || args.all_available || !args.no_basic || args.content);
             let multi_locale = full_build && content_translated_root().is_some();
-
-            let requested_locales: Option<Vec<Locale>> =
-                args.locale.as_deref().map(finalize_requested_locales);
-
-            if let Some(locales) = &requested_locales {
-                validate_locale_arg(locales)?;
-            }
 
             let templ_stats = if args.templ_stats {
                 let (tx, rx) = channel::<TemplStatEvent>();
