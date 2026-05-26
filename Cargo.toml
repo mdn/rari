@@ -12,6 +12,9 @@ rust-version = "1.90"
 path = "crates/rari-cli/main.rs"
 name = "rari"
 
+[profile.dev.package."*"]
+debug = false
+
 [profile.release-lto]
 inherits = "release"
 opt-level = 3
