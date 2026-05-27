@@ -260,7 +260,9 @@ impl JSRefItem {
             // Fetch the whole sub-tree so we can nest pages like
             // `Proxy/Proxy/*` (handler traps under the constructor) or
             // `Intl/Segmenter/segment/Segments[/...]` (a method's return-type
-            // class) under their parent entry.
+            // class) under their parent entry. The underlying directory walk
+            // in `read_sub_folders_internal` is `#[memoize]`-cached, so the
+            // wider depth isn't paid per sidebar build.
             let class_slug = format!("Web/JavaScript/Reference/Global_Objects/{sub_path}");
             let pages = get_sub_pages(
                 &format!("/en-US/docs/{class_slug}"),
