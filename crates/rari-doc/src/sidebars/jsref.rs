@@ -97,28 +97,15 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
             .constructors
             .iter()
             .map(|page| {
-                let (entry_details, nested_children) = if item.handler_methods.is_empty() {
+                let traps = if item.sub_path == "Proxy" {
+                    proxy_handler_trap_entries()
+                } else {
+                    vec![]
+                };
+                let (entry_details, nested_children) = if traps.is_empty() {
                     (Details::None, MetaChildren::None)
                 } else {
-                    (
-                        details,
-                        MetaChildren::Children(
-                            item.handler_methods
-                                .iter()
-                                .map(|trap| SidebarMetaEntry {
-                                    code: true,
-                                    content: SidebarMetaEntryContent::Link {
-                                        title: None,
-                                        link: trap
-                                            .url()
-                                            .strip_prefix("/en-US/docs")
-                                            .map(String::from),
-                                    },
-                                    ..Default::default()
-                                })
-                                .collect(),
-                        ),
-                    )
+                    (details, MetaChildren::Children(traps))
                 };
                 SidebarMetaEntry {
                     code: true,
@@ -221,7 +208,39 @@ struct JSRefItem {
     pub static_properties: Vec<Page>,
     pub instance_methods: Vec<Page>,
     pub instance_properties: Vec<Page>,
-    pub handler_methods: Vec<Page>,
+}
+
+/// Build sidebar entries for the Proxy handler traps (sub-pages of
+/// `Proxy/Proxy`). Used to nest them under the `Proxy()` constructor entry.
+fn proxy_handler_trap_entries() -> Vec<SidebarMetaEntry> {
+    get_sub_pages(
+        "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy",
+        Some(1),
+        Default::default(),
+    )
+    .unwrap_or_default()
+    .into_iter()
+    .filter_map(|page| {
+        if page.page_type() == PageType::JavascriptInstanceMethod {
+            Some(SidebarMetaEntry {
+                code: true,
+                content: SidebarMetaEntryContent::Link {
+                    title: None,
+                    link: page.url().strip_prefix("/en-US/docs").map(String::from),
+                },
+                ..Default::default()
+            })
+        } else {
+            tracing::warn!(
+                "jsref sidebar: unexpected page type {:?} for {} — \
+                 expected JavascriptInstanceMethod (Proxy handler trap)",
+                page.page_type(),
+                page.slug(),
+            );
+            None
+        }
+    })
+    .collect()
 }
 
 fn is_prototyp_member_page(page_typ: PageType) -> bool {
@@ -251,7 +270,6 @@ impl JSRefItem {
         let mut instance_methods = vec![];
         let mut static_properties = vec![];
         let mut static_methods = vec![];
-        let mut handler_methods = vec![];
         if obj == BASE {
             let instance_props = get_sub_pages(
                 "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
@@ -308,30 +326,6 @@ impl JSRefItem {
                     _ => {}
                 }
             }
-
-            if obj == "Proxy" {
-                // Proxy handler methods (a.k.a. traps) are documented as
-                // sub-pages of the `Proxy()` constructor (slug `Proxy/Proxy/*`).
-                // Surface them so all `Proxy/*` pages share one sidebar.
-                let handler_pages = get_sub_pages(
-                    "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy",
-                    Some(1),
-                    Default::default(),
-                )
-                .unwrap_or_default();
-                for page in handler_pages {
-                    if page.page_type() == PageType::JavascriptInstanceMethod {
-                        handler_methods.push(page);
-                    } else {
-                        tracing::warn!(
-                            "jsref sidebar: unexpected page type {:?} for {} — \
-                             expected JavascriptInstanceMethod (Proxy handler trap)",
-                            page.page_type(),
-                            page.slug(),
-                        );
-                    }
-                }
-            }
         }
         Self {
             title,
@@ -342,7 +336,6 @@ impl JSRefItem {
             static_properties,
             instance_methods,
             instance_properties,
-            handler_methods,
         }
     }
 }
