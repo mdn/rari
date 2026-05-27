@@ -101,7 +101,7 @@ pub(crate) fn grep_doc_files_in(
     }
     let needle_lower = needle.to_ascii_lowercase();
     let finder = memchr::memmem::Finder::new(needle_lower.as_bytes());
-    let (tx, rx) = crossbeam_channel::bounded::<PathBuf>(100);
+    let (tx, rx) = crossbeam_channel::unbounded::<PathBuf>();
     let collector = std::thread::spawn(move || rx.into_iter().collect::<Vec<_>>());
     walk_builder(paths, None)?.build_parallel().run(|| {
         let tx = tx.clone();
