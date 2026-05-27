@@ -98,7 +98,7 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         ] {
             let children: Vec<_> = list
                 .iter()
-                .map(|page| build_member_entry(page, &item.sub_pages, details))
+                .map(|page| build_member_entry(page, &item.sub_pages))
                 .collect();
             if !children.is_empty() {
                 entries.push(SidebarMetaEntry {
@@ -163,25 +163,22 @@ struct JSRefItem {
 }
 
 /// Recursively build a sidebar entry for a member page, nesting any sub-pages
-/// (looked up by parent slug) underneath. `details_when_nested` is used when
-/// the entry actually has children — otherwise the entry stays a plain `<li>`.
-fn build_member_entry(
-    page: &Page,
-    sub_pages: &HashMap<String, Vec<Page>>,
-    details_when_nested: Details,
-) -> SidebarMetaEntry {
+/// (looked up by parent slug) underneath. Entries with children render as a
+/// `<details>` (closed by default — unlike the surrounding member groups,
+/// which open by default for the current class).
+fn build_member_entry(page: &Page, sub_pages: &HashMap<String, Vec<Page>>) -> SidebarMetaEntry {
     let children: Vec<_> = sub_pages
         .get(page.slug())
         .map(|subs| {
             subs.iter()
-                .map(|sub| build_member_entry(sub, sub_pages, details_when_nested))
+                .map(|sub| build_member_entry(sub, sub_pages))
                 .collect()
         })
         .unwrap_or_default();
     let (entry_details, meta_children) = if children.is_empty() {
         (Details::None, MetaChildren::None)
     } else {
-        (details_when_nested, MetaChildren::Children(children))
+        (Details::Closed, MetaChildren::Children(children))
     };
     SidebarMetaEntry {
         code: true,
