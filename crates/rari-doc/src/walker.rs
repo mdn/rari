@@ -67,7 +67,6 @@ pub(crate) fn walk_builder(
 ///
 /// Uses the same `markdown:index.md` type filter and `.gitignore` handling
 /// as [`walk_builder`]. Files that cannot be read are logged and skipped.
-/// An empty `needle` returns an empty result without walking.
 ///
 /// Callers must validate `filter` upstream: passing
 /// `LocaleFilter::Only(&[non-en-US])` without a configured
@@ -89,6 +88,10 @@ pub fn grep_doc_files(needle: &str, filter: LocaleFilter<'_>) -> Result<Vec<Path
     }
 }
 
+/// Inner walker shared by [`grep_doc_files`] and tests. Returns every
+/// `index.md` under `paths` (or [`walk_builder`]'s default roots if `paths`
+/// is empty) whose raw bytes contain `needle` as an ASCII case-insensitive
+/// substring. An empty `needle` returns an empty result without walking.
 pub(crate) fn grep_doc_files_in(
     paths: &[impl AsRef<Path>],
     needle: &str,
