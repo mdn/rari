@@ -158,6 +158,16 @@ mod tests {
     }
 
     #[test]
+    fn no_match_returns_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), "a/index.md", b"alpha");
+        write(dir.path(), "b/index.md", b"beta");
+
+        let matches = grep_doc_files_in(&[dir.path()], "gamma").unwrap();
+        assert!(matches.is_empty());
+    }
+
+    #[test]
     fn ascii_case_folding_matches_mixed_case() {
         let dir = tempfile::tempdir().unwrap();
         let upper = write(dir.path(), "a/index.md", b"contains SVGRef token");
