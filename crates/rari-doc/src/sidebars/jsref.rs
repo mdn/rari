@@ -22,7 +22,6 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
     let static_properties_label = l10n_json_data("Common", "Static_properties", locale)?;
     let instance_methods_label = l10n_json_data("Common", "Instance_methods", locale)?;
     let instance_properties_label = l10n_json_data("Common", "Instance_properties", locale)?;
-    let handler_methods_label = l10n_json_data("Common", "Handler_methods", locale)?;
     let inheritance_label = l10n_json_data("Common", "Inheritance", locale)?;
     let related_labl = l10n_json_data("Common", "Related_pages_wo_group", locale)?;
 
@@ -89,13 +88,56 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
             Details::Closed
         };
 
+        // Proxy handler methods (a.k.a. traps) nest under the `Proxy()`
+        // constructor entry — they are sub-pages of `Proxy/Proxy` and conceptually
+        // belong to the handler object passed to the constructor.
+        let constructor_entries: Vec<_> = item
+            .constructors
+            .iter()
+            .map(|page| SidebarMetaEntry {
+                code: true,
+                content: SidebarMetaEntryContent::Link {
+                    title: None,
+                    link: page.url().strip_prefix("/en-US/docs").map(String::from),
+                },
+                children: if item.handler_methods.is_empty() {
+                    MetaChildren::None
+                } else {
+                    MetaChildren::Children(
+                        item.handler_methods
+                            .iter()
+                            .map(|trap| SidebarMetaEntry {
+                                code: true,
+                                content: SidebarMetaEntryContent::Link {
+                                    title: None,
+                                    link: trap.url().strip_prefix("/en-US/docs").map(String::from),
+                                },
+                                ..Default::default()
+                            })
+                            .collect(),
+                    )
+                },
+                ..Default::default()
+            })
+            .collect();
+
+        if !constructor_entries.is_empty() {
+            entries.push(SidebarMetaEntry {
+                details,
+                content: SidebarMetaEntryContent::Link {
+                    title: Some(constructor_label.to_string()),
+                    link: None,
+                },
+                children: MetaChildren::Children(constructor_entries),
+                ..Default::default()
+            });
+        }
+
         for (label, list) in &[
-            (constructor_label, item.constructors),
             (static_methods_label, item.static_methods),
             (static_properties_label, item.static_properties),
             (instance_methods_label, item.instance_methods),
             (instance_properties_label, item.instance_properties),
-            (handler_methods_label, item.handler_methods),
         ] {
             let children: Vec<_> = list
                 .iter()
