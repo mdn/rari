@@ -90,34 +90,46 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
 
         // Proxy handler methods (a.k.a. traps) nest under the `Proxy()`
         // constructor entry — they are sub-pages of `Proxy/Proxy` and conceptually
-        // belong to the handler object passed to the constructor.
+        // belong to the handler object passed to the constructor. The entry uses
+        // a <details> element so the link is in the <summary> and the traps appear
+        // below.
         let constructor_entries: Vec<_> = item
             .constructors
             .iter()
-            .map(|page| SidebarMetaEntry {
-                code: true,
-                content: SidebarMetaEntryContent::Link {
-                    title: None,
-                    link: page.url().strip_prefix("/en-US/docs").map(String::from),
-                },
-                children: if item.handler_methods.is_empty() {
-                    MetaChildren::None
+            .map(|page| {
+                let (entry_details, nested_children) = if item.handler_methods.is_empty() {
+                    (Details::None, MetaChildren::None)
                 } else {
-                    MetaChildren::Children(
-                        item.handler_methods
-                            .iter()
-                            .map(|trap| SidebarMetaEntry {
-                                code: true,
-                                content: SidebarMetaEntryContent::Link {
-                                    title: None,
-                                    link: trap.url().strip_prefix("/en-US/docs").map(String::from),
-                                },
-                                ..Default::default()
-                            })
-                            .collect(),
+                    (
+                        details,
+                        MetaChildren::Children(
+                            item.handler_methods
+                                .iter()
+                                .map(|trap| SidebarMetaEntry {
+                                    code: true,
+                                    content: SidebarMetaEntryContent::Link {
+                                        title: None,
+                                        link: trap
+                                            .url()
+                                            .strip_prefix("/en-US/docs")
+                                            .map(String::from),
+                                    },
+                                    ..Default::default()
+                                })
+                                .collect(),
+                        ),
                     )
-                },
-                ..Default::default()
+                };
+                SidebarMetaEntry {
+                    code: true,
+                    details: entry_details,
+                    content: SidebarMetaEntryContent::Link {
+                        title: None,
+                        link: page.url().strip_prefix("/en-US/docs").map(String::from),
+                    },
+                    children: nested_children,
+                    ..Default::default()
+                }
             })
             .collect();
 
