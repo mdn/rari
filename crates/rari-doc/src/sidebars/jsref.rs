@@ -155,10 +155,10 @@ struct JSRefItem {
     pub static_properties: Vec<Page>,
     pub instance_methods: Vec<Page>,
     pub instance_properties: Vec<Page>,
-    /// Sub-pages of any depth-1 member, keyed by the parent page's slug.
-    /// Used to nest e.g. `Proxy/Proxy/*` handler traps under `Proxy()`, or
-    /// `Intl/Segmenter/segment/Segments` (and its own methods) under
-    /// `Intl.Segmenter#segment`.
+    /// Descendants of the class at depth ≥ 2, keyed by each page's immediate
+    /// parent slug. `build_member_entry` walks this recursively, so deeper
+    /// chains (e.g. `Intl/Segmenter/segment/Segments/containing`) nest under
+    /// their parent entry.
     pub sub_pages: HashMap<String, Vec<Page>>,
 }
 
