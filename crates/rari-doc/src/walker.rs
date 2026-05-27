@@ -99,9 +99,14 @@ pub(crate) fn grep_doc_files_in(
         let tx = tx.clone();
         let finder = finder.clone();
         Box::new(move |result| {
-            if let Ok(entry) = result
-                && entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
-            {
+            let entry = match result {
+                Ok(entry) => entry,
+                Err(e) => {
+                    tracing::warn!("walker error during --grep: {e}");
+                    return ignore::WalkState::Continue;
+                }
+            };
+            if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
                 let path = entry.into_path();
                 match std::fs::read(&path) {
                     Ok(mut bytes) => {
