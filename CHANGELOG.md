@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.25](https://github.com/mdn/rari/compare/v0.2.24...v0.2.25) (2026-05-22)
+
+
+### Features
+
+* **cli:** accept positional FILES on build, deprecate -f/--files ([#697](https://github.com/mdn/rari/issues/697)) ([7869bf8](https://github.com/mdn/rari/commit/7869bf80ae7421aa1e1411a692d2876617ef7bb5))
+* **cssxref:** build Web/CSS/Reference index to resolve links ([#682](https://github.com/mdn/rari/issues/682)) ([1f50664](https://github.com/mdn/rari/commit/1f50664e4f23f03320ed74be3e1fbf468830b93a))
+* **domxref:** build Web/API index to resolve links ([#672](https://github.com/mdn/rari/issues/672)) ([d9f465e](https://github.com/mdn/rari/commit/d9f465e79b392d6bc4ee1553803933d43c7b672f))
+* **templ-stats:** report unused, translated-only, and invalid templates ([#695](https://github.com/mdn/rari/issues/695)) ([8164bc7](https://github.com/mdn/rari/commit/8164bc78c7ad671887494cca8cd9291954d92f8d))
+
+
+### Bug Fixes
+
+* **vscode:** run cargo with --locked ([#694](https://github.com/mdn/rari/issues/694)) ([72e0779](https://github.com/mdn/rari/commit/72e0779e3a825e702ebfe6d4e54e9ecedddeb90f))
+
+## [0.2.24](https://github.com/mdn/rari/compare/v0.2.23...v0.2.24) (2026-05-20)
+
+
+### Features
+
+* **diff-test:** add --flaws option ([#693](https://github.com/mdn/rari/issues/693)) ([557cf17](https://github.com/mdn/rari/commit/557cf174ead46a8644b23b656a9f9f7cbb2055a9))
+* **types:** sync `PageType` with `front-matter-config.json` ([#713](https://github.com/mdn/rari/issues/713)) ([b190d97](https://github.com/mdn/rari/commit/b190d97e17581da599a61469ca39b3f08744db46))
+
+
+### Miscellaneous
+
+* **deps:** bump ansi-to-html from 0.2.2 to 0.2.3 ([#712](https://github.com/mdn/rari/issues/712)) ([ce2c541](https://github.com/mdn/rari/commit/ce2c5411962bd430b95683882b7f97df4eda436d))
+* **deps:** bump axum from 0.8.8 to 0.8.9 ([#709](https://github.com/mdn/rari/issues/709)) ([991e647](https://github.com/mdn/rari/commit/991e647ec2d3dc4899e90fa3216781f51df1d1eb))
+* **deps:** bump lol_html from 2.8.1 to 2.9.0 ([#710](https://github.com/mdn/rari/issues/710)) ([d5b3680](https://github.com/mdn/rari/commit/d5b36803c5a928954d72d04454e5b118bf19f99f))
+* **deps:** bump quick-xml from 0.39.4 to 0.40.1 ([#708](https://github.com/mdn/rari/issues/708)) ([0b477e1](https://github.com/mdn/rari/commit/0b477e11e14fb9023ddd1a967a659ddf06d8f07b))
+* **deps:** bump self_update from 0.42.0 to 0.44.0 ([#711](https://github.com/mdn/rari/issues/711)) ([9322e2d](https://github.com/mdn/rari/commit/9322e2db44398a07f0a3be46f209b31c0f332e9d))
+* **deps:** sync `Cargo.lock` ([#704](https://github.com/mdn/rari/issues/704)) ([a5a3601](https://github.com/mdn/rari/commit/a5a360184505723da6ba921a2fb487aa2b0eb3c9))
+* **deps:** sync `Cargo.lock` ([#714](https://github.com/mdn/rari/issues/714)) ([2f86f10](https://github.com/mdn/rari/commit/2f86f1014b42345c1c8e6e8088725940891058da))
+
 ## [0.2.23](https://github.com/mdn/rari/compare/v0.2.22...v0.2.23) (2026-05-15)
 
 

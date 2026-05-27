@@ -106,6 +106,24 @@ pub const fn default_locale() -> Locale {
     Locale::EnUs
 }
 
+/// Selects which locales an operation applies to.
+#[derive(Debug, Clone, Copy)]
+pub enum LocaleFilter<'a> {
+    /// Apply to every available locale.
+    All,
+    /// Apply only to the listed locales.
+    Only(&'a [Locale]),
+}
+
+impl<'a> From<Option<&'a [Locale]>> for LocaleFilter<'a> {
+    fn from(locales: Option<&'a [Locale]>) -> Self {
+        match locales {
+            Some(l) => LocaleFilter::Only(l),
+            None => LocaleFilter::All,
+        }
+    }
+}
+
 impl Display for Locale {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(to_variant_name(self).map_err(|_| std::fmt::Error)?)
