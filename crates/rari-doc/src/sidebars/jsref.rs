@@ -264,21 +264,19 @@ impl JSRefItem {
             // `Proxy/Proxy/*` (handler traps under the constructor) or
             // `Intl/Segmenter/segment/Segments[/...]` (a method's return-type
             // class) under their parent entry.
-            let class_slug_prefix = format!("Web/JavaScript/Reference/Global_Objects/{sub_path}/");
+            let class_slug = format!("Web/JavaScript/Reference/Global_Objects/{sub_path}");
             let pages = get_sub_pages(
-                &format!("/en-US/docs/Web/JavaScript/Reference/Global_Objects/{sub_path}"),
+                &format!("/en-US/docs/{class_slug}"),
                 None,
                 Default::default(),
             )
             .unwrap_or_default();
 
             for page in pages {
-                let direct_child = page
-                    .slug()
-                    .strip_prefix(&class_slug_prefix)
-                    .map(|rel| !rel.contains('/'))
-                    .unwrap_or(false);
-                if direct_child {
+                let Some((parent_slug, _)) = page.slug().rsplit_once('/') else {
+                    continue;
+                };
+                if parent_slug == class_slug {
                     match page.page_type() {
                         PageType::JavascriptInstanceAccessorProperty
                         | PageType::JavascriptInstanceDataProperty => {
@@ -291,7 +289,7 @@ impl JSRefItem {
                         PageType::JavascriptConstructor => constructors.push(page),
                         _ => {}
                     }
-                } else if let Some((parent_slug, _)) = page.slug().rsplit_once('/') {
+                } else {
                     sub_pages
                         .entry(parent_slug.to_string())
                         .or_default()
