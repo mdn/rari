@@ -171,9 +171,7 @@ where
             if entries.req != 0 {
                 issue.req = entries.req;
             }
-            // Position fields form an atomic group: mixing `col`/`end_col` from different
-            // scope frames produces nonsense. Take all four from the first frame with a
-            // real `line`; inner synthetic-string spans carry `line=0` and are skipped.
+            // issue.line == 0 indicates synthetic values from a nested macro, reset the values to their parent's
             if issue.line == 0 && entries.line != 0 {
                 issue.line = entries.line;
                 issue.col = entries.col;
