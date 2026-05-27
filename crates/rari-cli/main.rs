@@ -550,7 +550,11 @@ fn main() -> Result<(), Error> {
                     needle,
                     LocaleFilter::from(requested_locales.as_deref()),
                 )?;
-                info!("--grep matched {} file(s)", matches.len());
+                info!(
+                    "--grep matched {} {}",
+                    matches.len(),
+                    if matches.len() == 1 { "file" } else { "files" },
+                );
                 if matches.is_empty() {
                     info!("nothing to build");
                     return Ok(());
