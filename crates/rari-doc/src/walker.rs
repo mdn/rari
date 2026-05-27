@@ -135,7 +135,7 @@ pub(crate) fn grep_doc_files_in(
         })
     });
     drop(tx);
-    Ok(collector.join().unwrap())
+    Ok(collector.join().expect("collector thread panicked"))
 }
 
 #[cfg(test)]
