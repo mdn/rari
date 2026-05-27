@@ -684,10 +684,12 @@ mod tests {
         );
         let _i = inner.enter();
 
-        tracing::warn!(file = "test.md");
+        tracing::warn!(file = "nested_macro_span.md");
 
         let events = layer.get_events();
-        let issues = events.get("test.md").expect("expected issues for test.md");
+        let issues = events
+            .get("nested_macro_span.md")
+            .expect("expected issues for nested_macro_span.md");
         assert_eq!(issues.len(), 1);
         let issue = &issues[0];
         assert_eq!(issue.line, 5, "line must come from outer span");
