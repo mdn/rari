@@ -270,9 +270,12 @@ impl JSRefItem {
             .unwrap_or_default();
 
             for page in pages {
-                let Some((parent_slug, _)) = page.slug().rsplit_once('/') else {
-                    continue;
-                };
+                // `get_sub_pages` filters out the class root, so every page
+                // here is a descendant whose slug contains at least one `/`.
+                let (parent_slug, _) = page
+                    .slug()
+                    .rsplit_once('/')
+                    .expect("descendant slug always contains '/'");
                 if parent_slug == class_slug {
                     match page.page_type() {
                         PageType::JavascriptInstanceAccessorProperty
