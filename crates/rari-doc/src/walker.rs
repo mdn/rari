@@ -68,6 +68,11 @@ pub(crate) fn walk_builder(
 /// Uses the same `markdown:index.md` type filter and `.gitignore` handling
 /// as [`walk_builder`]. Files that cannot be read are logged and skipped.
 /// An empty `needle` returns an empty result without walking.
+///
+/// Callers must validate `filter` upstream: passing
+/// `LocaleFilter::Only(&[non-en-US])` without a configured
+/// `content_translated_root` produces an empty path set and falls
+/// through to [`walk_builder`]'s default (en-US only).
 pub fn grep_doc_files(needle: &str, filter: LocaleFilter<'_>) -> Result<Vec<PathBuf>, DocError> {
     match filter {
         LocaleFilter::All => grep_doc_files_in(&[] as &[&Path], needle),
