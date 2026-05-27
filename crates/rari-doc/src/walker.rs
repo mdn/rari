@@ -176,7 +176,7 @@ mod tests {
     }
 
     #[test]
-    fn non_ascii_needle_matches_exact_utf8_bytes() {
+    fn non_ascii_match_is_case_sensitive() {
         let dir = tempfile::tempdir().unwrap();
         let lowercase = write(dir.path(), "a/index.md", "café au lait".as_bytes());
         let _uppercase = write(dir.path(), "b/index.md", "CAFÉ au lait".as_bytes());
