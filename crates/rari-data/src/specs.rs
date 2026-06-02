@@ -24,7 +24,7 @@ pub struct Nightly {
     pub source_path: Option<String>,
     pub alternate_urls: Vec<String>,
     pub repository: Option<String>,
-    pub filename: Option<String>,
+    pub filename: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]

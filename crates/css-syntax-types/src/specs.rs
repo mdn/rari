@@ -50,7 +50,7 @@ pub struct NightlySpec {
     #[serde(rename = "alternateUrls", default)]
     pub alternate_urls: Vec<String>,
     pub repository: Option<String>,
-    pub filename: Option<String>,
+    pub filename: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -58,7 +58,7 @@ pub struct ReleaseSpec {
     pub url: String,
     pub status: String,
     pub pages: Option<Vec<String>>,
-    pub filename: Option<String>,
+    pub filename: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
