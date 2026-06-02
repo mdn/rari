@@ -1,12 +1,18 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import { join } from "node:path";
 import process from "node:process";
 import { rariBin } from "./index.js";
 
 const input = process.argv.slice(2);
 
-spawn(rariBin, input, { stdio: "inherit" }).on("exit", (code, signal) => {
+const env = {
+  DEPS_PACKAGE_JSON: join(import.meta.dirname, "..", "deps", "package.json"),
+  ...process.env,
+};
+
+spawn(rariBin, input, { stdio: "inherit", env }).on("exit", (code, signal) => {
   if (signal) {
     try {
       process.kill(process.pid, signal);

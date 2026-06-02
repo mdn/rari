@@ -36,3 +36,16 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+
+  - package-ecosystem: npm
+    directory: /rari-npm/deps
+    schedule:
+      interval: daily
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+    commit-message:
+      prefix: chore
+      include: scope
