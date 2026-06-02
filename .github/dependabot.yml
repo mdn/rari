@@ -38,7 +38,7 @@ updates:
       include: scope
 
   - package-ecosystem: npm
-    directory: /rari-npm/deps
+    directory: /deps
     schedule:
       interval: daily
     ignore:

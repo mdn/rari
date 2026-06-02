@@ -1,5 +1,4 @@
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use config::{Config, ConfigError, Environment, File};
 use semver::VersionReq;
@@ -30,31 +29,19 @@ pub struct DepsPackageJson {
     dependencies: Deps,
 }
 
-impl Deps {
-    pub fn new() -> Result<Self, ConfigError> {
-        if let Some(package_json) =
-            std::env::var_os("DEPS_PACKAGE_JSON").or_else(|| std::env::var_os("deps_package_json"))
-        {
-            let path = Path::new(&package_json);
-            if let Some(deps_json) = fs::read_to_string(path).ok().and_then(|json_str| {
-                let s = serde_json::from_str::<DepsPackageJson>(&json_str);
-                s.ok()
-            }) {
-                return Ok(deps_json.dependencies);
-            } else {
-                tracing::error!("unable to parse {}", path.display());
-            }
-        }
-        let s = Config::builder()
-            .add_source(Environment::default().prefix("deps").try_parsing(true))
-            .build()?;
+const PINNED_DEPS: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../deps/package.json"
+));
 
-        let mut deps: Self = s.try_deserialize::<Self>()?;
-        // Make sure we are in the correct version range for webref-css, unless overridden.
-        if deps.webref_css.is_none() {
-            deps.webref_css = VersionReq::parse(">=7.0.0, <9.0.0").ok();
-        }
-        Ok(deps)
+impl Deps {
+    pub fn new() -> Self {
+        serde_json::from_str::<DepsPackageJson>(PINNED_DEPS)
+            .map(|deps_json| deps_json.dependencies)
+            .unwrap_or_else(|e| {
+                tracing::error!("unable to parse embedded deps pins: {e}");
+                Self::default()
+            })
     }
 }
 
