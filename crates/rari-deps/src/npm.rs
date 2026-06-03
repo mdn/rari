@@ -53,7 +53,7 @@ fn get_version(package_name: &str, version_req: &VersionReq) -> Result<VersionEn
     }
 }
 
-/// Download and unpack an npm package for a given version (defaults to latest).
+/// Download and unpack an npm package for a given version
 pub fn get_package(
     package: &str,
     version_req: &VersionReq,
