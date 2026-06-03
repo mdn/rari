@@ -41,6 +41,12 @@ impl Deps {
     }
 }
 
+impl Default for Deps {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
 pub struct Settings {
@@ -63,38 +69,6 @@ pub struct Settings {
     pub json_live_samples: bool,
     pub blog_unpublished: bool,
     pub blog_pagination: bool,
-}
-
-#[cfg(test)]
-mod test {
-    use serde_json::Value;
-
-    use super::*;
-
-    fn embedded_package_json() -> Value {
-        serde_json::from_str(PINNED_DEPS).expect("embedded deps must be valid json")
-    }
-
-    #[test]
-    fn embedded_pins_are_valid() {
-        let _ = Deps::new();
-    }
-
-    #[test]
-    fn missing_key_is_rejected() {
-        let mut json = embedded_package_json();
-        let dependencies = json["dependencies"].as_object_mut().unwrap();
-        let key = dependencies.keys().next().unwrap().clone();
-        dependencies.remove(&key);
-        assert!(serde_json::from_value::<DepsPackageJson>(json).is_err());
-    }
-
-    #[test]
-    fn extra_key_is_rejected() {
-        let mut json = embedded_package_json();
-        json["dependencies"]["not-a-real-dependency"] = Value::from("^1.0.0");
-        assert!(serde_json::from_value::<DepsPackageJson>(json).is_err());
-    }
 }
 
 impl Settings {
@@ -165,5 +139,37 @@ impl Settings {
             .blog_root
             .and_then(|br| br.parent().map(|p| p.to_path_buf()));
         Ok(settings)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use serde_json::Value;
+
+    use super::*;
+
+    fn embedded_package_json() -> Value {
+        serde_json::from_str(PINNED_DEPS).expect("embedded deps must be valid json")
+    }
+
+    #[test]
+    fn embedded_pins_are_valid() {
+        let _ = Deps::new();
+    }
+
+    #[test]
+    fn missing_key_is_rejected() {
+        let mut json = embedded_package_json();
+        let dependencies = json["dependencies"].as_object_mut().unwrap();
+        let key = dependencies.keys().next().unwrap().clone();
+        dependencies.remove(&key);
+        assert!(serde_json::from_value::<DepsPackageJson>(json).is_err());
+    }
+
+    #[test]
+    fn extra_key_is_rejected() {
+        let mut json = embedded_package_json();
+        json["dependencies"]["not-a-real-dependency"] = Value::from("^1.0.0");
+        assert!(serde_json::from_value::<DepsPackageJson>(json).is_err());
     }
 }
