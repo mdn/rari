@@ -6,25 +6,24 @@ use serde::{Deserialize, Serialize};
 
 use crate::locale::Locale;
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Deps {
-    #[serde(alias = "@mdn/browser-compat-data")]
-    pub bcd: Option<VersionReq>,
-    #[serde(alias = "browser-specs")]
-    pub browser_specs: Option<VersionReq>,
-    #[serde(alias = "mdn-data")]
-    pub mdn_data: Option<VersionReq>,
-    #[serde(alias = "web-features")]
-    pub web_features: Option<VersionReq>,
-    #[serde(alias = "web-specs")]
-    pub web_specs: Option<VersionReq>,
-    #[serde(alias = "@webref/css")]
-    pub webref_css: Option<VersionReq>,
+    #[serde(rename = "@mdn/browser-compat-data")]
+    pub bcd: VersionReq,
+    #[serde(rename = "browser-specs")]
+    pub browser_specs: VersionReq,
+    #[serde(rename = "mdn-data")]
+    pub mdn_data: VersionReq,
+    #[serde(rename = "web-features")]
+    pub web_features: VersionReq,
+    #[serde(rename = "web-specs")]
+    pub web_specs: VersionReq,
+    #[serde(rename = "@webref/css")]
+    pub webref_css: VersionReq,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DepsPackageJson {
     dependencies: Deps,
 }
@@ -64,6 +63,38 @@ pub struct Settings {
     pub json_live_samples: bool,
     pub blog_unpublished: bool,
     pub blog_pagination: bool,
+}
+
+#[cfg(test)]
+mod test {
+    use serde_json::Value;
+
+    use super::*;
+
+    fn embedded_package_json() -> Value {
+        serde_json::from_str(PINNED_DEPS).expect("embedded deps must be valid json")
+    }
+
+    #[test]
+    fn embedded_pins_are_valid() {
+        let _ = Deps::new();
+    }
+
+    #[test]
+    fn missing_key_is_rejected() {
+        let mut json = embedded_package_json();
+        let dependencies = json["dependencies"].as_object_mut().unwrap();
+        let key = dependencies.keys().next().unwrap().clone();
+        dependencies.remove(&key);
+        assert!(serde_json::from_value::<DepsPackageJson>(json).is_err());
+    }
+
+    #[test]
+    fn extra_key_is_rejected() {
+        let mut json = embedded_package_json();
+        json["dependencies"]["not-a-real-dependency"] = Value::from("^1.0.0");
+        assert!(serde_json::from_value::<DepsPackageJson>(json).is_err());
+    }
 }
 
 impl Settings {
