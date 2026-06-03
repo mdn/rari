@@ -63,7 +63,6 @@ pub struct Settings {
     pub json_issues: bool,
     pub json_live_samples: bool,
     pub blog_unpublished: bool,
-    pub deps: Deps,
     pub blog_pagination: bool,
 }
 
