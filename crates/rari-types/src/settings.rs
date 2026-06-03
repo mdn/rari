@@ -37,11 +37,8 @@ const PINNED_DEPS: &str = include_str!(concat!(
 impl Deps {
     pub fn new() -> Self {
         serde_json::from_str::<DepsPackageJson>(PINNED_DEPS)
-            .map(|deps_json| deps_json.dependencies)
-            .unwrap_or_else(|e| {
-                tracing::error!("unable to parse embedded deps pins: {e}");
-                Self::default()
-            })
+            .expect("embedded deps pins (deps/package.json) must be valid")
+            .dependencies
     }
 }
 
