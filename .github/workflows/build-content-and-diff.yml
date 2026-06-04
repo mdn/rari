@@ -70,6 +70,7 @@ jobs:
         working-directory: rari-base
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_BASE }}
+          DEPS_DATA_DIR: ${{ github.workspace }}/deps-base
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo run --quiet --release build --json-issues
 
@@ -77,6 +78,7 @@ jobs:
         working-directory: rari-pr
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_PR }}
+          DEPS_DATA_DIR: ${{ github.workspace }}/deps-pr
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo run --quiet --release build --json-issues
 

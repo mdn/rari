@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "dependencies": {
+    "@mdn/browser-compat-data": "^8",
+    "@webref/css": "^8",
+    "browser-specs": "^5",
+    "mdn-data": "^2",
+    "web-features": "^3",
+    "web-specs": "^4"
+  }
+}
