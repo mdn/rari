@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.28](https://github.com/mdn/rari/compare/v0.2.27...v0.2.28) (2026-06-12)
+
+
+### Bug Fixes
+
+* **deps:** pin npm packages though package.json ([#745](https://github.com/mdn/rari/issues/745)) ([e92b367](https://github.com/mdn/rari/commit/e92b367b464c9baa2ccfd89c90fc4caf8d4a4dfd))
+
+
+### Miscellaneous
+
+* **deps:** bump ignore from 0.4.25 to 0.4.26 ([#756](https://github.com/mdn/rari/issues/756)) ([92f805f](https://github.com/mdn/rari/commit/92f805fb2fcccf38af77639017e7346eac21bf8a))
+* **deps:** bump memchr from 2.8.0 to 2.8.1 ([#750](https://github.com/mdn/rari/issues/750)) ([a5fedaa](https://github.com/mdn/rari/commit/a5fedaa9e3ac11b79f6be4acb3e87f37a9806245))
+* **deps:** bump regex from 1.12.3 to 1.12.4 ([#755](https://github.com/mdn/rari/issues/755)) ([2eb3f54](https://github.com/mdn/rari/commit/2eb3f54572f63832bca2e1f23f529cdf470c25df))
+* **deps:** bump tar from 7.5.15 to 7.5.16 in /rari-npm in the npm-prod group ([#753](https://github.com/mdn/rari/issues/753)) ([100b9cf](https://github.com/mdn/rari/commit/100b9cf245b6fdce5744055de7cd5cd6c9212de4))
+* **deps:** bump tar in /rari-npm in the npm-prod group ([100b9cf](https://github.com/mdn/rari/commit/100b9cf245b6fdce5744055de7cd5cd6c9212de4))
+* **deps:** bump tracing from 0.1.41 to 0.1.44 ([#751](https://github.com/mdn/rari/issues/751)) ([afed0d2](https://github.com/mdn/rari/commit/afed0d2a53c5e6eb4399dc2e181ed73cddb9055d))
+* **deps:** bump tracing-subscriber from 0.3.20 to 0.3.23 ([#754](https://github.com/mdn/rari/issues/754)) ([6ab7a47](https://github.com/mdn/rari/commit/6ab7a471027dbad7ba767eb85ebd6af36a9de5e9))
+
 ## [0.2.27](https://github.com/mdn/rari/compare/v0.2.26...v0.2.27) (2026-06-02)
 
 
