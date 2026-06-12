@@ -139,7 +139,7 @@ jobs:
         working-directory: mdn/rari
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: cargo build --release
+        run: cargo build --locked --release
 
       - name: Prepare rari binary
         working-directory: mdn/rari
