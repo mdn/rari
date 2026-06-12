@@ -72,7 +72,7 @@ jobs:
           BUILD_OUT_ROOT: ${{ env.BUILD_BASE }}
           DEPS_DATA_DIR: ${{ github.workspace }}/deps-base
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run --quiet --release build --json-issues
+        run: cargo run --locked --quiet --release build --json-issues
 
       - name: Build with PR
         working-directory: rari-pr
@@ -80,11 +80,11 @@ jobs:
           BUILD_OUT_ROOT: ${{ env.BUILD_PR }}
           DEPS_DATA_DIR: ${{ github.workspace }}/deps-pr
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run --quiet --release build --json-issues
+        run: cargo run --locked --quiet --release build --json-issues
 
       - name: Generate diff
         working-directory: rari-pr
-        run: cargo run --quiet -p diff-test diff --fast --flaws --html --value --out "$DIFF" --verbose "$BUILD_BASE" "$BUILD_PR"
+        run: cargo run --locked --quiet -p diff-test diff --fast --flaws --html --value --out "$DIFF" --verbose "$BUILD_BASE" "$BUILD_PR"
 
       - name: Upload diff
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
