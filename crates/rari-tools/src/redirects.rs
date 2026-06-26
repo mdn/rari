@@ -833,29 +833,16 @@ pub(crate) fn read_redirects_raw(
         // Lenient fallback: tolerate space-separated entries (normalized to
         // tabs on the next write). The target URL starts with '/' or 'http',
         // so split on the whitespace run immediately preceding it.
-        let mut ws_start = 0;
-        let mut current_byte_pos = 0;
-        let mut in_whitespace = false;
-
-        for c in trimmed.chars() {
-            let char_len = c.len_utf8();
+        let mut ws_start = None;
+        for (pos, c) in trimmed.char_indices() {
             if c.is_whitespace() {
-                if !in_whitespace {
-                    in_whitespace = true;
-                    ws_start = current_byte_pos;
+                ws_start.get_or_insert(pos);
+            } else if let Some(start) = ws_start.take() {
+                // A whitespace run ends here; if a URL starts, it's the separator.
+                if c == '/' || trimmed[pos..].starts_with("http") {
+                    return Some((trimmed[..start].into(), trimmed[pos..].into()));
                 }
-            } else if in_whitespace {
-                // We have a whitespace sequence ending at current_byte_pos
-                // Check if the current char starts a URL
-                if c == '/' || trimmed[current_byte_pos..].starts_with("http") {
-                    // This is the field separator
-                    let from = trimmed[..ws_start].to_string();
-                    let to = trimmed[current_byte_pos..].to_string();
-                    return Some((from, to));
-                }
-                in_whitespace = false;
             }
-            current_byte_pos += char_len;
         }
         None
     });
