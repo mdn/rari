@@ -59,6 +59,9 @@ pub enum ToolError {
     #[error("Target directory ({0}) for slug ({1}) already exists")]
     TargetDirExists(PathBuf, String),
 
+    #[error("{} errors:\n{}", .0.len(), .0.iter().map(|e| format!("- {e}")).collect::<Vec<_>>().join("\n"))]
+    Multiple(Vec<ToolError>),
+
     #[error("Unknown error")]
     Unknown(&'static str),
 }

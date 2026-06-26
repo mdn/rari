@@ -304,12 +304,15 @@ pub fn remove_redirects_by_targets(locale: Locale, targets: &[String]) -> Result
     Ok(())
 }
 
-/// Validates that redirect file uses tabs (not spaces) as delimiters.
+/// Validates that a redirect file uses tabs (not spaces) as delimiters.
 ///
 /// This ensures the file is in canonical form with tabs as field separators.
 /// Lines with space separators should be normalized via `fix_redirects`.
-fn validate_redirects_format(path: &Path) -> Result<(), ToolError> {
+///
+/// Returns one error per offending line so callers can report them all at once.
+fn validate_redirects_format(path: &Path) -> Result<Vec<ToolError>, ToolError> {
     let lines = read_lines(path)?;
+    let mut errors = Vec::new();
     for (line_num, line) in lines.map_while(Result::ok).enumerate() {
         if line.starts_with('#') || line.trim().is_empty() {
             continue;
@@ -329,7 +332,7 @@ fn validate_redirects_format(path: &Path) -> Result<(), ToolError> {
         };
 
         if has_space_separator {
-            return Err(ToolError::InvalidRedirect(
+            errors.push(ToolError::InvalidRedirect(
                 format!(
                     "Line {}: uses spaces instead of tabs as field separator",
                     line_num + 1
@@ -340,7 +343,7 @@ fn validate_redirects_format(path: &Path) -> Result<(), ToolError> {
             ));
         }
     }
-    Ok(())
+    Ok(errors)
 }
 
 /// Optimizes and rewrites redirect rules for supported locales.
@@ -483,24 +486,30 @@ pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolEr
     let locales = Locale::for_generic_and_spas();
     let locales_to_validate = locale_filter.unwrap_or(locales);
 
+    // Accumulate all validation errors so the whole file set is reported in one pass.
+    let mut errors: Vec<ToolError> = Vec::new();
+
     let mut pairs = HashMap::new();
     let mut per_locale_pairs: HashMap<Locale, HashMap<_, _>> = HashMap::new();
     for locale in locales {
         let path = redirects_path(*locale)?;
         // Validate file format (must use tabs, not spaces)
         if locales_to_validate.contains(locale) {
-            validate_redirects_format(&path)?;
+            errors.extend(validate_redirects_format(&path)?);
         }
         let iter = read_redirects_raw(&path)?.into_iter();
         if locales_to_validate.contains(locale) {
             let v = iter.collect::<Vec<_>>();
-            if let Some(t) = v.windows(2).find(|t| t[0].0 > t[1].0) {
-                return Err(ToolError::InvalidRedirectOrder(
-                    t[0].0.to_string(),
-                    t[0].1.to_string(),
-                    t[1].0.to_string(),
-                    t[0].1.to_string(),
-                ));
+            // Report every out-of-order pair, not just the first.
+            for t in v.windows(2) {
+                if t[0].0 > t[1].0 {
+                    errors.push(ToolError::InvalidRedirectOrder(
+                        t[0].0.to_string(),
+                        t[0].1.to_string(),
+                        t[1].0.to_string(),
+                        t[0].1.to_string(),
+                    ));
+                }
             }
             per_locale_pairs
                 .entry(*locale)
@@ -516,50 +525,76 @@ pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolEr
     for locale in locales_to_validate {
         if let Some(locale_pairs) = per_locale_pairs.get(locale) {
             let old_sorted_map = locale_pairs.iter().collect::<BTreeMap<_, _>>();
-            if let Some(locale_pairs) = fix_redirects_internal(locale_pairs)?.get(locale) {
-                let new_sorted_map = locale_pairs.clone().into_iter().collect::<BTreeMap<_, _>>();
-                validate_pairs(locale_pairs, *locale)?;
-                compare_sorted_redirects(old_sorted_map, new_sorted_map)?;
+            match fix_redirects_internal(locale_pairs) {
+                Ok(fixed) => {
+                    if let Some(locale_pairs) = fixed.get(locale) {
+                        let new_sorted_map =
+                            locale_pairs.clone().into_iter().collect::<BTreeMap<_, _>>();
+                        errors.extend(collect_invalid_pairs(locale_pairs, *locale));
+                        errors.extend(compare_sorted_redirects(old_sorted_map, new_sorted_map));
+                    }
+                }
+                Err(e) => errors.push(e),
             }
         }
     }
 
     // Fix and validate cross locales.
 
-    let mut fixed_paris = fix_redirects_internal(&pairs)?;
-
-    for locale in locales_to_validate {
-        let locale_prefix = concat_strs!("/", locale.as_url_str(), "/");
-        let old_sorted_map: BTreeMap<_, _> = pairs
-            .iter()
-            .filter(|(from, _)| from.starts_with(&locale_prefix))
-            .collect();
-        let new_sorted_map: BTreeMap<_, _> = fixed_paris
-            .remove(locale)
-            .unwrap_or_default()
-            .into_iter()
-            .collect();
-        compare_sorted_redirects(old_sorted_map, new_sorted_map)?;
+    match fix_redirects_internal(&pairs) {
+        Ok(mut fixed_pairs) => {
+            for locale in locales_to_validate {
+                let locale_prefix = concat_strs!("/", locale.as_url_str(), "/");
+                let old_sorted_map: BTreeMap<_, _> = pairs
+                    .iter()
+                    .filter(|(from, _)| from.starts_with(&locale_prefix))
+                    .collect();
+                let new_sorted_map: BTreeMap<_, _> = fixed_pairs
+                    .remove(locale)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .collect();
+                errors.extend(compare_sorted_redirects(old_sorted_map, new_sorted_map));
+            }
+        }
+        Err(e) => errors.push(e),
     }
 
-    Ok(())
+    // The within-locale and cross-locale phases can surface the same mismatch;
+    // deduplicate by message so each distinct problem is reported once.
+    let mut seen = HashSet::new();
+    errors.retain(|e| seen.insert(e.to_string()));
+
+    match errors.len() {
+        0 => Ok(()),
+        1 => Err(errors.pop().unwrap()),
+        _ => Err(ToolError::Multiple(errors)),
+    }
 }
 
+/// Collects all mismatches between the old and the optimized redirect maps.
+///
+/// Returns one error per differing entry so callers can report them all at once.
 fn compare_sorted_redirects(
     old_sorted_map: BTreeMap<&String, &String>,
     new_sorted_map: BTreeMap<String, String>,
-) -> Result<(), ToolError> {
-    for (old, new) in old_sorted_map.into_iter().zip(new_sorted_map.into_iter()) {
-        if old.0 != &new.0 || old.1 != &new.1 {
-            return Err(ToolError::InvalidRedirect(
-                old.0.clone(),
-                old.1.clone(),
-                new.0,
-                new.1,
-            ));
-        }
-    }
-    Ok(())
+) -> Vec<ToolError> {
+    old_sorted_map
+        .into_iter()
+        .zip(new_sorted_map)
+        .filter_map(|(old, new)| {
+            if old.0 != &new.0 || old.1 != &new.1 {
+                Some(ToolError::InvalidRedirect(
+                    old.0.clone(),
+                    old.1.clone(),
+                    new.0,
+                    new.1,
+                ))
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 /// Gets the path to the redirects file for a specific locale.
@@ -587,6 +622,23 @@ fn validate_pairs(pairs: &HashMap<String, String>, locale: Locale) -> Result<(),
         validate_to_url(to, locale)?;
     }
     Ok(())
+}
+
+/// Validates a list of redirect pairs, collecting every invalid URL.
+///
+/// Unlike [`validate_pairs`], this returns one error per invalid `from`/`to`
+/// URL instead of stopping at the first, so callers can report them all at once.
+fn collect_invalid_pairs(pairs: &HashMap<String, String>, locale: Locale) -> Vec<ToolError> {
+    let mut errors = Vec::new();
+    for (from, to) in pairs {
+        if let Err(e) = validate_from_url(from, locale) {
+            errors.push(e);
+        }
+        if let Err(e) = validate_to_url(to, locale) {
+            errors.push(e);
+        }
+    }
+    errors
 }
 
 /// Validates the 'from' URL in a redirect pair.
@@ -1445,6 +1497,30 @@ mod tests {
         let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
         let res = validate_redirects(Some(&[Locale::EnUs]));
         assert!(matches!(res, Err(ToolError::InvalidRedirectOrder(..))))
+    }
+
+    #[test]
+    fn validate_reports_all_errors() {
+        // Neither target exists, so both redirects are invalid.
+        let _docs = DocFixtures::new(&[], Locale::EnUs);
+        let pairs = [("docs/A", "docs/X"), ("docs/B", "docs/Y")]
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .into_iter()
+            .collect::<Vec<_>>();
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
+
+        let res = validate_redirects(Some(&[Locale::EnUs]));
+        // Both invalid targets should be reported together, not just the first.
+        let Err(ToolError::Multiple(errors)) = res else {
+            panic!("expected ToolError::Multiple, got {res:?}");
+        };
+        assert_eq!(errors.len(), 2);
+        assert!(
+            errors
+                .iter()
+                .all(|e| matches!(e, ToolError::InvalidRedirectToURL(..)))
+        );
     }
 
     #[test]
