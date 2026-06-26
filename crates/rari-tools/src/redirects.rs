@@ -332,14 +332,9 @@ fn validate_redirects_format(path: &Path) -> Result<Vec<ToolError>, ToolError> {
         };
 
         if has_space_separator {
-            errors.push(ToolError::InvalidRedirect(
-                format!(
-                    "Line {}: uses spaces instead of tabs as field separator",
-                    line_num + 1
-                ),
-                "Run `fix-redirects` to normalize the file format".to_string(),
-                "Expected: /path/to/from\t/path/to/to".to_string(),
-                format!("Got: {}", line.trim()),
+            errors.push(ToolError::InvalidRedirectSeparator(
+                line_num + 1,
+                line.trim().to_string(),
             ));
         }
     }
@@ -1618,11 +1613,10 @@ mod tests {
 
         // validate_redirects should catch the space separator
         let result = validate_redirects(Some(&[Locale::EnUs]));
-        assert!(result.is_err());
-        let error_msg = format!("{:?}", result.unwrap_err());
-        assert!(
-            error_msg.contains("spaces instead of tabs") || error_msg.contains("field separator")
-        );
+        assert!(matches!(
+            result,
+            Err(ToolError::InvalidRedirectSeparator(..))
+        ));
     }
 
     #[test]

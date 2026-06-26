@@ -50,6 +50,10 @@ pub enum ToolError {
     InvalidRedirectOrder(String, String, String, String),
     #[error("Invalid redirect for {0} -> {1} or {2} -> {3}")]
     InvalidRedirect(String, String, String, String),
+    #[error(
+        "Invalid redirect on line {0}: uses spaces instead of tabs as field separator (run `fix-redirects` to normalize): {1}"
+    )]
+    InvalidRedirectSeparator(usize, String),
     #[error(transparent)]
     RedirectError(#[from] RedirectError),
     #[error("Invalid yaml {0}")]
