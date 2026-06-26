@@ -304,6 +304,45 @@ pub fn remove_redirects_by_targets(locale: Locale, targets: &[String]) -> Result
     Ok(())
 }
 
+/// Validates that redirect file uses tabs (not spaces) as delimiters.
+///
+/// This ensures the file is in canonical form with tabs as field separators.
+/// Lines with space separators should be normalized via `fix_redirects`.
+fn validate_redirects_format(path: &Path) -> Result<(), ToolError> {
+    let lines = read_lines(path)?;
+    for (line_num, line) in lines.map_while(Result::ok).enumerate() {
+        if line.starts_with('#') || line.trim().is_empty() {
+            continue;
+        }
+        // Check if line has spaces-only separator (not tabs)
+        // Pattern: non-whitespace SPACE(s) non-whitespace
+        let has_space_separator = {
+            let parts: Vec<&str> = line.trim().split('\t').collect();
+            // If split on tab gives us < 2 parts, check for space separator
+            if parts.len() < 2 {
+                // Line doesn't have a tab, check if it has spaces as separator
+                let space_parts: Vec<&str> = line.split_whitespace().collect();
+                space_parts.len() >= 2 && !line.contains('\t')
+            } else {
+                false
+            }
+        };
+
+        if has_space_separator {
+            return Err(ToolError::InvalidRedirect(
+                format!(
+                    "Line {}: uses spaces instead of tabs as field separator",
+                    line_num + 1
+                ),
+                "Run `fix-redirects` to normalize the file format".to_string(),
+                "Expected: /path/to/from\t/path/to/to".to_string(),
+                format!("Got: {}", line.trim()),
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Optimizes and rewrites redirect rules for supported locales.
 ///
 /// This function:
@@ -448,6 +487,10 @@ pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolEr
     let mut per_locale_pairs: HashMap<Locale, HashMap<_, _>> = HashMap::new();
     for locale in locales {
         let path = redirects_path(*locale)?;
+        // Validate file format (must use tabs, not spaces)
+        if locales_to_validate.contains(locale) {
+            validate_redirects_format(&path)?;
+        }
         let iter = read_redirects_raw(&path)?.into_iter();
         if locales_to_validate.contains(locale) {
             let v = iter.collect::<Vec<_>>();
@@ -1458,5 +1501,31 @@ mod tests {
         // Should have tabs, not multiple spaces for field separation
         assert!(written_str.contains("\t"));
         assert!(!written_str.contains("    /en-US/docs"));
+    }
+
+    #[test]
+    fn test_validate_redirects_catches_space_separators() {
+        use std::fs;
+
+        // Create documents
+        let _docs = DocFixtures::new(&["A".to_string(), "B".to_string()], Locale::EnUs);
+
+        // Create a fixture with tabs
+        let pairs = [("docs/A".to_string(), "docs/B".to_string())];
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let redirects_fixture = RedirectFixtures::new(&pairs, Locale::EnUs);
+
+        // Manually edit to use spaces instead of tabs
+        let content = rari_utils::io::read_to_string(&redirects_fixture.path).unwrap();
+        let broken_content = content.replace('\t', "    ");
+        fs::write(&redirects_fixture.path, broken_content).unwrap();
+
+        // validate_redirects should catch the space separator
+        let result = validate_redirects(Some(&[Locale::EnUs]));
+        assert!(result.is_err());
+        let error_msg = format!("{:?}", result.unwrap_err());
+        assert!(
+            error_msg.contains("spaces instead of tabs") || error_msg.contains("field separator")
+        );
     }
 }
