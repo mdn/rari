@@ -735,9 +735,11 @@ pub(crate) fn read_redirects_raw(
         if line.starts_with('#') {
             return None;
         }
-        let mut from_to = line.trim().splitn(2, '\t');
-        if let (Some(from), Some(to)) = (from_to.next(), from_to.next()) {
-            Some((from.trim().into(), to.trim().into()))
+        let trimmed = line.trim();
+        // Split on any sequence of whitespace (tabs, spaces, etc.)
+        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+        if parts.len() >= 2 {
+            Some((parts[0].to_string(), parts[1].to_string()))
         } else {
             None
         }
@@ -1411,5 +1413,50 @@ mod tests {
         assert!(!pairs.contains_key("/en-US/docs/A"));
         // The other redirect should still exist
         assert!(pairs.contains_key("/en-US/docs/nonexistent"));
+    }
+
+    #[test]
+    fn test_read_and_write_normalizes_whitespace() {
+        // Create documents for validation
+        let _docs = DocFixtures::new(&["A".to_string(), "B".to_string()], Locale::EnUs);
+
+        // Create initial pairs via fixture (uses tabs)
+        let pairs = [("docs/A".to_string(), "docs/B".to_string())];
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let redirects_fixture = RedirectFixtures::new(&pairs, Locale::EnUs);
+
+        // Manually edit the file to use spaces instead of tabs (simulating the bug)
+        use std::fs;
+        let content = rari_utils::io::read_to_string(&redirects_fixture.path).unwrap();
+        // Replace the tab with multiple spaces
+        let broken_content = content.replace('\t', "    ");
+        fs::write(&redirects_fixture.path, broken_content).unwrap();
+
+        // Verify the file has spaces instead of tabs
+        let raw_content = fs::read(&redirects_fixture.path).unwrap();
+        assert!(
+            String::from_utf8(raw_content.clone())
+                .unwrap()
+                .contains("    /en-US/docs")
+        );
+
+        // Read the file with spaces
+        let result = read_redirects_raw(&redirects_fixture.path).unwrap();
+        let read_pairs: Vec<(String, String)> = result.into_iter().collect();
+
+        // Verify the entry was read correctly despite spaces
+        assert_eq!(read_pairs.len(), 1);
+        assert_eq!(read_pairs[0].0, "/en-US/docs/A");
+        assert_eq!(read_pairs[0].1, "/en-US/docs/B");
+
+        // Now write back (which should normalize to tabs)
+        write_redirects(&redirects_fixture.path, &read_pairs.into_iter().collect()).unwrap();
+
+        // Verify the written file uses tabs
+        let written_content = fs::read(&redirects_fixture.path).unwrap();
+        let written_str = String::from_utf8(written_content).unwrap();
+        // Should have tabs, not multiple spaces for field separation
+        assert!(written_str.contains("\t"));
+        assert!(!written_str.contains("    /en-US/docs"));
     }
 }
