@@ -826,8 +826,13 @@ pub(crate) fn read_redirects_raw(
             return None;
         }
         let trimmed = line.trim();
-        // Split on whitespace sequence (one or more whitespace chars)
-        // that separates two parts where the second starts with '/' or 'http'
+        // Canonical form: a single tab separates the two fields.
+        if let Some((from, to)) = trimmed.split_once('\t') {
+            return Some((from.trim().into(), to.trim().into()));
+        }
+        // Lenient fallback: tolerate space-separated entries (normalized to
+        // tabs on the next write). The target URL starts with '/' or 'http',
+        // so split on the whitespace run immediately preceding it.
         let mut ws_start = 0;
         let mut current_byte_pos = 0;
         let mut in_whitespace = false;
