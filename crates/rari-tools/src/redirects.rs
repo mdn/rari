@@ -317,19 +317,9 @@ fn validate_redirects_format(path: &Path) -> Result<Vec<ToolError>, ToolError> {
         if line.starts_with('#') || line.trim().is_empty() {
             continue;
         }
-        // Check if line has spaces-only separator (not tabs)
-        // Pattern: non-whitespace SPACE(s) non-whitespace
-        let has_space_separator = {
-            let parts: Vec<&str> = line.trim().split('\t').collect();
-            // If split on tab gives us < 2 parts, check for space separator
-            if parts.len() < 2 {
-                // Line doesn't have a tab, check if it has spaces as separator
-                let space_parts: Vec<&str> = line.split_whitespace().collect();
-                space_parts.len() >= 2 && !line.contains('\t')
-            } else {
-                false
-            }
-        };
+        // A line uses a space separator if it has no tab but splits into
+        // multiple fields on whitespace.
+        let has_space_separator = !line.contains('\t') && line.split_whitespace().count() >= 2;
 
         if has_space_separator {
             errors.push(ToolError::InvalidRedirectSeparator(
@@ -794,22 +784,21 @@ fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
     Ok(())
 }
 
-/// Reads redirect pairs from a file and populates the provided `HashMap`.
+/// Reads redirect pairs from a file, yielding `(from, to)` tuples.
 ///
 /// This function processes a file located at the specified `path`, where each line in the file
-/// represents a redirect pair in the format `from\tto`. Lines that start with the `#` character
-/// are treated as comments and are ignored. Only lines containing exactly two fields separated
-/// by a tab (`\t`) are considered valid and are inserted into the map.
+/// represents a redirect pair. Lines that start with the `#` character are treated as comments
+/// and are ignored. The canonical separator is a tab (`\t`), but a run of any whitespace is also
+/// accepted as a separator (normalized to a tab on the next write), provided the target field
+/// starts with `/` or `http`; spaces within the `from` URL are therefore preserved.
 ///
 /// # Arguments
 ///
 /// * `path` - A reference to a `Path` that points to the redirects file.
-/// * `map` - A mutable reference to a `HashMap<String, String>` where the redirect pairs will
-///   be stored. The `from` path serves as the key, and the `to` path serves as the value.
 ///
 /// # Returns
 ///
-/// * `Ok(())` if the redirects are successfully read and inserted into the `map`.
+/// * `Ok(_)` with an iterator over the `(from, to)` redirect pairs.
 /// * `Err(ToolError)` if an error occurs while reading the file or processing its contents.
 ///
 /// # Errors
