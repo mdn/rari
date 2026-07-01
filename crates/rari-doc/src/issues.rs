@@ -30,18 +30,20 @@ pub(crate) fn get_issue_counter_f() -> i64 {
 
 /// Internal representation of an issue detected during build.
 ///
-/// This struct stores position information in **byte offsets** (from tree-sitter and comrak),
-/// which are later converted to character positions in `DisplayIssue` for user-facing output.
+/// This struct stores position information as **1-based byte columns** and **1-based
+/// line numbers**. Positions from tree-sitter (0-based) and comrak sourcepos (1-based)
+/// are both normalized to 1-based at emission, then converted to character positions
+/// in `DisplayIssue` for user-facing output.
 #[derive(Debug, Clone, Serialize)]
 pub struct Issue {
     pub req: u64,
     #[serde(skip_serializing)]
     pub ic: i64,
-    /// Column in BYTES from start of line (from tree-sitter or comrak sourcepos)
+    /// Column in BYTES from start of line (1-based)
     pub col: i64,
     /// Line number (1-based)
     pub line: i64,
-    /// End column in BYTES from start of line
+    /// End column in BYTES from start of line (1-based, inclusive)
     pub end_col: i64,
     /// End line number (1-based)
     pub end_line: i64,
@@ -360,15 +362,18 @@ pub type DisplayIssues = BTreeMap<&'static str, Vec<DIssue>>;
 impl DIssue {
     pub fn from_issue(issue: Issue, page: &Page) -> Option<Self> {
         if let Ok(id) = usize::try_from(issue.ic) {
-            // Convert byte columns to character columns for user-facing display
+            // Convert 1-based byte columns to 1-based character columns for display.
+            // `byte_to_char_column` expects a 0-based byte offset, so subtract 1
+            // before converting and add 1 back afterwards.
             let (char_col, char_end_col) = if issue.line != 0 && issue.col != 0 {
                 // Get the line content (adjust for frontmatter offset)
                 let line_idx =
                     (issue.line.saturating_sub(1) as usize).saturating_sub(page.fm_offset());
                 if let Some(line_content) = page.content().lines().nth(line_idx) {
-                    let char_col = byte_to_char_column(line_content, issue.col as usize) as i64 + 1; // +1 for 1-based
+                    let char_col =
+                        byte_to_char_column(line_content, (issue.col - 1) as usize) as i64 + 1;
                     let char_end_col = if issue.end_col != 0 {
-                        byte_to_char_column(line_content, issue.end_col as usize) as i64 + 1
+                        byte_to_char_column(line_content, (issue.end_col - 1) as usize) as i64 + 1
                     } else {
                         0
                     };
@@ -660,7 +665,9 @@ mod tests {
         let subscriber = tracing_subscriber::registry().with(layer.clone());
         let _guard = tracing::subscriber::set_default(subscriber);
 
-        // Outer span: real markdown position — col=0 (first column)
+        // Outer span: real markdown position. col=0 is the "no position"
+        // sentinel under the 1-based convention; it must still be taken
+        // atomically from this frame rather than picking up the inner col.
         let outer = span!(
             Level::ERROR,
             "templ",
@@ -693,7 +700,7 @@ mod tests {
         assert_eq!(issues.len(), 1);
         let issue = &issues[0];
         assert_eq!(issue.line, 5, "line must come from outer span");
-        // col=0 (outer, first column) must win over col=23 from the inner synthetic span
+        // col=0 (outer) must win over col=23 from the inner synthetic span
         assert_eq!(
             issue.col, 0,
             "col must come from outer span, not inner col=23"
