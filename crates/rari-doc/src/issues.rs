@@ -665,7 +665,9 @@ mod tests {
         let subscriber = tracing_subscriber::registry().with(layer.clone());
         let _guard = tracing::subscriber::set_default(subscriber);
 
-        // Outer span: real markdown position — col=0 (first column)
+        // Outer span: real markdown position. col=0 is the "no position"
+        // sentinel under the 1-based convention; it must still be taken
+        // atomically from this frame rather than picking up the inner col.
         let outer = span!(
             Level::ERROR,
             "templ",
@@ -698,7 +700,7 @@ mod tests {
         assert_eq!(issues.len(), 1);
         let issue = &issues[0];
         assert_eq!(issue.line, 5, "line must come from outer span");
-        // col=0 (outer, first column) must win over col=23 from the inner synthetic span
+        // col=0 (outer) must win over col=23 from the inner synthetic span
         assert_eq!(
             issue.col, 0,
             "col must come from outer span, not inner col=23"
