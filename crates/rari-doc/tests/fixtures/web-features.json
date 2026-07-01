@@ -42,6 +42,20 @@
         }
       },
       "compat_features": ["api.limited"]
+    },
+    "high2": {
+      "kind": "feature",
+      "name": "Widely Available (other)",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": {
+          "api.high2": { "baseline": "high", "support": {} }
+        }
+      },
+      "compat_features": ["api.high2"]
     }
   }
 }
