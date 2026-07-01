@@ -236,4 +236,40 @@ mod test {
         assert_eq!(out, r#""doom""#);
         Ok(())
     }
+
+    /// Positions emitted by `render` must be 1-based, matching comrak's
+    /// sourcepos (tree-sitter reports 0-based). The macro sits after a text
+    /// prefix so its column is non-zero, and its invalid `sandbox` argument
+    /// makes `EmbedLiveSample` emit a `templ-invalid-arg` warning through a
+    /// pure code path (no content/link resolution required).
+    #[test]
+    fn test_render_reports_1_based_positions() {
+        use tracing::subscriber::set_default;
+        use tracing_subscriber::layer::SubscriberExt;
+
+        use crate::issues::InMemoryLayer;
+
+        let layer = InMemoryLayer::default();
+        let subscriber = tracing_subscriber::registry().with(layer.clone());
+        let _guard = set_default(subscriber);
+
+        let env = RariEnv {
+            ..Default::default()
+        };
+        let prefix = "abc ";
+        let mac = r#"{{EmbedLiveSample("x", 100, 100, "", "", "", "", "nope")}}"#;
+        render(&env, &format!("{prefix}{mac}"), 0).expect("render should succeed");
+
+        let events = layer.get_events();
+        let issues = events.get("").expect("expected an emitted issue");
+        assert_eq!(issues.len(), 1);
+        let issue = &issues[0];
+        // tree-sitter row 0 (+ offset 0), reported 1-based.
+        assert_eq!(issue.line, 1);
+        assert_eq!(issue.end_line, 1);
+        // 0-based byte column `prefix.len()` -> 1-based start column.
+        assert_eq!(issue.col, prefix.len() as i64 + 1);
+        // Inclusive 1-based end column == start byte + macro byte length.
+        assert_eq!(issue.end_col, (prefix.len() + mac.len()) as i64);
+    }
 }
