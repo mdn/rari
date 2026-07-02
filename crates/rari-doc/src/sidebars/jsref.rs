@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::iter::once;
 use std::sync::LazyLock;
 
@@ -89,26 +90,15 @@ pub fn sidebar(slug: &str, locale: Locale) -> Result<MetaSidebar, DocError> {
         };
 
         for (label, list) in &[
-            (constructor_label, item.constructors),
-            (static_methods_label, item.static_methods),
-            (static_properties_label, item.static_properties),
-            (instance_methods_label, item.instance_methods),
-            (instance_properties_label, item.instance_properties),
+            (constructor_label, &item.constructors),
+            (static_methods_label, &item.static_methods),
+            (static_properties_label, &item.static_properties),
+            (instance_methods_label, &item.instance_methods),
+            (instance_properties_label, &item.instance_properties),
         ] {
             let children: Vec<_> = list
                 .iter()
-                .map(|page| SidebarMetaEntry {
-                    code: true,
-                    content: SidebarMetaEntryContent::Link {
-                        title: None,
-                        link: page
-                            .clone()
-                            .url()
-                            .strip_prefix("/en-US/docs")
-                            .map(String::from),
-                    },
-                    ..Default::default()
-                })
+                .map(|page| build_member_entry(page, &item.sub_pages))
                 .collect();
             if !children.is_empty() {
                 entries.push(SidebarMetaEntry {
@@ -165,6 +155,41 @@ struct JSRefItem {
     pub static_properties: Vec<Page>,
     pub instance_methods: Vec<Page>,
     pub instance_properties: Vec<Page>,
+    /// Descendants of the class at depth ≥ 2, keyed by each page's immediate
+    /// parent slug. `build_member_entry` walks this recursively, so deeper
+    /// chains (e.g. `Intl/Segmenter/segment/Segments/containing`) nest under
+    /// their parent entry.
+    pub sub_pages: HashMap<String, Vec<Page>>,
+}
+
+/// Recursively build a sidebar entry for a member page, nesting any sub-pages
+/// (looked up by parent slug) underneath. Entries with children render as a
+/// `<details>` (closed by default — unlike the surrounding member groups,
+/// which open by default for the current class).
+fn build_member_entry(page: &Page, sub_pages: &HashMap<String, Vec<Page>>) -> SidebarMetaEntry {
+    let children: Vec<_> = sub_pages
+        .get(page.slug())
+        .map(|subs| {
+            subs.iter()
+                .map(|sub| build_member_entry(sub, sub_pages))
+                .collect()
+        })
+        .unwrap_or_default();
+    let (entry_details, meta_children) = if children.is_empty() {
+        (Details::None, MetaChildren::None)
+    } else {
+        (Details::Closed, MetaChildren::Children(children))
+    };
+    SidebarMetaEntry {
+        code: true,
+        details: entry_details,
+        content: SidebarMetaEntryContent::Link {
+            title: None,
+            link: page.url().strip_prefix("/en-US/docs").map(String::from),
+        },
+        children: meta_children,
+        ..Default::default()
+    }
 }
 
 fn is_prototyp_member_page(page_typ: PageType) -> bool {
@@ -179,10 +204,10 @@ fn is_prototyp_member_page(page_typ: PageType) -> bool {
 impl JSRefItem {
     pub fn from_obj_str(obj: &str, open: bool) -> Self {
         let object_path = obj.replace('.', "/");
-        let title = match obj {
-            "Intl/Segmenter/segment/Segments" => Cow::Borrowed("Segments"),
-            base if base == BASE => Cow::Borrowed("Object/Function"),
-            _ => Cow::Owned(obj.to_string()),
+        let title = if obj == BASE {
+            Cow::Borrowed("Object/Function")
+        } else {
+            Cow::Owned(obj.to_string())
         };
         let sub_path = if obj == BASE {
             Cow::Borrowed("Object")
@@ -194,6 +219,7 @@ impl JSRefItem {
         let mut instance_methods = vec![];
         let mut static_properties = vec![];
         let mut static_methods = vec![];
+        let mut sub_pages: HashMap<String, Vec<Page>> = HashMap::new();
         if obj == BASE {
             let instance_props = get_sub_pages(
                 "/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
@@ -231,23 +257,45 @@ impl JSRefItem {
                 }
             }
         } else {
+            // Fetch the whole sub-tree so we can nest pages like
+            // `Proxy/Proxy/*` (handler traps under the constructor) or
+            // `Intl/Segmenter/segment/Segments[/...]` (a method's return-type
+            // class) under their parent entry. The underlying directory walk
+            // in `read_sub_folders_internal` is `#[memoize]`-cached, so the
+            // wider depth isn't paid per sidebar build.
+            let class_slug = format!("Web/JavaScript/Reference/Global_Objects/{sub_path}");
             let pages = get_sub_pages(
-                &format!("/en-US/docs/Web/JavaScript/Reference/Global_Objects/{sub_path}"),
-                Some(1),
+                &format!("/en-US/docs/{class_slug}"),
+                None,
                 Default::default(),
             )
             .unwrap_or_default();
 
             for page in pages {
-                match page.page_type() {
-                    PageType::JavascriptInstanceAccessorProperty
-                    | PageType::JavascriptInstanceDataProperty => instance_properties.push(page),
-                    PageType::JavascriptInstanceMethod => instance_methods.push(page),
-                    PageType::JavascriptStaticAccessorProperty
-                    | PageType::JavascriptStaticDataProperty => static_properties.push(page),
-                    PageType::JavascriptStaticMethod => static_methods.push(page),
-                    PageType::JavascriptConstructor => constructors.push(page),
-                    _ => {}
+                // `get_sub_pages` filters out the class root, so every page
+                // here is a descendant whose slug contains at least one `/`.
+                let (parent_slug, _) = page
+                    .slug()
+                    .rsplit_once('/')
+                    .expect("descendant slug always contains '/'");
+                if parent_slug == class_slug {
+                    match page.page_type() {
+                        PageType::JavascriptInstanceAccessorProperty
+                        | PageType::JavascriptInstanceDataProperty => {
+                            instance_properties.push(page)
+                        }
+                        PageType::JavascriptInstanceMethod => instance_methods.push(page),
+                        PageType::JavascriptStaticAccessorProperty
+                        | PageType::JavascriptStaticDataProperty => static_properties.push(page),
+                        PageType::JavascriptStaticMethod => static_methods.push(page),
+                        PageType::JavascriptConstructor => constructors.push(page),
+                        _ => {}
+                    }
+                } else {
+                    sub_pages
+                        .entry(parent_slug.to_string())
+                        .or_default()
+                        .push(page);
                 }
             }
         }
@@ -260,6 +308,7 @@ impl JSRefItem {
             static_properties,
             instance_methods,
             instance_properties,
+            sub_pages,
         }
     }
 }
@@ -305,19 +354,8 @@ static TEMPORAL_SUBPAGES: LazyLock<Vec<Cow<'static, str>>> =
 
 // Related pages
 pub fn get_group(main_obj: &str, inheritance: &[Cow<'_, str>]) -> Vec<Cow<'static, str>> {
-    static GROUP_DATA: LazyLock<Vec<&[Cow<'_, str>]>> = LazyLock::new(|| {
-        vec![
-            ERROR,
-            &INTL_SUBPAGES,
-            &TEMPORAL_SUBPAGES,
-            &[
-                Cow::Borrowed("Intl/Segmenter/segment/Segments"),
-                Cow::Borrowed("Intl.Segmenter"),
-            ],
-            TYPED_ARRAY,
-            &[Cow::Borrowed("Proxy"), Cow::Borrowed("Proxy/handler")],
-        ]
-    });
+    static GROUP_DATA: LazyLock<Vec<&[Cow<'_, str>]>> =
+        LazyLock::new(|| vec![ERROR, &INTL_SUBPAGES, &TEMPORAL_SUBPAGES, TYPED_ARRAY]);
     for g in GROUP_DATA.iter() {
         if g.contains(&Cow::Borrowed(main_obj)) {
             return g
@@ -368,12 +406,6 @@ fn slug_to_object_name(slug: &str) -> Cow<'_, str> {
     let sub_path = slug
         .strip_prefix("Web/JavaScript/Reference/Global_Objects/")
         .unwrap_or_default();
-    if sub_path.starts_with("Intl/Segmenter/segment/Segments") {
-        return "Intl/Segmenter/segment/Segments".into();
-    }
-    if sub_path.starts_with("Proxy/Proxy") {
-        return "Proxy/handler".into();
-    }
     for namespace in &["Intl/", "Temporal/"] {
         if let Some(sub_sub_path) = sub_path.strip_prefix(namespace) {
             if sub_sub_path
@@ -442,6 +474,30 @@ mod test {
         assert_eq!(
             slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Array"),
             "Array"
+        );
+        assert_eq!(
+            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Proxy"),
+            "Proxy"
+        );
+        assert_eq!(
+            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Proxy/Proxy"),
+            "Proxy"
+        );
+        assert_eq!(
+            slug_to_object_name("Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get"),
+            "Proxy"
+        );
+        assert_eq!(
+            slug_to_object_name(
+                "Web/JavaScript/Reference/Global_Objects/Intl/Segmenter/segment/Segments"
+            ),
+            "Intl.Segmenter"
+        );
+        assert_eq!(
+            slug_to_object_name(
+                "Web/JavaScript/Reference/Global_Objects/Intl/Segmenter/segment/Segments/containing"
+            ),
+            "Intl.Segmenter"
         );
     }
 
