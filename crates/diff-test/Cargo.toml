@@ -20,4 +20,4 @@ html-minifier = "5"
 ansi-to-html = "0.2"
 quick-xml = "0.40"
 clap = { version = "4", features = ["derive"] }
-lol_html = "2"
+lol_html = "3"
