@@ -365,14 +365,14 @@ impl DIssue {
             // Convert 1-based byte columns to 1-based character columns for display.
             // `byte_to_char_column` expects a 0-based byte offset, so subtract 1
             // before converting and add 1 back afterwards.
-            let (char_col, char_end_col) = if issue.line != 0 && issue.col != 0 {
+            let (char_col, char_end_col) = if issue.line != 0 && issue.col > 0 {
                 // Get the line content (adjust for frontmatter offset)
                 let line_idx =
                     (issue.line.saturating_sub(1) as usize).saturating_sub(page.fm_offset());
                 if let Some(line_content) = page.content().lines().nth(line_idx) {
                     let char_col =
                         byte_to_char_column(line_content, (issue.col - 1) as usize) as i64 + 1;
-                    let char_end_col = if issue.end_col != 0 {
+                    let char_end_col = if issue.end_col > 0 {
                         byte_to_char_column(line_content, (issue.end_col - 1) as usize) as i64 + 1
                     } else {
                         0
