@@ -39,7 +39,7 @@ percent-encoding = "2"
 validator = { version = "0.20", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 scraper = { version = "0.27", features = ["deterministic"] }
-lol_html = "2"
+lol_html = "3"
 html-escape = "0.2"
 html5ever = "0.39"
 ego-tree = "0.11"
