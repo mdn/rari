@@ -359,21 +359,30 @@ impl DIssue {
 
 pub type DisplayIssues = BTreeMap<&'static str, Vec<DIssue>>;
 
+/// Convert a 1-based byte column within `line` to a 1-based character column.
+///
+/// Issue positions are stored as 1-based byte columns (tree-sitter's 0-based
+/// columns and comrak's 1-based sourcepos are both normalized to 1-based at
+/// emission). `byte_to_char_column` expects a 0-based byte offset, so this
+/// subtracts 1 before converting and adds 1 back afterwards. `col` must be
+/// positive; the `0` ("no position") and `-1` (overflow) sentinels are
+/// filtered by the caller.
+fn byte_col_to_char_col_1based(line: &str, col: i64) -> i64 {
+    byte_to_char_column(line, (col - 1) as usize) as i64 + 1
+}
+
 impl DIssue {
     pub fn from_issue(issue: Issue, page: &Page) -> Option<Self> {
         if let Ok(id) = usize::try_from(issue.ic) {
             // Convert 1-based byte columns to 1-based character columns for display.
-            // `byte_to_char_column` expects a 0-based byte offset, so subtract 1
-            // before converting and add 1 back afterwards.
             let (char_col, char_end_col) = if issue.line != 0 && issue.col > 0 {
                 // Get the line content (adjust for frontmatter offset)
                 let line_idx =
                     (issue.line.saturating_sub(1) as usize).saturating_sub(page.fm_offset());
                 if let Some(line_content) = page.content().lines().nth(line_idx) {
-                    let char_col =
-                        byte_to_char_column(line_content, (issue.col - 1) as usize) as i64 + 1;
+                    let char_col = byte_col_to_char_col_1based(line_content, issue.col);
                     let char_end_col = if issue.end_col > 0 {
-                        byte_to_char_column(line_content, (issue.end_col - 1) as usize) as i64 + 1
+                        byte_col_to_char_col_1based(line_content, issue.end_col)
                     } else {
                         0
                     };
@@ -621,6 +630,20 @@ pub static IN_MEMORY: LazyLock<InMemoryLayer> = LazyLock::new(InMemoryLayer::def
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_byte_col_to_char_col_1based() {
+        // ASCII: a 1-based byte column maps to the same 1-based char column.
+        let line = "abcde";
+        assert_eq!(byte_col_to_char_col_1based(line, 1), 1);
+        assert_eq!(byte_col_to_char_col_1based(line, 5), 5);
+
+        // Multi-byte: columns past a 4-byte emoji collapse to char columns.
+        let emoji = "ab🔥cd";
+        assert_eq!(byte_col_to_char_col_1based(emoji, 1), 1); // 'a'
+        assert_eq!(byte_col_to_char_col_1based(emoji, 3), 3); // emoji starts at byte 3 (1-based)
+        assert_eq!(byte_col_to_char_col_1based(emoji, 7), 4); // 'c' after the 4-byte emoji
+    }
 
     #[test]
     fn test_issue_source_macro() {
