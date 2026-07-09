@@ -7,6 +7,7 @@ use tracing::{error, warn};
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
+use crate::html::links::post_process_templ_links;
 
 static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     [(LinkedToken::Asterisk, "Asterisk: the entity may occur zero, one or several times".to_string()),
@@ -74,7 +75,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         );
     }
 
-    Ok(render_formal_syntax(
+    let html = render_formal_syntax(
         SyntaxInput::Css(typ),
         env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
@@ -84,13 +85,14 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
-    )?)
+    )?;
+    post_process_templ_links(&html)
 }
 
 #[rari_f(register = "crate::Templ")]
 pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
     let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
-    Ok(render_formal_syntax(
+    let html = render_formal_syntax(
         SyntaxInput::SyntaxString(&syntax),
         env.browser_compat.first().map(|s| s.as_str()),
         env.locale.as_url_str(),
@@ -100,5 +102,6 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
-    )?)
+    )?;
+    post_process_templ_links(&html)
 }

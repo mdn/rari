@@ -12,7 +12,14 @@ use tracing::error;
 static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
     let web_features = WebFeatures::from_file(&data_dir().join("web-features/package/data.json"));
     match web_features {
-        Ok(web_features) => Some(web_features),
+        Ok(mut web_features) => {
+            if let Err(e) =
+                web_features.load_developer_signals(&data_dir().join("developer_signals/data.json"))
+            {
+                error!("Failed to load developer-signals data: {e:?}");
+            }
+            Some(web_features)
+        }
         Err(e) => {
             error!("Failed to load web-features data: {e:?}");
             None
