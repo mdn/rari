@@ -13,7 +13,8 @@ use crate::pages::page::{Page, PageLike};
 use crate::templ::api::RariApi;
 
 /// Private-use placeholders to smuggle `<code>` tags through `RariApi::link`,
-/// which would otherwise re-encode them as `&lt;code&gt;`.
+/// which re-encodes provided content as `&lt;code&gt;` on its page-not-found
+/// fallback path.
 const CODE_OPEN_PLACEHOLDER: &str = "\u{E000}";
 const CODE_CLOSE_PLACEHOLDER: &str = "\u{E001}";
 
