@@ -79,7 +79,7 @@ pub fn settings() -> &'static Settings {
 
 pub static DEPS: OnceLock<Deps> = OnceLock::new();
 pub fn deps() -> &'static Deps {
-    DEPS.get_or_init(|| Deps::new().expect("error generating deps"))
+    DEPS.get_or_init(Deps::new)
 }
 
 #[derive(Debug, Deserialize)]

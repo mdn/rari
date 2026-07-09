@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
 use indexmap::IndexMap;
@@ -19,6 +19,12 @@ pub struct Baseline<'a> {
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub asterisk: bool,
     pub feature: &'a FeatureData,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, JsonSchema)]
+pub struct DeveloperSignals {
+    pub url: String,
+    pub votes: u64,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -100,6 +106,19 @@ impl WebFeatures {
 
         let map = WebFeatures { features, bcd_keys };
         Ok(map)
+    }
+
+    pub fn load_developer_signals(&mut self, path: &Path) -> Result<(), Error> {
+        let json_str = read_to_string(path)?;
+        let signals: HashMap<String, DeveloperSignals> = serde_json::from_str(&json_str)?;
+
+        for (feature_id, signal) in signals {
+            if let Some(FeatureEnum::Feature(feature_data)) = self.features.get_mut(&feature_id) {
+                feature_data.developer_signals = Some(signal);
+            }
+        }
+
+        Ok(())
     }
 
     pub fn sub_keys(&self, bcd_key_spaced: &str) -> &[KeyStatus] {
@@ -249,6 +268,8 @@ pub struct FeatureData {
     /** Whether developers are formally discouraged from using this feature */
     #[serde(skip_serializing_if = "Option::is_none")]
     pub discouraged: Option<Discouraged>,
+    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
+    pub developer_signals: Option<DeveloperSignals>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]

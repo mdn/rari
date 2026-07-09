@@ -255,10 +255,10 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
     })];
     Ok(rewrite_str(
         html,
-        RewriteStrSettings {
-            element_content_handlers,
-            ..Default::default()
-        },
+        element_content_handlers.into_iter().fold(
+            RewriteStrSettings::new(),
+            RewriteStrSettings::append_element_content_handler,
+        ),
     )?)
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "rari-linter"
-version = "0.2.23"
+version = "0.2.27"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true

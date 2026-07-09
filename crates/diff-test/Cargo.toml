@@ -1,6 +1,6 @@
 [package]
 name = "diff-test"
-version = "0.2.23"
+version = "0.2.27"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -18,6 +18,6 @@ jsonpath_lib = "0.3"
 prettydiff = "0.9"
 html-minifier = "5"
 ansi-to-html = "0.2"
-quick-xml = "0.39"
+quick-xml = "0.40"
 clap = { version = "4", features = ["derive"] }
-lol_html = "2"
+lol_html = "3"

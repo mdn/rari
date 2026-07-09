@@ -24,11 +24,6 @@ pub fn non_standard_inline() -> Result<String, DocError> {
 }
 
 #[rari_f(register = "crate::Templ")]
-pub fn non_standardbage() -> Result<String, DocError> {
-    non_standard_inline(env)
-}
-
-#[rari_f(register = "crate::Templ")]
 pub fn deprecated_inline() -> Result<String, DocError> {
     let mut out = String::new();
     write_deprecated(&mut out, env.locale)?;
