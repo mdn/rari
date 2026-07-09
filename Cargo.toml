@@ -1,6 +1,6 @@
 [package]
 name = "rari"
-version = "0.2.22"
+version = "0.2.27"
 edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
@@ -11,6 +11,9 @@ rust-version = "1.90"
 [[bin]]
 path = "crates/rari-cli/main.rs"
 name = "rari"
+
+[profile.dev.package."*"]
+debug = false
 
 [profile.release-lto]
 inherits = "release"
@@ -70,7 +73,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 url = { version = "2", features = ["serde"] }
-itertools = "0.14"
+itertools = "0.15"
 constcat = "0.6"
 anyhow = "1"
 indexmap = { version = "2", features = ["serde"] }
@@ -87,7 +90,7 @@ reqwest = { version = "0.12", default-features = false, features = [
 indoc = "2"
 base64 = "0.22"
 sha2 = "0.11"
-base16ct = { version = "0.2", features = ["alloc"] }
+base16ct = { version = "1.0", features = ["alloc"] }
 dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"
 schemars = { version = "1", features = ["chrono04", "url2"] }
