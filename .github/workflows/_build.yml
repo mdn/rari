@@ -173,7 +173,7 @@ jobs:
         run: |
           set -eo pipefail
 
-          npx rari git-history
+          npx @mdn/rari git-history
 
           if [ -n "$BLOG_ROOT" ]; then
             BUILD_OPTIONS="--all"
@@ -277,11 +277,11 @@ jobs:
             done
           fi
 
-          npx rari build $BUILD_OPTIONS $FILE_LIST --issues "$BUILD_OUT_ROOT/issues.json" --templ-stats
+          npx @mdn/rari build $BUILD_OPTIONS $FILE_LIST --issues "$BUILD_OUT_ROOT/issues.json" --templ-stats
 
       - name: Render content (fred)
         working-directory: mdn/content
-        run: npx fred-ssr
+        run: npx --package=@mdn/fred fred-ssr
 
       - name: Set artifact name
         id: set-artifact-name
