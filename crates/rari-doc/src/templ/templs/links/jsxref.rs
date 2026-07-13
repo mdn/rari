@@ -41,7 +41,7 @@ pub fn jsxref(
     let display = display.as_deref().filter(|s| !s.is_empty());
     let global_objects = "Global_Objects";
     let display = display.unwrap_or(api_name.as_str());
-    let mut url = format!("/{}/docs/Web/JavaScript/Reference/", &env.locale);
+    let mut url = format!("/{}/docs/Web/JavaScript/Reference/", env.locale);
     let mut base_path = url.clone();
 
     let mut slug = api_name.replace("()", "").replace(".prototype.", ".");
