@@ -144,58 +144,55 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_compute_labels_plain_title() {
-        let (html, plain) = compute_labels(
-            "background-color",
-            PageType::CssProperty,
-            "Web/CSS/background-color",
-        );
-        assert_eq!(html, "background-color");
-        assert_eq!(plain, "background-color");
-    }
+    fn test_compute_labels() {
+        let cases = vec![
+            (
+                "plain_title",
+                "background-color",
+                PageType::CssProperty,
+                "Web/CSS/background-color",
+                "background-color",
+                "background-color",
+            ),
+            (
+                "backticks",
+                "`background-color`",
+                PageType::CssProperty,
+                "Web/CSS/background-color",
+                "<code>background-color</code>",
+                "background-color",
+            ),
+            (
+                "partial_backticks",
+                "`<input>`: The Input element",
+                PageType::CssSelector,
+                "Web/CSS/whatever",
+                "<code>&lt;input&gt;</code>: The Input element",
+                "<input>: The Input element",
+            ),
+            (
+                "at_rule_descriptor",
+                "`font-family`",
+                PageType::CssAtRuleDescriptor,
+                "Web/CSS/Reference/At-rules/@font-face/font-family",
+                "<code>font-family</code> (<code>@font-face</code>)",
+                "font-family (@font-face)",
+            ),
+            (
+                "at_rule_descriptor_no_at_rule_in_slug",
+                "font-family",
+                PageType::CssAtRuleDescriptor,
+                "Web/CSS/font-family",
+                "font-family",
+                "font-family",
+            ),
+        ];
 
-    #[test]
-    fn test_compute_labels_backticks() {
-        let (html, plain) = compute_labels(
-            "`background-color`",
-            PageType::CssProperty,
-            "Web/CSS/background-color",
-        );
-        assert_eq!(html, "<code>background-color</code>");
-        assert_eq!(plain, "background-color");
-    }
-
-    #[test]
-    fn test_compute_labels_partial_backticks() {
-        let (html, plain) = compute_labels(
-            "`<input>`: The Input element",
-            PageType::CssSelector,
-            "Web/CSS/whatever",
-        );
-        assert_eq!(html, "<code>&lt;input&gt;</code>: The Input element");
-        assert_eq!(plain, "<input>: The Input element");
-    }
-
-    #[test]
-    fn test_compute_labels_at_rule_descriptor() {
-        let (html, plain) = compute_labels(
-            "`font-family`",
-            PageType::CssAtRuleDescriptor,
-            "Web/CSS/Reference/At-rules/@font-face/font-family",
-        );
-        assert_eq!(html, "<code>font-family</code> (<code>@font-face</code>)");
-        assert_eq!(plain, "font-family (@font-face)");
-    }
-
-    #[test]
-    fn test_compute_labels_at_rule_descriptor_no_at_rule_in_slug() {
-        let (html, plain) = compute_labels(
-            "font-family",
-            PageType::CssAtRuleDescriptor,
-            "Web/CSS/font-family",
-        );
-        assert_eq!(html, "font-family");
-        assert_eq!(plain, "font-family");
+        for (name, title_raw, page_type, slug, expected_html, expected_plain) in cases {
+            let (html, plain) = compute_labels(title_raw, page_type, slug);
+            assert_eq!(html, expected_html, "html mismatch for case `{name}`");
+            assert_eq!(plain, expected_plain, "plain mismatch for case `{name}`");
+        }
     }
 
     #[test]
