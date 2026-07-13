@@ -212,6 +212,14 @@ struct BuildArgs {
     files_flag: Vec<PathBuf>,
     #[arg(long, help = "Build only content listed in <FILE_LIST>")]
     file_list: Option<PathBuf>,
+    #[arg(
+        long,
+        value_name = "NEEDLE",
+        value_parser = clap::builder::NonEmptyStringValueParser::new(),
+        conflicts_with_all = ["files", "files_flag", "file_list"],
+        help = "Build only docs whose Markdown source contains <NEEDLE> (ASCII case-insensitive)"
+    )]
+    grep: Option<String>,
     #[arg(short, long, help = "Abort build on warnings")]
     deny_warnings: bool,
     #[arg(long, help = "Disable caching (only for debugging)")]
@@ -471,6 +479,7 @@ fn main() -> Result<(), Error> {
     if !cli.skip_updates {
         rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;
         rari_deps::web_features::update_web_features(rari_types::globals::data_dir())?;
+        rari_deps::developer_signals::update_developer_signals(rari_types::globals::data_dir())?;
         rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;
         rari_deps::mdn_data::update_mdn_data(rari_types::globals::data_dir())?;
         rari_deps::web_ext_examples::update_web_ext_examples(rari_types::globals::data_dir())?;
@@ -530,16 +539,33 @@ fn main() -> Result<(), Error> {
                 );
             }
 
-            let full_build = arg_files.is_empty()
-                && (args.all || args.all_available || !args.no_basic || args.content);
-            let multi_locale = full_build && content_translated_root().is_some();
-
             let requested_locales: Option<Vec<Locale>> =
                 args.locale.as_deref().map(finalize_requested_locales);
 
             if let Some(locales) = &requested_locales {
                 validate_locale_arg(locales)?;
             }
+
+            if let Some(needle) = args.grep.as_deref() {
+                let matches = rari_doc::walker::grep_doc_files(
+                    needle,
+                    LocaleFilter::from(requested_locales.as_deref()),
+                )?;
+                info!(
+                    "--grep matched {} {}",
+                    matches.len(),
+                    if matches.len() == 1 { "file" } else { "files" },
+                );
+                if matches.is_empty() {
+                    info!("nothing to build");
+                    return Ok(());
+                }
+                arg_files.extend(matches);
+            }
+
+            let full_build = arg_files.is_empty()
+                && (args.all || args.all_available || !args.no_basic || args.content);
+            let multi_locale = full_build && content_translated_root().is_some();
 
             let templ_stats = if args.templ_stats {
                 let (tx, rx) = channel::<TemplStatEvent>();

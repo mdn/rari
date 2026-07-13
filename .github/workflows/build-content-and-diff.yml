@@ -3,10 +3,10 @@ name: Build Content and Diff
 on:
   pull_request:
     paths:
-      - '**/*.rs'
-      - '**/Cargo.lock'
-      - '**/Cargo.toml'
-      - '.github/workflows/build-content-and-diff.yml'
+      - "**/*.rs"
+      - "**/Cargo.lock"
+      - "**/Cargo.toml"
+      - ".github/workflows/build-content-and-diff.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -30,20 +30,20 @@ jobs:
 
     steps:
       - name: Checkout (content)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: mdn/content
           path: content
           persist-credentials: false
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@9a1d20035bdbcbc899baabe1e402e85bc33639bc # 1.90
+        uses: dtolnay/rust-toolchain@1a3a6d54512beeaffd394f8d516ca16f2c506a20 # 1.97
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
 
       - name: Checkout (rari @ base)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ github.base_ref }}
           path: rari-base
@@ -61,7 +61,7 @@ jobs:
           fi
 
       - name: Checkout (rari @ PR)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           path: rari-pr
           persist-credentials: false
@@ -70,19 +70,21 @@ jobs:
         working-directory: rari-base
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_BASE }}
+          DEPS_DATA_DIR: ${{ github.workspace }}/deps-base
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run --release build --json-issues
+        run: cargo run --quiet --release build --json-issues
 
       - name: Build with PR
         working-directory: rari-pr
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_PR }}
+          DEPS_DATA_DIR: ${{ github.workspace }}/deps-pr
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run --release build --json-issues
+        run: cargo run --quiet --release build --json-issues
 
       - name: Generate diff
         working-directory: rari-pr
-        run: cargo run -p diff-test diff --fast --flaws --html --value --out "$DIFF" --verbose "$BUILD_BASE" "$BUILD_PR"
+        run: cargo run --quiet -p diff-test diff --fast --flaws --html --value --out "$DIFF" --verbose "$BUILD_BASE" "$BUILD_PR"
 
       - name: Upload diff
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
