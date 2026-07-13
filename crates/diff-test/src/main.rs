@@ -330,18 +330,18 @@ fn full_diff(
                     let rhs_t = EMPTY_P_DIFF.replace_all(&rhs_t, "");
                     let lhs_t = rewrite_str(
                         &lhs_t,
-                        RewriteStrSettings {
-                            element_content_handlers: pre_diff_element_massaging_handlers(args),
-                            ..RewriteStrSettings::new()
-                        },
+                        pre_diff_element_massaging_handlers(args).into_iter().fold(
+                            RewriteStrSettings::new(),
+                            RewriteStrSettings::append_element_content_handler,
+                        ),
                     )
                     .expect("lolhtml processing failed");
                     let rhs_t = rewrite_str(
                         &rhs_t,
-                        RewriteStrSettings {
-                            element_content_handlers: pre_diff_element_massaging_handlers(args),
-                            ..RewriteStrSettings::new()
-                        },
+                        pre_diff_element_massaging_handlers(args).into_iter().fold(
+                            RewriteStrSettings::new(),
+                            RewriteStrSettings::append_element_content_handler,
+                        ),
                     )
                     .expect("lolhtml processing failed");
                     lhs = fmt_html(&html_minifier::minify(lhs_t).unwrap());

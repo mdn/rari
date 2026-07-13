@@ -105,9 +105,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.102"
+version = "1.0.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
+checksum = "2a4385e2e34eb35d6b3efe798b9eb88096925d87726c0798709bf56d9ed84af3"
 
 [[package]]
 name = "arbitrary"
@@ -588,14 +588,14 @@ dependencies = [
 
 [[package]]
 name = "css-definition-syntax"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "thiserror 2.0.18",
 ]
 
 [[package]]
 name = "css-syntax"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "anyhow",
  "css-definition-syntax",
@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "css-syntax-types"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "regress",
  "serde",
@@ -867,7 +867,7 @@ dependencies = [
 
 [[package]]
 name = "diff-test"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ansi-to-html",
  "anyhow",
@@ -1464,12 +1464,9 @@ checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
 
 [[package]]
 name = "html-escape"
-version = "0.2.13"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d1ad449764d627e22bfd7cd5e8868264fc9236e07c752972b4080cd351cb476"
-dependencies = [
- "utf8-width",
-]
+checksum = "46c1ff2d1cbf39efe5af0900ced8a069b5e61557a17544eb0c4a50239937389e"
 
 [[package]]
 name = "html-minifier"
@@ -1642,9 +1639,9 @@ dependencies = [
 
 [[package]]
 name = "icu_collator"
-version = "2.2.0"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b521b92a2666061ddda902769d8a4cf730b5c9529a845cc1b69770b12a6c9a71"
+checksum = "8bbdf98e5e0aa827770acee171ebb568aaab975a36b56afdb5fd0e2f525750bb"
 dependencies = [
  "icu_collator_data",
  "icu_collections",
@@ -1809,9 +1806,9 @@ dependencies = [
 
 [[package]]
 name = "ignore"
-version = "0.4.26"
+version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b915661dd01db3f05050265b2477bcc6527b3792388e2749b41623cc592be67d"
+checksum = "fe112b004901c62c2faa11f4f75e9864e0cc5af8da71c9115d184a3aa888749f"
 dependencies = [
  "crossbeam-deque",
  "globset",
@@ -1897,9 +1894,9 @@ checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 
 [[package]]
 name = "itertools"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
 dependencies = [
  "either",
 ]
@@ -2017,9 +2014,9 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "lol_html"
-version = "2.9.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00aad58f6ec3990e795943872f13651e7a5fa59dca2c8f31a74faf8a0e0fb652"
+checksum = "2ae574a677ef0443a0bd3c291f0cab9d1e61a3ad85a1515e3cfc0bc720d5a48e"
 dependencies = [
  "bitflags 2.11.1",
  "cfg-if",
@@ -2104,9 +2101,9 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "memchr"
-version = "2.8.1"
+version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b947ae49db0d222b1dbc6b113ce7248a3fc3a6ca21b696717bfc000ba4484d8"
+checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "memoize"
@@ -2622,7 +2619,7 @@ checksum = "0c8d0fd677905edcbeedbf2edb6494d676f0e98d54d5cf9bda0b061cb8fb8aba"
 
 [[package]]
 name = "rari"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "anyhow",
  "axum",
@@ -2652,7 +2649,7 @@ dependencies = [
 
 [[package]]
 name = "rari-data"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "indexmap",
  "rari-utils",
@@ -2666,7 +2663,7 @@ dependencies = [
 
 [[package]]
 name = "rari-deps"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "chrono",
  "css-syntax-types",
@@ -2687,7 +2684,7 @@ dependencies = [
 
 [[package]]
 name = "rari-doc"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "base16ct",
  "chrono",
@@ -2743,11 +2740,11 @@ dependencies = [
 
 [[package]]
 name = "rari-linter"
-version = "0.2.27"
+version = "0.2.28"
 
 [[package]]
 name = "rari-lsp"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -2766,7 +2763,7 @@ dependencies = [
 
 [[package]]
 name = "rari-md"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "anyhow",
  "base64",
@@ -2779,7 +2776,7 @@ dependencies = [
 
 [[package]]
 name = "rari-sitemap"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "chrono",
  "flate2",
@@ -2793,7 +2790,7 @@ dependencies = [
 
 [[package]]
 name = "rari-templ-func"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "anyhow",
  "darling 0.23.0",
@@ -2804,7 +2801,7 @@ dependencies = [
 
 [[package]]
 name = "rari-tools"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "assert-json-diff",
  "base16ct",
@@ -2833,7 +2830,7 @@ dependencies = [
 
 [[package]]
 name = "rari-types"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "chrono",
  "config",
@@ -2854,7 +2851,7 @@ dependencies = [
 
 [[package]]
 name = "rari-utils"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "thiserror 2.0.18",
 ]
@@ -4084,9 +4081,9 @@ checksum = "40ce102ab67701b8526c123c1bab5cbe42d7040ccfd0f64af1a385808d2f43de"
 
 [[package]]
 name = "unescaper"
-version = "0.1.8"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4064ed685c487dbc25bd3f0e9548f2e34bab9d18cefc700f9ec2dba74ba1138e"
+checksum = "fb78bc2faba43e0b7f2521c78503ad6c6c05fce65b2c593ab8131c24880d8885"
 dependencies = [
  "thiserror 2.0.18",
 ]
@@ -4171,12 +4168,6 @@ name = "utf16_iter"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8232dd3cdaed5356e0f716d285e4b40b932ac434100fe9b7e0e8e935b9e6246"
-
-[[package]]
-name = "utf8-width"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86bd8d4e895da8537e5315b8254664e6b769c4ff3db18321b297a1e7004392e3"
 
 [[package]]
 name = "utf8_iter"
