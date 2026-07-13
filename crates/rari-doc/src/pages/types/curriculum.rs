@@ -553,39 +553,47 @@ mod tests {
 
     #[test]
     fn test_parse_curriculum_splits_frontmatter_h1_and_body() {
-        let raw = "---\ntitle: Test\n---\n\n# My Title\n\nBody with a [link](/en-US/docs/foo).\n";
-        let (fm, title, content_start) = parse_curriculum(raw).unwrap();
-        assert_eq!(fm, "title: Test");
-        assert_eq!(title, "My Title");
-        // `content()` returns the stripped body (frontmatter and H1 removed).
-        assert_eq!(
-            &raw[content_start..],
-            "\nBody with a [link](/en-US/docs/foo).\n"
-        );
-        // `raw_content()` returns the full file: the stripped prefix + body reconstructs it.
-        assert_eq!(
-            &raw[..content_start],
-            "---\ntitle: Test\n---\n\n# My Title\n"
-        );
-        // `fm_offset()` counts the prefix lines (frontmatter + blank line + H1).
-        assert_eq!(raw[..content_start].lines().count(), 5);
-    }
-
-    #[test]
-    fn test_parse_curriculum_body_matches_legacy_stripping() {
-        // Guards the invariant the offset-based approach relies on: because `TITLE_RE` is
-        // `^`-anchored, slicing at `content_start` reproduces the old `replacen`-based stripping
-        // byte-for-byte.
-        for raw in [
-            "---\nfoo: bar\n---\n# Title\n\nContent [x](/a).\n",
-            "---\ntitle: T\n---\n\n# Heading\n\nText.\n",
-            "---\nk: v\n---\n\n\n# Late Title\nprose\n",
-        ] {
-            let (_, content_start) = split_fm(raw);
-            let line = TITLE_RE.captures(&raw[content_start..]).unwrap()[0].to_owned();
-            let legacy = raw[content_start..].replacen(&line, "", 1);
-            let (_, _, content_start) = parse_curriculum(raw).unwrap();
-            assert_eq!(&raw[content_start..], legacy);
+        // (raw, expected frontmatter, expected title, expected body, expected prefix line count)
+        let cases = [
+            // Blank line between the frontmatter and the H1.
+            (
+                "---\ntitle: Test\n---\n\n# My Title\n\nBody with a [link](/en-US/docs/foo).\n",
+                "title: Test",
+                "My Title",
+                "\nBody with a [link](/en-US/docs/foo).\n",
+                5,
+            ),
+            // H1 directly after the frontmatter, no blank line.
+            (
+                "---\nfoo: bar\n---\n# Title\n\nContent [x](/a).\n",
+                "foo: bar",
+                "Title",
+                "\nContent [x](/a).\n",
+                4,
+            ),
+            // Blank line before the H1, minimal body.
+            (
+                "---\ntitle: T\n---\n\n# Heading\n\nText.\n",
+                "title: T",
+                "Heading",
+                "\nText.\n",
+                5,
+            ),
+            // Two blank lines before the H1.
+            (
+                "---\nk: v\n---\n\n\n# Late Title\nprose\n",
+                "k: v",
+                "Late Title",
+                "prose\n",
+                6,
+            ),
+        ];
+        for (raw, fm, title, body, prefix_lines) in cases {
+            let (parsed_fm, parsed_title, content_start) = parse_curriculum(raw).unwrap();
+            assert_eq!(parsed_fm, fm);
+            assert_eq!(parsed_title, title);
+            assert_eq!(&raw[content_start..], body);
+            assert_eq!(raw[..content_start].lines().count(), prefix_lines);
         }
     }
 }
