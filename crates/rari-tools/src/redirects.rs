@@ -506,7 +506,7 @@ fn compare_sorted_redirects(
     old_sorted_map: BTreeMap<&String, &String>,
     new_sorted_map: BTreeMap<String, String>,
 ) -> Result<(), ToolError> {
-    for (old, new) in old_sorted_map.into_iter().zip(new_sorted_map.into_iter()) {
+    for (old, new) in old_sorted_map.into_iter().zip(new_sorted_map) {
         if old.0 != &new.0 || old.1 != &new.1 {
             return Err(ToolError::InvalidRedirect(
                 old.0.clone(),

@@ -85,7 +85,7 @@ pub fn recent_contributions() -> Result<Vec<HomePageRecentContribution>, DocErro
             "mdn/translated-content",
         )?);
     };
-    content.sort_by(|a, b| a.updated_at.cmp(&b.updated_at));
+    content.sort_by_key(|a| a.updated_at);
     Ok(content)
 }
 
