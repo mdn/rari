@@ -4,12 +4,14 @@ use std::collections::{BTreeMap, HashMap};
 use itertools::Itertools;
 use rari_templ_func::rari_f;
 use rari_types::fm_types::{FeatureStatus, PageType};
+use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
 use crate::error::DocError;
 use crate::helpers::subpages::get_sub_pages;
 use crate::helpers::title::{TitleFormat, render_title};
 use crate::pages::page::{Page, PageLike};
+use crate::pages::types::doc::Doc;
 use crate::templ::api::RariApi;
 
 /// Private-use placeholders to smuggle `<code>` tags through `RariApi::link`,
@@ -27,7 +29,22 @@ pub fn css_ref() -> Result<String, DocError> {
         .iter()
         .filter(|&page| is_indexed_css_ref_page(page))
     {
-        let (html_label, plain_label) = labels_from_page(page);
+        // Use the translated page's title for the displayed label if a
+        // translation exists, falling back to the en-US page already in hand.
+        // `fallback: false` avoids re-loading the en-US doc when no
+        // translation exists.
+        let translated = (env.locale != Locale::EnUs)
+            .then(|| Doc::page_from_slug(page.slug(), env.locale, false).ok())
+            .flatten();
+        // The index letter and sort key always come from the en-US title, so
+        // the A–Z index stays keyed on the CSS term across locales. Translated
+        // titles lead with a descriptor word (e.g. "Propriété CSS …") and would
+        // otherwise cluster every entry under a single letter.
+        let (en_html_label, plain_label) = labels_from_page(page);
+        let html_label = match &translated {
+            Some(translated) => labels_from_page(translated).0,
+            None => en_html_label,
+        };
         let initial = initial_letter(&plain_label);
         let entry = index.entry(initial).or_default();
         entry
