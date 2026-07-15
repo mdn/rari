@@ -450,7 +450,7 @@ impl DIssue {
             di.filepath = Some(page.full_path().to_string_lossy().into_owned());
 
             let mut additional = HashMap::new();
-            for (key, value) in issue.spans.into_iter().chain(issue.fields.into_iter()) {
+            for (key, value) in issue.spans.into_iter().chain(issue.fields) {
                 match key {
                     "source" => {
                         di.name = IssueType::from_str(&value).unwrap();
