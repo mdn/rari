@@ -1,9 +1,9 @@
 pub mod bcd;
 pub mod client;
 pub mod current;
+pub mod developer_signals;
 pub mod error;
 pub mod external_json;
-pub mod github_release;
 pub mod npm;
 pub mod popularities;
 pub mod web_ext_examples;

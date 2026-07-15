@@ -1,5 +1,4 @@
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use config::{Config, ConfigError, Environment, File};
 use semver::VersionReq;
@@ -7,52 +6,42 @@ use serde::{Deserialize, Serialize};
 
 use crate::locale::Locale;
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Deps {
-    #[serde(alias = "@mdn/browser-compat-data")]
-    pub bcd: Option<VersionReq>,
-    #[serde(alias = "browser-specs")]
-    pub browser_specs: Option<VersionReq>,
-    #[serde(alias = "web-features")]
-    pub web_features: Option<VersionReq>,
-    #[serde(alias = "web-specs")]
-    pub web_specs: Option<VersionReq>,
-    #[serde(alias = "@webref/css")]
-    pub webref_css: Option<VersionReq>,
+    #[serde(rename = "@mdn/browser-compat-data")]
+    pub bcd: VersionReq,
+    #[serde(rename = "browser-specs")]
+    pub browser_specs: VersionReq,
+    #[serde(rename = "web-features")]
+    pub web_features: VersionReq,
+    #[serde(rename = "web-specs")]
+    pub web_specs: VersionReq,
+    #[serde(rename = "@webref/css")]
+    pub webref_css: VersionReq,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DepsPackageJson {
     dependencies: Deps,
 }
 
-impl Deps {
-    pub fn new() -> Result<Self, ConfigError> {
-        if let Some(package_json) =
-            std::env::var_os("DEPS_PACKAGE_JSON").or_else(|| std::env::var_os("deps_package_json"))
-        {
-            let path = Path::new(&package_json);
-            if let Some(deps_json) = fs::read_to_string(path).ok().and_then(|json_str| {
-                let s = serde_json::from_str::<DepsPackageJson>(&json_str);
-                s.ok()
-            }) {
-                return Ok(deps_json.dependencies);
-            } else {
-                tracing::error!("unable to parse {}", path.display());
-            }
-        }
-        let s = Config::builder()
-            .add_source(Environment::default().prefix("deps").try_parsing(true))
-            .build()?;
+const PINNED_DEPS: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../deps/package.json"
+));
 
-        let mut deps: Self = s.try_deserialize::<Self>()?;
-        // Make sure we are in the correct version range for webref-css, unless overridden.
-        if deps.webref_css.is_none() {
-            deps.webref_css = VersionReq::parse(">=7.0.0, <9.0.0").ok();
-        }
-        Ok(deps)
+impl Deps {
+    pub fn new() -> Self {
+        serde_json::from_str::<DepsPackageJson>(PINNED_DEPS)
+            .expect("embedded deps pins (deps/package.json) must be valid")
+            .dependencies
+    }
+}
+
+impl Default for Deps {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -77,7 +66,6 @@ pub struct Settings {
     pub json_issues: bool,
     pub json_live_samples: bool,
     pub blog_unpublished: bool,
-    pub deps: Deps,
     pub blog_pagination: bool,
 }
 
@@ -111,6 +99,7 @@ impl Settings {
                 "CONTENT_TRANSLATED_ROOT",
                 std::env::var("TESTING_CONTENT_TRANSLATED_ROOT").unwrap(),
             );
+            std::env::set_var("BLOG_ROOT", std::env::var("TESTING_BLOG_ROOT").unwrap());
             std::env::set_var(
                 "CACHE_CONTENT",
                 std::env::var("TESTING_CACHE_CONTENT").unwrap(),
@@ -147,6 +136,41 @@ impl Settings {
         settings.blog_root = settings
             .blog_root
             .and_then(|br| br.parent().map(|p| p.to_path_buf()));
+        settings
+            .build_out_root
+            .get_or_insert_with(|| PathBuf::from("build"));
         Ok(settings)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use serde_json::Value;
+
+    use super::*;
+
+    fn embedded_package_json() -> Value {
+        serde_json::from_str(PINNED_DEPS).expect("embedded deps must be valid json")
+    }
+
+    #[test]
+    fn embedded_pins_are_valid() {
+        let _ = Deps::new();
+    }
+
+    #[test]
+    fn missing_key_is_rejected() {
+        let mut json = embedded_package_json();
+        let dependencies = json["dependencies"].as_object_mut().unwrap();
+        let key = dependencies.keys().next().unwrap().clone();
+        dependencies.remove(&key);
+        assert!(serde_json::from_value::<DepsPackageJson>(json).is_err());
+    }
+
+    #[test]
+    fn extra_key_is_rejected() {
+        let mut json = embedded_package_json();
+        json["dependencies"]["not-a-real-dependency"] = Value::from("^1.0.0");
+        assert!(serde_json::from_value::<DepsPackageJson>(json).is_err());
     }
 }

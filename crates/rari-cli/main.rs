@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
@@ -19,14 +19,18 @@ use rari_doc::build::{
     build_blog_pages, build_contributor_spotlight_pages, build_curriculum_pages, build_docs,
     build_generic_pages, build_spas, build_top_level_meta,
 };
-use rari_doc::cached_readers::{CACHED_DOC_PAGE_FILES, read_and_cache_doc_pages};
+use rari_doc::cached_readers::{
+    CACHED_DOC_PAGE_FILES, blog_files, contributor_spotlight_files, curriculum_files,
+    generic_content_files, read_and_cache_doc_pages, translated_locale_paths,
+};
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::Page;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
-use rari_doc::utils::TEMPL_RECORDER_SENDER;
+use rari_doc::templ::templs::TEMPL_MAP;
+use rari_doc::utils::{TEMPL_RECORDER_SENDER, TemplStatEvent, locale_and_typ_from_path};
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
 use rari_tools::fix::fixer::fix_all;
@@ -37,8 +41,11 @@ use rari_tools::redirects::{fix_redirects, validate_redirects};
 use rari_tools::remove::remove;
 use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
-use rari_types::globals::{SETTINGS, build_out_root, content_root, content_translated_root};
-use rari_types::locale::Locale;
+use rari_types::globals::{
+    SETTINGS, blog_root, build_out_root, content_root, content_translated_root,
+    contributor_spotlight_root, curriculum_root, generic_content_root,
+};
+use rari_types::locale::{Locale, LocaleFilter};
 use rari_types::settings::Settings;
 use rari_utils::io::read_to_string;
 use self_update::cargo_crate_version;
@@ -91,6 +98,18 @@ enum Commands {
 struct FixFlawsArgs {
     #[arg(short, long, help = "Only fix flaws for <LOCALE>")]
     locale: Option<Locale>,
+    #[arg(long, help = "Fix all content types")]
+    all: bool,
+    #[arg(long, help = "Fix flaws in content (default if no flags specified)")]
+    content: bool,
+    #[arg(long, help = "Fix flaws in blog posts")]
+    blog: bool,
+    #[arg(long, help = "Fix flaws in curriculum pages")]
+    curriculum: bool,
+    #[arg(long, help = "Fix flaws in contributor spotlights")]
+    spotlights: bool,
+    #[arg(long, help = "Fix flaws in generic-content pages")]
+    generics: bool,
 }
 #[derive(Args)]
 struct ExportSchemaArgs {
@@ -182,16 +201,38 @@ struct ServeArgs {
 
 #[derive(Args)]
 struct BuildArgs {
-    #[arg(short, long, help = "Build only content <FILES>")]
+    #[arg(value_name = "FILES", help = "Build only content <FILES>")]
     files: Vec<PathBuf>,
+    #[arg(
+        short = 'f',
+        long = "files",
+        value_name = "FILES",
+        hide = true,
+        conflicts_with = "files",
+        help = "DEPRECATED: pass file paths as positional arguments instead"
+    )]
+    files_flag: Vec<PathBuf>,
     #[arg(long, help = "Build only content listed in <FILE_LIST>")]
     file_list: Option<PathBuf>,
+    #[arg(
+        long,
+        value_name = "NEEDLE",
+        value_parser = clap::builder::NonEmptyStringValueParser::new(),
+        conflicts_with_all = ["files", "files_flag", "file_list"],
+        help = "Build only docs whose Markdown source contains <NEEDLE> (ASCII case-insensitive)"
+    )]
+    grep: Option<String>,
     #[arg(short, long, help = "Abort build on warnings")]
     deny_warnings: bool,
     #[arg(long, help = "Disable caching (only for debugging)")]
     no_cache: bool,
     #[arg(long, help = "Build everything")]
     all: bool,
+    #[arg(
+        long,
+        help = "Build everything available (skips optional content if root not configured)"
+    )]
+    all_available: bool,
     #[arg(
         long,
         help = "Don't automatically build basics: content, spas, search-index"
@@ -215,8 +256,18 @@ struct BuildArgs {
     sitemaps: bool,
     #[arg(long, help = "Display template statistics (debugging")]
     templ_stats: bool,
-    #[arg(long, help = "Write all issues to path <ISSUES>")]
+    #[arg(
+        long,
+        num_args = 0..=1,
+        default_missing_value = "",
+        help = "Write all issues to path <ISSUES> (defaults to BUILD_OUT_ROOT/issues.json)"
+    )]
     issues: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Write per-locale issues to BUILD_OUT_ROOT/{locale}/issues.json"
+    )]
+    issues_per_locale: bool,
     #[arg(long, help = "Annotate html with 'data-flaw' attributes")]
     data_issues: bool,
     #[arg(long, help = "Add flaws field to index.json for docs")]
@@ -232,6 +283,12 @@ struct BuildArgs {
         help = "Noop flag to legacy compatibility (has no effect on build)"
     )]
     noop: bool,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        help = "Only build the given locale(s). Repeatable or comma-separated. en-US is always included. Other locales require `content_translated_root`."
+    )]
+    locale: Option<Vec<Locale>>,
 }
 
 #[derive(Debug)]
@@ -263,6 +320,111 @@ fn clear_dependencies_last_checked(base_path: &Path) {
     if base_path.exists() {
         remove_last_checked_files(base_path);
     }
+}
+
+/// Applies one `TemplStatEvent` to the running `known`/`invalid` aggregates.
+///
+/// Returns `false` for `Stop`, signalling the receive loop to terminate.
+fn ingest_templ_event(
+    event: TemplStatEvent,
+    known: &mut HashMap<String, HashMap<Locale, usize>>,
+    invalid: &mut HashMap<String, HashMap<Locale, usize>>,
+    ignored: &[&str],
+) -> bool {
+    match event {
+        TemplStatEvent::Stop => return false,
+        TemplStatEvent::Record {
+            name,
+            locale,
+            known: is_known,
+        } => {
+            let name = name.to_lowercase();
+            if !ignored.contains(&name.as_str()) {
+                let bucket = if is_known { known } else { invalid };
+                *bucket.entry(name).or_default().entry(locale).or_insert(0) += 1;
+            }
+        }
+    }
+    true
+}
+
+fn into_sorted_templ_stats(
+    stats: HashMap<String, HashMap<Locale, usize>>,
+) -> Vec<(String, usize, HashMap<Locale, usize>)> {
+    let mut out: Vec<_> = stats
+        .into_iter()
+        .map(|(name, per_locale)| {
+            let total: usize = per_locale.values().sum();
+            (name, total, per_locale)
+        })
+        .collect();
+    out.sort_by(|(a_name, a_total, _), (b_name, b_total, _)| {
+        b_total.cmp(a_total).then_with(|| a_name.cmp(b_name))
+    });
+    out
+}
+
+fn print_templ_locales_section<'a, I>(label: &str, rows: I)
+where
+    I: IntoIterator<Item = (&'a str, usize, &'a HashMap<Locale, usize>)>,
+    I::IntoIter: ExactSizeIterator,
+{
+    let rows = rows.into_iter();
+    info!("--- {label} ({}) ---", rows.len());
+    let mut tw = TabWriter::new(vec![]);
+    for (i, (name, count, per_locale)) in rows.enumerate() {
+        let mut locales: Vec<&str> = per_locale.keys().map(|l| l.as_url_str()).collect();
+        locales.sort();
+        writeln!(
+            &mut tw,
+            "{:2}\t{name}\t{count:4}\t{}",
+            i + 1,
+            locales.join(", ")
+        )
+        .expect("unable to write");
+    }
+    info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+}
+
+/// Normalize a user-supplied `--locale` list: always include en-US,
+/// deduplicate, and sort for stable iteration.
+fn finalize_requested_locales(input: &[Locale]) -> Vec<Locale> {
+    let mut set: Vec<Locale> = input.to_vec();
+    if !set.contains(&Locale::EnUs) {
+        set.push(Locale::EnUs);
+    }
+    set.sort();
+    set.dedup();
+    set
+}
+
+/// Validate a `--locale` argument list: reject locales not in `Locale::translated()` and
+/// require `content_translated_root` for any non-en-US locale.
+fn validate_locale_arg(locales: &[Locale]) -> Result<(), Error> {
+    let needs_translated = locales.iter().any(|l| *l != Locale::EnUs);
+    if needs_translated && content_translated_root().is_none() {
+        return Err(anyhow!(
+            "--locale requires content_translated_root to be configured for non en-US locales"
+        ));
+    }
+    let active = Locale::translated();
+    let invalid: Vec<&str> = locales
+        .iter()
+        .filter(|l| **l != Locale::EnUs && !active.contains(l))
+        .map(|l| l.as_url_str())
+        .collect();
+    if !invalid.is_empty() {
+        return Err(anyhow!(
+            "--locale: unsupported locale(s): {}. Supported: en-US, {}",
+            invalid.join(", "),
+            active
+                .iter()
+                .map(|l| l.as_url_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    Ok(())
 }
 
 fn main() -> Result<(), Error> {
@@ -319,6 +481,7 @@ fn main() -> Result<(), Error> {
     if !cli.skip_updates || matches!(cli.command, Commands::InstallDataDependencies) {
         rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;
         rari_deps::web_features::update_web_features(rari_types::globals::data_dir())?;
+        rari_deps::developer_signals::update_developer_signals(rari_types::globals::data_dir())?;
         rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;
         rari_deps::web_ext_examples::update_web_ext_examples(rari_types::globals::data_dir())?;
         rari_deps::popularities::update_popularities(rari_types::globals::data_dir())?;
@@ -334,11 +497,38 @@ fn main() -> Result<(), Error> {
             settings.json_live_samples = args.json_live_samples;
             let _ = SETTINGS.set(settings);
 
-            let mut arg_files = args
+            if !args.files_flag.is_empty() {
+                tracing::warn!(
+                    ignore = true,
+                    "`-f`/`--files` is deprecated and will be removed in a future release; pass file paths as positional arguments instead",
+                );
+            }
+            let (oks, errs): (Vec<_>, Vec<_>) = args
                 .files
                 .iter()
-                .map(|path| path.canonicalize())
-                .collect::<Result<Vec<PathBuf>, _>>()?;
+                .chain(args.files_flag.iter())
+                .map(|path| {
+                    path.canonicalize().map_err(|e| {
+                        let msg = e.to_string();
+                        let trimmed = msg.split(" (os error").next().unwrap_or(&msg);
+                        anyhow!("{}: {}", path.display(), trimmed)
+                    })
+                })
+                .partition(Result::is_ok);
+            if !errs.is_empty() {
+                let header = if errs.len() == 1 {
+                    "<FILES> contains an invalid value"
+                } else {
+                    "<FILES> contains invalid values"
+                };
+                let details = errs
+                    .into_iter()
+                    .map(|r| format!("  - {}", r.unwrap_err()))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                return Err(anyhow!("{header}:\n{details}"));
+            }
+            let mut arg_files: Vec<PathBuf> = oks.into_iter().map(Result::unwrap).collect();
 
             if let Some(file_list) = args.file_list {
                 arg_files.extend(
@@ -350,33 +540,108 @@ fn main() -> Result<(), Error> {
                 );
             }
 
+            let requested_locales: Option<Vec<Locale>> =
+                args.locale.as_deref().map(finalize_requested_locales);
+
+            if let Some(locales) = &requested_locales {
+                validate_locale_arg(locales)?;
+            }
+
+            if let Some(needle) = args.grep.as_deref() {
+                let matches = rari_doc::walker::grep_doc_files(
+                    needle,
+                    LocaleFilter::from(requested_locales.as_deref()),
+                )?;
+                info!(
+                    "--grep matched {} {}",
+                    matches.len(),
+                    if matches.len() == 1 { "file" } else { "files" },
+                );
+                if matches.is_empty() {
+                    info!("nothing to build");
+                    return Ok(());
+                }
+                arg_files.extend(matches);
+            }
+
+            let full_build = arg_files.is_empty()
+                && (args.all || args.all_available || !args.no_basic || args.content);
+            let multi_locale = full_build && content_translated_root().is_some();
+
             let templ_stats = if args.templ_stats {
-                let (tx, rx) = channel::<String>();
+                let (tx, rx) = channel::<TemplStatEvent>();
                 TEMPL_RECORDER_SENDER
                     .set(tx.clone())
                     .expect("unable to create templ recorder");
+                // `echo` is a test-only template that never appears in real content;
+                // suppress it from every section so it does not show up as unused.
+                const IGNORED: &[&str] = &["echo"];
                 let recorder_handler = spawn(move || {
-                    let mut stats = HashMap::new();
-                    while let Ok(t) = rx.recv() {
-                        if t == "∞" {
+                    let mut known: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
+                    let mut invalid: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
+                    while let Ok(event) = rx.recv() {
+                        if !ingest_templ_event(event, &mut known, &mut invalid, IGNORED) {
                             break;
                         }
-                        let t = t.to_lowercase();
-                        if let Some(n) = stats.get_mut(&t) {
-                            *n += 1usize;
-                        } else {
-                            stats.insert(t, 1usize);
-                        }
                     }
-                    let mut out = stats.into_iter().collect::<Vec<(String, usize)>>();
-                    out.sort_by(|(_, a), (_, b)| b.cmp(a));
-                    info!("--- templ summary ---");
+
+                    let known_sorted = into_sorted_templ_stats(known);
+                    let invalid_sorted = into_sorted_templ_stats(invalid);
+
+                    info!("--- templ summary ({}) ---", known_sorted.len());
                     let mut tw = TabWriter::new(vec![]);
-                    for (i, (templ, count)) in out.iter().enumerate() {
+                    for (i, (templ, count, _)) in known_sorted.iter().enumerate() {
                         writeln!(&mut tw, "{:2}\t{templ}\t{count:4}", i + 1)
                             .expect("unable to write");
                     }
                     info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+
+                    print_templ_locales_section(
+                        "templ invalid",
+                        invalid_sorted
+                            .iter()
+                            .map(|(name, count, per_locale)| (name.as_str(), *count, per_locale)),
+                    );
+
+                    if full_build {
+                        let seen: HashSet<&str> =
+                            known_sorted.iter().map(|(n, _, _)| n.as_str()).collect();
+                        let mut unused: Vec<String> = TEMPL_MAP
+                            .iter()
+                            .map(|t| t.name.replace('-', "_").to_lowercase())
+                            .filter(|n| {
+                                !seen.contains(n.as_str()) && !IGNORED.contains(&n.as_str())
+                            })
+                            .collect();
+                        unused.sort();
+                        info!("--- templ unused ({}) ---", unused.len());
+                        let mut tw = TabWriter::new(vec![]);
+                        for (i, name) in unused.iter().enumerate() {
+                            writeln!(&mut tw, "{:2}\t{name}", i + 1).expect("unable to write");
+                        }
+                        info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                    }
+
+                    if multi_locale {
+                        let mut translated_only: Vec<(&str, usize, &HashMap<Locale, usize>)> =
+                            known_sorted
+                                .iter()
+                                .filter_map(|(name, total, per_locale)| {
+                                    (!per_locale.contains_key(&Locale::EnUs)).then_some((
+                                        name.as_str(),
+                                        *total,
+                                        per_locale,
+                                    ))
+                                })
+                                .collect();
+                        translated_only.sort_by(|(a_name, a_total, _), (b_name, b_total, _)| {
+                            b_total.cmp(a_total).then_with(|| a_name.cmp(b_name))
+                        });
+                        print_templ_locales_section(
+                            "templ translated-only",
+                            translated_only.iter().copied(),
+                        );
+                    }
                 });
                 Some((recorder_handler, tx))
             } else {
@@ -394,20 +659,36 @@ fn main() -> Result<(), Error> {
             }
             let mut urls = Vec::new();
             let mut docs = Vec::new();
-            info!("Building everything 🛠️");
-            if args.all || !args.no_basic || args.content || !arg_files.is_empty() {
+            if let Some(locales) = &requested_locales {
+                info!(
+                    "Building locale(s): {} 🛠️",
+                    locales
+                        .iter()
+                        .map(|l| l.as_url_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            } else {
+                info!("Building everything 🛠️");
+            }
+            let locale_filter = LocaleFilter::from(requested_locales.as_deref());
+            if args.all
+                || args.all_available
+                || !args.no_basic
+                || args.content
+                || !arg_files.is_empty()
+            {
                 let start = std::time::Instant::now();
                 docs = if !arg_files.is_empty() {
                     read_docs_parallel::<Page, Doc>(&arg_files, None)?
                 } else if args.no_cache {
-                    let files: &[_] = if let Some(translated_root) = content_translated_root() {
-                        &[content_root(), translated_root]
-                    } else {
-                        &[content_root()]
-                    };
-                    read_docs_parallel::<Page, Doc>(files, None)?
+                    let mut files: Vec<PathBuf> = vec![content_root().to_path_buf()];
+                    if let Some(translated_root) = content_translated_root() {
+                        files.extend(translated_locale_paths(translated_root, locale_filter));
+                    }
+                    read_docs_parallel::<Page, Doc>(&files, None)?
                 } else {
-                    read_and_cache_doc_pages()?
+                    read_and_cache_doc_pages(locale_filter)?
                 };
                 info!(
                     "Took: {: >10.3?} for reading {} docs",
@@ -415,14 +696,19 @@ fn main() -> Result<(), Error> {
                     docs.len()
                 );
             }
-            if args.all || !args.no_basic || args.spas {
+            if args.all || args.all_available || !args.no_basic || args.spas {
                 let start = std::time::Instant::now();
-                let spas = build_spas()?;
+                let spas = build_spas(locale_filter)?;
                 let num = spas.len();
                 urls.extend(spas);
                 info!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
             }
-            if args.all || !args.no_basic || args.content || !arg_files.is_empty() {
+            if args.all
+                || args.all_available
+                || !args.no_basic
+                || args.content
+                || !arg_files.is_empty()
+            {
                 let start = std::time::Instant::now();
                 let (docs, meta) = build_docs(&docs)?;
                 build_top_level_meta(meta)?;
@@ -433,12 +719,13 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || !args.no_basic || args.search_index {
+            if args.all || args.all_available || !args.no_basic || args.search_index {
                 let start = std::time::Instant::now();
                 build_search_index(&docs)?;
                 info!("Took: {: >10.3?} to build search index", start.elapsed());
             }
-            if args.all || args.generics {
+            if args.all || args.generics || (args.all_available && generic_content_root().is_some())
+            {
                 let start = std::time::Instant::now();
                 let generic_pages = build_generic_pages()?;
                 let num = generic_pages.len();
@@ -448,7 +735,7 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || args.curriculum {
+            if args.all || args.curriculum || (args.all_available && curriculum_root().is_some()) {
                 let start = std::time::Instant::now();
                 let curriculum_pages = build_curriculum_pages()?;
                 let num = curriculum_pages.len();
@@ -458,14 +745,17 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || args.blog {
+            if args.all || args.blog || (args.all_available && blog_root().is_some()) {
                 let start = std::time::Instant::now();
                 let blog_pages = build_blog_pages()?;
                 let num = blog_pages.len();
                 urls.extend(blog_pages);
                 info!("Took: {: >10.3?} to build blog ({num})", start.elapsed());
             }
-            if args.all || args.spotlights {
+            if args.all
+                || args.spotlights
+                || (args.all_available && contributor_spotlight_root().is_some())
+            {
                 let start = std::time::Instant::now();
                 let contributor_spotlight_pages = build_contributor_spotlight_pages()?;
                 let num = contributor_spotlight_pages.len();
@@ -475,7 +765,8 @@ fn main() -> Result<(), Error> {
                     start.elapsed()
                 );
             }
-            if args.all || args.sitemaps && !urls.is_empty() {
+            let total_files = urls.len();
+            if args.all || args.all_available || args.sitemaps && !urls.is_empty() {
                 let sitemaps = Sitemaps { sitemap_meta: urls };
                 let start = std::time::Instant::now();
                 let out_path = build_out_root()?;
@@ -488,17 +779,79 @@ fn main() -> Result<(), Error> {
                 );
             }
             if let Some((recorder_handler, tx)) = templ_stats {
-                tx.send("∞".to_string())?;
+                tx.send(TemplStatEvent::Stop)?;
                 recorder_handler
                     .join()
                     .expect("unable to close templ recorder");
             }
 
+            let events = memory_layer.get_events();
+            let num_files = events.len();
+            let num_issues: usize = events.iter().map(|e| e.value().len()).sum();
+
+            if num_issues > 0 {
+                info!(
+                    "Found {} issues in {} of {} files",
+                    num_issues, num_files, total_files
+                );
+                let mut by_locale: std::collections::BTreeMap<Option<Locale>, (usize, usize)> =
+                    std::collections::BTreeMap::new();
+                for entry in events.iter() {
+                    let locale = locale_and_typ_from_path(Path::new(entry.key()))
+                        .ok()
+                        .map(|(l, _)| l);
+                    let stats = by_locale.entry(locale).or_default();
+                    stats.0 += 1;
+                    stats.1 += entry.value().len();
+                }
+                let unknown = by_locale.remove(&None);
+                for (locale, (files, issues)) in &by_locale {
+                    if let Some(locale) = locale {
+                        info!(
+                            "  {}: {} issues in {} files",
+                            locale.as_url_str(),
+                            issues,
+                            files
+                        );
+                    }
+                }
+                if let Some((files, issues)) = unknown {
+                    info!("  unknown: {} issues in {} files", issues, files);
+                }
+            } else {
+                info!("No issues found in {} files", total_files);
+            }
+
             if let Some(issues_path) = args.issues {
-                let events = memory_layer.get_events();
-                let file = File::create(issues_path).unwrap();
+                let issues_path = if issues_path.as_os_str().is_empty() {
+                    build_out_root()?.join("issues.json")
+                } else {
+                    issues_path
+                };
+                let file = File::create(&issues_path).unwrap();
                 let mut buffed = BufWriter::new(file);
-                serde_json::to_writer_pretty(&mut buffed, &*events).unwrap();
+                serde_json::to_writer_pretty(&mut buffed, &memory_layer.sorted_issues()).unwrap();
+            }
+
+            if args.issues_per_locale {
+                let mut by_locale: std::collections::BTreeMap<
+                    Locale,
+                    std::collections::BTreeMap<String, Vec<rari_doc::issues::Issue>>,
+                > = std::collections::BTreeMap::new();
+                for (file, issues) in memory_layer.sorted_issues() {
+                    if let Ok((locale, _)) = locale_and_typ_from_path(Path::new(&file)) {
+                        by_locale.entry(locale).or_default().insert(file, issues);
+                    }
+                }
+                let out_root = build_out_root()?;
+                for (locale, issues) in &by_locale {
+                    let dir = out_root.join(locale.as_folder_str());
+                    fs::create_dir_all(&dir).unwrap();
+                    let out_file = dir.join("issues.json");
+                    let file = File::create(&out_file).unwrap();
+                    let mut buffed = BufWriter::new(file);
+                    serde_json::to_writer_pretty(&mut buffed, issues).unwrap();
+                }
             }
         }
         Commands::Serve(args) => {
@@ -519,7 +872,7 @@ fn main() -> Result<(), Error> {
             settings.data_issues = true;
             settings.blog_unpublished = true;
             let _ = SETTINGS.set(settings);
-            read_and_cache_doc_pages()?;
+            read_and_cache_doc_pages(LocaleFilter::All)?;
             rari_lsp::run()?
         }
         Commands::GitHistory => {
@@ -564,21 +917,98 @@ fn main() -> Result<(), Error> {
                 gather_inventory()?;
             }
             ContentSubcommand::FixFlaws(args) => {
-                let start = std::time::Instant::now();
                 let mut settings = Settings::new()?;
                 settings.cache_content = true;
                 let _ = SETTINGS.set(settings);
-                let docs = read_and_cache_doc_pages()?;
-                info!(
-                    "Took: {: >10.3?} for reading {} docs",
-                    start.elapsed(),
-                    docs.len()
-                );
+
+                // Determine which content types to fix
+                // Default to content if no flags specified
+                let fix_content = args.all
+                    || args.content
+                    || (!args.blog && !args.curriculum && !args.spotlights && !args.generics);
+                let fix_blog = args.all || args.blog;
+                let fix_curriculum = args.all || args.curriculum;
+                let fix_spotlights = args.all || args.spotlights;
+                let fix_generics = args.all || args.generics;
+
+                let mut all_pages = Vec::new();
+
+                if let Some(locale) = args.locale {
+                    validate_locale_arg(&[locale])?;
+                }
+
+                // Collect content pages
+                if fix_content {
+                    let start = std::time::Instant::now();
+                    let locale_filter =
+                        LocaleFilter::from(args.locale.as_ref().map(std::slice::from_ref));
+                    let docs = read_and_cache_doc_pages(locale_filter)?;
+                    info!(
+                        "Took: {: >10.3?} for reading {} content pages",
+                        start.elapsed(),
+                        docs.len()
+                    );
+                    all_pages.extend(docs);
+                }
+
+                // Collect blog posts
+                if fix_blog {
+                    let start = std::time::Instant::now();
+                    let blog_pages: Vec<Page> = blog_files().posts.values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} blog posts",
+                        start.elapsed(),
+                        blog_pages.len()
+                    );
+                    all_pages.extend(blog_pages);
+                }
+
+                // Collect curriculum pages
+                if fix_curriculum {
+                    let start = std::time::Instant::now();
+                    let curriculum_pages: Vec<Page> =
+                        curriculum_files().by_url.values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} curriculum pages",
+                        start.elapsed(),
+                        curriculum_pages.len()
+                    );
+                    all_pages.extend(curriculum_pages);
+                }
+
+                // Collect contributor spotlight pages
+                if fix_spotlights {
+                    let start = std::time::Instant::now();
+                    let spotlight_pages: Vec<Page> =
+                        contributor_spotlight_files().values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} contributor spotlight pages",
+                        start.elapsed(),
+                        spotlight_pages.len()
+                    );
+                    all_pages.extend(spotlight_pages);
+                }
+
+                // Collect generic content pages
+                if fix_generics {
+                    let start = std::time::Instant::now();
+                    let generic_pages: Vec<Page> =
+                        generic_content_files().values().cloned().collect();
+                    info!(
+                        "Took: {: >10.3?} for reading {} generic content pages",
+                        start.elapsed(),
+                        generic_pages.len()
+                    );
+                    all_pages.extend(generic_pages);
+                }
+
+                // Fix flaws in all collected pages
                 let start = std::time::Instant::now();
-                let fixed = fix_all(&docs, args.locale)?;
+                let fixed = fix_all(&all_pages, args.locale)?;
                 info!(
-                    "Took: {: >10.3?} for fixing {} docs",
+                    "Took: {: >10.3?} for fixing {} pages (fixed {})",
                     start.elapsed(),
+                    all_pages.len(),
                     fixed.len()
                 );
             }
@@ -616,8 +1046,8 @@ fn update(version: Option<String>) -> Result<(), Error> {
         .no_confirm(true)
         .show_download_progress(true)
         .current_version(cargo_crate_version!());
-    // Use GITHUB_TOKEN if it's set to avoid rate limiting
-    if let Ok(gh_token) = env::var("GITHUB_TOKEN") {
+    // Use GH_TOKEN or GITHUB_TOKEN if set to avoid rate limiting.
+    if let Ok(gh_token) = env::var("GH_TOKEN").or_else(|_| env::var("GITHUB_TOKEN")) {
         update_builder.auth_token(gh_token.as_str());
     }
     let target_release = if let Some(version) = version {
@@ -673,4 +1103,128 @@ fn update(version: Option<String>) -> Result<(), Error> {
     let status = update.update()?;
     info!("\n\nrari updated to `{}`", status.version());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn record(name: &str, locale: Locale, known: bool) -> TemplStatEvent {
+        TemplStatEvent::Record {
+            name: name.to_string(),
+            locale,
+            known,
+        }
+    }
+
+    #[test]
+    fn ingest_templ_event_routes_known_and_invalid() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        assert!(ingest_templ_event(
+            record("Compat", Locale::EnUs, true),
+            &mut known,
+            &mut invalid,
+            &[],
+        ));
+        assert!(ingest_templ_event(
+            record("typo_macro", Locale::Fr, false),
+            &mut known,
+            &mut invalid,
+            &[],
+        ));
+        assert_eq!(known["compat"][&Locale::EnUs], 1);
+        assert_eq!(invalid["typo_macro"][&Locale::Fr], 1);
+        assert!(!known.contains_key("typo_macro"));
+        assert!(!invalid.contains_key("compat"));
+    }
+
+    #[test]
+    fn ingest_templ_event_lowercases_and_accumulates_per_locale() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        for event in [
+            record("CSSxRef", Locale::EnUs, true),
+            record("cssxref", Locale::EnUs, true),
+            record("CSSXREF", Locale::Fr, true),
+        ] {
+            ingest_templ_event(event, &mut known, &mut invalid, &[]);
+        }
+        assert_eq!(known["cssxref"][&Locale::EnUs], 2);
+        assert_eq!(known["cssxref"][&Locale::Fr], 1);
+        assert!(invalid.is_empty());
+    }
+
+    #[test]
+    fn ingest_templ_event_skips_ignored_names() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        ingest_templ_event(
+            record("Echo", Locale::EnUs, true),
+            &mut known,
+            &mut invalid,
+            &["echo"],
+        );
+        assert!(known.is_empty());
+        assert!(invalid.is_empty());
+    }
+
+    #[test]
+    fn ingest_templ_event_returns_false_on_stop() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        assert!(!ingest_templ_event(
+            TemplStatEvent::Stop,
+            &mut known,
+            &mut invalid,
+            &[],
+        ));
+    }
+
+    #[test]
+    fn into_sorted_templ_stats_orders_by_count_then_name() {
+        let mut stats: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
+        stats.insert("zeta".into(), HashMap::from([(Locale::EnUs, 3)]));
+        stats.insert("alpha".into(), HashMap::from([(Locale::EnUs, 5)]));
+        stats.insert("beta".into(), HashMap::from([(Locale::EnUs, 5)]));
+        stats.insert(
+            "gamma".into(),
+            HashMap::from([(Locale::EnUs, 2), (Locale::Fr, 1)]),
+        );
+
+        let sorted = into_sorted_templ_stats(stats);
+        let names: Vec<&str> = sorted.iter().map(|(n, _, _)| n.as_str()).collect();
+        let totals: Vec<usize> = sorted.iter().map(|(_, t, _)| *t).collect();
+
+        assert_eq!(names, ["alpha", "beta", "gamma", "zeta"]);
+        assert_eq!(totals, [5, 5, 3, 3]);
+    }
+
+    #[test]
+    fn finalize_requested_locales_injects_en_us() {
+        let out = finalize_requested_locales(&[Locale::Fr]);
+        assert!(out.contains(&Locale::EnUs));
+        assert!(out.contains(&Locale::Fr));
+    }
+
+    #[test]
+    fn finalize_requested_locales_idempotent_for_en_us_only() {
+        assert_eq!(
+            finalize_requested_locales(&[Locale::EnUs]),
+            vec![Locale::EnUs]
+        );
+    }
+
+    #[test]
+    fn finalize_requested_locales_dedups_and_sorts() {
+        let out = finalize_requested_locales(&[Locale::Fr, Locale::EnUs, Locale::Fr]);
+        let mut expected = vec![Locale::EnUs, Locale::Fr];
+        expected.sort();
+        assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn finalize_requested_locales_empty_input_still_injects_en_us() {
+        assert_eq!(finalize_requested_locales(&[]), vec![Locale::EnUs]);
+    }
 }

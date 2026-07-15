@@ -114,7 +114,7 @@ impl Page {
                 .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA)),
             PageCategory::Doc => Doc::page_from_slug_path(&folder_path, locale, fallback)
                 .map_err(|_| DocError::PageNotFound(url.to_string(), PageCategory::Doc)),
-            PageCategory::BlogPost if locale != Locale::EnUs => {
+            PageCategory::BlogPost if locale != Locale::EnUs && !fallback => {
                 // Blog is en-US only.
                 Err(DocError::PageNotFound(
                     url.to_string(),
@@ -143,6 +143,23 @@ impl Page {
             PageCategory::GenericPage => Generic::from_slug(slug, locale).ok_or(
                 DocError::PageNotFound(url.to_string(), PageCategory::GenericPage),
             ),
+        }
+    }
+
+    /// Checks whether a page category's root is configured.
+    ///
+    /// # Arguments
+    /// - `category`: The page category to check.
+    ///
+    /// # Returns
+    /// `true` if the category's root is configured; otherwise, `false`.
+    pub fn is_category_available(category: PageCategory) -> bool {
+        match category {
+            PageCategory::BlogPost => blog_root().is_some(),
+            PageCategory::Curriculum => curriculum_root().is_some(),
+            PageCategory::ContributorSpotlight => contributor_spotlight_root().is_some(),
+            PageCategory::GenericPage => generic_content_root().is_some(),
+            _ => true,
         }
     }
 

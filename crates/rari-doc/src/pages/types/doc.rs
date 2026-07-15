@@ -18,8 +18,10 @@ use validator::Validate;
 
 use crate::cached_readers::{CACHED_DOC_PAGE_FILES, doc_page_from_static_files};
 use crate::error::DocError;
+use crate::helpers::title::{TitleFormat, render_title};
 use crate::pages::page::{Page, PageCategory, PageLike, PageReader, PageWriter};
 use crate::pages::types::utils::FmTempl;
+use crate::redirects::resolve_redirect;
 use crate::resolve::{build_url, url_to_folder_path};
 use crate::utils::{
     locale_and_typ_from_path, root_for_locale, serialize_t_or_vec, split_fm, t_or_vec,
@@ -95,6 +97,7 @@ pub struct FrontMatter {
 #[derive(Debug, Clone)]
 pub struct Meta {
     pub title: String,
+    pub title_raw: String,
     pub short_title: Option<String>,
     pub tags: Vec<String>,
     pub slug: String,
@@ -157,6 +160,25 @@ impl Doc {
         meta.sidebar = super_doc.meta.sidebar.clone();
     }
 
+    fn super_doc_from_slug(slug: &str) -> Result<Arc<Doc>, DocError> {
+        match Doc::page_from_slug(slug, Default::default(), false) {
+            Ok(Page::Doc(super_doc)) => Ok(super_doc),
+            Ok(_) => Err(DocError::NotADoc),
+            Err(e) => {
+                // Try to follow redirects in case the en-US page was moved
+                build_url(slug, Default::default(), PageCategory::Doc)
+                    .ok()
+                    .and_then(|url| resolve_redirect(&url))
+                    .and_then(|redirect_url| Page::from_url(&redirect_url).ok())
+                    .and_then(|page| match page {
+                        Page::Doc(super_doc) => Some(super_doc),
+                        _ => None,
+                    })
+                    .ok_or(e)
+            }
+        }
+    }
+
     pub fn is_orphaned(&self) -> bool {
         self.meta.slug.starts_with("orphaned/")
     }
@@ -182,8 +204,8 @@ impl PageReader<Page> for Doc {
         let mut doc = read_doc(&path)?;
 
         if doc.meta.locale != Default::default() && !doc.is_conflicting() && !doc.is_orphaned() {
-            match Doc::page_from_slug(&doc.meta.slug, Default::default(), false) {
-                Ok(Page::Doc(super_doc)) => {
+            match Doc::super_doc_from_slug(&doc.meta.slug) {
+                Ok(super_doc) => {
                     doc.copy_meta_from_super(&super_doc);
                 }
                 Err(DocError::PageNotFound(path, _)) => {
@@ -194,7 +216,14 @@ impl PageReader<Page> for Doc {
                         path
                     );
                 }
-                _ => {}
+                Err(err) => {
+                    tracing::error!(
+                        "Super doc not found for {}:{} {}",
+                        doc.meta.locale.as_url_str(),
+                        doc.meta.slug,
+                        err
+                    );
+                }
             }
         }
 
@@ -308,7 +337,7 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
     let (fm, content_start) = split_fm(&raw);
     let fm = fm.ok_or(DocError::NoFrontmatter)?;
     let FrontMatter {
-        title,
+        title: title_raw,
         short_title,
         tags,
         slug,
@@ -321,6 +350,7 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
         banners,
         ..
     } = serde_yaml_ng::from_str(fm)?;
+    let title = render_title(&title_raw, TitleFormat::Plain);
     let url = build_url(&slug, locale, PageCategory::Doc)?;
     let path = full_path
         .strip_prefix(root_for_locale(locale)?)?
@@ -351,6 +381,7 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
     Ok(Doc {
         meta: Meta {
             title,
+            title_raw,
             short_title,
             tags,
             slug,
@@ -373,7 +404,13 @@ pub fn doc_from_raw(raw: String, full_path: impl Into<PathBuf>) -> Result<Doc, D
 
 fn read_doc(path: impl Into<PathBuf>) -> Result<Doc, DocError> {
     let full_path = path.into();
-    let raw = read_to_string(&full_path)?;
+    let raw = read_to_string(&full_path).map_err(|e| {
+        if e.source.kind() == std::io::ErrorKind::NotFound {
+            DocError::PageNotFound(full_path.display().to_string(), PageCategory::Doc)
+        } else {
+            DocError::RariIoError(e)
+        }
+    })?;
     doc_from_raw(raw, full_path)
 }
 
@@ -389,18 +426,36 @@ fn write_doc(doc: &Doc) -> Result<(), DocError> {
     // Read original frontmatter to pass additional fields along,
     // overwrite fields from meta
     let mut frontmatter: FrontMatter = serde_yaml_ng::from_str(fm)?;
+    let is_translated = locale != Locale::default();
     frontmatter = FrontMatter {
-        title: doc.meta.title.clone(),
+        title: doc.meta.title_raw.clone(),
         short_title: doc.meta.short_title.clone(),
-        tags: doc.meta.tags.clone(),
         slug: doc.meta.slug.clone(),
-        page_type: doc.meta.page_type,
-        status: doc.meta.status.clone(),
-        browser_compat: doc.meta.browser_compat.clone(),
-        spec_urls: doc.meta.spec_urls.clone(),
-        original_slug: doc.meta.original_slug.clone(),
-        sidebar: doc.meta.sidebar.clone(),
-        ..frontmatter
+        ..if is_translated {
+            FrontMatter {
+                tags: vec![],
+                page_type: PageType::None,
+                status: vec![],
+                browser_compat: vec![],
+                spec_urls: vec![],
+                original_slug: doc.meta.original_slug.clone(),
+                sidebar: vec![],
+                banners: vec![],
+                ..frontmatter
+            }
+        } else {
+            FrontMatter {
+                tags: doc.meta.tags.clone(),
+                page_type: doc.meta.page_type,
+                status: doc.meta.status.clone(),
+                browser_compat: doc.meta.browser_compat.clone(),
+                spec_urls: doc.meta.spec_urls.clone(),
+                original_slug: Option::None,
+                sidebar: doc.meta.sidebar.clone(),
+                banners: doc.meta.banners.clone(),
+                ..frontmatter
+            }
+        }
     };
 
     if let Some(parent) = file_path.parent() {

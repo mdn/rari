@@ -8,7 +8,7 @@ use constcat::concat;
 use rari_types::RariEnv;
 use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::globals::{content_translated_root, settings};
-use rari_types::locale::Locale;
+use rari_types::locale::{Locale, LocaleFilter};
 use rari_utils::concat_strs;
 
 use super::spa_homepage::{
@@ -89,18 +89,27 @@ impl SPA {
             .unwrap_or_default()
     }
 
-    pub fn all() -> Vec<(String, Locale)> {
+    /// Returns the `(slug, locale)` pairs for all SPAs. When `filter` is
+    /// `LocaleFilter::Only`, the result is restricted to that set; pass
+    /// `LocaleFilter::All` for every available locale.
+    pub fn all(filter: LocaleFilter<'_>) -> Vec<(String, Locale)> {
         BASIC_SPAS
             .iter()
             .flat_map(|(slug, build_spa)| {
-                if build_spa.en_us_only || content_translated_root().is_none() {
-                    vec![(slug.clone(), Locale::EnUs)]
-                } else {
-                    Locale::for_generic_and_spas()
-                        .iter()
-                        .map(|locale| (slug.clone(), *locale))
-                        .collect()
-                }
+                let candidates: Vec<Locale> =
+                    if build_spa.en_us_only || content_translated_root().is_none() {
+                        vec![Locale::EnUs]
+                    } else {
+                        Locale::for_generic_and_spas().to_vec()
+                    };
+                candidates
+                    .into_iter()
+                    .filter(|loc| match filter {
+                        LocaleFilter::All => true,
+                        LocaleFilter::Only(set) => set.contains(loc),
+                    })
+                    .map(|loc| (slug.clone(), loc))
+                    .collect::<Vec<_>>()
             })
             .collect()
     }
@@ -212,7 +221,7 @@ impl SPA {
                     )?,
                     featured_contributor: featured_contributor(self.locale)?,
                     latest_news: ItemContainer {
-                        items: latest_news(&home_page_data.latest_news)?,
+                        items: latest_news()?,
                     },
                     recent_contributions: ItemContainer {
                         items: recent_contributions()?,
@@ -516,5 +525,40 @@ mod test {
     #[test]
     fn print() {
         println!("{}", serde_json::to_string(&*BASIC_SPAS).unwrap())
+    }
+
+    #[test]
+    fn all_without_filter_includes_all_en_us_pairs() {
+        // All is always a superset of Only([EnUs]): every en-US SPA must appear
+        // in the unrestricted result regardless of translated-root configuration.
+        let all = SPA::all(LocaleFilter::All);
+        let en_us_only = SPA::all(LocaleFilter::Only(&[Locale::EnUs]));
+        assert!(!all.is_empty());
+        assert!(all.len() >= en_us_only.len());
+        for pair in &en_us_only {
+            assert!(all.contains(pair));
+        }
+    }
+
+    #[test]
+    fn all_with_en_us_filter_yields_only_en_us() {
+        let pairs = SPA::all(LocaleFilter::Only(&[Locale::EnUs]));
+        assert!(!pairs.is_empty());
+        assert!(pairs.iter().all(|(_, locale)| *locale == Locale::EnUs));
+    }
+
+    #[test]
+    fn all_with_fr_filter_yields_only_fr_locales() {
+        // Tests run with `rari-types/testing` enabled, which points
+        // `CONTENT_TRANSLATED_ROOT` at `tests/data/translated_content/files`,
+        // so non-en-US locales are available and Fr SPAs must be emitted.
+        let pairs = SPA::all(LocaleFilter::Only(&[Locale::Fr]));
+        assert!(!pairs.is_empty());
+        assert!(pairs.iter().all(|(_, locale)| *locale == Locale::Fr));
+    }
+
+    #[test]
+    fn all_with_empty_filter_yields_nothing() {
+        assert!(SPA::all(LocaleFilter::Only(&[])).is_empty());
     }
 }

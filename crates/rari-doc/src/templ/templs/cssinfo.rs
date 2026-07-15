@@ -11,6 +11,7 @@ use crate::helpers::css_info::{
     css_animation_type, css_applies_to, css_computed, css_inherited, css_initial,
     css_l10n_for_value, css_percentages, css_related_at_rule,
 };
+use crate::html::links::post_process_templ_links;
 
 #[rari_f(register = "crate::Templ")]
 pub fn cssinfo() -> Result<String, DocError> {
@@ -77,7 +78,7 @@ pub fn cssinfo() -> Result<String, DocError> {
         _ => (),
     }
 
-    Ok(out)
+    post_process_templ_links(&out)
 }
 
 /// Returns an optional scope string from a browser compatibility entry.
@@ -156,8 +157,8 @@ fn render_formal_at_rule_descriptor_def(
             &format!(
                 r#"<a href="/{}/docs/Web/CSS/Reference/At-rules/{}"><code>{}</code></a>"#,
                 locale.as_url_str(),
-                &at_rule_descriptor.r#for,
-                &at_rule_descriptor.r#for
+                at_rule_descriptor.r#for,
+                at_rule_descriptor.r#for
             ),
         )?;
     }

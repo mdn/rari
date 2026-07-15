@@ -270,7 +270,11 @@ pub struct JsonDoc {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
     pub title: String,
+    #[serde(rename = "titleHTML")]
+    pub title_html: String,
     pub toc: Vec<TocEntry>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fragments: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline: Option<Baseline<'static>>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
@@ -304,6 +308,7 @@ impl JsonDocMetadata {
             source,
             summary,
             title,
+            title_html,
             baseline,
             browser_compat,
             page_type,
@@ -326,6 +331,7 @@ impl JsonDocMetadata {
             source,
             summary,
             title,
+            title_html,
             baseline,
             browser_compat,
             page_type,
@@ -360,6 +366,8 @@ pub struct JsonDocMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
     pub title: String,
+    #[serde(rename = "titleHTML")]
+    pub title_html: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline: Option<Baseline<'static>>,
     #[serde(rename = "browserCompat", skip_serializing_if = "Vec::is_empty")]
@@ -443,6 +451,8 @@ pub struct JsonCurriculumDoc {
     pub title: String,
     pub summary: Option<String>,
     pub toc: Vec<TocEntry>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fragments: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sidebar: Option<Vec<CurriculumSidebarEntry>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -521,6 +531,8 @@ pub struct JsonBlogPostDoc {
     pub title: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub toc: Vec<TocEntry>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fragments: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub live_samples: Option<Vec<Code>>,
 }
@@ -930,6 +942,8 @@ pub struct JsonGenericHyData {
     pub sections: Vec<Section>,
     pub title: String,
     pub toc: Vec<TocEntry>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fragments: Vec<String>,
 }
 
 /// Represents the outermost generic page structure in the documentation system. This is written to

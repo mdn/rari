@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 use rari_types::globals::data_dir;
 use rari_utils::io::read_to_string;
 use serde::Deserialize;
-use tracing::warn;
+use tracing::error;
 
 use crate::error::DocError;
 
@@ -27,7 +27,7 @@ pub static WEB_EXT_EXAMPLES_JSON: LazyLock<Vec<WebExtExample>> = LazyLock::new(|
     {
         Ok(data) => data,
         Err(e) => {
-            warn!("Error loading mdn/data: {e}");
+            error!("Failed to load web extension examples data: {e}");
             Default::default()
         }
     }

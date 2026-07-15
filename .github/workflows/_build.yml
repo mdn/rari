@@ -46,27 +46,27 @@ jobs:
 
       - name: Checkout (rari)
         if: inputs.rari-binary-artifact-id == ''
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           path: mdn/rari
           persist-credentials: false
 
       - name: Checkout (content)
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: mdn/content
           path: mdn/content
           persist-credentials: false
 
       - name: Checkout (translated-content)
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: mdn/translated-content
           path: mdn/translated-content
           persist-credentials: false
 
       - name: Checkout (curriculum)
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: mdn/curriculum
           path: mdn/curriculum
@@ -74,7 +74,7 @@ jobs:
 
       - name: Checkout (blog)
         if: ${{ steps.privileged.conclusion == 'success' }}
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: mdn/blog
           path: mdn/blog
@@ -83,21 +83,21 @@ jobs:
           persist-credentials: false
 
       - name: Checkout (generic-content)
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: mdn/generic-content
           path: mdn/generic-content
           persist-credentials: false
 
       - name: Checkout (mdn-contributor-spotlight)
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: mdn/mdn-contributor-spotlight
           path: mdn/mdn-contributor-spotlight
           persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: mdn/content/.nvmrc
           cache: npm
@@ -111,14 +111,14 @@ jobs:
 
       - name: Download rari binary
         if: inputs.rari-binary-artifact-id != ''
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           artifact-ids: ${{ inputs.rari-binary-artifact-id }}
           path: mdn/rari/target/release
 
       - name: Cache Cargo registry
         if: inputs.rari-binary-artifact-id == ''
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry/index/
@@ -128,11 +128,11 @@ jobs:
 
       - name: Setup Rust
         if: inputs.rari-binary-artifact-id == ''
-        uses: dtolnay/rust-toolchain@9a1d20035bdbcbc899baabe1e402e85bc33639bc # 1.90
+        uses: dtolnay/rust-toolchain@1a3a6d54512beeaffd394f8d516ca16f2c506a20 # 1.97
 
       - name: Setup sccache
         if: inputs.rari-binary-artifact-id == ''
-        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
+        uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
 
       - name: Build Rari
         if: inputs.rari-binary-artifact-id == ''
@@ -173,7 +173,7 @@ jobs:
         run: |
           set -eo pipefail
 
-          npx rari git-history
+          npx @mdn/rari git-history
 
           if [ -n "$BLOG_ROOT" ]; then
             BUILD_OPTIONS="--all"
@@ -277,18 +277,18 @@ jobs:
             done
           fi
 
-          npx rari build $BUILD_OPTIONS $FILE_LIST --templ-stats
+          npx @mdn/rari build $BUILD_OPTIONS $FILE_LIST --issues "$BUILD_OUT_ROOT/issues.json" --templ-stats
 
       - name: Render content (fred)
         working-directory: mdn/content
-        run: npx fred-ssr
+        run: npx --package=@mdn/fred fred-ssr
 
       - name: Set artifact name
         id: set-artifact-name
         run: echo "name=build-output" >> $GITHUB_OUTPUT
 
       - name: Upload build output
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.set-artifact-name.outputs.name }}
           path: ${{ env.BUILD_OUT_ROOT }}

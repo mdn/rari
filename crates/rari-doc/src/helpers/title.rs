@@ -1,6 +1,43 @@
 use crate::error::DocError;
 use crate::pages::page::{Page, PageLike};
 
+pub enum TitleFormat {
+    Plain,
+    Html,
+}
+
+pub fn render_title(title: &str, format: TitleFormat) -> String {
+    let html = matches!(format, TitleFormat::Html);
+    let mut out = String::with_capacity(title.len() * 2);
+    // swap escaped backticks for a unicode noncharacter placeholder:
+    let normalized = title.replace("\\`", "\u{FFFE}");
+    let parts: Vec<&str> = normalized.split('`').collect();
+
+    for (i, part) in parts.iter().enumerate() {
+        let is_odd = i % 2 == 1;
+        let is_last = i == parts.len() - 1;
+        let is_unmatched = is_odd && is_last;
+        let is_code = is_odd && !is_last;
+        let s = part.replace('\u{FFFE}', "`");
+
+        if is_unmatched {
+            out.push('`');
+        }
+        if html {
+            if is_code {
+                out.push_str("<code>");
+            }
+            out.push_str(&html_escape::encode_text(&s));
+            if is_code {
+                out.push_str("</code>");
+            }
+        } else {
+            out.push_str(&s);
+        }
+    }
+    out
+}
+
 pub fn transform_title(title: &str) -> &str {
     match title {
         "Web technology for developers" => "References",
@@ -68,9 +105,59 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_backtick_processing() {
+        let cases: &[(&str, &str, &str)] = &[
+            (
+                "no backticks here",
+                "no backticks here",
+                "no backticks here",
+            ),
+            ("", "", ""),
+            (
+                "`<input>`: The Input element",
+                "<input>: The Input element",
+                "<code>&lt;input&gt;</code>: The Input element",
+            ),
+            (
+                "`foo` and `bar`",
+                "foo and bar",
+                "<code>foo</code> and <code>bar</code>",
+            ),
+            (
+                "The `<input>` & `<output>` elements",
+                "The <input> & <output> elements",
+                "The <code>&lt;input&gt;</code> &amp; <code>&lt;output&gt;</code> elements",
+            ),
+            ("foo `bar", "foo `bar", "foo `bar"),
+            (
+                "`foo` bar `baz",
+                "foo bar `baz",
+                "<code>foo</code> bar `baz",
+            ),
+            ("`foo``bar`", "foobar", "<code>foo</code><code>bar</code>"),
+            ("``", "", "<code></code>"),
+            ("foo `` bar", "foo  bar", "foo <code></code> bar"),
+            ("\\`", "`", "`"),
+            ("\\`foo\\`", "`foo`", "`foo`"),
+            ("\\`foo` bar", "`foo` bar", "`foo` bar"),
+            ("`foo\\`bar`", "foo`bar", "<code>foo`bar</code>"),
+            (
+                "RegExp.leftContext ($`)",
+                "RegExp.leftContext ($`)",
+                "RegExp.leftContext ($`)",
+            ),
+        ];
+
+        for (input, expected_plain, expected_html) in cases {
+            assert_eq!(render_title(input, TitleFormat::Plain), *expected_plain,);
+            assert_eq!(render_title(input, TitleFormat::Html), *expected_html,);
+        }
+    }
+
+    #[test]
     fn test_root_doc_url() {
         assert_eq!(
-            root_doc_url("/en-US/docs/Web/CSS/border"),
+            root_doc_url("/en-US/docs/Web/CSS/Reference/Properties/border"),
             Some("/en-US/docs/Web/CSS")
         );
         assert_eq!(

@@ -185,7 +185,7 @@ pub fn root_for_locale(locale: Locale) -> Result<&'static Path, EnvError> {
 ///
 /// This function will return an error if:
 /// - The path does not contain a recognizable locale.
-pub(crate) fn locale_and_typ_from_path(path: &Path) -> Result<(Locale, PageCategory), DocError> {
+pub fn locale_and_typ_from_path(path: &Path) -> Result<(Locale, PageCategory), DocError> {
     if path.starts_with(content_root()) {
         return Ok((Locale::EnUs, PageCategory::Doc));
     }
@@ -328,7 +328,7 @@ mod text {
     }
 
     #[test]
-    fn test_locale_from_path() {
+    fn test_locale_and_typ_from_path() {
         let en_us = content_root();
 
         let path = en_us.to_path_buf().join("en-us/web/html/index.md");
@@ -336,6 +336,37 @@ mod text {
             locale_and_typ_from_path(&path).unwrap(),
             (Locale::EnUs, PageCategory::Doc)
         );
+    }
+
+    #[test]
+    fn test_locale_and_typ_from_path_translated() {
+        let translated = content_translated_root().expect("translated root configured");
+
+        let path = translated.to_path_buf().join("fr/web/html/index.md");
+        assert_eq!(
+            locale_and_typ_from_path(&path).unwrap(),
+            (Locale::Fr, PageCategory::Doc)
+        );
+    }
+
+    #[test]
+    fn test_locale_and_typ_from_path_blog() {
+        let blog = blog_root().expect("blog root configured");
+
+        let path = blog.to_path_buf().join("posts/some-slug/index.md");
+        assert_eq!(
+            locale_and_typ_from_path(&path).unwrap(),
+            (Locale::EnUs, PageCategory::BlogPost)
+        );
+    }
+
+    #[test]
+    fn test_locale_and_typ_from_path_err() {
+        let path = Path::new("/non/existent/path/index.md");
+        assert!(matches!(
+            locale_and_typ_from_path(path),
+            Err(DocError::LocaleError(LocaleError::NoLocaleInPath))
+        ));
     }
 
     #[test]
@@ -362,9 +393,19 @@ thread_local! {
     };
 }
 
-pub static TEMPL_RECORDER_SENDER: OnceLock<Sender<String>> = OnceLock::new();
+#[derive(Debug)]
+pub enum TemplStatEvent {
+    Record {
+        name: String,
+        locale: Locale,
+        known: bool,
+    },
+    Stop,
+}
+
+pub static TEMPL_RECORDER_SENDER: OnceLock<Sender<TemplStatEvent>> = OnceLock::new();
 thread_local! {
-    pub static TEMPL_RECORDER: Option<Sender<String>> = {
+    pub static TEMPL_RECORDER: Option<Sender<TemplStatEvent>> = {
         TEMPL_RECORDER_SENDER.get().cloned()
     };
 }

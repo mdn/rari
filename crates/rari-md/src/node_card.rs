@@ -62,7 +62,7 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
                 if text.trim() == NoteCard::Callout.prefix() {
                     marker.detach();
                 } else if let Some(tail) = text.strip_prefix(NoteCard::Callout.prefix()) {
-                    data.value = NodeValue::Text(tail.trim().to_string());
+                    data.value = NodeValue::Text(tail.trim().to_string().into());
                 }
                 return Some(NoteCard::Callout);
             }
@@ -71,7 +71,7 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
                     remove_leading_space_if_zh_locale(marker, locale);
                     marker.detach();
                 } else if let Some(tail) = text.strip_prefix(NoteCard::Warning.prefix()) {
-                    data.value = NodeValue::Text(tail.trim().to_string());
+                    data.value = NodeValue::Text(tail.trim().to_string().into());
                 }
                 return Some(NoteCard::Warning);
             }
@@ -80,7 +80,7 @@ pub(crate) fn is_callout<'a>(block_quote: &'a AstNode<'a>, locale: Locale) -> Op
                     remove_leading_space_if_zh_locale(marker, locale);
                     marker.detach();
                 } else if let Some(tail) = text.strip_prefix(NoteCard::Note.prefix()) {
-                    data.value = NodeValue::Text(tail.trim().to_string());
+                    data.value = NodeValue::Text(tail.trim().to_string().into());
                 }
                 return Some(NoteCard::Note);
             }

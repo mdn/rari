@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use tower_lsp_server::lsp_types::Position;
+use tower_lsp_server::ls_types::Position;
 
 use crate::lsp::Document;
 

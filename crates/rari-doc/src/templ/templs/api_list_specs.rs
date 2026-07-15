@@ -14,9 +14,9 @@ pub fn listgroups() -> Result<String, DocError> {
 
     let mut out_by_letter = BTreeMap::new();
 
-    for (name, group) in group_data.iter().sorted_by(|(a, _), (b, _)| a.cmp(b)) {
+    for (_, group) in group_data.iter().sorted_by(|(a, _), (b, _)| a.cmp(b)) {
         if let Some(overview) = group.overview.first() {
-            let first_letter = name.chars().next().unwrap_or_default();
+            let first_letter = overview.chars().next().unwrap_or_default();
             let page = Doc::page_from_slug(
                 &format!("Web/API/{}", overview.replace(' ', "_")),
                 env.locale,

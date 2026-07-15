@@ -12,7 +12,7 @@ use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id};
 use tracing::{Event, Subscriber};
 use tracing_subscriber::Layer;
-use tracing_subscriber::registry::LookupSpan;
+use tracing_subscriber::registry::{LookupSpan, SpanRef};
 
 use crate::pages::page::{Page, PageLike};
 use crate::position_utils::byte_to_char_column;
@@ -35,6 +35,7 @@ pub(crate) fn get_issue_counter_f() -> i64 {
 #[derive(Debug, Clone, Serialize)]
 pub struct Issue {
     pub req: u64,
+    #[serde(skip_serializing)]
     pub ic: i64,
     /// Column in BYTES from start of line (from tree-sitter or comrak sourcepos)
     pub col: i64,
@@ -71,6 +72,20 @@ pub struct InMemoryLayer {
 impl InMemoryLayer {
     pub fn get_events(&self) -> Arc<DashMap<String, Vec<Issue>>> {
         Arc::clone(&self.events)
+    }
+
+    /// Returns issues as a sorted BTreeMap for deterministic output.
+    /// Files are sorted alphabetically, and issues within each file
+    /// are sorted by line, then column.
+    pub fn sorted_issues(&self) -> BTreeMap<String, Vec<Issue>> {
+        self.events
+            .iter()
+            .map(|entry| {
+                let mut issues = entry.value().clone();
+                issues.sort_by(|a, b| a.line.cmp(&b.line).then_with(|| a.col.cmp(&b.col)));
+                (entry.key().clone(), issues)
+            })
+            .collect()
     }
 }
 
@@ -144,6 +159,39 @@ impl Visit for Issue {
         }
     }
 }
+
+/// Populate issue fields from span scope, including position information and metadata.
+fn populate_issue_from_scope<'a, S>(issue: &mut Issue, scope: impl Iterator<Item = SpanRef<'a, S>>)
+where
+    S: Subscriber + for<'b> LookupSpan<'b>,
+{
+    for span in scope {
+        let ext = span.extensions();
+        if let Some(entries) = ext.get::<IssueEntries>() {
+            if entries.req != 0 {
+                issue.req = entries.req;
+            }
+            // issue.line == 0 indicates synthetic values from a nested macro, reset the values to their parent's
+            if issue.line == 0 && entries.line != 0 {
+                issue.line = entries.line;
+                issue.col = entries.col;
+                issue.end_line = entries.end_line;
+                issue.end_col = entries.end_col;
+            }
+            if !entries.file.is_empty() {
+                issue.file = entries.file.clone();
+            }
+            if entries.ic != -1 {
+                issue.ic = entries.ic;
+            }
+            if entries.ignore {
+                issue.ignore = entries.ignore;
+            }
+            issue.spans.extend(entries.entries.iter().rev().cloned());
+        }
+    }
+}
+
 impl<S> Layer<S> for InMemoryLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -176,44 +224,23 @@ where
             fields: vec![],
             spans: vec![],
         };
-        let span = ctx.event_span(event);
-        let scope = span.into_iter().flat_map(|span| span.scope());
-        for span in scope {
-            let ext = span.extensions();
-            if let Some(entries) = ext.get::<IssueEntries>() {
-                if entries.req != 0 {
-                    issue.req = entries.req;
-                }
-                if entries.col != 0 {
-                    issue.col = entries.col;
-                }
-                if entries.line != 0 {
-                    issue.line = entries.line;
-                }
-                if entries.end_col != 0 {
-                    issue.end_col = entries.end_col;
-                }
-                if entries.end_line != 0 {
-                    issue.end_line = entries.end_line;
-                }
-                if !entries.file.is_empty() {
-                    issue.file = entries.file.clone();
-                }
-                if entries.ic != -1 {
-                    issue.ic = entries.ic;
-                }
-                if entries.ignore {
-                    issue.ignore = entries.ignore;
-                }
-                issue.spans.extend(entries.entries.iter().rev().cloned());
-            }
+
+        if let Some(span) = ctx.event_span(event) {
+            populate_issue_from_scope(&mut issue, span.scope());
         }
 
         if issue.ic == -1 && !issue.ignore {
             issue.ic = get_issue_counter();
         }
+
         if !issue.ignore {
+            // Populate issue from Event fields.
             event.record(&mut issue);
+        }
+
+        // Do not merge these blocks, as events without span can have an ignore field.
+
+        if !issue.ignore {
             self.events
                 .entry(issue.file.clone())
                 .or_default()
@@ -409,7 +436,7 @@ impl DIssue {
             di.filepath = Some(page.full_path().to_string_lossy().into_owned());
 
             let mut additional = HashMap::new();
-            for (key, value) in issue.spans.into_iter().chain(issue.fields.into_iter()) {
+            for (key, value) in issue.spans.into_iter().chain(issue.fields) {
                 match key {
                     "source" => {
                         di.name = IssueType::from_str(&value).unwrap();
@@ -459,61 +486,61 @@ impl DIssue {
                     }
                 }
                 IssueType::TemplBrokenLink => {
-                    let macro_name = additional.remove("templ");
+                    let source = issue_source(&mut additional);
                     di.fixed = false;
                     di.fixable = Some(false);
                     di.explanation = Some(format!(
-                        "Macro {} produces link {} which doesn't resolve",
-                        macro_name.as_deref().unwrap_or("?"),
+                        "{} produces link {} which doesn't resolve",
+                        source.label,
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name,
+                        macro_name: source.name,
                         href: additional.remove("url"),
                     }
                 }
                 IssueType::TemplRedirectedLink => {
-                    let macro_name = additional.remove("templ");
+                    let source = issue_source(&mut additional);
                     di.fixed = false;
-                    di.fixable = Some(is_fixable_template(macro_name.as_deref()));
+                    di.fixable = Some(is_fixable_template(source.name.as_deref()));
                     di.explanation = Some(format!(
-                        "Macro {} produces link {} which is a redirect",
-                        macro_name.as_deref().unwrap_or("?"),
+                        "{} produces link {} which is a redirect",
+                        source.label,
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name,
+                        macro_name: source.name,
                         href: additional.remove("url"),
                     }
                 }
                 IssueType::TemplIllCasedLink => {
-                    let macro_name = additional.remove("templ");
+                    let source = issue_source(&mut additional);
                     di.fixed = false;
-                    di.fixable = Some(is_fixable_template(macro_name.as_deref()));
+                    di.fixable = Some(is_fixable_template(source.name.as_deref()));
                     di.explanation = Some(format!(
-                        "Macro {} produces link {} which is ill cased",
-                        macro_name.as_deref().unwrap_or("?"),
+                        "{} produces link {} which is ill cased",
+                        source.label,
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name,
+                        macro_name: source.name,
                         href: additional.remove("url"),
                     }
                 }
                 IssueType::TemplInvalidArg => {
-                    let macro_name = additional.remove("templ");
+                    let source = issue_source(&mut additional);
                     di.fixed = false;
                     di.explanation = Some(format!(
-                        "Macro {} received argument ({}) which is not valid.",
-                        macro_name.as_deref().unwrap_or("?"),
+                        "{} received argument ({}) which is not valid.",
+                        source.label,
                         additional.get("arg").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
-                        macro_name,
+                        macro_name: source.name,
                         href: None,
                     }
                 }
@@ -552,13 +579,126 @@ pub fn to_display_issues(issues: Vec<Issue>, page: &Page) -> DisplayIssues {
     map
 }
 
+struct IssueSource {
+    label: String,
+    name: Option<String>,
+}
+
+fn issue_source(additional: &mut HashMap<&str, String>) -> IssueSource {
+    let macro_name = additional.remove("templ");
+    let sidebar_name = additional.remove("sidebar");
+    let label = if let Some(ref s) = sidebar_name {
+        format!("Sidebar {s}")
+    } else if let Some(ref m) = macro_name {
+        format!("Macro {m}")
+    } else {
+        "Unknown macro".to_string()
+    };
+    IssueSource {
+        label,
+        name: macro_name.or(sidebar_name),
+    }
+}
+
 /// Check if a template macro issue can be automatically fixed.
 /// Only navigation templates have fixable slug parameters in the markdown source.
 fn is_fixable_template(macro_name: Option<&str>) -> bool {
     matches!(
         macro_name,
-        Some("previous" | "previousmenu" | "previousnext" | "previousmenunext")
+        Some(
+            "previous" | "previousmenu" | "previousnext" | "previousmenunext" | "next" | "nextmenu"
+        )
     )
 }
 
 pub static IN_MEMORY: LazyLock<InMemoryLayer> = LazyLock::new(InMemoryLayer::default);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_issue_source_macro() {
+        let mut additional: HashMap<&str, String> =
+            [("templ", "previous".to_string())].into_iter().collect();
+        let source = issue_source(&mut additional);
+        assert_eq!(source.label, "Macro previous");
+        assert_eq!(source.name, Some("previous".to_string()));
+    }
+
+    #[test]
+    fn test_issue_source_sidebar() {
+        let mut additional: HashMap<&str, String> =
+            [("sidebar", "games".to_string())].into_iter().collect();
+        let source = issue_source(&mut additional);
+        assert_eq!(source.label, "Sidebar games");
+        assert_eq!(source.name, Some("games".to_string()));
+    }
+
+    #[test]
+    fn test_issue_source_unknown() {
+        let mut additional: HashMap<&str, String> = HashMap::new();
+        let source = issue_source(&mut additional);
+        assert_eq!(source.label, "Unknown macro");
+        assert_eq!(source.name, None);
+    }
+
+    /// Regression test: nested templ spans must not corrupt position fields.
+    ///
+    /// When `cssxref` is rendered inside `cssinfo` via `render_and_decode_ref`,
+    /// the inner call uses `offset=0`, so macros on the first row get `line=0`.
+    /// The old per-field merge would take `col=23` from the inner synthetic span
+    /// while `end_col=11` came from the outer markdown-positioned span, producing
+    /// an inverted range. The fix takes all four position fields atomically from
+    /// the first scope frame with `line != 0`.
+    #[test]
+    fn test_position_fields_are_taken_atomically_from_first_real_span() {
+        use tracing::{Level, span};
+        use tracing_subscriber::layer::SubscriberExt;
+
+        let layer = InMemoryLayer::default();
+        let subscriber = tracing_subscriber::registry().with(layer.clone());
+        let _guard = tracing::subscriber::set_default(subscriber);
+
+        // Outer span: real markdown position — col=0 (first column)
+        let outer = span!(
+            Level::ERROR,
+            "templ",
+            templ = "cssinfo",
+            line = 5i64,
+            col = 0i64,
+            end_line = 5i64,
+            end_col = 11i64
+        );
+        let _o = outer.enter();
+
+        // Inner span: synthetic-string position (line=0 sentinel) — must be skipped
+        let inner = span!(
+            Level::ERROR,
+            "templ",
+            templ = "cssxref",
+            line = 0i64,
+            col = 23i64,
+            end_line = 0i64,
+            end_col = 35i64
+        );
+        let _i = inner.enter();
+
+        tracing::warn!(file = "nested_macro_span.md");
+
+        let events = layer.get_events();
+        let issues = events
+            .get("nested_macro_span.md")
+            .expect("expected issues for nested_macro_span.md");
+        assert_eq!(issues.len(), 1);
+        let issue = &issues[0];
+        assert_eq!(issue.line, 5, "line must come from outer span");
+        // col=0 (outer, first column) must win over col=23 from the inner synthetic span
+        assert_eq!(
+            issue.col, 0,
+            "col must come from outer span, not inner col=23"
+        );
+        assert_eq!(issue.end_line, 5, "end_line must come from outer span");
+        assert_eq!(issue.end_col, 11, "end_col must come from outer span");
+    }
+}

@@ -108,7 +108,10 @@ pub struct CurriculumMeta {
 #[derive(Debug, Clone)]
 pub struct Curriculum {
     pub meta: CurriculumBuildMeta,
-    raw_content: String,
+    /// The full, unmodified file contents (frontmatter + H1 + body).
+    raw: String,
+    /// Byte offset in `raw` where the body begins, i.e. after the frontmatter and the H1 line.
+    content_start: usize,
 }
 
 impl Curriculum {
@@ -145,32 +148,44 @@ impl Curriculum {
     }
 }
 
+/// Splits a curriculum file into its frontmatter and body boundary.
+///
+/// Returns `(fm, title, content_start)`, where `fm` is the raw frontmatter string, `title` is
+/// the text of the H1, and `content_start` is the byte offset in `raw` where the body begins
+/// (after the frontmatter and the H1 line). Since [`TITLE_RE`] is `^`-anchored, the matched H1 is
+/// an exact prefix of the post-frontmatter content, so `&raw[content_start..]` is the body.
+fn parse_curriculum(raw: &str) -> Result<(&str, String, usize), DocError> {
+    let (fm, content_start) = split_fm(raw);
+    let fm = fm.ok_or(DocError::NoFrontmatter)?;
+    let (title, line_len) = TITLE_RE
+        .captures(&raw[content_start..])
+        .map(|cap| (cap[1].to_owned(), cap[0].len()))
+        .ok_or(DocError::NoH1)?;
+    Ok((fm, title, content_start + line_len))
+}
+
 impl PageReader<Page> for Curriculum {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let full_path = path.into();
         let raw = read_to_string(&full_path)?;
-        let (fm, content_start) = split_fm(&raw);
-        let fm = fm.ok_or(DocError::NoFrontmatter)?;
+        let (fm, title, content_start) = parse_curriculum(&raw)?;
 
-        let raw_content = &raw[content_start..];
-        let filename = full_path
-            .strip_prefix(curriculum_root().ok_or(DocError::NoCurriculumRoot)?)?
-            .to_owned();
+        let curriculum_dir = curriculum_root()
+            .ok_or(DocError::NoCurriculumRoot)?
+            .join("curriculum");
+        let filename = full_path.strip_prefix(&curriculum_dir)?.to_owned();
         let slug = curriculum_file_to_slug(&filename);
-        let url = format!("/{}/{slug}/", Locale::default().as_url_str());
-        let (title, line) = TITLE_RE
-            .captures(raw_content)
-            .map(|cap| (cap[1].to_owned(), cap[0].to_owned()))
-            .ok_or(DocError::NoH1)?;
-        let raw_content = raw_content.replacen(&line, "", 1);
+        let url = if slug.is_empty() {
+            format!("/{}/curriculum/", Locale::default().as_url_str())
+        } else {
+            format!("/{}/curriculum/{slug}/", Locale::default().as_url_str())
+        };
         let CurriculumFrontmatter {
             summary,
             template,
             topic,
         } = serde_yaml_ng::from_str(fm)?;
-        let path = full_path
-            .strip_prefix(curriculum_root().ok_or(DocError::NoCurriculumRoot)?)?
-            .to_path_buf();
+        let path = full_path.strip_prefix(&curriculum_dir)?.to_path_buf();
         let meta = CurriculumBuildMeta {
             url,
             title,
@@ -183,14 +198,18 @@ impl PageReader<Page> for Curriculum {
             path,
             group: None,
         };
-        let page = Page::Curriculum(Arc::new(Curriculum { meta, raw_content }));
+        let page = Page::Curriculum(Arc::new(Curriculum {
+            meta,
+            raw,
+            content_start,
+        }));
         Ok(page)
     }
 }
 
 static TITLE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^[\w\n]*#\s+(.*)\n"#).unwrap());
 static SLUG_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"(\d+-|\.md$|\/0?-?README)"#).unwrap());
+    LazyLock::new(|| Regex::new(r#"(\d+-|\.md$|\/?0?-?README)"#).unwrap());
 
 fn curriculum_file_to_slug(file: &Path) -> String {
     SLUG_RE.replace_all(&file.to_string_lossy(), "").to_string()
@@ -218,7 +237,7 @@ impl PageLike for Curriculum {
     }
 
     fn content(&self) -> &str {
-        &self.raw_content
+        &self.raw[self.content_start..]
     }
 
     fn rari_env(&self) -> Option<RariEnv<'_>> {
@@ -258,11 +277,11 @@ impl PageLike for Curriculum {
     }
 
     fn fm_offset(&self) -> usize {
-        0
+        self.raw[..self.content_start].lines().count()
     }
 
     fn raw_content(&self) -> &str {
-        &self.raw_content
+        &self.raw
     }
 
     fn banners(&self) -> Option<&[FmTempl]> {
@@ -297,11 +316,17 @@ pub fn build_sidebar() -> Result<Vec<CurriculumSidebarEntry>, DocError> {
         })
         .collect();
     sidebar.sort_by(|a, b| a.0.cmp(&b.0));
-    let sidebar = sidebar.into_iter().fold(
-        Vec::new(),
-        |mut acc: Vec<CurriculumSidebarEntry>, (_, entry)| {
+    let sidebar = group_sidebar_entries(sidebar.into_iter().map(|(_, e)| e).collect());
+
+    Ok(sidebar)
+}
+
+fn group_sidebar_entries(entries: Vec<CurriculumSidebarEntry>) -> Vec<CurriculumSidebarEntry> {
+    entries
+        .into_iter()
+        .fold(Vec::new(), |mut acc: Vec<CurriculumSidebarEntry>, entry| {
             let lvl = entry.slug.split('/').count();
-            if lvl > 2
+            if lvl > 1
                 && let Some(last) = acc.last_mut()
             {
                 last.children.push(entry);
@@ -310,10 +335,7 @@ pub fn build_sidebar() -> Result<Vec<CurriculumSidebarEntry>, DocError> {
 
             acc.push(entry);
             acc
-        },
-    );
-
-    Ok(sidebar)
+        })
 }
 
 pub fn build_landing_modules() -> Result<Vec<CurriculumIndexEntry>, DocError> {
@@ -397,19 +419,181 @@ pub fn prev_next(
 }
 
 fn grouped_index() -> Result<Vec<CurriculumIndexEntry>, DocError> {
-    Ok(curriculum_files().index.iter().fold(
-        Vec::new(),
-        |mut acc: Vec<CurriculumIndexEntry>, entry| {
+    Ok(group_index_entries(curriculum_files().index.clone()))
+}
+
+fn group_index_entries(entries: Vec<CurriculumIndexEntry>) -> Vec<CurriculumIndexEntry> {
+    entries
+        .into_iter()
+        .fold(Vec::new(), |mut acc: Vec<CurriculumIndexEntry>, entry| {
             let lvl = entry.slug.as_deref().unwrap_or_default().split('/').count();
-            if lvl > 2
+            if lvl > 1
                 && let Some(last) = acc.last_mut()
             {
-                last.children.push(entry.clone());
+                last.children.push(entry);
                 return acc;
             }
 
-            acc.push(entry.clone());
+            acc.push(entry);
             acc
-        },
-    ))
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_curriculum_file_to_slug_root_readme() {
+        // Root README should produce empty slug
+        assert_eq!(curriculum_file_to_slug(Path::new("0-README.md")), "");
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_simple_module() {
+        // Simple module path
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("1-intro/0-README.md")),
+            "intro"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_nested_path() {
+        // Nested path with multiple numeric prefixes
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("2-core/3-modules/1-something.md")),
+            "core/modules/something"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_deep_nested() {
+        // Deep nested path
+        assert_eq!(
+            curriculum_file_to_slug(Path::new(
+                "1-getting-started/2-environment-setup/0-README.md"
+            )),
+            "getting-started/environment-setup"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_two_digit_prefix() {
+        // Two-digit numeric prefix
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("10-advanced/05-topics.md")),
+            "advanced/topics"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_readme_without_zero_prefix() {
+        // README without zero prefix
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("1-section/README.md")),
+            "section"
+        );
+    }
+
+    #[test]
+    fn test_curriculum_file_to_slug_preserves_hyphens_in_names() {
+        // Hyphens in names should be preserved
+        assert_eq!(
+            curriculum_file_to_slug(Path::new("1-web-standards/2-html-basics.md")),
+            "web-standards/html-basics"
+        );
+    }
+
+    #[test]
+    fn test_group_index_entries_nests_two_segment_slugs() {
+        let entries = vec![
+            CurriculumIndexEntry {
+                url: String::new(),
+                title: String::new(),
+                slug: Some("core".into()),
+                summary: None,
+                topic: Topic::None,
+                children: vec![],
+            },
+            CurriculumIndexEntry {
+                url: String::new(),
+                title: String::new(),
+                slug: Some("core/web-standards".into()),
+                summary: None,
+                topic: Topic::None,
+                children: vec![],
+            },
+        ];
+        let grouped = group_index_entries(entries);
+        assert_eq!(grouped.len(), 1);
+        assert_eq!(grouped[0].children.len(), 1);
+    }
+
+    #[test]
+    fn test_group_sidebar_entries_nests_two_segment_slugs() {
+        let entries = vec![
+            CurriculumSidebarEntry {
+                url: String::new(),
+                title: String::new(),
+                slug: "core".into(),
+                children: vec![],
+            },
+            CurriculumSidebarEntry {
+                url: String::new(),
+                title: String::new(),
+                slug: "core/web-standards".into(),
+                children: vec![],
+            },
+        ];
+        let grouped = group_sidebar_entries(entries);
+        assert_eq!(grouped.len(), 1);
+        assert_eq!(grouped[0].children.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_curriculum_splits_frontmatter_h1_and_body() {
+        // (raw, expected frontmatter, expected title, expected body, expected prefix line count)
+        let cases = [
+            // Blank line between the frontmatter and the H1.
+            (
+                "---\ntitle: Test\n---\n\n# My Title\n\nBody with a [link](/en-US/docs/foo).\n",
+                "title: Test",
+                "My Title",
+                "\nBody with a [link](/en-US/docs/foo).\n",
+                5,
+            ),
+            // H1 directly after the frontmatter, no blank line.
+            (
+                "---\nfoo: bar\n---\n# Title\n\nContent [x](/a).\n",
+                "foo: bar",
+                "Title",
+                "\nContent [x](/a).\n",
+                4,
+            ),
+            // Blank line before the H1, minimal body.
+            (
+                "---\ntitle: T\n---\n\n# Heading\n\nText.\n",
+                "title: T",
+                "Heading",
+                "\nText.\n",
+                5,
+            ),
+            // Two blank lines before the H1.
+            (
+                "---\nk: v\n---\n\n\n# Late Title\nprose\n",
+                "k: v",
+                "Late Title",
+                "prose\n",
+                6,
+            ),
+        ];
+        for (raw, fm, title, body, prefix_lines) in cases {
+            let (parsed_fm, parsed_title, content_start) = parse_curriculum(raw).unwrap();
+            assert_eq!(parsed_fm, fm);
+            assert_eq!(parsed_title, title);
+            assert_eq!(&raw[content_start..], body);
+            assert_eq!(raw[..content_start].lines().count(), prefix_lines);
+        }
+    }
 }

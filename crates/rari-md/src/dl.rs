@@ -42,14 +42,9 @@ pub(crate) fn convert_dl<'a>(list: &'a AstNode<'a>) {
                 if let Some(j) = i.first_child()
                     && let NodeValue::Text(ref mut t) = j.data.borrow_mut().value
                 {
-                    match t.len() {
-                        0 => {}
-                        1 => {
-                            t.drain(0..1);
-                        }
-                        _ => {
-                            t.drain(0..2);
-                        }
+                    let skip = t.len().min(2);
+                    if skip > 0 {
+                        *t = t[skip..].to_string().into();
                     }
                 }
             }

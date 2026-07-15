@@ -40,15 +40,12 @@ fn cache_side_bar(sidebar: &str) -> bool {
                 | "glossarysidebar"
                 | "learnsidebar"
                 | "svgref"
-                | "httpsidebar"
                 | "jssidebar"
                 | "htmlsidebar"
                 | "accessibilitysidebar"
-                | "firefoxsidebar"
                 | "webassemblysidebar"
                 | "xsltsidebar"
                 | "mdnsidebar"
-                | "gamessidebar"
                 | "mathmlref"
                 | "pwasidebar"
                 | "addonsidebarmain"
@@ -110,6 +107,8 @@ pub fn postprocess_sidebar<T: PageLike>(
 }
 
 pub fn render_sidebar(s: &str, slug: &str, locale: Locale) -> Result<String, DocError> {
+    let span = span!(Level::ERROR, "sidebar", sidebar = s);
+    let _enter = span.enter();
     let rendered_sidebar = if cache_side_bar(s) {
         if let Some(sb) = SIDEBAR_CACHE
             .get(&locale)

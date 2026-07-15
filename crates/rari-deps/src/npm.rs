@@ -53,14 +53,12 @@ fn get_version(package_name: &str, version_req: &VersionReq) -> Result<VersionEn
     }
 }
 
-/// Download and unpack an npm package for a given version (defaults to latest).
+/// Download and unpack an npm package for a given version
 pub fn get_package(
     package: &str,
-    version_req: &Option<VersionReq>,
+    version_req: &VersionReq,
     out_path: &Path,
 ) -> Result<Option<PathBuf>, DepsError> {
-    let star = VersionReq::default();
-    let version_req = version_req.as_ref().unwrap_or(&star);
     let package_path = out_path.join(package);
     let last_check_path = package_path.join("last_check.json");
     let now = Utc::now();
