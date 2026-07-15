@@ -549,6 +549,9 @@ impl DIssue {
                 IssueType::TemplIllCasedArg => {
                     let source = issue_source(&mut additional);
                     di.fixed = false;
+                    // Fixable in principle — the canonical casing is known
+                    // (carried in `canonical`) — but there's no auto-fixer for
+                    // template arguments yet, so report it as not fixable.
                     di.fixable = Some(false);
                     di.explanation = Some(format!(
                         "{} received argument ({}) with the wrong case; use ({}) instead.",
