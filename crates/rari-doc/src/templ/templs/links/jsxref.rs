@@ -56,17 +56,8 @@ pub fn jsxref(
     anchor: Option<String>,
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
-    // Authors sometimes embed a fragment in `api_name` (e.g.
-    // `Array/map#examples` or `Array.prototype.map#examples`) instead of
-    // passing the explicit `anchor` argument. Split it off up front so
-    // normalization and the index lookup operate on the bare name; re-append
-    // it when building the URL.
-    let (api_name, embedded_anchor) = match api_name.split_once('#') {
-        Some((n, frag)) => (n, Some(frag)),
-        None => (api_name.as_str(), None),
-    };
-    let anchor = anchor.as_deref().filter(|s| !s.is_empty());
-    if embedded_anchor.is_some() && anchor.is_some() {
+    let parts = jsxref_parts(&api_name, display.as_deref(), anchor.as_deref());
+    if parts.anchor_conflict {
         let ic = get_issue_counter();
         tracing::warn!(
             source = "templ-invalid-arg",
@@ -76,30 +67,241 @@ pub fn jsxref(
         );
     }
 
-    let display = display.as_deref().filter(|s| !s.is_empty());
-    let display = display.unwrap_or(api_name);
+    let base = format!("/{}/docs/Web/JavaScript/Reference/", env.locale);
+    let mut url = if let Some(resolved) = resolve_js_ref(&parts.normalized) {
+        format!("{base}{resolved}")
+    } else {
+        format!("{base}{}", RariApi::decode_uri_component(parts.bare))
+    };
 
-    let normalized = api_name.replace("()", "").replace(".prototype.", ".");
+    if let Some(anchor) = parts.anchor {
+        push_anchor(&mut url, anchor);
+    }
+
+    let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
+    RariApi::link(
+        &url,
+        Some(env.locale),
+        Some(parts.display),
+        code,
+        None,
+        false,
+    )
+}
+
+/// The resolution decisions for a `jsxref` invocation, factored out of
+/// [`jsxref`] so the fragment/anchor/normalization logic is unit-testable
+/// without an `env` or the page index. The index lookup and the
+/// `RariApi::link` call stay in [`jsxref`].
+struct JsxrefParts<'a> {
+    /// Fragment-stripped, un-normalized name, used for the decode fallback
+    /// when the index lookup misses.
+    bare: &'a str,
+    /// `bare` with `()` stripped, `.prototype.` → `.`, and `.` → `/` (unless a
+    /// `/` is already present), ready for the index lookup.
+    normalized: String,
+    /// Display text: the explicit non-empty `display`, else `bare`.
+    display: &'a str,
+    /// Fragment to append (without a leading `#`): the embedded fragment if
+    /// present, else the explicit non-empty `anchor`.
+    anchor: Option<&'a str>,
+    /// Both an embedded fragment and an explicit `anchor` were supplied; the
+    /// embedded one wins and the caller emits a `templ-invalid-arg` flaw.
+    anchor_conflict: bool,
+}
+
+/// Authors sometimes embed a fragment in `api_name` (e.g. `Array/map#examples`
+/// or `Array.prototype.map#examples`) instead of passing the explicit `anchor`
+/// argument. Split it off up front so normalization and the index lookup
+/// operate on the bare name; the embedded fragment wins over `anchor`.
+fn jsxref_parts<'a>(
+    api_name: &'a str,
+    display: Option<&'a str>,
+    anchor: Option<&'a str>,
+) -> JsxrefParts<'a> {
+    let (bare, embedded_anchor) = match api_name.split_once('#') {
+        Some((n, frag)) => (n, Some(frag)),
+        None => (api_name, None),
+    };
+    let anchor = anchor.filter(|s| !s.is_empty());
+    let anchor_conflict = embedded_anchor.is_some() && anchor.is_some();
+
+    let display = display.filter(|s| !s.is_empty()).unwrap_or(bare);
+
+    let normalized = bare.replace("()", "").replace(".prototype.", ".");
     let normalized = if !normalized.contains('/') && normalized.contains('.') {
         normalized.replace('.', "/")
     } else {
         normalized
     };
 
-    let base = format!("/{}/docs/Web/JavaScript/Reference/", env.locale);
-    let mut url = if let Some(resolved) = resolve_js_ref(&normalized) {
-        format!("{base}{resolved}")
-    } else {
-        format!("{base}{}", RariApi::decode_uri_component(api_name))
-    };
+    JsxrefParts {
+        bare,
+        normalized,
+        display,
+        anchor: embedded_anchor.or(anchor),
+        anchor_conflict,
+    }
+}
 
-    if let Some(anchor) = embedded_anchor.or(anchor) {
-        if !anchor.starts_with('#') {
-            url.push('#');
+/// Append `anchor` (with or without a leading `#`) to `url` as a fragment.
+fn push_anchor(url: &mut String, anchor: &str) {
+    if !anchor.starts_with('#') {
+        url.push('#');
+    }
+    url.push_str(anchor);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn jsxref_parts_cases() {
+        struct Case {
+            name: &'static str,
+            api_name: &'static str,
+            display: Option<&'static str>,
+            anchor: Option<&'static str>,
+            bare: &'static str,
+            normalized: &'static str,
+            display_out: &'static str,
+            anchor_out: Option<&'static str>,
+            conflict: bool,
         }
-        url.push_str(anchor);
+        let cases = vec![
+            Case {
+                name: "plain name",
+                api_name: "Array",
+                display: None,
+                anchor: None,
+                bare: "Array",
+                normalized: "Array",
+                display_out: "Array",
+                anchor_out: None,
+                conflict: false,
+            },
+            Case {
+                name: "strips parens",
+                api_name: "Array.prototype.map()",
+                display: None,
+                anchor: None,
+                bare: "Array.prototype.map()",
+                normalized: "Array/map",
+                display_out: "Array.prototype.map()",
+                anchor_out: None,
+                conflict: false,
+            },
+            Case {
+                name: "dotted member to slash",
+                api_name: "Array.prototype.map",
+                display: None,
+                anchor: None,
+                bare: "Array.prototype.map",
+                normalized: "Array/map",
+                display_out: "Array.prototype.map",
+                anchor_out: None,
+                conflict: false,
+            },
+            Case {
+                name: "sub-path kept as-is",
+                api_name: "Statements/for...of",
+                display: None,
+                anchor: None,
+                bare: "Statements/for...of",
+                normalized: "Statements/for...of",
+                display_out: "Statements/for...of",
+                anchor_out: None,
+                conflict: false,
+            },
+            Case {
+                name: "embedded fragment split off",
+                api_name: "Array.prototype.map#examples",
+                display: None,
+                anchor: None,
+                bare: "Array.prototype.map",
+                normalized: "Array/map",
+                display_out: "Array.prototype.map",
+                anchor_out: Some("examples"),
+                conflict: false,
+            },
+            Case {
+                name: "explicit anchor",
+                api_name: "Array",
+                display: None,
+                anchor: Some("examples"),
+                bare: "Array",
+                normalized: "Array",
+                display_out: "Array",
+                anchor_out: Some("examples"),
+                conflict: false,
+            },
+            Case {
+                name: "empty anchor filtered out",
+                api_name: "Array",
+                display: None,
+                anchor: Some(""),
+                bare: "Array",
+                normalized: "Array",
+                display_out: "Array",
+                anchor_out: None,
+                conflict: false,
+            },
+            Case {
+                name: "embedded fragment wins over explicit anchor",
+                api_name: "Array#embedded",
+                display: None,
+                anchor: Some("explicit"),
+                bare: "Array",
+                normalized: "Array",
+                display_out: "Array",
+                anchor_out: Some("embedded"),
+                conflict: true,
+            },
+            Case {
+                name: "explicit display wins",
+                api_name: "Array",
+                display: Some("the array"),
+                anchor: None,
+                bare: "Array",
+                normalized: "Array",
+                display_out: "the array",
+                anchor_out: None,
+                conflict: false,
+            },
+            Case {
+                name: "empty display falls back to bare name",
+                api_name: "Array.prototype.map#x",
+                display: Some(""),
+                anchor: None,
+                bare: "Array.prototype.map",
+                normalized: "Array/map",
+                display_out: "Array.prototype.map",
+                anchor_out: Some("x"),
+                conflict: false,
+            },
+        ];
+        for c in cases {
+            let parts = jsxref_parts(c.api_name, c.display, c.anchor);
+            assert_eq!(parts.bare, c.bare, "bare [{}]", c.name);
+            assert_eq!(parts.normalized, c.normalized, "normalized [{}]", c.name);
+            assert_eq!(parts.display, c.display_out, "display [{}]", c.name);
+            assert_eq!(parts.anchor, c.anchor_out, "anchor [{}]", c.name);
+            assert_eq!(parts.anchor_conflict, c.conflict, "conflict [{}]", c.name);
+        }
     }
 
-    let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
-    RariApi::link(&url, Some(env.locale), Some(display), code, None, false)
+    #[test]
+    fn push_anchor_adds_missing_hash() {
+        let mut url = String::from("/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array");
+        push_anchor(&mut url, "examples");
+        assert!(url.ends_with("/Array#examples"));
+    }
+
+    #[test]
+    fn push_anchor_keeps_existing_hash() {
+        let mut url = String::from("/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array");
+        push_anchor(&mut url, "#examples");
+        assert!(url.ends_with("/Array#examples"));
+    }
 }
