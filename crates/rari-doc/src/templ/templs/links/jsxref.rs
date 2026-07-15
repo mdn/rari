@@ -2,6 +2,7 @@ use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
 use crate::error::DocError;
+use crate::issues::get_issue_counter;
 use crate::templ::api::RariApi;
 use crate::templ::js_ref_index::resolve_js_ref;
 
@@ -42,6 +43,12 @@ use crate::templ::js_ref_index::resolve_js_ref;
 ///   the namespace omitted: `{{JSxRef("Collator")}}` resolves to
 ///   `Intl/Collator`, `{{JSxRef("Collator/compare")}}` to
 ///   `Intl/Collator/compare`.
+///
+/// A fragment may be embedded directly in `api_name`
+/// (e.g. `{{JSxRef("Array.prototype.map#examples")}}`) instead of passing the
+/// separate `anchor` argument; it is split off before resolution and
+/// re-appended to the URL. If both are given, the embedded fragment wins and
+/// the `anchor` argument is ignored (with a `templ-invalid-arg` flaw).
 #[rari_f(register = "crate::Templ")]
 pub fn jsxref(
     api_name: String,
@@ -49,8 +56,28 @@ pub fn jsxref(
     anchor: Option<String>,
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
+    // Authors sometimes embed a fragment in `api_name` (e.g.
+    // `Array/map#examples` or `Array.prototype.map#examples`) instead of
+    // passing the explicit `anchor` argument. Split it off up front so
+    // normalization and the index lookup operate on the bare name; re-append
+    // it when building the URL.
+    let (api_name, embedded_anchor) = match api_name.split_once('#') {
+        Some((n, frag)) => (n, Some(frag)),
+        None => (api_name.as_str(), None),
+    };
+    let anchor = anchor.as_deref().filter(|s| !s.is_empty());
+    if embedded_anchor.is_some() && anchor.is_some() {
+        let ic = get_issue_counter();
+        tracing::warn!(
+            source = "templ-invalid-arg",
+            ic = ic,
+            arg = "anchor",
+            "jsxref: `anchor` argument ignored because `api_name` already contains a fragment"
+        );
+    }
+
     let display = display.as_deref().filter(|s| !s.is_empty());
-    let display = display.unwrap_or(api_name.as_str());
+    let display = display.unwrap_or(api_name);
 
     let normalized = api_name.replace("()", "").replace(".prototype.", ".");
     let normalized = if !normalized.contains('/') && normalized.contains('.') {
@@ -63,14 +90,14 @@ pub fn jsxref(
     let mut url = if let Some(resolved) = resolve_js_ref(&normalized) {
         format!("{base}{resolved}")
     } else {
-        format!("{base}{}", RariApi::decode_uri_component(&api_name))
+        format!("{base}{}", RariApi::decode_uri_component(api_name))
     };
 
-    if let Some(anchor) = anchor {
+    if let Some(anchor) = embedded_anchor.or(anchor) {
         if !anchor.starts_with('#') {
             url.push('#');
         }
-        url.push_str(&anchor);
+        url.push_str(anchor);
     }
 
     let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
