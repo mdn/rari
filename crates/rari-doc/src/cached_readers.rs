@@ -33,7 +33,7 @@ use rari_types::globals::{
     blog_root, cache_content, content_root, content_translated_root, contributor_spotlight_root,
     curriculum_root, generic_content_root,
 };
-use rari_types::locale::Locale;
+use rari_types::locale::{Locale, LocaleFilter};
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use schemars::JsonSchema;
@@ -258,12 +258,7 @@ fn gather_generic_content() -> Result<HashMap<String, Page>, DocError> {
                     None
                 }
             })
-            .flat_map(|generic| {
-                Locale::for_generic_and_spas()
-                    .iter()
-                    .map(|locale| Page::GenericPage(Arc::new(generic.as_locale(*locale))))
-                    .collect::<Vec<_>>()
-            })
+            .map(|generic| Page::GenericPage(Arc::new(generic.as_locale(Locale::EnUs))))
             .map(|page| (page.url().to_ascii_lowercase(), page))
             .collect())
     } else {
@@ -469,6 +464,22 @@ pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
     blog_files().authors.get(name).cloned()
 }
 
+/// Returns the per-locale subdirectories to read under `translated_root`.
+///
+/// For `LocaleFilter::All`, the translated root itself is returned so all
+/// available locales are read. For `LocaleFilter::Only`, returns one path per
+/// non-en-US locale; en-US is read from `content_root` separately.
+pub fn translated_locale_paths(translated_root: &Path, filter: LocaleFilter<'_>) -> Vec<PathBuf> {
+    match filter {
+        LocaleFilter::All => vec![translated_root.to_path_buf()],
+        LocaleFilter::Only(set) => set
+            .iter()
+            .filter(|l| **l != Locale::EnUs)
+            .map(|l| translated_root.join(l.as_folder_str()))
+            .collect(),
+    }
+}
+
 /// Reads all documentation pages from the content root and translated content root directories, fills the
 /// internal cache structures and returns a vector of `Page` objects.
 ///
@@ -477,6 +488,12 @@ pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
 /// it also reads translated documentation pages and caches them in the `STATIC_DOC_PAGE_TRANSLATED_FILES`
 /// static variable. Additionally, it initializes `TRANSLATIONS_BY_SLUG` fills `STATIC_DOC_PAGE_FILES_BY_PATH`
 /// static variable.
+///
+/// For `LocaleFilter::Only`, the translated cache is populated only for the
+/// listed (non-en-US) locales. Downstream lookups by `(Locale, slug)` in
+/// `STATIC_DOC_PAGE_TRANSLATED_FILES` and `TRANSLATIONS_BY_SLUG` will return
+/// `None` for any locale that was filtered out — by design for the `--locale`
+/// workflow, where only the requested locales need to resolve.
 ///
 /// # Returns
 ///
@@ -487,7 +504,7 @@ pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
 ///
 /// This function will return an error if:
 /// - An error occurs while reading the documentation pages from the content root or translated content root directories.
-pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
+pub fn read_and_cache_doc_pages(filter: LocaleFilter<'_>) -> Result<Vec<Page>, DocError> {
     let mut docs = read_docs_parallel::<Page, Doc>(&[content_root()], None)?;
     STATIC_DOC_PAGE_FILES
         .set(
@@ -498,7 +515,12 @@ pub fn read_and_cache_doc_pages() -> Result<Vec<Page>, DocError> {
         )
         .unwrap();
     if let Some(translated_root) = content_translated_root() {
-        let translated_docs = read_docs_parallel::<Page, Doc>(&[translated_root], None)?;
+        let translated_paths = translated_locale_paths(translated_root, filter);
+        let translated_docs = if translated_paths.is_empty() {
+            Vec::new()
+        } else {
+            read_docs_parallel::<Page, Doc>(&translated_paths, None)?
+        };
         STATIC_DOC_PAGE_TRANSLATED_FILES
             .set(
                 translated_docs

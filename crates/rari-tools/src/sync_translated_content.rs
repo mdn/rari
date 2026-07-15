@@ -223,8 +223,7 @@ fn sync_translated_document(
             // append a sha256 hash of the original slug to the slug.
             resolved_slug = concat_strs!("conflicting/", &resolved_slug).into();
             if md_exists(&resolved_slug, doc.locale())? {
-                let hash = Sha256::digest(doc.slug().as_bytes());
-                let digest = format!("{hash:x}");
+                let digest = base16ct::lower::encode_string(&Sha256::digest(doc.slug().as_bytes()));
                 resolved_slug = concat_strs!(&resolved_slug, "_", &digest).into();
             }
 

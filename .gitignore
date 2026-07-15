@@ -1,4 +1,5 @@
 /target
+/build
 .config.toml
 .DS_Store
 tests/data/content/files/*

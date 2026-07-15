@@ -1,6 +1,7 @@
 pub mod bcd;
 pub mod client;
 pub mod current;
+pub mod developer_signals;
 pub mod error;
 pub mod external_json;
 pub mod mdn_data;

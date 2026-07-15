@@ -143,7 +143,7 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
         })
         .collect::<Vec<_>>();
 
-    suggestions.sort_by(|a, b| a.offset.cmp(&b.offset));
+    suggestions.sort_by_key(|a| a.offset);
     suggestions.dedup();
 
     suggestions

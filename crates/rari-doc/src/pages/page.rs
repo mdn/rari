@@ -114,7 +114,7 @@ impl Page {
                 .ok_or(DocError::PageNotFound(url.to_string(), PageCategory::SPA)),
             PageCategory::Doc => Doc::page_from_slug_path(&folder_path, locale, fallback)
                 .map_err(|_| DocError::PageNotFound(url.to_string(), PageCategory::Doc)),
-            PageCategory::BlogPost if locale != Locale::EnUs => {
+            PageCategory::BlogPost if locale != Locale::EnUs && !fallback => {
                 // Blog is en-US only.
                 Err(DocError::PageNotFound(
                     url.to_string(),

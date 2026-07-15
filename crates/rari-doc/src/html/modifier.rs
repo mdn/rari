@@ -238,3 +238,44 @@ pub fn add_missing_ids(html: &mut Html) -> Result<(), DocError> {
     }
     Ok(())
 }
+
+/// Collects all fragment IDs from elements with an `id` attribute, in document order.
+///
+/// Skips the `quick_links` sidebar section id, which is extracted into the page
+/// sidebar by `split_sections` and not part of the body addressable via `#fragment`.
+/// IDs have already been lowercased by `post_process_html` at this point.
+pub fn collect_fragment_ids(html: &Html) -> Vec<String> {
+    let selector = Selector::parse("*[id]").unwrap();
+    html.select(&selector)
+        .filter_map(|el| el.attr("id"))
+        .filter(|id| !id.trim().is_empty() && *id != "quick_links")
+        .map(String::from)
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn collects_ids_in_document_order() {
+        let html = Html::parse_fragment(
+            r#"<h2 id="examples">Examples</h2>
+            <dl><dt id="term-a">A</dt><dd>x</dd><dt id="term-b">B</dt></dl>
+            <h3 id="subsection">Subsection</h3>"#,
+        );
+        assert_eq!(
+            collect_fragment_ids(&html),
+            vec!["examples", "term-a", "term-b", "subsection"],
+        );
+    }
+
+    #[test]
+    fn skips_quick_links_sidebar_id() {
+        let html = Html::parse_fragment(
+            r#"<section id="quick_links"></section>
+            <h2 id="examples">Examples</h2>"#,
+        );
+        assert_eq!(collect_fragment_ids(&html), vec!["examples"]);
+    }
+}
