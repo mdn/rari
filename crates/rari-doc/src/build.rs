@@ -16,7 +16,7 @@ use rari_types::globals::{
     base_url, blog_root, build_out_root, contributor_spotlight_root, curriculum_root,
     generic_content_root, git_history, settings,
 };
-use rari_types::locale::{Locale, default_locale};
+use rari_types::locale::{Locale, LocaleFilter, default_locale};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sha2::{Digest, Sha256};
 use tracing::{Level, span};
@@ -376,8 +376,8 @@ pub fn build_contributor_spotlight_pages<'a>() -> Result<Vec<SitemapMeta<'a>>, D
 ///
 /// This function will return an error if:
 /// - An error occurs while building any of the SPAs.
-pub fn build_spas<'a>() -> Result<Vec<SitemapMeta<'a>>, DocError> {
-    SPA::all()
+pub fn build_spas<'a>(filter: LocaleFilter<'_>) -> Result<Vec<SitemapMeta<'a>>, DocError> {
+    SPA::all(filter)
         .iter()
         .filter_map(|(slug, locale)| SPA::from_slug(slug, *locale))
         .map(|page| {

@@ -200,12 +200,9 @@ mod tests {
         let base_url = options.base_url(Some(&base));
         rewrite_str(
             html,
-            RewriteStrSettings {
-                element_content_handlers: vec![element!("img[src]", |el| {
-                    handle_img(el, page, false, &base, &base_url)
-                })],
-                ..Default::default()
-            },
+            RewriteStrSettings::new().append_element_content_handler(element!("img[src]", |el| {
+                handle_img(el, page, false, &base, &base_url)
+            })),
         )
         .unwrap()
     }

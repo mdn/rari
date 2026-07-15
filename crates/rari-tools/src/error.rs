@@ -50,6 +50,10 @@ pub enum ToolError {
     InvalidRedirectOrder(String, String, String, String),
     #[error("Invalid redirect for {0} -> {1} or {2} -> {3}")]
     InvalidRedirect(String, String, String, String),
+    #[error(
+        "Invalid redirect on line {0}: uses spaces instead of tabs as field separator (run `fix-redirects` to normalize): {1}"
+    )]
+    InvalidRedirectSeparator(usize, String),
     #[error(transparent)]
     RedirectError(#[from] RedirectError),
     #[error("Invalid yaml {0}")]
@@ -58,6 +62,9 @@ pub enum ToolError {
     HasSubpagesError(Cow<'static, str>),
     #[error("Target directory ({0}) for slug ({1}) already exists")]
     TargetDirExists(PathBuf, String),
+
+    #[error("{} errors:\n{}", .0.len(), .0.iter().map(|e| format!("- {e}")).collect::<Vec<_>>().join("\n"))]
+    Multiple(Vec<ToolError>),
 
     #[error("Unknown error")]
     Unknown(&'static str),
