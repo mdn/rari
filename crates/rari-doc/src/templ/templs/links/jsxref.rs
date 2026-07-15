@@ -10,8 +10,8 @@ use crate::templ::js_ref_index::resolve_js_ref;
 ///
 /// This macro generates links to JavaScript language features including objects,
 /// methods, properties, statements, operators, and other JavaScript reference
-/// documentation. It intelligently routes to either the main JavaScript Reference
-/// or the Global Objects section based on the API name.
+/// documentation. It resolves the API name against an index of all
+/// `Web/JavaScript/Reference/*` pages (see the "Name resolution" section below).
 ///
 /// # Arguments
 /// * `api_name` - The JavaScript feature name (object, method, property, etc.)
