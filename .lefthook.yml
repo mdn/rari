@@ -14,7 +14,7 @@ pre-push:
   parallel: true
   commands:
     test:
-      run: cargo test --verbose --workspace --all-targets --no-fail-fast
+      run: cargo test --verbose --workspace --all-targets --features doctest --no-fail-fast
 
     test-doc:
       run: cargo test --verbose --workspace --doc --features doctest --no-fail-fast

@@ -6,6 +6,7 @@ use tracing::{Level, span};
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
+use crate::templ::api_name_index::resolve_api_name;
 
 /// Creates a link to a DOM/Web API reference page on MDN.
 ///
@@ -28,9 +29,17 @@ use crate::templ::api::RariApi;
 /// # Special handling
 /// - Converts spaces to underscores and removes `()` from method names
 /// - Handles prototype chain notation (`.prototype.` becomes `/`)
-/// - Automatically capitalizes first letter of interface names in URLs
 /// - Appends method/property names to display text when using anchors
 /// - Formats links with `<code>` tags unless `no_code` is true
+///
+/// # Name resolution
+/// The (normalized) `api_name` is resolved against an index of all
+/// `Web/API/*` pages (see [`crate::templ::api_name_index`]). Authors can use:
+/// - A full sub-path: `{{domxref("BackgroundFetchManager/fetch")}}`
+/// - A bare interface or grouped name: `{{domxref("SyncEvent")}}`
+/// - **For `Window` members only**, a leaf segment:
+///   `{{domxref("structuredClone")}}` resolves to `Window/structuredClone`.
+///   Members of other interfaces must be referenced by full sub-path.
 #[rari_f(register = "crate::Templ")]
 pub fn domxref(
     api_name: String,
@@ -50,12 +59,11 @@ pub fn domxref(
     if api.is_empty() {
         return Err(DocError::ArgError(ArgError::MustBeProvided));
     }
-    let (first_char_index, _) = api.char_indices().next().unwrap_or_default();
+    let resolved = resolve_api_name(&api);
     let mut url = format!(
-        "/{}/docs/Web/API/{}{}",
+        "/{}/docs/Web/API/{}",
         env.locale.as_url_str(),
-        &api[0..first_char_index].to_uppercase(),
-        &api[first_char_index..],
+        resolved.unwrap_or(&api),
     );
     if let Some(anchor) = anchor {
         if !anchor.starts_with('#') {
