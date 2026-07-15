@@ -171,17 +171,15 @@ fn resolve_from_index<'a>(idx: &'a JsRefIndex, normalized: &str) -> Option<&'a s
         return candidates.iter().next().map(Arc::as_ref);
     }
     let candidates = idx.lowercase.get(&normalized.to_lowercase())?;
-    match candidates.len() {
-        0 => None,
-        1 => {
-            let canonical = candidates.iter().next().unwrap();
-            warn_ill_cased(normalized, canonical);
-            Some(canonical.as_ref())
-        }
-        _ => {
-            warn_ambiguous(normalized, candidates);
-            None
-        }
+    // A present bucket always holds at least one entry (created via
+    // `.or_default().insert(…)`), so the only distinction is one vs. many.
+    if candidates.len() == 1 {
+        let canonical = candidates.iter().next().unwrap();
+        warn_ill_cased(normalized, canonical);
+        Some(canonical.as_ref())
+    } else {
+        warn_ambiguous(normalized, candidates);
+        None
     }
 }
 
