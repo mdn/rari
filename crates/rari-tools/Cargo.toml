@@ -1,6 +1,6 @@
 [package]
 name = "rari-tools"
-version = "0.2.20"
+version = "0.2.28"
 edition.workspace = true
 authors = [
   "Andi Pieper <apieper@mozilla.com>",
@@ -18,19 +18,17 @@ serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
 tracing.workspace = true
-reqwest.workspace = true
 url.workspace = true
 indoc.workspace = true
 rayon.workspace = true
 sha2.workspace = true
+base16ct.workspace = true
 serde_yaml_ng.workspace = true
 pretty_yaml.workspace = true
 yaml_parser.workspace = true
 const_format.workspace = true
 dialoguer.workspace = true
 html-escape.workspace = true
-
-csv = "1"
 
 [dev-dependencies]
 serial_test = { version = "3", features = ["file_locks"] }

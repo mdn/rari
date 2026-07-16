@@ -1,3 +1,4 @@
+pub mod blog;
 pub mod docs;
 pub mod redirects;
 pub mod sidebars;

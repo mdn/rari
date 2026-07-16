@@ -3,8 +3,10 @@ use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 
 use crate::error::DocError;
+use crate::issues::get_issue_counter;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
+use crate::templ::css_feature_index::{CssRefCategory, resolve_css_feature};
 
 /// Creates a link to a CSS reference page on MDN.
 ///
@@ -27,21 +29,29 @@ use crate::templ::api::RariApi;
 /// * `{{CSSxRef("@media/color")}}` -> links to color media feature at `/Web/CSS/Reference/At-rules/@media/color`
 ///
 /// # URL Structure
-/// The macro generates URLs based on the new CSS reference organization:
-/// - Data types (starting with `<` or `&lt;`): `/Web/CSS/Reference/Values/{slug}`
-/// - Pseudo-classes/elements (starting with `:`): `/Web/CSS/Reference/Selectors/{slug}`
-/// - At-rules (starting with `@`): `/Web/CSS/Reference/At-rules/{slug}`
-/// - Functions (ending with `()`): `/Web/CSS/Reference/Values/{slug}`
-/// - Properties: `/Web/CSS/Reference/Properties/{slug}` (checked first)
-/// - Other values: `/Web/CSS/Reference/Values/{slug}` (fallback)
-/// - If page not found in new structure: fallback to `/Web/CSS/{slug}`
+/// The macro resolves the (normalized) name against an index of all
+/// `Web/CSS/Reference/*` pages (see [`crate::templ::css_feature_index`]). The input
+/// syntax narrows the category looked up:
+/// - Data types (`<...>` or `&lt;...&gt;`): `Reference/Values/{slug}`
+/// - Pseudo-classes/elements (`:...`): `Reference/Selectors/{slug}`
+/// - At-rules (`@...`, optionally `/descriptor`): `Reference/At-rules/{slug}`
+/// - Functions (`...()`): `Reference/Values/{slug}`
+/// - Bare names: `Reference/Properties/{slug}` preferred, else
+///   `Reference/Values/{slug}`, else `Reference/Selectors/{slug}` (for
+///   Selectors-tree landing pages like `pseudo-classes`, `pseudo-elements`)
+/// - If still unresolved: `/Web/CSS/{slug}` (typically a 404 link)
+///
+/// Values pages with conventional `_value` / `_function` suffixes are also
+/// indexed under their suffix-less names, so a stripped slug like `color`
+/// resolves to `Reference/Values/color_value`.
 ///
 /// # Special handling
 /// - Functions automatically get `()` appended to display text if not present
 /// - Data types get wrapped in `<>` brackets in display text if not present
 /// - Handles HTML entity encoding (`&lt;` and `&gt;`)
-/// - Maps special cases like `<color>` to `color_value`, `:host()` to `:host_function`
-/// - Checks if pages exist at expected URLs and falls back to legacy structure if needed
+/// - Function inputs (`...()`) prefer a `{slug}_function` page when one exists,
+///   so `fit-content()` and `:host()` resolve to the function page rather than
+///   the like-named keyword/selector page
 #[rari_f(register = "crate::Templ")]
 pub fn cssxref(
     name: String,
@@ -58,64 +68,75 @@ pub fn cssxref_internal(
     anchor: Option<&str>,
     locale: Locale,
 ) -> Result<String, DocError> {
+    // Authors sometimes embed a fragment in `name` (e.g.
+    // `font-variant-alternates#stylistic` or `<color>#syntax`) instead of
+    // passing the explicit `anchor` argument. Split it off up front so
+    // special-case mapping, prefix classification, and slug normalization
+    // all operate on the bare name; re-append it when building the URL.
+    let (name, embedded_anchor) = match name.split_once('#') {
+        Some((n, frag)) => (n, Some(frag)),
+        None => (name, None),
+    };
+    if embedded_anchor.is_some() && anchor.is_some() {
+        let ic = get_issue_counter();
+        tracing::warn!(
+            source = "templ-invalid-arg",
+            ic = ic,
+            arg = "anchor",
+            "cssxref: `anchor` argument ignored because `name` already contains a fragment"
+        );
+    }
+
     let maybe_display_name = &display_name
         .or_else(|| name.rsplit_once('/').map(|(_, s)| s))
         .unwrap_or(name);
     let decoded_maybe_display_name = html_escape::decode_html_entities(maybe_display_name);
     let encoded_maybe_display_name = html_escape::encode_text(decoded_maybe_display_name.as_ref());
 
-    // Determine the original name for classification
+    // Strip type brackets and function parens to get the raw slug.
     let mut slug = name
         .strip_prefix("&lt;")
         .unwrap_or(name.strip_prefix('<').unwrap_or(name));
     slug = slug
         .strip_suffix("&gt;")
         .unwrap_or(slug.strip_suffix('>').unwrap_or(slug));
+    let is_function = slug.ends_with("()");
     slug = slug.strip_suffix("()").unwrap_or(slug);
 
-    // Apply special case mappings
-    let slug = match name {
-        "&lt;color&gt;" | "<color>" => "color_value",
-        "&lt;flex&gt;" | "<flex>" => "flex_value",
-        "&lt;overflow&gt;" | "<overflow>" => "overflow_value",
-        "&lt;position&gt;" | "<position>" => "position_value",
-        ":host()" => ":host_function",
-        "fit-content()" => "fit-content_function",
-        _ => slug,
-    };
-
     let base_url = format!("/{}/docs/Web/CSS/", locale.as_url_str());
-    // Determine the URL path based on the new structure
-    let mut url_path = if name.starts_with("&lt;") || name.starts_with('<') {
-        // Types go under Web/CSS/Reference/Values
-        format!("Reference/Values/{slug}")
+    // Resolve the (normalized) slug to a canonical Web/CSS sub-path via the
+    // CSS feature index. The macro's input syntax (`<>`, `()`, `:`, `@`)
+    // narrows the category we look up under. For function inputs we look up
+    // `{slug}_function` first so we land directly on the function page when
+    // both `{slug}` and `{slug}_function` exist (e.g. `fit-content()`,
+    // `:host()`); bare slugs are ambiguous between a property and a value,
+    // so try `Properties/` first then `Values/` — matching the legacy
+    // behavior. If the index returns nothing, fall back to a bare `{slug}`
+    // link under `Web/CSS/` (likely a 404).
+    let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
+        resolve_css_feature(CssRefCategory::Values, slug)
     } else if name.starts_with(':') {
-        // Pseudo-classes and pseudo-elements go under Web/CSS/Reference/Selectors
-        format!("Reference/Selectors/{slug}")
+        is_function
+            .then(|| resolve_css_feature(CssRefCategory::Selectors, &format!("{slug}_function")))
+            .flatten()
+            .or_else(|| resolve_css_feature(CssRefCategory::Selectors, slug))
     } else if name.starts_with('@') {
-        // At-rules go under Web/CSS/Reference/At-rules
-        format!("Reference/At-rules/{slug}")
-    } else if name.ends_with("()") {
-        // Functions go under Web/CSS/Reference/Values
-        format!("Reference/Values/{slug}")
+        resolve_css_feature(CssRefCategory::AtRules, slug)
+    } else if is_function {
+        resolve_css_feature(CssRefCategory::Values, &format!("{slug}_function"))
+            .or_else(|| resolve_css_feature(CssRefCategory::Values, slug))
     } else {
-        // Everything else: check Properties first
-        let url_path = format!("Reference/Properties/{slug}");
-        let url = format!("{}{}", &base_url, &url_path);
-        if RariApi::get_page_nowarn(&url).is_ok() {
-            url_path
-        } else {
-            // Fallback to Values
-            format!("Reference/Values/{slug}")
-        }
-    };
-
-    if RariApi::get_page_nowarn(&format!("{}{}", &base_url, &url_path)).is_err() {
-        // Fall back to Web/CSS
-        url_path = slug.to_string();
+        resolve_css_feature(CssRefCategory::Properties, slug)
+            .or_else(|| resolve_css_feature(CssRefCategory::Values, slug))
+            .or_else(|| resolve_css_feature(CssRefCategory::Selectors, slug))
     }
+    .map_or_else(|| slug.to_string(), |s| format!("Reference/{s}"));
 
-    let url = format!("{}{}{}", &base_url, &url_path, anchor.unwrap_or_default());
+    let fragment = embedded_anchor
+        .map(|a| format!("#{a}"))
+        .or_else(|| anchor.map(str::to_string))
+        .unwrap_or_default();
+    let url = format!("{}{}{}", base_url, url_path, fragment);
 
     let display_name = if display_name.is_some() {
         encoded_maybe_display_name.to_string()

@@ -1,16 +1,19 @@
 [package]
 name = "rari"
-version = "0.2.20"
+version = "0.2.28"
 edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
 homepage = "https://github.com/mdn/rari"
 repository = "https://github.com/mdn/rari"
-rust-version = "1.90"
+rust-version = "1.97"
 
 [[bin]]
 path = "crates/rari-cli/main.rs"
 name = "rari"
+
+[profile.dev.package."*"]
+debug = false
 
 [profile.release-lto]
 inherits = "release"
@@ -48,7 +51,7 @@ members = [
 edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
-rust-version = "1.90"
+rust-version = "1.97"
 
 [workspace.dependencies]
 rari-doc = { path = "crates/rari-doc" }
@@ -70,11 +73,11 @@ serde_json = { version = "1", features = ["preserve_order"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 url = { version = "2", features = ["serde"] }
-itertools = "0.14"
+itertools = "0.15"
 constcat = "0.6"
 anyhow = "1"
 indexmap = { version = "2", features = ["serde"] }
-regress = "0.10"
+regress = "0.11"
 html-escape = "0.2"
 ignore = "0.4"
 rayon = "1"
@@ -86,7 +89,8 @@ reqwest = { version = "0.12", default-features = false, features = [
 ] }
 indoc = "2"
 base64 = "0.22"
-sha2 = "0.10"
+sha2 = "0.11"
+base16ct = { version = "1.0", features = ["alloc"] }
 dashmap = { version = "6", features = ["serde"] }
 serde_yaml_ng = "0.10"
 schemars = { version = "1", features = ["chrono04", "url2"] }
