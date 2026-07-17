@@ -30,18 +30,20 @@ pub(crate) fn get_issue_counter_f() -> i64 {
 
 /// Internal representation of an issue detected during build.
 ///
-/// This struct stores position information in **byte offsets** (from tree-sitter and comrak),
-/// which are later converted to character positions in `DisplayIssue` for user-facing output.
+/// This struct stores position information as **1-based byte columns** and **1-based
+/// line numbers**. Positions from tree-sitter (0-based) and comrak sourcepos (1-based)
+/// are both normalized to 1-based at emission, then converted to character positions
+/// in `DisplayIssue` for user-facing output.
 #[derive(Debug, Clone, Serialize)]
 pub struct Issue {
     pub req: u64,
     #[serde(skip_serializing)]
     pub ic: i64,
-    /// Column in BYTES from start of line (from tree-sitter or comrak sourcepos)
+    /// Column in BYTES from start of line (1-based)
     pub col: i64,
     /// Line number (1-based)
     pub line: i64,
-    /// End column in BYTES from start of line
+    /// End column in BYTES from start of line (1-based, inclusive)
     pub end_col: i64,
     /// End line number (1-based)
     pub end_line: i64,
@@ -293,6 +295,7 @@ pub enum IssueType {
     TemplRedirectedLink,
     TemplBrokenLink,
     TemplIllCasedLink,
+    TemplIllCasedArg,
     TemplInvalidArg,
     RedirectedLink,
     BrokenLink,
@@ -309,6 +312,7 @@ impl FromStr for IssueType {
             "templ-redirected-link" => Self::TemplRedirectedLink,
             "templ-broken-link" => Self::TemplBrokenLink,
             "templ-ill-cased-link" => Self::TemplIllCasedLink,
+            "templ-ill-cased-arg" => Self::TemplIllCasedArg,
             "templ-invalid-arg" => Self::TemplInvalidArg,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
@@ -357,18 +361,30 @@ impl DIssue {
 
 pub type DisplayIssues = BTreeMap<&'static str, Vec<DIssue>>;
 
+/// Convert a 1-based byte column within `line` to a 1-based character column.
+///
+/// Issue positions are stored as 1-based byte columns (tree-sitter's 0-based
+/// columns and comrak's 1-based sourcepos are both normalized to 1-based at
+/// emission). `byte_to_char_column` expects a 0-based byte offset, so this
+/// subtracts 1 before converting and adds 1 back afterwards. `col` must be
+/// positive; the `0` ("no position") and `-1` (overflow) sentinels are
+/// filtered by the caller.
+fn byte_col_to_char_col_1based(line: &str, col: i64) -> i64 {
+    byte_to_char_column(line, (col - 1) as usize) as i64 + 1
+}
+
 impl DIssue {
     pub fn from_issue(issue: Issue, page: &Page) -> Option<Self> {
         if let Ok(id) = usize::try_from(issue.ic) {
-            // Convert byte columns to character columns for user-facing display
-            let (char_col, char_end_col) = if issue.line != 0 && issue.col != 0 {
+            // Convert 1-based byte columns to 1-based character columns for display.
+            let (char_col, char_end_col) = if issue.line != 0 && issue.col > 0 {
                 // Get the line content (adjust for frontmatter offset)
                 let line_idx =
                     (issue.line.saturating_sub(1) as usize).saturating_sub(page.fm_offset());
                 if let Some(line_content) = page.content().lines().nth(line_idx) {
-                    let char_col = byte_to_char_column(line_content, issue.col as usize) as i64 + 1; // +1 for 1-based
-                    let char_end_col = if issue.end_col != 0 {
-                        byte_to_char_column(line_content, issue.end_col as usize) as i64 + 1
+                    let char_col = byte_col_to_char_col_1based(line_content, issue.col);
+                    let char_end_col = if issue.end_col > 0 {
+                        byte_col_to_char_col_1based(line_content, issue.end_col)
                     } else {
                         0
                     };
@@ -544,6 +560,28 @@ impl DIssue {
                         href: None,
                     }
                 }
+                IssueType::TemplIllCasedArg => {
+                    let source = issue_source(&mut additional);
+                    di.fixed = false;
+                    // Fixable in principle — the canonical casing is known
+                    // (carried in `canonical`) — but there's no auto-fixer for
+                    // template arguments yet, so report it as not fixable.
+                    di.fixable = Some(false);
+                    di.explanation = Some(format!(
+                        "{} received argument ({}) with the wrong case; use ({}) instead.",
+                        source.label,
+                        additional.get("arg").map(|s| s.as_str()).unwrap_or("?"),
+                        additional
+                            .get("canonical")
+                            .map(|s| s.as_str())
+                            .unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: source.name,
+                        href: None,
+                    }
+                }
                 _ => {
                     di.explanation = additional.remove("message");
                     DIssue::Unknown { display_issue: di }
@@ -618,6 +656,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_byte_col_to_char_col_1based() {
+        // ASCII: a 1-based byte column maps to the same 1-based char column.
+        let line = "abcde";
+        assert_eq!(byte_col_to_char_col_1based(line, 1), 1);
+        assert_eq!(byte_col_to_char_col_1based(line, 5), 5);
+
+        // Multi-byte: columns past a 4-byte emoji collapse to char columns.
+        let emoji = "ab🔥cd";
+        assert_eq!(byte_col_to_char_col_1based(emoji, 1), 1); // 'a'
+        assert_eq!(byte_col_to_char_col_1based(emoji, 3), 3); // emoji starts at byte 3 (1-based)
+        assert_eq!(byte_col_to_char_col_1based(emoji, 7), 4); // 'c' after the 4-byte emoji
+    }
+
+    #[test]
     fn test_issue_source_macro() {
         let mut additional: HashMap<&str, String> =
             [("templ", "previous".to_string())].into_iter().collect();
@@ -660,7 +712,9 @@ mod tests {
         let subscriber = tracing_subscriber::registry().with(layer.clone());
         let _guard = tracing::subscriber::set_default(subscriber);
 
-        // Outer span: real markdown position — col=0 (first column)
+        // Outer span: real markdown position. col=0 is the "no position"
+        // sentinel under the 1-based convention; it must still be taken
+        // atomically from this frame rather than picking up the inner col.
         let outer = span!(
             Level::ERROR,
             "templ",
@@ -693,7 +747,7 @@ mod tests {
         assert_eq!(issues.len(), 1);
         let issue = &issues[0];
         assert_eq!(issue.line, 5, "line must come from outer span");
-        // col=0 (outer, first column) must win over col=23 from the inner synthetic span
+        // col=0 (outer) must win over col=23 from the inner synthetic span
         assert_eq!(
             issue.col, 0,
             "col must come from outer span, not inner col=23"
