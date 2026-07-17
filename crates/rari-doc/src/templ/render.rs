@@ -73,11 +73,10 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                 let name = ident.to_ascii_lowercase();
                 // tree-sitter positions are 0-based; add 1 to report 1-based
                 // positions, consistent with comrak's sourcepos (see `fix_link`).
-                let line = i64::try_from(mac.pos.0 + offset)
-                    .map(|l| l + 1)
+                let line = i64::try_from(mac.pos.0 + offset + 1)
                     .unwrap_or(-1);
                 // mac.pos.1 is a 0-based byte column from tree-sitter.
-                let col = i64::try_from(mac.pos.1).map(|c| c + 1).unwrap_or(-1);
+                let col = i64::try_from(mac.pos.1 + 1).unwrap_or(-1);
                 // end_col in bytes: start byte + macro byte length. As a 0-based
                 // exclusive end this already equals the 1-based inclusive end column.
                 let macro_byte_len = mac.end - mac.start;
