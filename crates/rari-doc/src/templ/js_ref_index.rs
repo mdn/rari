@@ -160,11 +160,12 @@ fn normalize(name: &str) -> String {
     let mut out = String::with_capacity(collapsed.len());
     for (i, ch) in collapsed.char_indices() {
         // `.` is ASCII, so byte-indexed neighbor checks line up with chars.
-        if ch == '.' && !(i > 0 && bytes[i - 1] == b'.') && bytes.get(i + 1) != Some(&b'.') {
-            out.push('/');
-        } else {
-            out.push(ch);
-        }
+        let prev_is_dot = i > 0 && bytes[i - 1] == b'.';
+        let next_is_dot = bytes.get(i + 1) == Some(&b'.');
+        // A `.` flanked by another `.` is part of a dot-run (e.g. `for...of`)
+        // and stays; a lone `.` is a member separator and becomes `/`.
+        let in_dot_run = prev_is_dot || next_is_dot;
+        out.push(if ch == '.' && !in_dot_run { '/' } else { ch });
     }
     out
 }
