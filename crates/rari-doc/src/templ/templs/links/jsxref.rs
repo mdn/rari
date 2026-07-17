@@ -27,8 +27,8 @@ use crate::templ::js_ref_index::resolve_js_ref;
 /// * `{{JSxRef("typeof", "", "", true)}}` -> disables code formatting
 ///
 /// # Special handling
-/// - Removes `()` from method names for URL generation
-/// - Converts `.prototype.` notation to `/` for URL paths
+/// - Normalizes the name before lookup (`()` stripped, `.prototype.` collapsed,
+///   member `.` → `/`); see [`resolve_js_ref`]
 /// - Falls back to URI component decoding if no page found
 /// - Formats links with `<code>` tags unless `no_code` is true
 ///
@@ -68,7 +68,7 @@ pub fn jsxref(
     }
 
     let base = format!("/{}/docs/Web/JavaScript/Reference/", env.locale);
-    let mut url = if let Some(resolved) = resolve_js_ref(&parts.normalized) {
+    let mut url = if let Some(resolved) = resolve_js_ref(parts.bare) {
         format!("{base}{resolved}")
     } else {
         format!("{base}{}", RariApi::decode_uri_component(parts.bare))
@@ -90,16 +90,13 @@ pub fn jsxref(
 }
 
 /// The resolution decisions for a `jsxref` invocation, factored out of
-/// [`jsxref`] so the fragment/anchor/normalization logic is unit-testable
-/// without an `env` or the page index. The index lookup and the
-/// `RariApi::link` call stay in [`jsxref`].
+/// [`jsxref`] so the fragment/anchor/display logic is unit-testable without an
+/// `env` or the page index. Name normalization lives in [`resolve_js_ref`]; the
+/// index lookup and the `RariApi::link` call stay in [`jsxref`].
 struct JsxrefParts<'a> {
-    /// Fragment-stripped, un-normalized name, used for the decode fallback
-    /// when the index lookup misses.
+    /// Fragment-stripped name, passed to [`resolve_js_ref`] (which normalizes
+    /// it) and reused verbatim for the decode fallback when the lookup misses.
     bare: &'a str,
-    /// `bare` with `()` stripped, `.prototype.` → `.`, and `.` → `/` (unless a
-    /// `/` is already present), ready for the index lookup.
-    normalized: String,
     /// Display text: the explicit non-empty `display`, else `bare`.
     display: &'a str,
     /// Fragment to append (without a leading `#`): the embedded fragment if
@@ -128,16 +125,8 @@ fn jsxref_parts<'a>(
 
     let display = display.filter(|s| !s.is_empty()).unwrap_or(bare);
 
-    let normalized = bare.replace("()", "").replace(".prototype.", ".");
-    let normalized = if !normalized.contains('/') && normalized.contains('.') {
-        normalized.replace('.', "/")
-    } else {
-        normalized
-    };
-
     JsxrefParts {
         bare,
-        normalized,
         display,
         anchor: embedded_anchor.or(anchor),
         anchor_conflict,
@@ -164,7 +153,6 @@ mod tests {
             display: Option<&'static str>,
             anchor: Option<&'static str>,
             bare: &'static str,
-            normalized: &'static str,
             display_out: &'static str,
             anchor_out: Option<&'static str>,
             conflict: bool,
@@ -176,30 +164,17 @@ mod tests {
                 display: None,
                 anchor: None,
                 bare: "Array",
-                normalized: "Array",
                 display_out: "Array",
                 anchor_out: None,
                 conflict: false,
             },
             Case {
-                name: "strips parens",
+                name: "member kept verbatim in bare",
                 api_name: "Array.prototype.map()",
                 display: None,
                 anchor: None,
                 bare: "Array.prototype.map()",
-                normalized: "Array/map",
                 display_out: "Array.prototype.map()",
-                anchor_out: None,
-                conflict: false,
-            },
-            Case {
-                name: "dotted member to slash",
-                api_name: "Array.prototype.map",
-                display: None,
-                anchor: None,
-                bare: "Array.prototype.map",
-                normalized: "Array/map",
-                display_out: "Array.prototype.map",
                 anchor_out: None,
                 conflict: false,
             },
@@ -209,7 +184,6 @@ mod tests {
                 display: None,
                 anchor: None,
                 bare: "Statements/for...of",
-                normalized: "Statements/for...of",
                 display_out: "Statements/for...of",
                 anchor_out: None,
                 conflict: false,
@@ -220,7 +194,6 @@ mod tests {
                 display: None,
                 anchor: None,
                 bare: "Array.prototype.map",
-                normalized: "Array/map",
                 display_out: "Array.prototype.map",
                 anchor_out: Some("examples"),
                 conflict: false,
@@ -231,7 +204,6 @@ mod tests {
                 display: None,
                 anchor: Some("examples"),
                 bare: "Array",
-                normalized: "Array",
                 display_out: "Array",
                 anchor_out: Some("examples"),
                 conflict: false,
@@ -242,7 +214,6 @@ mod tests {
                 display: None,
                 anchor: Some(""),
                 bare: "Array",
-                normalized: "Array",
                 display_out: "Array",
                 anchor_out: None,
                 conflict: false,
@@ -253,7 +224,6 @@ mod tests {
                 display: None,
                 anchor: Some("explicit"),
                 bare: "Array",
-                normalized: "Array",
                 display_out: "Array",
                 anchor_out: Some("embedded"),
                 conflict: true,
@@ -264,7 +234,6 @@ mod tests {
                 display: Some("the array"),
                 anchor: None,
                 bare: "Array",
-                normalized: "Array",
                 display_out: "the array",
                 anchor_out: None,
                 conflict: false,
@@ -275,7 +244,6 @@ mod tests {
                 display: Some(""),
                 anchor: None,
                 bare: "Array.prototype.map",
-                normalized: "Array/map",
                 display_out: "Array.prototype.map",
                 anchor_out: Some("x"),
                 conflict: false,
@@ -284,7 +252,6 @@ mod tests {
         for c in cases {
             let parts = jsxref_parts(c.api_name, c.display, c.anchor);
             assert_eq!(parts.bare, c.bare, "bare [{}]", c.name);
-            assert_eq!(parts.normalized, c.normalized, "normalized [{}]", c.name);
             assert_eq!(parts.display, c.display_out, "display [{}]", c.name);
             assert_eq!(parts.anchor, c.anchor_out, "anchor [{}]", c.name);
             assert_eq!(parts.anchor_conflict, c.conflict, "conflict [{}]", c.name);

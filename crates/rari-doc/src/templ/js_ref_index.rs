@@ -140,8 +140,36 @@ fn insert(map: &mut HashMap<String, IndexSet<Arc<str>>>, key: &str, value: Arc<s
     map.entry(key.to_string()).or_default().insert(value);
 }
 
-/// Look up a JS reference name in the index. Input must already be normalized
-/// (`()` stripped, `.prototype.` → `.`, then `.` → `/` if no `/` is present).
+/// Normalize a raw `jsxref` name into an index key: strip `()`, collapse
+/// `.prototype.` to `.`, then convert member-access `.` to `/`.
+///
+/// A name that already uses `/` is left untouched. Runs of `.` are preserved
+/// so triple-dot statements resolve by their bare leaf (`for...of` stays
+/// `for...of`, not `for///of`); only a *lone* `.` (neither neighbor is `.`)
+/// is a member separator and becomes `/`.
+///
+/// Normalization lives here rather than in the `jsxref` caller because the
+/// `.` → `/` mapping only makes sense against the `/`-separated sub-paths this
+/// index is keyed by; the two evolve together.
+fn normalize(name: &str) -> String {
+    let collapsed = name.replace("()", "").replace(".prototype.", ".");
+    if collapsed.contains('/') {
+        return collapsed;
+    }
+    let bytes = collapsed.as_bytes();
+    let mut out = String::with_capacity(collapsed.len());
+    for (i, ch) in collapsed.char_indices() {
+        // `.` is ASCII, so byte-indexed neighbor checks line up with chars.
+        if ch == '.' && !(i > 0 && bytes[i - 1] == b'.') && bytes.get(i + 1) != Some(&b'.') {
+            out.push('/');
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
+/// Normalize (see [`normalize`]) and look up a JS reference name in the index.
 ///
 /// Resolution proceeds in two passes:
 ///
@@ -158,8 +186,8 @@ fn insert(map: &mut HashMap<String, IndexSet<Arc<str>>>, key: &str, value: Arc<s
 ///
 /// The returned `&'static str` borrows from `JS_REF_INDEX`, which is a
 /// `LazyLock` that lives for the rest of the process.
-pub fn resolve_js_ref(normalized: &str) -> Option<&'static str> {
-    resolve_from_index(&JS_REF_INDEX, normalized)
+pub fn resolve_js_ref(name: &str) -> Option<&'static str> {
+    resolve_from_index(&JS_REF_INDEX, &normalize(name))
 }
 
 fn resolve_from_index<'a>(idx: &'a JsRefIndex, normalized: &str) -> Option<&'a str> {
@@ -255,6 +283,12 @@ mod tests {
         JsRefIndex::from_primary(primary)
     }
 
+    /// Normalize a raw name and resolve it, mirroring [`resolve_js_ref`]
+    /// against the fixture instead of the real index.
+    fn resolve<'a>(idx: &'a JsRefIndex, name: &str) -> Option<&'a str> {
+        resolve_from_index(idx, &normalize(name))
+    }
+
     #[test]
     fn full_path_resolves() {
         let idx = fixture();
@@ -284,14 +318,19 @@ mod tests {
     #[test]
     fn global_object_member_resolves_by_dotted_path() {
         let idx = fixture();
-        // Caller normalizes `Array.from` → `Array/from`.
+        // `Array.from` normalizes to `Array/from`.
         assert_eq!(
-            resolve_from_index(&idx, "Array/from"),
+            resolve(&idx, "Array.from"),
             Some("Global_Objects/Array/from")
         );
-        // Caller normalizes `Array.prototype.map` → `Array/map`.
+        // `Array.prototype.map` collapses to `Array.map`, then `Array/map`.
         assert_eq!(
-            resolve_from_index(&idx, "Array/map"),
+            resolve(&idx, "Array.prototype.map"),
+            Some("Global_Objects/Array/map")
+        );
+        // A trailing `()` is stripped before lookup.
+        assert_eq!(
+            resolve(&idx, "Array.prototype.map()"),
             Some("Global_Objects/Array/map")
         );
     }
@@ -429,11 +468,13 @@ mod tests {
     #[test]
     fn statement_leaf_resolves_bare() {
         let idx = fixture();
-        assert_eq!(resolve_from_index(&idx, "const"), Some("Statements/const"));
-        // `for...of` still resolves via the full `Statements/` sub-path
-        // (its `.` makes a bare-leaf shortcut ambiguous with paths).
+        assert_eq!(resolve(&idx, "const"), Some("Statements/const"));
+        // `for...of` resolves bare: normalization keeps the `.` run intact
+        // (rather than mangling it to `for///of`), so the leaf shortcut hits.
+        assert_eq!(resolve(&idx, "for...of"), Some("Statements/for...of"));
+        // The full `Statements/` sub-path resolves too.
         assert_eq!(
-            resolve_from_index(&idx, "Statements/for...of"),
+            resolve(&idx, "Statements/for...of"),
             Some("Statements/for...of")
         );
     }
@@ -453,6 +494,27 @@ mod tests {
             resolve_from_index(&idx, "Statements/function"),
             Some("Statements/function")
         );
+    }
+
+    #[test]
+    fn normalize_cases() {
+        let cases = [
+            ("plain name", "Array", "Array"),
+            ("lone dot to slash", "Array.from", "Array/from"),
+            ("prototype collapsed", "Array.prototype.map", "Array/map"),
+            ("parens stripped", "Array.prototype.map()", "Array/map"),
+            ("dot run preserved", "for...of", "for...of"),
+            ("dot run with member", "Symbol.for...of", "Symbol/for...of"),
+            (
+                "existing slash untouched",
+                "Statements/for...of",
+                "Statements/for...of",
+            ),
+            ("single-dot leaf still split", "new.target", "new/target"),
+        ];
+        for (name, input, expected) in cases {
+            assert_eq!(normalize(input), expected, "[{name}]");
+        }
     }
 
     #[test]
