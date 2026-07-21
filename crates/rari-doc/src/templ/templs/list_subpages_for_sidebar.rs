@@ -5,6 +5,7 @@ use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::html::links::{LinkModifier, render_internal_link};
 use crate::pages::page::{Page, PageLike};
+use crate::templ::legacy::normalize_and_check_url_arg;
 use crate::utils::{trim_after, trim_before};
 
 /// List sub pages for sidebar
@@ -17,6 +18,10 @@ pub fn listsubpagesforsidebar(
     title_only_before: Option<String>,
 ) -> Result<String, DocError> {
     let mut out = String::new();
+    let url = match normalize_and_check_url_arg(&url, env.locale) {
+        Some(url) => url,
+        None => return Ok(out),
+    };
     let include_parent = include_parent.map(|i| i.as_bool()).unwrap_or_default();
     let mut sub_pages = get_sub_pages(&url, Some(1), SubPagesSorter::Title)?;
     if sub_pages.is_empty() && !include_parent {
