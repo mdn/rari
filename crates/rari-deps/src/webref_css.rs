@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
+use std::sync::OnceLock;
 
 use css_syntax_types::{BrowserSpec, SpecLink, WebrefCss};
+use rari_types::globals::data_dir;
 use rari_types::globals::deps;
 use rari_utils::io::read_to_string;
 use serde_json::Value;
@@ -10,6 +12,16 @@ use url::Url;
 
 use crate::error::DepsError;
 use crate::npm::get_package;
+
+pub static CSS_REF: OnceLock<WebrefCss> = OnceLock::new();
+
+pub fn css_ref_data() -> &'static WebrefCss {
+    CSS_REF.get_or_init(|| {
+        let json_str = fs::read_to_string(data_dir().join("@webref/css").join("webref_css.json"))
+            .expect("no data dir");
+        serde_json::from_str(&json_str).expect("Failed to parse JSON")
+    })
+}
 
 fn normalize_name(name: &str) -> String {
     name.trim_start_matches('<')
