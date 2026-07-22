@@ -17,6 +17,34 @@
         "alternatives": ["svg"]
       }
     },
+    "legacy-thing": {
+      "kind": "feature",
+      "name": "Legacy Thing",
+      "description": "A feature with one alternative with a URL, one without, and one where the feature doesn't exist.",
+      "description_html": "A feature with one alternative with a URL, one without, and one where the feature doesn't exist.",
+      "status": {
+        "baseline": "low",
+        "support": {},
+        "by_compat_key": { "api.LegacyThing": { "baseline": "low", "support": {} } }
+      },
+      "compat_features": ["api.LegacyThing"],
+      "discouraged": {
+        "reason_html": "Use something else.",
+        "alternatives": ["svg", "no-url-thing", "ghost-thing"]
+      }
+    },
+    "no-url-thing": {
+      "kind": "feature",
+      "name": "No URL Thing",
+      "description": "A feature with no mapped MDN URL",
+      "description_html": "A feature with no mapped MDN URL",
+      "status": {
+        "baseline": "low",
+        "support": {},
+        "by_compat_key": { "api.NoUrlThing": { "baseline": "low", "support": {} } }
+      },
+      "compat_features": ["api.NoUrlThing"]
+    },
     "svg": {
       "kind": "feature",
       "name": "SVG",

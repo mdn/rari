@@ -523,6 +523,16 @@ mod test {
         assert!(baseline.alternatives.is_empty());
     }
 
+    #[test]
+    fn discouraged_alternatives_without_urls_are_skipped() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.LegacyThing").unwrap();
+        // `svg` resolves; `no-url-thing` (a feature with no mapped URL) and
+        // `ghost-thing` (not a feature at all) are dropped without panicking.
+        assert_eq!(baseline.alternatives.len(), 1);
+        assert_eq!(baseline.alternatives[0].name, "SVG");
+    }
+
     /// Key order matters here, so this fixture is kept apart from
     /// `web-features-compute.json`.
     fn sub_keys_fixture() -> WebFeatures {
