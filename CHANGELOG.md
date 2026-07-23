@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.29](https://github.com/mdn/rari/compare/v0.2.28...v0.2.29) (2026-07-23)
+
+
+### Bug Fixes
+
+* **css_ref:** render backticks in titles as `<code>` ([#673](https://github.com/mdn/rari/issues/673)) ([732affa](https://github.com/mdn/rari/commit/732affa97117bed1b7242936109d4b3fded0544d))
+* **curriculum:** preserve frontmatter when fixing flaws ([#774](https://github.com/mdn/rari/issues/774)) ([0b3f3c4](https://github.com/mdn/rari/commit/0b3f3c423581f43ffafadd36fc5e8573df0007e0))
+* default BUILD_OUT_ROOT to ./build ([3b8cce4](https://github.com/mdn/rari/commit/3b8cce4d68d4de6c75ced584be38410ca2c60a56))
+* **issues:** report 1-based line/column consistently ([#777](https://github.com/mdn/rari/issues/777)) ([6efd645](https://github.com/mdn/rari/commit/6efd6457553ad45803acf59a41060e30929b6c89))
+* **jsxref:** build Web/JavaScript index to resolve names ([#715](https://github.com/mdn/rari/issues/715)) ([2ff4f72](https://github.com/mdn/rari/commit/2ff4f726ada151724e3eec813c6311c48bfdc83f))
+* **redirects:** accept any whitespace as delimiter, normalize to tabs ([#770](https://github.com/mdn/rari/issues/770)) ([cd9f8ba](https://github.com/mdn/rari/commit/cd9f8ba828f697a76cdb4ee3ad56ebf18b2326f3))
+* **settings:** default BUILD_OUT_ROOT to ./build ([#752](https://github.com/mdn/rari/issues/752)) ([3b8cce4](https://github.com/mdn/rari/commit/3b8cce4d68d4de6c75ced584be38410ca2c60a56))
+* **sidebar:** render nested subpages as details ([#654](https://github.com/mdn/rari/issues/654)) ([3a661ca](https://github.com/mdn/rari/commit/3a661ca2aad5fed770e148b7ff1c989bdc722c21))
+
+
+### Miscellaneous
+
+* **deps:** bump chrono from 0.4.44 to 0.4.45 ([#796](https://github.com/mdn/rari/issues/796)) ([33c443b](https://github.com/mdn/rari/commit/33c443b79ce6ef94f66af648d16b058c88055208))
+* **deps:** bump clap from 4.6.1 to 4.6.2 ([#802](https://github.com/mdn/rari/issues/802)) ([83bea8e](https://github.com/mdn/rari/commit/83bea8ed95d9c5b64c3c372c565253fcec25b795))
+* **deps:** bump crossbeam-channel from 0.5.15 to 0.5.16 ([#804](https://github.com/mdn/rari/issues/804)) ([f8bce51](https://github.com/mdn/rari/commit/f8bce5158c0da79942ed9d02062653a0a22f9f7e))
+* **deps:** bump rand from 0.10.1 to 0.10.2 ([#803](https://github.com/mdn/rari/issues/803)) ([707c356](https://github.com/mdn/rari/commit/707c3563491d557eaeb8e7dd3968e9b1b214236e))
+* **deps:** bump serde_json from 1.0.150 to 1.0.151 ([#807](https://github.com/mdn/rari/issues/807)) ([f4b9477](https://github.com/mdn/rari/commit/f4b94779f0882cb4c1604a324bb22252244b6d00))
+* **deps:** bump syn from 2.0.118 to 2.0.119 ([#795](https://github.com/mdn/rari/issues/795)) ([b345764](https://github.com/mdn/rari/commit/b3457643590a0e3f713bf8fb6d5fd3e6ba271de9))
+* **deps:** bump tar from 7.5.19 to 7.5.20 in /rari-npm in the npm-prod group ([#794](https://github.com/mdn/rari/issues/794)) ([57e46e1](https://github.com/mdn/rari/commit/57e46e180064ac47f7859da6b28ca74a19b68ca0))
+* **deps:** bump tar in /rari-npm in the npm-prod group ([57e46e1](https://github.com/mdn/rari/commit/57e46e180064ac47f7859da6b28ca74a19b68ca0))
+
 ## [0.2.28](https://github.com/mdn/rari/compare/v0.2.27...v0.2.28) (2026-07-10)
 
 
