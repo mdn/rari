@@ -126,12 +126,13 @@ impl WebFeatures {
         if let Ok(start) = self
             .bcd_keys
             .binary_search_by_key(&bcd_key_spaced, |ks| &ks.bcd_key_spaced)
-            && start < self.bcd_keys.len()
-            && let Some(end) = self.bcd_keys[start + 1..]
+        {
+            let rest = &self.bcd_keys[start + 1..];
+            let end = rest
                 .iter()
                 .position(|ks| !ks.bcd_key_spaced.starts_with(&suffix))
-        {
-            return &self.bcd_keys[start + 1..start + 1 + end];
+                .unwrap_or(rest.len());
+            return &rest[..end];
         }
         &[]
     }
@@ -411,5 +412,76 @@ mod test {
         let json = r#""high""#;
         let bl = serde_json::from_str::<BaselineHighLow>(json);
         assert!(matches!(bl, Ok(BaselineHighLow::High)));
+    }
+
+    fn fixture(name: &str) -> WebFeatures {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures")
+            .join(name);
+        WebFeatures::from_file(&path).unwrap()
+    }
+
+    fn compute_fixture() -> WebFeatures {
+        fixture("web-features-compute.json")
+    }
+
+    #[test]
+    fn asterisk_is_false_when_subkeys_match_parent() {
+        let wf = compute_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.uniform").unwrap();
+        assert!(!baseline.asterisk);
+    }
+
+    #[test]
+    fn asterisk_is_true_when_subkeys_differ() {
+        let wf = compute_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.mixed").unwrap();
+        assert!(baseline.asterisk);
+    }
+
+    #[test]
+    fn discouraged_subfeature_causes_asterisk() {
+        let wf = compute_fixture();
+        let baseline = wf.baseline_by_bcd_key("cc.parent").unwrap();
+        assert!(baseline.asterisk);
+    }
+
+    /// Key order matters here, so this fixture is kept apart from
+    /// `web-features-compute.json`.
+    fn sub_keys_fixture() -> WebFeatures {
+        fixture("web-features-sub-keys-order.json")
+    }
+
+    fn sub_keys_of(wf: &WebFeatures, bcd_key_spaced: &str) -> Vec<String> {
+        wf.sub_keys(bcd_key_spaced)
+            .iter()
+            .map(|ks| ks.bcd_key.clone())
+            .collect()
+    }
+
+    #[test]
+    fn sub_keys_are_found_for_a_key_followed_by_others() {
+        let wf = sub_keys_fixture();
+        assert_eq!(sub_keys_of(&wf, "aa leading"), ["aa.leading.x"]);
+    }
+
+    #[test]
+    fn sub_keys_are_found_for_the_last_key_group_in_the_list() {
+        let wf = sub_keys_fixture();
+        // Guards the assertion below: nothing may sort after `zz.trailing.*`.
+        assert_eq!(
+            wf.bcd_keys.last().map(|ks| ks.bcd_key.as_str()),
+            Some("zz.trailing.b")
+        );
+        assert_eq!(
+            sub_keys_of(&wf, "zz trailing"),
+            ["zz.trailing.a", "zz.trailing.b"]
+        );
+    }
+
+    #[test]
+    fn last_key_in_the_list_has_no_sub_keys() {
+        let wf = sub_keys_fixture();
+        assert!(sub_keys_of(&wf, "zz trailing b").is_empty());
     }
 }
