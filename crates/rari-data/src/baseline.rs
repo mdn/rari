@@ -216,9 +216,6 @@ impl WebFeatures {
         if let Some(feature_enum) = self.features.get(feature_name) {
             match feature_enum {
                 FeatureEnum::Feature(feature_data) => {
-                    if feature_data.discouraged.is_some() {
-                        return None;
-                    }
                     return Some(feature_data);
                 }
                 _ => {
