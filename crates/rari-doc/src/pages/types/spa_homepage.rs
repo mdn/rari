@@ -1,5 +1,6 @@
+use std::ffi::OsStr;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output};
 use std::sync::LazyLock;
 
 use chrono::{DateTime, Utc};
@@ -7,6 +8,7 @@ use rari_types::globals::{content_root, content_translated_root};
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use regex::Regex;
+use thiserror::Error;
 
 use crate::cached_readers::{blog_files, contributor_spotlight_files};
 use crate::error::DocError;
@@ -17,6 +19,14 @@ use crate::pages::json::{
     HomePageRecentContribution, NameUrl, Parent,
 };
 use crate::pages::page::{Page, PageLike};
+
+#[derive(Debug, Error)]
+enum GitError {
+    #[error("failed to run git: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("git command exited with non-zero code {exit_code}: {stderr}")]
+    CommandFailed { exit_code: String, stderr: String },
+}
 
 pub fn latest_news() -> Result<Vec<HomePageLatestNewsItem>, DocError> {
     Ok(blog_files()
@@ -96,26 +106,46 @@ fn recent_contributions_from_git(
     path: &Path,
     repo: &str,
 ) -> Result<Vec<HomePageRecentContribution>, DocError> {
-    let output = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(path)
-        .output()
-        .expect("failed to execute git rev-parse");
+    fn exec_git(args: &[impl AsRef<OsStr>], root: impl AsRef<Path>) -> Result<Output, GitError> {
+        let output = Command::new("git")
+            .args(args)
+            .current_dir(root)
+            .output()?;
+        
+        if !output.status.success() {
+            return Err(GitError::CommandFailed {
+                exit_code: output
+                    .status
+                    .code()
+                    .map(|c| c.to_string())
+                    .unwrap_or_else(|| "None".to_string()),
+                stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+            });
+        }
+
+        Ok(output)
+    }
+
+    let output = exec_git(
+        &["rev-parse", "--show-toplevel"],
+        path,
+    )
+    .expect("failed to execute git rev-parse");
 
     let repo_root_raw = String::from_utf8_lossy(&output.stdout);
     let repo_root = repo_root_raw.trim();
 
-    let output = Command::new("git")
-        .args([
+    let output = exec_git(
+        &[
             "log",
             "--no-merges",
             "--pretty=format:%aI %s",
             "-n 10",
             "-z",
-        ])
-        .current_dir(repo_root)
-        .output()
-        .expect("failed to execute process");
+        ],
+        repo_root,
+    )
+    .expect("failed to execute git log");
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     Ok(output_str
