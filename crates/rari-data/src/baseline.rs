@@ -153,7 +153,13 @@ impl WebFeatures {
                 .iter()
                 .map(|sub_key| {
                     self.feature_data_by_name(&sub_key.feature)
-                        .and_then(|feature| feature.status.by_compat_key.as_ref())
+                        .and_then(|feature| {
+                            if feature.discouraged.is_some() {
+                                None
+                            } else {
+                                feature.status.by_compat_key.as_ref()
+                            }
+                        })
                         .and_then(|by_key| by_key.get(&sub_key.bcd_key))
                         .map(|status_for_key| status_for_key.baseline)
                 })
