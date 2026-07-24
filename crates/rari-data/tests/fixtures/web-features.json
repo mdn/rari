@@ -13,8 +13,21 @@
       "compat_features": ["api.OldThing"],
       "discouraged": {
         "reason_html": "Use something else.",
-        "removal_date": "2025-01-01"
+        "removal_date": "2025-01-01",
+        "alternatives": ["svg"]
       }
+    },
+    "svg": {
+      "kind": "feature",
+      "name": "SVG",
+      "description": "Scalable Vector Graphics",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": { "svg.elements": { "baseline": "high", "support": {} } }
+      },
+      "compat_features": ["svg.elements"]
     }
   }
 }

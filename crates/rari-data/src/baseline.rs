@@ -11,6 +11,7 @@ use serde_json::Value;
 use url::Url;
 
 use crate::error::Error;
+use crate::feature_urls::get_mdn_url;
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct Baseline<'a> {
@@ -18,6 +19,8 @@ pub struct Baseline<'a> {
     pub support: &'a SupportStatus,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub asterisk: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub alternatives: Vec<Alternative>,
     pub feature: &'a FeatureData,
 }
 
@@ -25,6 +28,13 @@ pub struct Baseline<'a> {
 pub struct DeveloperSignals {
     pub url: String,
     pub votes: u64,
+}
+
+#[derive(Serialize, Clone, Debug, JsonSchema)]
+pub struct Alternative {
+    pub name: String,
+    pub description: String,
+    pub mdn_url: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -192,9 +202,38 @@ impl WebFeatures {
                     _ => true,
                 }
             };
+
+            let alternatives = match feature.discouraged.as_ref() {
+                Some(discouraged) => discouraged
+                    .alternatives
+                    .iter()
+                    .filter_map(|alternative| {
+                        self.feature_data_by_name(alternative).and_then(
+                            |feature| match get_mdn_url(alternative) {
+                                Some(url) => Some(Alternative {
+                                    name: feature.name.clone(),
+                                    // we render the description in an attribute, so we don't want HTML
+                                    description: feature.description.clone(),
+                                    mdn_url: url.to_string(),
+                                }),
+                                None => {
+                                    tracing::warn!(
+                                        "Couldn't find url for {} web feature",
+                                        alternative
+                                    );
+                                    None
+                                }
+                            },
+                        )
+                    })
+                    .collect(),
+                None => Vec::new(),
+            };
+
             return Some(Baseline {
                 support: status_for_key,
                 asterisk,
+                alternatives,
                 feature,
             });
         }
@@ -463,6 +502,25 @@ mod test {
         let discouraged = baseline.feature.discouraged.as_ref().unwrap();
         assert_eq!(discouraged.reason_html, "Use something else.");
         assert_eq!(discouraged.removal_date.as_deref(), Some("2025-01-01"));
+    }
+
+    #[test]
+    fn discouraged_feature_resolves_alternative_urls() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.OldThing").unwrap();
+        assert_eq!(baseline.alternatives.len(), 1);
+        let alternative = &baseline.alternatives[0];
+        assert_eq!(alternative.name, "SVG");
+        assert_eq!(alternative.description, "Scalable Vector Graphics");
+        assert_eq!(alternative.mdn_url, "/docs/Web/SVG");
+    }
+
+    #[test]
+    fn non_discouraged_feature_has_no_alternatives() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("svg.elements").unwrap();
+        assert!(baseline.feature.discouraged.is_none());
+        assert!(baseline.alternatives.is_empty());
     }
 
     /// Key order matters here, so this fixture is kept apart from
