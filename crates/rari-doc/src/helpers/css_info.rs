@@ -186,7 +186,9 @@ pub fn write_computed_output(
                     .get(&s[1..s.len() - 1])
                     .unwrap_or(&Value::Null);
                 return write_computed_output(env, out, locale, s_data, property, at_rule);
-            } else if property == "initial" && !mdn_data_files().css_l10n.contains_key(s) {
+            } else if property == "initial"
+                && (s == "all" || !mdn_data_files().css_l10n.contains_key(s))
+            {
                 return Ok(write!(out, "<code>{s}</code>")?);
             } else {
                 let replaced_keywords = s
@@ -346,4 +348,28 @@ pub fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
 fn remove_me_replace_placeholder(s: &str, replacements: &[&str]) -> String {
     s.replace("$1$", replacements.first().unwrap_or(&"$1$"))
         .replace("$2$", replacements.get(1).unwrap_or(&"$2$"))
+}
+
+#[cfg(test)]
+mod tests {
+    use rari_types::RariEnv;
+    use rari_types::locale::Locale;
+    use serde_json::json;
+
+    use super::write_computed_output;
+
+    #[test]
+    fn renders_keyword_initial_value_as_code_for_locales() {
+        let mut out = String::new();
+        let css_info_data = json!({ "initial": "all" });
+        let env = RariEnv {
+            locale: Locale::Ja,
+            ..Default::default()
+        };
+
+        write_computed_output(&env, &mut out, Locale::Ja, &css_info_data, "initial", None)
+            .expect("rendering initial value should succeed");
+
+        assert_eq!(out, "<code>all</code>");
+    }
 }
