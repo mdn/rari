@@ -278,6 +278,9 @@ pub struct FeatureData {
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct Discouraged {
+    reason_html: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    removal_date: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     according_to: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -447,6 +450,19 @@ mod test {
         let wf = compute_fixture();
         let baseline = wf.baseline_by_bcd_key("cc.parent").unwrap();
         assert!(baseline.asterisk);
+    }
+
+    fn discouraged_fixture() -> WebFeatures {
+        fixture("web-features.json")
+    }
+
+    #[test]
+    fn discouraged_feature_exposes_reason_and_removal_date() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.OldThing").unwrap();
+        let discouraged = baseline.feature.discouraged.as_ref().unwrap();
+        assert_eq!(discouraged.reason_html, "Use something else.");
+        assert_eq!(discouraged.removal_date.as_deref(), Some("2025-01-01"));
     }
 
     /// Key order matters here, so this fixture is kept apart from

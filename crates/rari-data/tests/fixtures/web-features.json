@@ -1,0 +1,20 @@
+{
+  "features": {
+    "old-thing": {
+      "kind": "feature",
+      "name": "Old Thing",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": "low",
+        "support": {},
+        "by_compat_key": { "api.OldThing": { "baseline": "low", "support": {} } }
+      },
+      "compat_features": ["api.OldThing"],
+      "discouraged": {
+        "reason_html": "Use something else.",
+        "removal_date": "2025-01-01"
+      }
+    }
+  }
+}
