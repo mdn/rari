@@ -5,9 +5,11 @@
 //! support status for specific browser compatibility keys.
 use std::sync::LazyLock;
 
-use rari_data::baseline::{Baseline, WebFeatures};
+use rari_data::baseline::{Baseline, BaselineStatus, WebFeatures};
 use rari_types::globals::data_dir;
 use tracing::error;
+
+use crate::pages::page::Page;
 
 static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
     let web_features = WebFeatures::from_file(&data_dir().join("web-features/package/data.json"));
@@ -38,6 +40,14 @@ pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>
     None
 }
 
+pub(crate) fn get_baseline_status(page: &Page) -> Option<BaselineStatus> {
+    let doc = match page {
+        Page::Doc(doc) => doc,
+        _ => return None,
+    };
+    get_baseline(&doc.meta.browser_compat).map(|baseline| baseline.status())
+}
+
 fn get_baseline_from<'a>(
     browser_compat: &[String],
     web_features: &'a WebFeatures,
@@ -56,8 +66,10 @@ fn get_baseline_from<'a>(
 #[cfg(test)]
 mod tests {
     use rari_data::baseline::BaselineHighLow;
+    use rari_types::locale::Locale;
 
     use super::*;
+    use crate::pages::types::spa::SPA;
 
     static TEST_WEB_FEATURES: LazyLock<WebFeatures> = LazyLock::new(|| {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -96,6 +108,12 @@ mod tests {
     fn single_limited() {
         let b = get(&["api.limited"]).unwrap();
         assert_eq!(b.support.baseline, BaselineHighLow::False);
+    }
+
+    #[test]
+    fn non_doc_pages_have_no_status() {
+        let page = SPA::from_slug("blog", Locale::EnUs).unwrap();
+        assert!(get_baseline_status(&page).is_none());
     }
 
     #[test]

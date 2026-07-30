@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 
 use lol_html::{RewriteStrSettings, element, rewrite_str};
+use rari_data::baseline::BaselineStatus;
 use rari_md::anchor::anchorize;
 use rari_types::fm_types::FeatureStatus;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
+use crate::baseline::get_baseline_status;
 use crate::error::DocError;
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
@@ -19,6 +21,7 @@ pub struct LinkModifier<'a> {
     pub badge_locale: Locale,
     pub code: bool,
     pub only_en_us: bool,
+    pub baseline: Option<BaselineStatus>,
 }
 
 pub fn render_internal_link(
@@ -147,6 +150,11 @@ pub fn render_link_via_page(
                     badge_locale: locale,
                     code,
                     only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
+                    baseline: if with_badges {
+                        get_baseline_status(&page)
+                    } else {
+                        None
+                    },
                 },
                 true,
             );
