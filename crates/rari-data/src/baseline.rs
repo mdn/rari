@@ -24,6 +24,23 @@ pub struct Baseline<'a> {
     pub feature: &'a FeatureData,
 }
 
+#[derive(Serialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum BaselineStatus {
+    High,
+    Low,
+    Limited,
+    Discouraged,
+    Removing,
+}
+
+impl BaselineStatus {
+    pub fn is_discouraged(self) -> bool {
+        matches!(self, Self::Discouraged | Self::Removing)
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, JsonSchema)]
 pub struct DeveloperSignals {
     pub url: String,
@@ -492,6 +509,40 @@ mod test {
 
     fn discouraged_fixture() -> WebFeatures {
         fixture("web-features.json")
+    }
+
+    const ALL_STATUSES: [(BaselineStatus, &str); 5] = [
+        (BaselineStatus::High, "high"),
+        (BaselineStatus::Low, "low"),
+        (BaselineStatus::Limited, "limited"),
+        (BaselineStatus::Discouraged, "discouraged"),
+        (BaselineStatus::Removing, "removing"),
+    ];
+
+    #[test]
+    fn baseline_status_serializes_as_its_name() {
+        for (status, name) in ALL_STATUSES {
+            assert_eq!(
+                serde_json::to_string(&status).unwrap(),
+                format!(r#""{name}""#)
+            );
+        }
+    }
+
+    #[test]
+    fn baseline_status_displays_as_it_serializes() {
+        for (status, name) in ALL_STATUSES {
+            assert_eq!(status.to_string(), name);
+        }
+    }
+
+    #[test]
+    fn only_discouraged_statuses_are_discouraged() {
+        assert!(BaselineStatus::Discouraged.is_discouraged());
+        assert!(BaselineStatus::Removing.is_discouraged());
+        assert!(!BaselineStatus::High.is_discouraged());
+        assert!(!BaselineStatus::Low.is_discouraged());
+        assert!(!BaselineStatus::Limited.is_discouraged());
     }
 
     #[test]
