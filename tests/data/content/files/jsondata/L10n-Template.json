@@ -1,0 +1,6 @@
+{
+  "baseline_discouraged_title": { "en-US": "This feature is discouraged." },
+  "baseline_discouraged_abbreviation": { "en-US": "Discouraged" },
+  "baseline_removing_title": { "en-US": "This feature is scheduled for removal." },
+  "baseline_removing_abbreviation": { "en-US": "To be removed" }
+}
