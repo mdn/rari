@@ -366,20 +366,31 @@ mod tests {
     use rari_types::locale::Locale;
     use serde_json::json;
 
-    use super::write_computed_output;
+    use super::{get_css_l10n_for_locale, write_computed_output};
+
+    fn render_initial_value(initial_value: &str, locale: Locale) -> String {
+        let mut out = String::new();
+        let css_info_data = json!({ "initial": initial_value });
+        let env = RariEnv { locale, ..Default::default() };
+
+        write_computed_output(&env, &mut out, locale, &css_info_data, "initial", None)
+            .expect("rendering initial value should succeed");
+
+        out
+    }
 
     #[test]
     fn renders_keyword_initial_value_as_code_for_locales() {
-        let mut out = String::new();
-        let css_info_data = json!({ "initial": "all" });
-        let env = RariEnv {
-            locale: Locale::Ja,
-            ..Default::default()
-        };
+        assert_eq!(render_initial_value("all", Locale::Ja), "<code>all</code>");
+    }
 
-        write_computed_output(&env, &mut out, Locale::Ja, &css_info_data, "initial", None)
-            .expect("rendering initial value should succeed");
+    #[test]
+    fn renders_known_initial_l10n_value_through_translation_branch() {
+        let localized = get_css_l10n_for_locale("dependsOnUserAgent", Locale::Ja);
 
-        assert_eq!(out, "<code>all</code>");
+        assert_eq!(
+            render_initial_value("dependsOnUserAgent", Locale::Ja),
+            localized
+        );
     }
 }
