@@ -131,6 +131,18 @@ pub fn css_info_properties(
     Ok(out)
 }
 
+const INITIAL_L10N_VALUES:[&str; 9] = [
+    "\"\"",
+    "\". \"",
+    "autoForSmartphoneBrowsersSupportingInflation",
+    "dependsOnUserAgent",
+    "noPracticalInitialValue",
+    "noneButOverriddenInUserAgentCSS",
+    "seeProse",
+    "startOrNamelessValueIfLTRRightIfRTL",
+    "zoomForTheTopLevelNoneForTheRest",
+];
+
 pub fn write_computed_output(
     env: &RariEnv,
     out: &mut String,
@@ -186,9 +198,7 @@ pub fn write_computed_output(
                     .get(&s[1..s.len() - 1])
                     .unwrap_or(&Value::Null);
                 return write_computed_output(env, out, locale, s_data, property, at_rule);
-            } else if property == "initial"
-                && (s == "all" || !mdn_data_files().css_l10n.contains_key(s))
-            {
+            } else if property == "initial" && !INITIAL_L10N_VALUES.contains(&s.as_str()) {
                 return Ok(write!(out, "<code>{s}</code>")?);
             } else {
                 let replaced_keywords = s
