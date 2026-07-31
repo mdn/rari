@@ -131,7 +131,7 @@ pub fn css_info_properties(
     Ok(out)
 }
 
-const INITIAL_L10N_VALUES:[&str; 9] = [
+const INITIAL_L10N_VALUES: [&str; 9] = [
     "\"\"",
     "\". \"",
     "autoForSmartphoneBrowsersSupportingInflation",
@@ -371,7 +371,10 @@ mod tests {
     fn render_initial_value(initial_value: &str, locale: Locale) -> String {
         let mut out = String::new();
         let css_info_data = json!({ "initial": initial_value });
-        let env = RariEnv { locale, ..Default::default() };
+        let env = RariEnv {
+            locale,
+            ..Default::default()
+        };
 
         write_computed_output(&env, &mut out, locale, &css_info_data, "initial", None)
             .expect("rendering initial value should succeed");
