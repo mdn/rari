@@ -7,9 +7,9 @@ use std::thread::spawn;
 
 use rari_types::HistoryEntry;
 use rari_types::globals::{content_root, content_translated_root};
+use rari_utils::git::exec_git;
 
 use crate::error::ToolError;
-use crate::git::exec_git;
 
 pub fn gather_history() -> Result<(), ToolError> {
     let handle = content_translated_root().map(|translated_root| {
@@ -25,11 +25,7 @@ pub fn gather_history() -> Result<(), ToolError> {
 }
 
 fn modification_times(path: &Path) -> Result<(), ToolError> {
-    let output = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(path)
-        .output()
-        .expect("failed to execute git rev-parse");
+    let output = exec_git(&["rev-parse", "--show-toplevel"], path);
 
     let repo_root_raw = String::from_utf8_lossy(&output.stdout);
     let repo_root = repo_root_raw.trim();
