@@ -29,7 +29,7 @@ pub fn webextallexamples() -> Result<String, DocError> {
             let url = format!(
                 "/{}/docs/Mozilla/Add-ons/WebExtensions/API/{}",
                 env.locale.as_url_str(),
-                &api.replace(' ', "_").replace("()", "").replace('.', "/"),
+                api.replace(' ', "_").replace("()", "").replace('.', "/"),
             );
             let link = RariApi::link(&url, Some(env.locale), None, true, None, false)?;
             out.push_str(&link);

@@ -108,7 +108,10 @@ pub struct CurriculumMeta {
 #[derive(Debug, Clone)]
 pub struct Curriculum {
     pub meta: CurriculumBuildMeta,
-    raw_content: String,
+    /// The full, unmodified file contents (frontmatter + H1 + body).
+    raw: String,
+    /// Byte offset in `raw` where the body begins, i.e. after the frontmatter and the H1 line.
+    content_start: usize,
 }
 
 impl Curriculum {
@@ -145,14 +148,28 @@ impl Curriculum {
     }
 }
 
+/// Splits a curriculum file into its frontmatter and body boundary.
+///
+/// Returns `(fm, title, content_start)`, where `fm` is the raw frontmatter string, `title` is
+/// the text of the H1, and `content_start` is the byte offset in `raw` where the body begins
+/// (after the frontmatter and the H1 line). Since [`TITLE_RE`] is `^`-anchored, the matched H1 is
+/// an exact prefix of the post-frontmatter content, so `&raw[content_start..]` is the body.
+fn parse_curriculum(raw: &str) -> Result<(&str, String, usize), DocError> {
+    let (fm, content_start) = split_fm(raw);
+    let fm = fm.ok_or(DocError::NoFrontmatter)?;
+    let (title, line_len) = TITLE_RE
+        .captures(&raw[content_start..])
+        .map(|cap| (cap[1].to_owned(), cap[0].len()))
+        .ok_or(DocError::NoH1)?;
+    Ok((fm, title, content_start + line_len))
+}
+
 impl PageReader<Page> for Curriculum {
     fn read(path: impl Into<PathBuf>, _: Option<Locale>) -> Result<Page, DocError> {
         let full_path = path.into();
         let raw = read_to_string(&full_path)?;
-        let (fm, content_start) = split_fm(&raw);
-        let fm = fm.ok_or(DocError::NoFrontmatter)?;
+        let (fm, title, content_start) = parse_curriculum(&raw)?;
 
-        let raw_content = &raw[content_start..];
         let curriculum_dir = curriculum_root()
             .ok_or(DocError::NoCurriculumRoot)?
             .join("curriculum");
@@ -163,11 +180,6 @@ impl PageReader<Page> for Curriculum {
         } else {
             format!("/{}/curriculum/{slug}/", Locale::default().as_url_str())
         };
-        let (title, line) = TITLE_RE
-            .captures(raw_content)
-            .map(|cap| (cap[1].to_owned(), cap[0].to_owned()))
-            .ok_or(DocError::NoH1)?;
-        let raw_content = raw_content.replacen(&line, "", 1);
         let CurriculumFrontmatter {
             summary,
             template,
@@ -186,7 +198,11 @@ impl PageReader<Page> for Curriculum {
             path,
             group: None,
         };
-        let page = Page::Curriculum(Arc::new(Curriculum { meta, raw_content }));
+        let page = Page::Curriculum(Arc::new(Curriculum {
+            meta,
+            raw,
+            content_start,
+        }));
         Ok(page)
     }
 }
@@ -221,7 +237,7 @@ impl PageLike for Curriculum {
     }
 
     fn content(&self) -> &str {
-        &self.raw_content
+        &self.raw[self.content_start..]
     }
 
     fn rari_env(&self) -> Option<RariEnv<'_>> {
@@ -261,11 +277,11 @@ impl PageLike for Curriculum {
     }
 
     fn fm_offset(&self) -> usize {
-        0
+        self.raw[..self.content_start].lines().count()
     }
 
     fn raw_content(&self) -> &str {
-        &self.raw_content
+        &self.raw
     }
 
     fn banners(&self) -> Option<&[FmTempl]> {
@@ -533,5 +549,51 @@ mod tests {
         let grouped = group_sidebar_entries(entries);
         assert_eq!(grouped.len(), 1);
         assert_eq!(grouped[0].children.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_curriculum_splits_frontmatter_h1_and_body() {
+        // (raw, expected frontmatter, expected title, expected body, expected prefix line count)
+        let cases = [
+            // Blank line between the frontmatter and the H1.
+            (
+                "---\ntitle: Test\n---\n\n# My Title\n\nBody with a [link](/en-US/docs/foo).\n",
+                "title: Test",
+                "My Title",
+                "\nBody with a [link](/en-US/docs/foo).\n",
+                5,
+            ),
+            // H1 directly after the frontmatter, no blank line.
+            (
+                "---\nfoo: bar\n---\n# Title\n\nContent [x](/a).\n",
+                "foo: bar",
+                "Title",
+                "\nContent [x](/a).\n",
+                4,
+            ),
+            // Blank line before the H1, minimal body.
+            (
+                "---\ntitle: T\n---\n\n# Heading\n\nText.\n",
+                "title: T",
+                "Heading",
+                "\nText.\n",
+                5,
+            ),
+            // Two blank lines before the H1.
+            (
+                "---\nk: v\n---\n\n\n# Late Title\nprose\n",
+                "k: v",
+                "Late Title",
+                "prose\n",
+                6,
+            ),
+        ];
+        for (raw, fm, title, body, prefix_lines) in cases {
+            let (parsed_fm, parsed_title, content_start) = parse_curriculum(raw).unwrap();
+            assert_eq!(parsed_fm, fm);
+            assert_eq!(parsed_title, title);
+            assert_eq!(&raw[content_start..], body);
+            assert_eq!(raw[..content_start].lines().count(), prefix_lines);
+        }
     }
 }

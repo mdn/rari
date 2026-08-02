@@ -44,13 +44,10 @@ pub fn split_sections(html: &Html) -> Result<Split<'_>, DocError> {
             match current.value() {
                 scraper::Node::Comment(comment) => {
                     let comment = format!("<!-- {} -->", comment.deref());
-                    if let Some(ref mut section) = maybe_section.as_mut().and_then(|section| {
-                        if !matches!(section.typ, BuildSectionType::Compat) {
-                            Some(section)
-                        } else {
-                            None
-                        }
-                    }) {
+                    if let Some(section) = maybe_section
+                        .as_mut()
+                        .filter(|section| !matches!(section.typ, BuildSectionType::Compat))
+                    {
                         section.body.push(comment);
                     } else {
                         if let Some(compat_section) = maybe_section.take() {
@@ -197,19 +194,12 @@ pub fn split_sections(html: &Html) -> Result<Split<'_>, DocError> {
                             }
                             _ => {
                                 let html = ElementRef::wrap(current).unwrap().html();
-                                if let Some(ref mut section) =
-                                    maybe_section.as_mut().and_then(|section| {
-                                        if !matches!(
-                                            section.typ,
-                                            BuildSectionType::Compat
-                                                | BuildSectionType::Specification
-                                        ) {
-                                            Some(section)
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                {
+                                if let Some(section) = maybe_section.as_mut().filter(|section| {
+                                    !matches!(
+                                        section.typ,
+                                        BuildSectionType::Compat | BuildSectionType::Specification
+                                    )
+                                }) {
                                     section.body.push(html)
                                 } else {
                                     if let Some(compat_section) = maybe_section.take() {

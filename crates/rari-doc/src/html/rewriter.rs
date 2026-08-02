@@ -33,10 +33,10 @@ pub fn post_process_inline_sidebar(input: &str) -> Result<String, DocError> {
     ];
     Ok(rewrite_str(
         input,
-        RewriteStrSettings {
-            element_content_handlers,
-            ..Default::default()
-        },
+        element_content_handlers.into_iter().fold(
+            RewriteStrSettings::new(),
+            RewriteStrSettings::append_element_content_handler,
+        ),
     )?)
 }
 
@@ -252,10 +252,9 @@ pub fn post_process_html<T: PageLike>(
     }
 
     let mut rewriter = HtmlRewriter::new(
-        Settings {
-            element_content_handlers,
-            ..Settings::default()
-        },
+        element_content_handlers
+            .into_iter()
+            .fold(Settings::new(), Settings::append_element_content_handler),
         |c: &[u8]| output.extend_from_slice(c),
     );
 

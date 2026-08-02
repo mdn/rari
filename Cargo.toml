@@ -1,12 +1,12 @@
 [package]
 name = "rari"
-version = "0.2.27"
+version = "0.2.28"
 edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
 homepage = "https://github.com/mdn/rari"
 repository = "https://github.com/mdn/rari"
-rust-version = "1.90"
+rust-version = "1.97"
 
 [[bin]]
 path = "crates/rari-cli/main.rs"
@@ -51,7 +51,7 @@ members = [
 edition = "2024"
 license = "MPL-2.0"
 authors = ["MDN Engineering Team <mdn-dev@mozilla.com>"]
-rust-version = "1.90"
+rust-version = "1.97"
 
 [workspace.dependencies]
 rari-doc = { path = "crates/rari-doc" }
@@ -73,7 +73,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 url = { version = "2", features = ["serde"] }
-itertools = "0.14"
+itertools = "0.15"
 constcat = "0.6"
 anyhow = "1"
 indexmap = { version = "2", features = ["serde"] }
