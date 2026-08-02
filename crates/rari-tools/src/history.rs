@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::thread::spawn;
 
 use rari_types::HistoryEntry;
