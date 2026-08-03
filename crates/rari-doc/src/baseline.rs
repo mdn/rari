@@ -6,6 +6,7 @@
 use std::sync::LazyLock;
 
 use rari_data::baseline::{Baseline, BaselineStatus, WebFeatures};
+use rari_types::fm_types::FeatureStatus;
 use rari_types::globals::data_dir;
 use tracing::error;
 
@@ -40,12 +41,33 @@ pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>
     None
 }
 
+pub(crate) fn get_mocked_baseline_status(
+    fm_status: &[FeatureStatus],
+    slug: &str,
+) -> Option<BaselineStatus> {
+    if !fm_status.contains(&FeatureStatus::Deprecated) {
+        return None;
+    }
+    if !["Web/", "WebAssembly/"]
+        .iter()
+        .any(|prefix| slug.starts_with(prefix))
+        || slug.starts_with("Web/Accessibility/")
+    {
+        // only mock banners under Web and WebAssembly, as those are the sections we have Baseline banners
+        // don't mock under Web/Accessibility, as we don't
+        return None;
+    }
+    Some(BaselineStatus::Discouraged)
+}
+
 pub(crate) fn get_baseline_status(page: &Page) -> Option<BaselineStatus> {
     let doc = match page {
         Page::Doc(doc) => doc,
         _ => return None,
     };
-    get_baseline(&doc.meta.browser_compat).map(|baseline| baseline.status())
+    get_baseline(&doc.meta.browser_compat)
+        .map(|baseline| baseline.status())
+        .or_else(|| get_mocked_baseline_status(&doc.meta.status, &doc.meta.slug))
 }
 
 fn get_baseline_from<'a>(
@@ -130,5 +152,50 @@ mod tests {
     fn multiple_same_feature() {
         let b = get(&["api.high", "api.high-adjacent"]).unwrap();
         assert_eq!(b.support.baseline, BaselineHighLow::High);
+    }
+
+    fn mocked(slug: &str) -> Option<BaselineStatus> {
+        get_mocked_baseline_status(&[FeatureStatus::Deprecated], slug)
+    }
+
+    #[test]
+    fn a_deprecated_page_in_a_baseline_section_is_discouraged() {
+        for slug in [
+            "Web/API/AudioProcessingEvent",
+            "WebAssembly/JavaScript_interface/Memory",
+        ] {
+            assert_eq!(mocked(slug), Some(BaselineStatus::Discouraged), "{slug}");
+        }
+    }
+
+    #[test]
+    fn a_deprecated_page_outside_the_baseline_sections_is_not_mocked() {
+        for slug in [
+            "Mozilla/Add-ons/WebExtensions/API/tabs",
+            "Games/Techniques/3D_on_the_web",
+            "Learn_web_development/Core/Scripting",
+        ] {
+            assert_eq!(mocked(slug), None, "{slug}");
+        }
+    }
+
+    #[test]
+    fn the_excluded_section_is_not_mocked() {
+        assert_eq!(
+            mocked("Web/Accessibility/ARIA/Reference/Attributes/aria-dropeffect"),
+            None
+        );
+    }
+
+    #[test]
+    fn a_page_without_deprecated_status_is_not_mocked() {
+        let statuses: [&[FeatureStatus]; 2] = [&[], &[FeatureStatus::Experimental]];
+        for status in statuses {
+            assert_eq!(
+                get_mocked_baseline_status(status, "Web/API/Thing"),
+                None,
+                "{status:?}"
+            );
+        }
     }
 }
