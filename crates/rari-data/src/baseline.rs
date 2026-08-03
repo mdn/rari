@@ -210,10 +210,9 @@ impl WebFeatures {
                 })
                 .collect::<Vec<_>>();
 
-            let asterisk = if baseline_status(feature, status_for_key).is_discouraged()
-                || sub_status
-                    .iter()
-                    .all(|baseline| baseline == &Some(status_for_key.baseline))
+            let asterisk = if sub_status
+                .iter()
+                .all(|baseline| baseline == &Some(status_for_key.baseline))
             {
                 false
             } else {
@@ -589,21 +588,21 @@ mod test {
     }
 
     #[test]
-    fn discouraged_feature_has_no_asterisk_when_sub_keys_differ() {
+    fn discouraged_feature_has_asterisk_when_sub_keys_differ() {
         let wf = discouraged_fixture();
         let parent = wf.baseline_by_bcd_key("api.MixedDiscouraged").unwrap();
         let sub = wf.baseline_by_bcd_key("api.MixedDiscouraged.sub").unwrap();
         assert_ne!(sub.support.baseline, parent.support.baseline);
-        assert!(!parent.asterisk);
+        assert!(parent.asterisk);
     }
 
     #[test]
-    fn removing_feature_has_no_asterisk_when_sub_keys_differ() {
+    fn removing_feature_has_asterisk_when_sub_keys_differ() {
         let wf = discouraged_fixture();
         let parent = wf.baseline_by_bcd_key("api.MixedRemoving").unwrap();
         let sub = wf.baseline_by_bcd_key("api.MixedRemoving.sub").unwrap();
         assert_ne!(sub.support.baseline, parent.support.baseline);
-        assert!(!parent.asterisk);
+        assert!(parent.asterisk);
     }
 
     #[test]
