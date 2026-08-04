@@ -1,0 +1,61 @@
+{
+  "features": {
+    "old-thing": {
+      "kind": "feature",
+      "name": "Old Thing",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": "low",
+        "support": {},
+        "by_compat_key": { "api.OldThing": { "baseline": "low", "support": {} } }
+      },
+      "compat_features": ["api.OldThing"],
+      "discouraged": {
+        "reason_html": "Use something else.",
+        "removal_date": "2025-01-01",
+        "alternatives": ["svg"]
+      }
+    },
+    "legacy-thing": {
+      "kind": "feature",
+      "name": "Legacy Thing",
+      "description": "A feature with one alternative with a URL, one without, and one where the feature doesn't exist.",
+      "description_html": "A feature with one alternative with a URL, one without, and one where the feature doesn't exist.",
+      "status": {
+        "baseline": "low",
+        "support": {},
+        "by_compat_key": { "api.LegacyThing": { "baseline": "low", "support": {} } }
+      },
+      "compat_features": ["api.LegacyThing"],
+      "discouraged": {
+        "reason_html": "Use something else.",
+        "alternatives": ["svg", "no-url-thing", "ghost-thing"]
+      }
+    },
+    "no-url-thing": {
+      "kind": "feature",
+      "name": "No URL Thing",
+      "description": "A feature with no mapped MDN URL",
+      "description_html": "A feature with no mapped MDN URL",
+      "status": {
+        "baseline": "low",
+        "support": {},
+        "by_compat_key": { "api.NoUrlThing": { "baseline": "low", "support": {} } }
+      },
+      "compat_features": ["api.NoUrlThing"]
+    },
+    "svg": {
+      "kind": "feature",
+      "name": "SVG",
+      "description": "Scalable Vector Graphics",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": { "svg.elements": { "baseline": "high", "support": {} } }
+      },
+      "compat_features": ["svg.elements"]
+    }
+  }
+}
