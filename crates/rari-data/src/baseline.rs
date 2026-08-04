@@ -207,24 +207,23 @@ impl WebFeatures {
                 Some(discouraged) => discouraged
                     .alternatives
                     .iter()
-                    .filter_map(|alternative| {
-                        self.feature_data_by_name(alternative).and_then(
-                            |feature| match get_mdn_url(alternative) {
-                                Some(url) => Some(Alternative {
-                                    name: feature.name.clone(),
-                                    // we render the description in an attribute, so we don't want HTML
-                                    description: feature.description.clone(),
-                                    mdn_url: url.to_string(),
-                                }),
-                                None => {
-                                    tracing::warn!(
-                                        "Couldn't find url for {} web feature",
-                                        alternative
-                                    );
-                                    None
-                                }
-                            },
-                        )
+                    .filter_map(|alternative| match self.feature_data_by_name(alternative) {
+                        Some(feature) => match get_mdn_url(alternative) {
+                            Some(url) => Some(Alternative {
+                                name: feature.name.clone(),
+                                // we render the description in an attribute, so we don't want HTML
+                                description: feature.description.clone(),
+                                mdn_url: url.to_string(),
+                            }),
+                            None => {
+                                tracing::warn!("Couldn't find url for {} web feature", alternative);
+                                None
+                            }
+                        },
+                        None => {
+                            tracing::warn!("Couldn't find {} web feature in the data", alternative);
+                            None
+                        }
                     })
                     .collect(),
                 None => Vec::new(),
