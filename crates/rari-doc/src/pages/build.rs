@@ -12,8 +12,8 @@ use tracing::{Level, span};
 
 use super::json::{
     BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
-    JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, Prose, Section,
-    Source, SpecificationSection, TocEntry,
+    JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, PageStatus,
+    Prose, Section, Source, SpecificationSection, TocEntry,
 };
 use super::page::{Page, PageBuilder, PageLike};
 use super::types::contributors::ContributorSpotlight;
@@ -247,6 +247,9 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         build_sidebars(doc)?
     };
     let baseline = get_baseline(&doc.meta.browser_compat);
+    let status = baseline.as_ref().map(|baseline| PageStatus {
+        baseline: Some(baseline.status()),
+    });
     let folder = doc
         .meta
         .path
@@ -320,6 +323,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             toc,
             fragments,
             baseline,
+            status,
             modified,
             summary,
             popularity,

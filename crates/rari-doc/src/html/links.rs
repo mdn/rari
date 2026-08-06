@@ -1,24 +1,29 @@
 use std::borrow::Cow;
 
 use lol_html::{RewriteStrSettings, element, rewrite_str};
+use rari_data::baseline::BaselineStatus;
 use rari_md::anchor::anchorize;
 use rari_types::fm_types::FeatureStatus;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
+use crate::baseline::get_baseline_status;
 use crate::error::DocError;
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
 use crate::redirects::resolve_redirect;
 use crate::resolve::locale_from_url;
 use crate::templ::api::RariApi;
-use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
+use crate::templ::templs::badges::{
+    write_baseline, write_deprecated, write_experimental, write_non_standard,
+};
 
 pub struct LinkModifier<'a> {
     pub badges: &'a [FeatureStatus],
     pub badge_locale: Locale,
     pub code: bool,
     pub only_en_us: bool,
+    pub baseline: Option<BaselineStatus>,
 }
 
 pub fn render_internal_link(
@@ -57,6 +62,12 @@ pub fn render_internal_link(
     out.push_str(content);
     if modifier.code {
         out.push_str("</code>");
+    }
+    // Only the discouraged statuses get an icon for now.
+    if let Some(baseline) = modifier.baseline
+        && baseline.is_discouraged()
+    {
+        write_baseline(out, baseline, modifier.badge_locale)?;
     }
     if !modifier.badges.is_empty() {
         if modifier.badges.contains(&FeatureStatus::Experimental) {
@@ -147,6 +158,11 @@ pub fn render_link_via_page(
                     badge_locale: locale,
                     code,
                     only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
+                    baseline: if with_badges {
+                        get_baseline_status(&page)
+                    } else {
+                        None
+                    },
                 },
                 true,
             );
@@ -264,7 +280,9 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
 
 #[cfg(test)]
 mod tests {
-    use super::post_process_templ_links;
+    use super::{
+        BaselineStatus, LinkModifier, Locale, post_process_templ_links, render_internal_link,
+    };
 
     #[test]
     fn tags_internal_links_so_fix_link_skips_them() {
@@ -300,5 +318,53 @@ mod tests {
         let output = post_process_templ_links(input).unwrap();
         // Still exactly one occurrence (we didn't add another).
         assert_eq!(output.matches("data-templ-link").count(), 1);
+    }
+
+    fn render_with_baseline(baseline: Option<BaselineStatus>) -> String {
+        let mut out = String::new();
+        render_internal_link(
+            &mut out,
+            "/en-US/docs/Web/API/Document/write",
+            None,
+            "write()",
+            None,
+            &LinkModifier {
+                badges: &[],
+                badge_locale: Locale::EnUs,
+                code: false,
+                only_en_us: false,
+                baseline,
+            },
+            true,
+        )
+        .unwrap();
+        out
+    }
+
+    #[test]
+    fn discouraged_renders_a_baseline_icon() {
+        let out = render_with_baseline(Some(BaselineStatus::Discouraged));
+        assert!(
+            out.contains(
+                r#"<span role="img" class="icon icon-baseline discouraged" title="This feature is discouraged." aria-label="Discouraged"></span>"#
+            ),
+            "got: {out}"
+        );
+    }
+
+    #[test]
+    fn removing_renders_a_baseline_icon() {
+        let out = render_with_baseline(Some(BaselineStatus::Removing));
+        assert!(
+            out.contains(
+                r#"<span role="img" class="icon icon-baseline removing" title="This feature is scheduled for removal." aria-label="To be removed"></span>"#
+            ),
+            "got: {out}"
+        );
+    }
+
+    #[test]
+    fn a_link_with_no_baseline_renders_no_icon() {
+        assert!(!render_with_baseline(None).contains("icon"));
     }
 }

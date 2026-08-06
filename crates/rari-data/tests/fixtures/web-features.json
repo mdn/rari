@@ -56,6 +56,55 @@
         "by_compat_key": { "svg.elements": { "baseline": "high", "support": {} } }
       },
       "compat_features": ["svg.elements"]
+    },
+    "limited-thing": {
+      "kind": "feature",
+      "name": "Limited Thing",
+      "description": "Limited availability",
+      "description_html": "Limited availability",
+      "status": {
+        "baseline": false,
+        "support": {},
+        "by_compat_key": { "api.LimitedThing": { "baseline": false, "support": {} } }
+      },
+      "compat_features": ["api.LimitedThing"]
+    },
+    "mixed-discouraged": {
+      "kind": "feature",
+      "name": "Mixed Discouraged",
+      "description": "A discouraged feature whose sub-key would otherwise earn an asterisk",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": {
+          "api.MixedDiscouraged": { "baseline": "high", "support": {} },
+          "api.MixedDiscouraged.sub": { "baseline": "low", "support": {} }
+        }
+      },
+      "compat_features": ["api.MixedDiscouraged", "api.MixedDiscouraged.sub"],
+      "discouraged": {
+        "reason_html": "Use something else."
+      }
+    },
+    "mixed-removing": {
+      "kind": "feature",
+      "name": "Mixed Removing",
+      "description": "A removing feature whose sub-key would otherwise earn an asterisk",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": {
+          "api.MixedRemoving": { "baseline": "high", "support": {} },
+          "api.MixedRemoving.sub": { "baseline": "low", "support": {} }
+        }
+      },
+      "compat_features": ["api.MixedRemoving", "api.MixedRemoving.sub"],
+      "discouraged": {
+        "reason_html": "Use something else.",
+        "removal_date": "2025-01-01"
+      }
     }
   }
 }

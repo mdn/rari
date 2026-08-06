@@ -24,6 +24,41 @@ pub struct Baseline<'a> {
     pub feature: &'a FeatureData,
 }
 
+impl Baseline<'_> {
+    pub fn status(&self) -> BaselineStatus {
+        baseline_status(self.feature, self.support)
+    }
+}
+
+fn baseline_status(feature: &FeatureData, support: &SupportStatus) -> BaselineStatus {
+    match feature.discouraged.as_ref() {
+        Some(discouraged) if discouraged.removal_date.is_some() => BaselineStatus::Removing,
+        Some(_) => BaselineStatus::Discouraged,
+        None => match support.baseline {
+            BaselineHighLow::High => BaselineStatus::High,
+            BaselineHighLow::Low => BaselineStatus::Low,
+            BaselineHighLow::False => BaselineStatus::Limited,
+        },
+    }
+}
+
+#[derive(Serialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum BaselineStatus {
+    High,
+    Low,
+    Limited,
+    Discouraged,
+    Removing,
+}
+
+impl BaselineStatus {
+    pub fn is_discouraged(self) -> bool {
+        matches!(self, Self::Discouraged | Self::Removing)
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, JsonSchema)]
 pub struct DeveloperSignals {
     pub url: String,
@@ -317,7 +352,7 @@ pub struct FeatureData {
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct Discouraged {
     reason_html: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing)]
     removal_date: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     according_to: Vec<String>,
@@ -492,6 +527,114 @@ mod test {
 
     fn discouraged_fixture() -> WebFeatures {
         fixture("web-features.json")
+    }
+
+    const ALL_STATUSES: [(BaselineStatus, &str); 5] = [
+        (BaselineStatus::High, "high"),
+        (BaselineStatus::Low, "low"),
+        (BaselineStatus::Limited, "limited"),
+        (BaselineStatus::Discouraged, "discouraged"),
+        (BaselineStatus::Removing, "removing"),
+    ];
+
+    #[test]
+    fn baseline_high_is_high() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("svg.elements").unwrap();
+        assert_eq!(baseline.support.baseline, BaselineHighLow::High);
+        assert_eq!(baseline.status(), BaselineStatus::High);
+    }
+
+    #[test]
+    fn baseline_low_is_low() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.NoUrlThing").unwrap();
+        assert_eq!(baseline.support.baseline, BaselineHighLow::Low);
+        assert_eq!(baseline.status(), BaselineStatus::Low);
+    }
+
+    #[test]
+    fn baseline_false_is_limited() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.LimitedThing").unwrap();
+        assert_eq!(baseline.support.baseline, BaselineHighLow::False);
+        assert_eq!(baseline.status(), BaselineStatus::Limited);
+    }
+
+    #[test]
+    fn discouraged_without_a_removal_date_is_discouraged() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.LegacyThing").unwrap();
+        let discouraged = baseline.feature.discouraged.as_ref().unwrap();
+        assert!(discouraged.removal_date.is_none());
+        assert_eq!(baseline.status(), BaselineStatus::Discouraged);
+    }
+
+    #[test]
+    fn discouraged_with_a_removal_date_is_removing() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.OldThing").unwrap();
+        let discouraged = baseline.feature.discouraged.as_ref().unwrap();
+        assert!(discouraged.removal_date.is_some());
+        assert_eq!(baseline.status(), BaselineStatus::Removing);
+    }
+
+    #[test]
+    fn discouraged_outranks_the_baseline_level() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.LegacyThing").unwrap();
+        assert_eq!(baseline.support.baseline, BaselineHighLow::Low);
+        assert_eq!(baseline.status(), BaselineStatus::Discouraged);
+    }
+
+    #[test]
+    fn discouraged_feature_has_asterisk_when_sub_keys_differ() {
+        let wf = discouraged_fixture();
+        let parent = wf.baseline_by_bcd_key("api.MixedDiscouraged").unwrap();
+        let sub = wf.baseline_by_bcd_key("api.MixedDiscouraged.sub").unwrap();
+        assert_ne!(sub.support.baseline, parent.support.baseline);
+        assert!(parent.asterisk);
+    }
+
+    #[test]
+    fn removing_feature_has_asterisk_when_sub_keys_differ() {
+        let wf = discouraged_fixture();
+        let parent = wf.baseline_by_bcd_key("api.MixedRemoving").unwrap();
+        let sub = wf.baseline_by_bcd_key("api.MixedRemoving.sub").unwrap();
+        assert_ne!(sub.support.baseline, parent.support.baseline);
+        assert!(parent.asterisk);
+    }
+
+    #[test]
+    fn unknown_bcd_key_has_no_baseline() {
+        let wf = discouraged_fixture();
+        assert!(wf.baseline_by_bcd_key("api.NotAFeature").is_none());
+    }
+
+    #[test]
+    fn baseline_status_serializes_as_its_name() {
+        for (status, name) in ALL_STATUSES {
+            assert_eq!(
+                serde_json::to_string(&status).unwrap(),
+                format!(r#""{name}""#)
+            );
+        }
+    }
+
+    #[test]
+    fn baseline_status_displays_as_it_serializes() {
+        for (status, name) in ALL_STATUSES {
+            assert_eq!(status.to_string(), name);
+        }
+    }
+
+    #[test]
+    fn only_discouraged_statuses_are_discouraged() {
+        assert!(BaselineStatus::Discouraged.is_discouraged());
+        assert!(BaselineStatus::Removing.is_discouraged());
+        assert!(!BaselineStatus::High.is_discouraged());
+        assert!(!BaselineStatus::Low.is_discouraged());
+        assert!(!BaselineStatus::Limited.is_discouraged());
     }
 
     #[test]
