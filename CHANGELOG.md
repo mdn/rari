@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.30](https://github.com/mdn/rari/compare/v0.2.29...v0.2.30) (2026-08-06)
+
+
+### Features
+
+* **baseline:** add discouraged icons to sidebars, expose single status key ([#816](https://github.com/mdn/rari/issues/816)) ([e6f0449](https://github.com/mdn/rari/commit/e6f0449addac887793d78915b56a4e6340c7ab80))
+* **baseline:** include data for discouraged features ([#311](https://github.com/mdn/rari/issues/311)) ([d0cb903](https://github.com/mdn/rari/commit/d0cb90321569a57db9503f11b099ecb6aa1ed9b2))
+
 ## [0.2.29](https://github.com/mdn/rari/compare/v0.2.28...v0.2.29) (2026-07-31)
 
 
