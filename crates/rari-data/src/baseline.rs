@@ -11,6 +11,7 @@ use serde_json::Value;
 use url::Url;
 
 use crate::error::Error;
+use crate::feature_urls::get_mdn_url;
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct Baseline<'a> {
@@ -18,13 +19,57 @@ pub struct Baseline<'a> {
     pub support: &'a SupportStatus,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub asterisk: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub alternatives: Vec<Alternative>,
     pub feature: &'a FeatureData,
+}
+
+impl Baseline<'_> {
+    pub fn status(&self) -> BaselineStatus {
+        baseline_status(self.feature, self.support)
+    }
+}
+
+fn baseline_status(feature: &FeatureData, support: &SupportStatus) -> BaselineStatus {
+    match feature.discouraged.as_ref() {
+        Some(discouraged) if discouraged.removal_date.is_some() => BaselineStatus::Removing,
+        Some(_) => BaselineStatus::Discouraged,
+        None => match support.baseline {
+            BaselineHighLow::High => BaselineStatus::High,
+            BaselineHighLow::Low => BaselineStatus::Low,
+            BaselineHighLow::False => BaselineStatus::Limited,
+        },
+    }
+}
+
+#[derive(Serialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum BaselineStatus {
+    High,
+    Low,
+    Limited,
+    Discouraged,
+    Removing,
+}
+
+impl BaselineStatus {
+    pub fn is_discouraged(self) -> bool {
+        matches!(self, Self::Discouraged | Self::Removing)
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, JsonSchema)]
 pub struct DeveloperSignals {
     pub url: String,
     pub votes: u64,
+}
+
+#[derive(Serialize, Clone, Debug, JsonSchema)]
+pub struct Alternative {
+    pub name: String,
+    pub description: String,
+    pub mdn_url: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -126,12 +171,13 @@ impl WebFeatures {
         if let Ok(start) = self
             .bcd_keys
             .binary_search_by_key(&bcd_key_spaced, |ks| &ks.bcd_key_spaced)
-            && start < self.bcd_keys.len()
-            && let Some(end) = self.bcd_keys[start + 1..]
+        {
+            let rest = &self.bcd_keys[start + 1..];
+            let end = rest
                 .iter()
                 .position(|ks| !ks.bcd_key_spaced.starts_with(&suffix))
-        {
-            return &self.bcd_keys[start + 1..start + 1 + end];
+                .unwrap_or(rest.len());
+            return &rest[..end];
         }
         &[]
     }
@@ -152,7 +198,13 @@ impl WebFeatures {
                 .iter()
                 .map(|sub_key| {
                     self.feature_data_by_name(&sub_key.feature)
-                        .and_then(|feature| feature.status.by_compat_key.as_ref())
+                        .and_then(|feature| {
+                            if feature.discouraged.is_some() {
+                                None
+                            } else {
+                                feature.status.by_compat_key.as_ref()
+                            }
+                        })
                         .and_then(|by_key| by_key.get(&sub_key.bcd_key))
                         .map(|status_for_key| status_for_key.baseline)
                 })
@@ -185,9 +237,37 @@ impl WebFeatures {
                     _ => true,
                 }
             };
+
+            let alternatives = match feature.discouraged.as_ref() {
+                Some(discouraged) => discouraged
+                    .alternatives
+                    .iter()
+                    .filter_map(|alternative| match self.feature_data_by_name(alternative) {
+                        Some(feature) => match get_mdn_url(alternative) {
+                            Some(url) => Some(Alternative {
+                                name: feature.name.clone(),
+                                // we render the description in an attribute, so we don't want HTML
+                                description: feature.description.clone(),
+                                mdn_url: url.to_string(),
+                            }),
+                            None => {
+                                tracing::warn!("Couldn't find url for {} web feature", alternative);
+                                None
+                            }
+                        },
+                        None => {
+                            tracing::warn!("Couldn't find {} web feature in the data", alternative);
+                            None
+                        }
+                    })
+                    .collect(),
+                None => Vec::new(),
+            };
+
             return Some(Baseline {
                 support: status_for_key,
                 asterisk,
+                alternatives,
                 feature,
             });
         }
@@ -209,9 +289,6 @@ impl WebFeatures {
         if let Some(feature_enum) = self.features.get(feature_name) {
             match feature_enum {
                 FeatureEnum::Feature(feature_data) => {
-                    if feature_data.discouraged.is_some() {
-                        return None;
-                    }
                     return Some(feature_data);
                 }
                 _ => {
@@ -274,6 +351,9 @@ pub struct FeatureData {
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct Discouraged {
+    reason_html: String,
+    #[serde(skip_serializing)]
+    removal_date: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     according_to: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -411,5 +491,226 @@ mod test {
         let json = r#""high""#;
         let bl = serde_json::from_str::<BaselineHighLow>(json);
         assert!(matches!(bl, Ok(BaselineHighLow::High)));
+    }
+
+    fn fixture(name: &str) -> WebFeatures {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures")
+            .join(name);
+        WebFeatures::from_file(&path).unwrap()
+    }
+
+    fn compute_fixture() -> WebFeatures {
+        fixture("web-features-compute.json")
+    }
+
+    #[test]
+    fn asterisk_is_false_when_subkeys_match_parent() {
+        let wf = compute_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.uniform").unwrap();
+        assert!(!baseline.asterisk);
+    }
+
+    #[test]
+    fn asterisk_is_true_when_subkeys_differ() {
+        let wf = compute_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.mixed").unwrap();
+        assert!(baseline.asterisk);
+    }
+
+    #[test]
+    fn discouraged_subfeature_causes_asterisk() {
+        let wf = compute_fixture();
+        let baseline = wf.baseline_by_bcd_key("cc.parent").unwrap();
+        assert!(baseline.asterisk);
+    }
+
+    fn discouraged_fixture() -> WebFeatures {
+        fixture("web-features.json")
+    }
+
+    const ALL_STATUSES: [(BaselineStatus, &str); 5] = [
+        (BaselineStatus::High, "high"),
+        (BaselineStatus::Low, "low"),
+        (BaselineStatus::Limited, "limited"),
+        (BaselineStatus::Discouraged, "discouraged"),
+        (BaselineStatus::Removing, "removing"),
+    ];
+
+    #[test]
+    fn baseline_high_is_high() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("svg.elements").unwrap();
+        assert_eq!(baseline.support.baseline, BaselineHighLow::High);
+        assert_eq!(baseline.status(), BaselineStatus::High);
+    }
+
+    #[test]
+    fn baseline_low_is_low() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.NoUrlThing").unwrap();
+        assert_eq!(baseline.support.baseline, BaselineHighLow::Low);
+        assert_eq!(baseline.status(), BaselineStatus::Low);
+    }
+
+    #[test]
+    fn baseline_false_is_limited() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.LimitedThing").unwrap();
+        assert_eq!(baseline.support.baseline, BaselineHighLow::False);
+        assert_eq!(baseline.status(), BaselineStatus::Limited);
+    }
+
+    #[test]
+    fn discouraged_without_a_removal_date_is_discouraged() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.LegacyThing").unwrap();
+        let discouraged = baseline.feature.discouraged.as_ref().unwrap();
+        assert!(discouraged.removal_date.is_none());
+        assert_eq!(baseline.status(), BaselineStatus::Discouraged);
+    }
+
+    #[test]
+    fn discouraged_with_a_removal_date_is_removing() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.OldThing").unwrap();
+        let discouraged = baseline.feature.discouraged.as_ref().unwrap();
+        assert!(discouraged.removal_date.is_some());
+        assert_eq!(baseline.status(), BaselineStatus::Removing);
+    }
+
+    #[test]
+    fn discouraged_outranks_the_baseline_level() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.LegacyThing").unwrap();
+        assert_eq!(baseline.support.baseline, BaselineHighLow::Low);
+        assert_eq!(baseline.status(), BaselineStatus::Discouraged);
+    }
+
+    #[test]
+    fn discouraged_feature_has_asterisk_when_sub_keys_differ() {
+        let wf = discouraged_fixture();
+        let parent = wf.baseline_by_bcd_key("api.MixedDiscouraged").unwrap();
+        let sub = wf.baseline_by_bcd_key("api.MixedDiscouraged.sub").unwrap();
+        assert_ne!(sub.support.baseline, parent.support.baseline);
+        assert!(parent.asterisk);
+    }
+
+    #[test]
+    fn removing_feature_has_asterisk_when_sub_keys_differ() {
+        let wf = discouraged_fixture();
+        let parent = wf.baseline_by_bcd_key("api.MixedRemoving").unwrap();
+        let sub = wf.baseline_by_bcd_key("api.MixedRemoving.sub").unwrap();
+        assert_ne!(sub.support.baseline, parent.support.baseline);
+        assert!(parent.asterisk);
+    }
+
+    #[test]
+    fn unknown_bcd_key_has_no_baseline() {
+        let wf = discouraged_fixture();
+        assert!(wf.baseline_by_bcd_key("api.NotAFeature").is_none());
+    }
+
+    #[test]
+    fn baseline_status_serializes_as_its_name() {
+        for (status, name) in ALL_STATUSES {
+            assert_eq!(
+                serde_json::to_string(&status).unwrap(),
+                format!(r#""{name}""#)
+            );
+        }
+    }
+
+    #[test]
+    fn baseline_status_displays_as_it_serializes() {
+        for (status, name) in ALL_STATUSES {
+            assert_eq!(status.to_string(), name);
+        }
+    }
+
+    #[test]
+    fn only_discouraged_statuses_are_discouraged() {
+        assert!(BaselineStatus::Discouraged.is_discouraged());
+        assert!(BaselineStatus::Removing.is_discouraged());
+        assert!(!BaselineStatus::High.is_discouraged());
+        assert!(!BaselineStatus::Low.is_discouraged());
+        assert!(!BaselineStatus::Limited.is_discouraged());
+    }
+
+    #[test]
+    fn discouraged_feature_exposes_reason_and_removal_date() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.OldThing").unwrap();
+        let discouraged = baseline.feature.discouraged.as_ref().unwrap();
+        assert_eq!(discouraged.reason_html, "Use something else.");
+        assert_eq!(discouraged.removal_date.as_deref(), Some("2025-01-01"));
+    }
+
+    #[test]
+    fn discouraged_feature_resolves_alternative_urls() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.OldThing").unwrap();
+        assert_eq!(baseline.alternatives.len(), 1);
+        let alternative = &baseline.alternatives[0];
+        assert_eq!(alternative.name, "SVG");
+        assert_eq!(alternative.description, "Scalable Vector Graphics");
+        assert_eq!(alternative.mdn_url, "/docs/Web/SVG");
+    }
+
+    #[test]
+    fn non_discouraged_feature_has_no_alternatives() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("svg.elements").unwrap();
+        assert!(baseline.feature.discouraged.is_none());
+        assert!(baseline.alternatives.is_empty());
+    }
+
+    #[test]
+    fn discouraged_alternatives_without_urls_are_skipped() {
+        let wf = discouraged_fixture();
+        let baseline = wf.baseline_by_bcd_key("api.LegacyThing").unwrap();
+        // `svg` resolves; `no-url-thing` (a feature with no mapped URL) and
+        // `ghost-thing` (not a feature at all) are dropped without panicking.
+        assert_eq!(baseline.alternatives.len(), 1);
+        assert_eq!(baseline.alternatives[0].name, "SVG");
+    }
+
+    /// Key order matters here, so this fixture is kept apart from
+    /// `web-features-compute.json`.
+    fn sub_keys_fixture() -> WebFeatures {
+        fixture("web-features-sub-keys-order.json")
+    }
+
+    fn sub_keys_of(wf: &WebFeatures, bcd_key_spaced: &str) -> Vec<String> {
+        wf.sub_keys(bcd_key_spaced)
+            .iter()
+            .map(|ks| ks.bcd_key.clone())
+            .collect()
+    }
+
+    #[test]
+    fn sub_keys_are_found_for_a_key_followed_by_others() {
+        let wf = sub_keys_fixture();
+        assert_eq!(sub_keys_of(&wf, "aa leading"), ["aa.leading.x"]);
+    }
+
+    #[test]
+    fn sub_keys_are_found_for_the_last_key_group_in_the_list() {
+        let wf = sub_keys_fixture();
+        // Guards the assertion below: nothing may sort after `zz.trailing.*`.
+        assert_eq!(
+            wf.bcd_keys.last().map(|ks| ks.bcd_key.as_str()),
+            Some("zz.trailing.b")
+        );
+        assert_eq!(
+            sub_keys_of(&wf, "zz trailing"),
+            ["zz.trailing.a", "zz.trailing.b"]
+        );
+    }
+
+    #[test]
+    fn last_key_in_the_list_has_no_sub_keys() {
+        let wf = sub_keys_fixture();
+        assert!(sub_keys_of(&wf, "zz trailing b").is_empty());
     }
 }

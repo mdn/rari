@@ -1,0 +1,35 @@
+{
+  "features": {
+    "leading": {
+      "kind": "feature",
+      "name": "Leading",
+      "description": "Sorts before `trailing`, so its sub-keys are followed by other keys.",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": {
+          "aa.leading": { "baseline": "high", "support": {} },
+          "aa.leading.x": { "baseline": "high", "support": {} }
+        }
+      },
+      "compat_features": ["aa.leading", "aa.leading.x"]
+    },
+    "trailing": {
+      "kind": "feature",
+      "name": "Trailing",
+      "description": "Must sort last: `sub_keys` takes a different path for the final key group.",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": {
+          "zz.trailing": { "baseline": "high", "support": {} },
+          "zz.trailing.a": { "baseline": "high", "support": {} },
+          "zz.trailing.b": { "baseline": "high", "support": {} }
+        }
+      },
+      "compat_features": ["zz.trailing", "zz.trailing.a", "zz.trailing.b"]
+    }
+  }
+}

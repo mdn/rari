@@ -7,7 +7,7 @@
 use std::path::PathBuf;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
-use rari_data::baseline::Baseline;
+use rari_data::baseline::{Baseline, BaselineStatus};
 use rari_types::fm_types::PageType;
 use rari_types::locale::{Locale, Native};
 use schemars::JsonSchema;
@@ -287,6 +287,15 @@ pub struct JsonDoc {
     pub live_samples: Option<Vec<Code>>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub banners: Vec<FmTempl>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<PageStatus>,
+}
+
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct PageStatus {
+    // Optional so we can add other statuses in the future.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline: Option<BaselineStatus>,
 }
 
 impl JsonDocMetadata {
@@ -312,6 +321,7 @@ impl JsonDocMetadata {
             baseline,
             browser_compat,
             page_type,
+            status,
             ..
         } = value;
         Self {
@@ -335,6 +345,7 @@ impl JsonDocMetadata {
             baseline,
             browser_compat,
             page_type,
+            status,
             hash,
         }
     }
@@ -374,6 +385,8 @@ pub struct JsonDocMetadata {
     pub browser_compat: Vec<String>,
     #[serde(rename = "pageType")]
     pub page_type: PageType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<PageStatus>,
     pub hash: String,
 }
 

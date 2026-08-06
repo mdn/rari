@@ -10,6 +10,7 @@ use rari_types::locale::Locale;
 
 use super::l10n::l10n_json_data;
 use super::titles::api_page_title;
+use crate::baseline::get_baseline_status;
 use crate::error::DocError;
 use crate::html::links::{LinkModifier, render_internal_link};
 use crate::pages::page::{Page, PageLike, PageReader};
@@ -82,6 +83,7 @@ pub fn write_li_with_badges(
             badge_locale: locale,
             code,
             only_en_us: locale_page.locale() != locale,
+            baseline: get_baseline_status(page),
         },
         true,
     )?;
@@ -110,6 +112,7 @@ pub fn write_li_with_details(
             badge_locale: locale,
             code,
             only_en_us: page.locale() != locale,
+            baseline: get_baseline_status(page),
         },
         true,
     )?;
@@ -133,6 +136,7 @@ pub fn write_parent_li(out: &mut String, page: &Page, locale: Locale) -> Result<
             badge_locale: locale,
             code: false,
             only_en_us: page.locale() != locale,
+            baseline: get_baseline_status(page),
         },
         true,
     )?;
