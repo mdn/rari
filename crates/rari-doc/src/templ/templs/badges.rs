@@ -1,3 +1,4 @@
+use rari_data::baseline::BaselineStatus;
 use rari_templ_func::rari_f;
 use rari_types::locale::Locale;
 
@@ -57,6 +58,26 @@ pub fn write_deprecated(out: &mut impl std::fmt::Write, locale: Locale) -> Resul
     let abbreviation = l10n_json_data("Template", "deprecated_badge_abbreviation", locale)?;
 
     Ok(write_badge(out, title, abbreviation, "deprecated")?)
+}
+
+pub fn write_baseline(
+    out: &mut impl std::fmt::Write,
+    baseline: BaselineStatus,
+    locale: Locale,
+) -> Result<(), DocError> {
+    let title = l10n_json_data("Template", &format!("baseline_{baseline}_title"), locale)?;
+    let abbreviation = l10n_json_data(
+        "Template",
+        &format!("baseline_{baseline}_abbreviation"),
+        locale,
+    )?;
+
+    Ok(write_badge(
+        out,
+        title,
+        abbreviation,
+        &format!("baseline {baseline}"),
+    )?)
 }
 
 pub fn write_badge(
