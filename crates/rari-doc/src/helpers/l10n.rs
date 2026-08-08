@@ -18,23 +18,27 @@ pub enum L10nError {
 // `typ` refers to the `L10n-<typ>.json` file.
 pub fn l10n_json_data(typ: &str, key: &str, locale: Locale) -> Result<&'static str, L10nError> {
     if let Some(data) = JSON_L10N_FILES.get(typ).and_then(|file| file.get(key)) {
-        get_for_locale(locale, data)
-            .map(|s| s.as_str())
-            .ok_or(L10nError::NoEnUs)
+        // get_for_locale(locale, data)
+        if let Some(value) = data.get(locale.as_url_str()) {
+            Some(value)
+        } else if locale != Locale::default() {
+            tracing::warn!(
+                "Localized value is missing in content/files/jsondata/L10n-{}.json: {} (locale: {})",
+                typ,
+                key,
+                locale.as_url_str()
+            );
+            data.get(Locale::default().as_url_str())
+        } else {
+            None
+        }
+        .map(|s| s.as_str())
+        .ok_or(L10nError::NoEnUs)
     } else {
         Err(L10nError::InvalidKey(key.to_string()))
     }
 }
 
-fn get_for_locale<T>(locale: Locale, lookup: &HashMap<String, T>) -> Option<&T> {
-    if let Some(value) = lookup.get(locale.as_url_str()) {
-        Some(value)
-    } else if locale != Locale::default() {
-        lookup.get(Locale::default().as_url_str())
-    } else {
-        None
-    }
-}
 pub type JsonL10nFile = HashMap<String, HashMap<String, String>>;
 
 static JSON_L10N_FILES: LazyLock<HashMap<String, JsonL10nFile>> = LazyLock::new(|| {

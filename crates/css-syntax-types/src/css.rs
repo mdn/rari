@@ -120,6 +120,20 @@ pub struct Property {
         default
     )]
     pub extended_spec_links: Vec<SpecLink>,
+
+    // Formal definition values
+    #[serde(skip_serializing_if = "Option::is_none", rename = "animationType")]
+    pub animation_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "appliesTo")]
+    pub applies_to: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inherited: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub percentages: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "computedValue")]
+    pub computed_value: Option<String>,
 }
 impl From<&Property> for Property {
     fn from(value: &Property) -> Self {
@@ -160,6 +174,8 @@ pub struct AtRuleDescriptor {
     pub r#type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "computedValue")]
+    pub computed_value: Option<String>,
 }
 impl From<&AtRuleDescriptor> for AtRuleDescriptor {
     fn from(value: &AtRuleDescriptor) -> Self {
