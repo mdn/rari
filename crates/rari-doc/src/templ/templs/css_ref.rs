@@ -90,12 +90,13 @@ fn is_indexed_css_ref_page(page: &Page) -> bool {
         .any(|s| matches!(s, FeatureStatus::Deprecated | FeatureStatus::NonStandard))
 }
 
-fn compare_items(a: &str, b: &str) -> Ordering {
-    let ord = a
+fn sort_key(s: &str) -> &str {
+    strip_vendor_prefix(s)
         .trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-')
-        .cmp(
-            b.trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-'),
-        );
+}
+
+fn compare_items(a: &str, b: &str) -> Ordering {
+    let ord = sort_key(a).cmp(sort_key(b));
     if ord == Ordering::Equal {
         a.cmp(b)
     } else {
@@ -103,8 +104,21 @@ fn compare_items(a: &str, b: &str) -> Ordering {
     }
 }
 
+fn strip_vendor_prefix(s: &str) -> &str {
+    if let Some(rest) = s.strip_prefix('-')
+        && let Some(idx) = rest.find('-')
+        && idx > 0
+        && rest[..idx].chars().all(|c| c.is_ascii_alphabetic())
+    {
+        &rest[idx + 1..]
+    } else {
+        s
+    }
+}
+
 fn initial_letter(s: &str) -> char {
-    s.chars()
+    strip_vendor_prefix(s)
+        .chars()
         .find(|&c| c.is_ascii_alphabetic() || c == '-')
         .unwrap_or('?')
         .to_ascii_uppercase()
@@ -199,8 +213,12 @@ mod tests {
     fn test_initial_letter() {
         assert_eq!(initial_letter("background-color"), 'B');
         assert_eq!(initial_letter("`font-family`"), 'F');
-        assert_eq!(initial_letter("-webkit-foo"), '-');
+        assert_eq!(initial_letter("-webkit-foo"), 'F');
+        assert_eq!(initial_letter("-moz-user-select"), 'U');
+        assert_eq!(initial_letter("-ms-flex"), 'F');
+        assert_eq!(initial_letter("-o-transition"), 'T');
         assert_eq!(initial_letter("@font-face"), 'F');
+        assert_eq!(initial_letter("--*"), '-');
         assert_eq!(initial_letter(""), '?');
     }
 
@@ -213,5 +231,13 @@ mod tests {
         // trimmed forms are equal, fall back to raw comparison.
         assert_eq!(compare_items("@apple", "apple"), Ordering::Less);
         assert_eq!(compare_items("apple", "@apple"), Ordering::Greater);
+        // Vendor prefixes are stripped, so a prefixed property sorts next to
+        // its unprefixed sibling.
+        assert_eq!(compare_items("-webkit-box-align", "color"), Ordering::Less);
+        assert_eq!(
+            compare_items("-webkit-box-align", "block-size"),
+            Ordering::Greater
+        );
+        assert_eq!(compare_items("-webkit-foo", "foo"), Ordering::Less);
     }
 }
