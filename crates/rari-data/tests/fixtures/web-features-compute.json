@@ -1,0 +1,67 @@
+{
+  "features": {
+    "uniform": {
+      "kind": "feature",
+      "name": "Uniform",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": {
+          "api.uniform": { "baseline": "high", "support": {} },
+          "api.uniform.a": { "baseline": "high", "support": {} },
+          "api.uniform.b": { "baseline": "high", "support": {} }
+        }
+      },
+      "compat_features": ["api.uniform", "api.uniform.a", "api.uniform.b"]
+    },
+    "mixed": {
+      "kind": "feature",
+      "name": "Mixed",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": {
+          "api.mixed": { "baseline": "high", "support": {} },
+          "api.mixed.a": { "baseline": "high", "support": {} },
+          "api.mixed.b": { "baseline": "low", "support": {} }
+        }
+      },
+      "compat_features": ["api.mixed", "api.mixed.a", "api.mixed.b"]
+    },
+    "parent-with-disc-sub": {
+      "kind": "feature",
+      "name": "Parent With Discouraged Sub",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": {
+          "cc.parent": { "baseline": "high", "support": {} },
+          "cc.parent.ok": { "baseline": "high", "support": {} }
+        }
+      },
+      "compat_features": ["cc.parent", "cc.parent.ok"]
+    },
+    "disc-sub": {
+      "kind": "feature",
+      "name": "Discouraged Sub",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": "high",
+        "support": {},
+        "by_compat_key": { "cc.parent.disc": { "baseline": "high", "support": {} } }
+      },
+      "compat_features": ["cc.parent.disc"],
+      "discouraged": {
+        "reason_html": "Use something else."
+      }
+    }
+  }
+}
+
