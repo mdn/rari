@@ -7,10 +7,11 @@ use rari_doc::pages::types::doc::Doc;
 use rari_doc::resolve::{build_url, url_to_folder_path};
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
-use rari_utils::{concat_strs, git::exec_git_with_test_fallback};
+use rari_utils::concat_strs;
 use sha2::{Digest, Sha256};
 
 use crate::error::ToolError;
+use crate::git::exec_git_with_test_fallback;
 use crate::redirects::{add_redirects, fix_redirects};
 use crate::utils::{get_redirects_map, read_all_doc_pages};
 use crate::wikihistory::update_wiki_history;

@@ -13,9 +13,9 @@ use rari_doc::{
     utils::root_for_locale,
 };
 use rari_types::locale::Locale;
-use rari_utils::git::exec_git_with_test_fallback;
 
 use crate::error::ToolError;
+use crate::git::exec_git_with_test_fallback;
 use crate::redirects::add_redirects;
 use crate::sidebars::update_sidebars;
 use crate::utils::parent_slug;

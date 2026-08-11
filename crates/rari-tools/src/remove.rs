@@ -13,10 +13,10 @@ use rari_doc::reader::read_docs_parallel;
 use rari_doc::resolve::build_url;
 use rari_doc::utils::root_for_locale;
 use rari_types::locale::Locale;
-use rari_utils::git::exec_git_with_test_fallback;
 use rayon::iter::{IntoParallelIterator, ParallelIterator, once};
 
 use crate::error::ToolError;
+use crate::git::exec_git_with_test_fallback;
 use crate::redirects::{add_redirects, remove_redirects_by_targets};
 use crate::sidebars::update_sidebars;
 use crate::wikihistory::delete_from_wiki_history;
