@@ -3,6 +3,7 @@ use rari_types::AnyArg;
 use rari_utils::concat_strs;
 use tracing::warn;
 
+use crate::baseline::get_baseline;
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
@@ -10,6 +11,9 @@ use crate::helpers::l10n::l10n_json_data;
 pub fn deprecated_header(version: Option<AnyArg>) -> Result<String, DocError> {
     if version.is_some() {
         warn!("Do not use deprecated header with parameter!")
+    }
+    if get_baseline(env.browser_compat).is_some_and(|baseline| baseline.status().is_discouraged()) {
+        return Ok(String::new());
     }
     let title = l10n_json_data("Template", "deprecated_badge_abbreviation", env.locale)?;
     let copy = l10n_json_data("Template", "deprecated_header_copy", env.locale)?;
