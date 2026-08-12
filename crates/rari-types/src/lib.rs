@@ -6,7 +6,7 @@ use locale::Locale;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::fm_types::PageType;
+use crate::fm_types::{FeatureStatus, PageType};
 
 pub mod error;
 pub mod fm_types;
@@ -136,6 +136,7 @@ pub struct RariEnv<'a> {
     pub spec_urls: &'a [String],
     pub page_type: PageType,
     pub slug: &'a str,
+    pub status: &'a [FeatureStatus],
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

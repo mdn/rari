@@ -205,6 +205,7 @@ impl PageLike for ContributorSpotlight {
             spec_urls: &[],
             page_type: PageType::BlogPost,
             slug: &self.meta.slug,
+            status: &[],
         })
     }
 
