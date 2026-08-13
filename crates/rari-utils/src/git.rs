@@ -12,7 +12,7 @@ pub enum GitError {
 }
 
 pub fn exec_git(args: &[impl AsRef<OsStr>], root: impl AsRef<Path>) -> Output {
-    try_exec_git("git", args, root).expect("failed to execute process")
+    try_exec_git("git", args, root).expect("git command failed")
 }
 
 pub fn try_exec_git(
