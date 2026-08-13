@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.31](https://github.com/mdn/rari/compare/v0.2.30...v0.2.31) (2026-08-12)
+
+
+### Features
+
+* **baseline:** hide deprecated banner/icon when we have a baseline one ([#818](https://github.com/mdn/rari/issues/818)) ([c3c58a2](https://github.com/mdn/rari/commit/c3c58a2d447fe3f50b4fa403af9f9b19dbe1ddd4))
+* **baseline:** mock discouraged banner and sidebar icon ([#819](https://github.com/mdn/rari/issues/819)) ([6248bc3](https://github.com/mdn/rari/commit/6248bc3973b6056a405f4c8fa058cfe0e4601f92))
+
+
+### Bug Fixes
+
+* **css_info:** don't translate the initial value `all` ([#808](https://github.com/mdn/rari/issues/808)) ([a54451b](https://github.com/mdn/rari/commit/a54451bf4041a63799edd006e7a666f05f50a5f5))
+* **css_ref:** ignore vendor-prefix when sorting properties ([#827](https://github.com/mdn/rari/issues/827)) ([a66dc84](https://github.com/mdn/rari/commit/a66dc846a4fd2a33f45a76747072e62a9198b74f))
+* **serve:** bind to localhost instead of all interfaces ([#828](https://github.com/mdn/rari/issues/828)) ([9091ca5](https://github.com/mdn/rari/commit/9091ca5c9ee45d39bbd875198c2e4bcffb9d7312))
+
+
+### Miscellaneous
+
+* **deps:** bump html-minifier from 5.0.0 to 5.0.2 ([#823](https://github.com/mdn/rari/issues/823)) ([0d93a5b](https://github.com/mdn/rari/commit/0d93a5b04dd4d1d3876f333ab4ba08eec61740eb))
+* **deps:** bump js-yaml from 4.2.0 to 4.3.1 in /rari-npm ([#825](https://github.com/mdn/rari/issues/825)) ([bd34121](https://github.com/mdn/rari/commit/bd341219ed6a1e8bc65321dec5fcf37ae2789d1d))
+* **deps:** bump lol_html from 3.0.0 to 3.0.1 ([#822](https://github.com/mdn/rari/issues/822)) ([4ad3ebd](https://github.com/mdn/rari/commit/4ad3ebd6956473e1e3e3f26ec4484c7133019790))
+* **deps:** bump quick-xml from 0.40.1 to 0.41.0 ([#805](https://github.com/mdn/rari/issues/805)) ([09a84c6](https://github.com/mdn/rari/commit/09a84c603e3ab80443e3a90df7411ab560380646))
+
 ## [0.2.30](https://github.com/mdn/rari/compare/v0.2.29...v0.2.30) (2026-08-06)
 
 
