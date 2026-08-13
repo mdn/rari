@@ -64,9 +64,10 @@ pub fn render_internal_link(
         out.push_str("</code>");
     }
     // Only the discouraged statuses get an icon for now.
-    if let Some(baseline) = modifier.baseline
-        && baseline.is_discouraged()
-    {
+    let discouraged_baseline = modifier
+        .baseline
+        .filter(|baseline| baseline.is_discouraged());
+    if let Some(baseline) = discouraged_baseline {
         write_baseline(out, baseline, modifier.badge_locale)?;
     }
     if !modifier.badges.is_empty() {
@@ -76,7 +77,7 @@ pub fn render_internal_link(
         if modifier.badges.contains(&FeatureStatus::NonStandard) {
             write_non_standard(out, modifier.badge_locale)?;
         }
-        if modifier.badges.contains(&FeatureStatus::Deprecated) {
+        if modifier.badges.contains(&FeatureStatus::Deprecated) && discouraged_baseline.is_none() {
             write_deprecated(out, modifier.badge_locale)?;
         }
     }
@@ -281,7 +282,8 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        BaselineStatus, LinkModifier, Locale, post_process_templ_links, render_internal_link,
+        BaselineStatus, FeatureStatus, LinkModifier, Locale, post_process_templ_links,
+        render_internal_link,
     };
 
     #[test]
@@ -320,7 +322,7 @@ mod tests {
         assert_eq!(output.matches("data-templ-link").count(), 1);
     }
 
-    fn render_with_baseline(baseline: Option<BaselineStatus>) -> String {
+    fn render_with(badges: &[FeatureStatus], baseline: Option<BaselineStatus>) -> String {
         let mut out = String::new();
         render_internal_link(
             &mut out,
@@ -329,7 +331,7 @@ mod tests {
             "write()",
             None,
             &LinkModifier {
-                badges: &[],
+                badges,
                 badge_locale: Locale::EnUs,
                 code: false,
                 only_en_us: false,
@@ -339,6 +341,10 @@ mod tests {
         )
         .unwrap();
         out
+    }
+
+    fn render_with_baseline(baseline: Option<BaselineStatus>) -> String {
+        render_with(&[], baseline)
     }
 
     #[test]
@@ -366,5 +372,38 @@ mod tests {
     #[test]
     fn a_link_with_no_baseline_renders_no_icon() {
         assert!(!render_with_baseline(None).contains("icon"));
+    }
+
+    #[test]
+    fn a_discouraged_baseline_replaces_the_deprecated_badge() {
+        for baseline in [BaselineStatus::Discouraged, BaselineStatus::Removing] {
+            let out = render_with(&[FeatureStatus::Deprecated], Some(baseline));
+            assert!(out.contains("icon-baseline"), "got: {out}");
+            assert!(!out.contains("icon-deprecated"), "got: {out}");
+        }
+    }
+
+    #[test]
+    fn a_baseline_that_is_not_discouraged_keeps_the_deprecated_badge() {
+        for baseline in [
+            None,
+            Some(BaselineStatus::High),
+            Some(BaselineStatus::Low),
+            Some(BaselineStatus::Limited),
+        ] {
+            let out = render_with(&[FeatureStatus::Deprecated], baseline);
+            assert!(out.contains("icon-deprecated"), "got: {out}");
+            assert!(!out.contains("icon-baseline"), "got: {out}");
+        }
+    }
+
+    #[test]
+    fn a_discouraged_baseline_leaves_the_other_badges_alone() {
+        let out = render_with(
+            &[FeatureStatus::Experimental, FeatureStatus::NonStandard],
+            Some(BaselineStatus::Discouraged),
+        );
+        assert!(out.contains("icon-experimental"), "got: {out}");
+        assert!(out.contains("icon-nonstandard"), "got: {out}");
     }
 }

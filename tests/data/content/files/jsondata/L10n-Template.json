@@ -2,5 +2,15 @@
   "baseline_discouraged_title": { "en-US": "This feature is discouraged." },
   "baseline_discouraged_abbreviation": { "en-US": "Discouraged" },
   "baseline_removing_title": { "en-US": "This feature is scheduled for removal." },
-  "baseline_removing_abbreviation": { "en-US": "To be removed" }
+  "baseline_removing_abbreviation": { "en-US": "To be removed" },
+  "deprecated_badge_title": { "en-US": "Deprecated. Not for use in new websites." },
+  "deprecated_badge_abbreviation": { "en-US": "Deprecated" },
+  "experimental_badge_title": {
+    "en-US": "Experimental. Expect behavior to change in the future."
+  },
+  "experimental_badge_abbreviation": { "en-US": "Experimental" },
+  "non_standard_badge_title": {
+    "en-US": "Non-standard. Check cross-browser support before using."
+  },
+  "non_standard_badge_abbreviation": { "en-US": "Non-standard" }
 }
