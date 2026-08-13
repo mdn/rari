@@ -154,21 +154,15 @@ fn do_move(
     }
 
     // Execute the git move.
-    let output = exec_git_with_test_fallback(
+    exec_git_with_test_fallback(
         &[
             OsStr::new("mv"),
             old_folder_path.as_os_str(),
             new_folder_path.as_os_str(),
         ],
         root_for_locale(locale)?,
-    );
-
-    if !output.status.success() {
-        return Err(ToolError::GitError(format!(
-            "Failed to move files: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )));
-    }
+    )
+    .map_err(|e| ToolError::GitError(format!("Failed to move files: {e}")))?;
 
     // Update Wiki history for entries that have an entry for the old slug.
     update_wiki_history(locale, &pairs)?;

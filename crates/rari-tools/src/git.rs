@@ -2,12 +2,15 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::process::Output;
 
-use rari_utils::git::try_exec_git;
+use rari_utils::git::{GitError, try_exec_git};
 
 /// Run `git` with `args` with `root` as current directory.
 /// For tests this will run the first arg as command, eg.:
 /// Instead of `git mv foo bar` -> `mv foo bar`.
-pub fn exec_git_with_test_fallback(args: &[impl AsRef<OsStr>], root: impl AsRef<Path>) -> Output {
+pub fn exec_git_with_test_fallback(
+    args: &[impl AsRef<OsStr>],
+    root: impl AsRef<Path>,
+) -> Result<Output, GitError> {
     let git = OsStr::new("git");
     let echo = OsStr::new("echo");
 
@@ -19,5 +22,5 @@ pub fn exec_git_with_test_fallback(args: &[impl AsRef<OsStr>], root: impl AsRef<
     } else {
         (git, args)
     };
-    try_exec_git(command, args, root).expect("failed to execute process")
+    try_exec_git(command, args, root)
 }
