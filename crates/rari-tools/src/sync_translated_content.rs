@@ -275,21 +275,21 @@ fn write_and_move_doc(doc: &Doc, target_slug: &str) -> Result<(), ToolError> {
             continue;
         }
         let entry_path = entry.path();
-        let output = exec_git_with_test_fallback(
+        exec_git_with_test_fallback(
             &[
                 OsStr::new("mv"),
                 entry_path.as_os_str(),
                 target_directory.as_os_str(),
             ],
             root_for_locale(doc.locale())?,
-        );
-        if !output.status.success() {
-            return Err(ToolError::GitError(format!(
+        )
+        .map_err(|e| {
+            ToolError::GitError(format!(
                 "Failed to move file/directory {}: {}",
                 entry_path.display(),
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+                e
+            ))
+        })?;
     }
 
     // If the source directory is empty, remove it with the fs api.
