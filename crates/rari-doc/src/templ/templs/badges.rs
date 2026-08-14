@@ -2,6 +2,7 @@ use rari_data::baseline::BaselineStatus;
 use rari_templ_func::rari_f;
 use rari_types::locale::Locale;
 
+use crate::baseline::is_mocked_banner_section;
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
@@ -27,7 +28,11 @@ pub fn non_standard_inline() -> Result<String, DocError> {
 #[rari_f(register = "crate::Templ")]
 pub fn deprecated_inline() -> Result<String, DocError> {
     let mut out = String::new();
-    write_deprecated(&mut out, env.locale)?;
+    if is_mocked_banner_section(env.slug) {
+        write_baseline(&mut out, BaselineStatus::Discouraged, env.locale)?;
+    } else {
+        write_deprecated(&mut out, env.locale)?;
+    }
     Ok(out)
 }
 
@@ -91,4 +96,45 @@ pub fn write_badge(
         out,
         r#"<span role="img" class="icon icon-{typ}" title="{title}" aria-label="{abbreviation}"></span>"#
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use rari_types::RariEnv;
+
+    use super::*;
+
+    fn deprecated_inline_for(slug: &str) -> String {
+        let env = RariEnv {
+            slug,
+            locale: Locale::EnUs,
+            ..Default::default()
+        };
+        deprecated_inline(&env).unwrap()
+    }
+
+    #[test]
+    fn a_mocked_banner_section_gets_the_baseline_icon() {
+        for slug in [
+            "Web/API/AudioProcessingEvent",
+            "WebAssembly/JavaScript_interface/Memory",
+        ] {
+            let out = deprecated_inline_for(slug);
+            assert!(out.contains("icon-baseline discouraged"), "{slug}: {out}");
+            assert!(!out.contains("icon-deprecated"), "{slug}: {out}");
+        }
+    }
+
+    #[test]
+    fn everywhere_else_keeps_the_deprecated_icon() {
+        for slug in [
+            "Web/Accessibility/ARIA/Reference/Attributes/aria-dropeffect",
+            "Mozilla/Add-ons/WebExtensions/API/tabs",
+            "Learn_web_development/Core/Scripting",
+        ] {
+            let out = deprecated_inline_for(slug);
+            assert!(out.contains("icon-deprecated"), "{slug}: {out}");
+            assert!(!out.contains("icon-baseline"), "{slug}: {out}");
+        }
+    }
 }

@@ -41,6 +41,15 @@ pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>
     None
 }
 
+pub(crate) fn is_mocked_banner_section(slug: &str) -> bool {
+    // only mock banners under Web and WebAssembly, as those are the sections we have Baseline banners
+    // don't mock under Web/Accessibility, as we don't have Baseline banners there
+    ["Web/", "WebAssembly/"]
+        .iter()
+        .any(|prefix| slug.starts_with(prefix))
+        && !slug.starts_with("Web/Accessibility/")
+}
+
 pub(crate) fn get_mocked_baseline_status(
     fm_status: &[FeatureStatus],
     slug: &str,
@@ -48,13 +57,7 @@ pub(crate) fn get_mocked_baseline_status(
     if !fm_status.contains(&FeatureStatus::Deprecated) {
         return None;
     }
-    if !["Web/", "WebAssembly/"]
-        .iter()
-        .any(|prefix| slug.starts_with(prefix))
-        || slug.starts_with("Web/Accessibility/")
-    {
-        // only mock banners under Web and WebAssembly, as those are the sections we have Baseline banners
-        // don't mock under Web/Accessibility, as we don't
+    if !is_mocked_banner_section(slug) {
         return None;
     }
     Some(BaselineStatus::Discouraged)
