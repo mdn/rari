@@ -72,12 +72,20 @@ pub fn write_deprecated(out: &mut impl std::fmt::Write, locale: Locale) -> Resul
     Ok(write_badge(out, title, abbreviation, "deprecated")?)
 }
 
+pub fn baseline_title(baseline: BaselineStatus, locale: Locale) -> Result<&'static str, DocError> {
+    Ok(l10n_json_data(
+        "Template",
+        &format!("baseline_{baseline}_title"),
+        locale,
+    )?)
+}
+
 pub fn write_baseline(
     out: &mut impl std::fmt::Write,
     baseline: BaselineStatus,
     locale: Locale,
 ) -> Result<(), DocError> {
-    let title = l10n_json_data("Template", &format!("baseline_{baseline}_title"), locale)?;
+    let title = baseline_title(baseline, locale)?;
     let abbreviation = l10n_json_data(
         "Template",
         &format!("baseline_{baseline}_abbreviation"),

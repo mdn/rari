@@ -14,9 +14,7 @@ use crate::pages::page::{Page, PageLike};
 use crate::redirects::resolve_redirect;
 use crate::resolve::locale_from_url;
 use crate::templ::api::RariApi;
-use crate::templ::templs::badges::{
-    write_baseline, write_deprecated, write_experimental, write_non_standard,
-};
+use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
 
 pub struct LinkModifier<'a> {
     pub badges: &'a [FeatureStatus],
@@ -63,13 +61,9 @@ pub fn render_internal_link(
     if modifier.code {
         out.push_str("</code>");
     }
-    // Only the discouraged statuses get an icon for now.
     let discouraged_baseline = modifier
         .baseline
         .filter(|baseline| baseline.is_discouraged());
-    if let Some(baseline) = discouraged_baseline {
-        write_baseline(out, baseline, modifier.badge_locale)?;
-    }
     if !modifier.badges.is_empty() {
         if modifier.badges.contains(&FeatureStatus::Experimental) {
             write_experimental(out, modifier.badge_locale)?;
@@ -77,6 +71,7 @@ pub fn render_internal_link(
         if modifier.badges.contains(&FeatureStatus::NonStandard) {
             write_non_standard(out, modifier.badge_locale)?;
         }
+        // `fix_link` marks the link itself, which renders an icon in the badge's place.
         if modifier.badges.contains(&FeatureStatus::Deprecated) && discouraged_baseline.is_none() {
             write_deprecated(out, modifier.badge_locale)?;
         }
@@ -343,42 +338,18 @@ mod tests {
         out
     }
 
-    fn render_with_baseline(baseline: Option<BaselineStatus>) -> String {
-        render_with(&[], baseline)
-    }
-
     #[test]
-    fn discouraged_renders_a_baseline_icon() {
-        let out = render_with_baseline(Some(BaselineStatus::Discouraged));
-        assert!(
-            out.contains(
-                r#"<span role="img" class="icon icon-baseline discouraged" title="This feature is discouraged." aria-label="Discouraged"></span>"#
-            ),
-            "got: {out}"
-        );
-    }
-
-    #[test]
-    fn removing_renders_a_baseline_icon() {
-        let out = render_with_baseline(Some(BaselineStatus::Removing));
-        assert!(
-            out.contains(
-                r#"<span role="img" class="icon icon-baseline removing" title="This feature is scheduled for removal." aria-label="To be removed"></span>"#
-            ),
-            "got: {out}"
-        );
-    }
-
-    #[test]
-    fn a_link_with_no_baseline_renders_no_icon() {
-        assert!(!render_with_baseline(None).contains("icon"));
+    fn a_discouraged_baseline_renders_no_icon_of_its_own() {
+        for baseline in [BaselineStatus::Discouraged, BaselineStatus::Removing] {
+            let out = render_with(&[], Some(baseline));
+            assert!(!out.contains("icon"), "got: {out}");
+        }
     }
 
     #[test]
     fn a_discouraged_baseline_replaces_the_deprecated_badge() {
         for baseline in [BaselineStatus::Discouraged, BaselineStatus::Removing] {
             let out = render_with(&[FeatureStatus::Deprecated], Some(baseline));
-            assert!(out.contains("icon-baseline"), "got: {out}");
             assert!(!out.contains("icon-deprecated"), "got: {out}");
         }
     }

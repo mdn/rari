@@ -6,11 +6,13 @@ use rari_types::fm_types::PageType;
 use rari_types::locale::{Locale, default_locale};
 use rari_utils::concat_strs;
 
+use crate::baseline::get_baseline_status;
 use crate::helpers::l10n::l10n_json_data;
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
 use crate::redirects::resolve_redirect;
 use crate::resolve::{strip_locale_from_url, url_with_locale};
+use crate::templ::templs::badges::baseline_title;
 
 pub fn check_and_fix_link(
     el: &mut Element,
@@ -144,6 +146,23 @@ pub fn handle_internal_link(
                     "only-in-en-us"
                 ),
             )?;
+        }
+    }
+
+    // A `::after` icon does not render on an `<svg>` link (the inheritance diagrams), and an SVG
+    // `title` attribute is not a tooltip, so there is nothing to mark up there.
+    let in_html = el.namespace_uri() == "http://www.w3.org/1999/xhtml";
+    if !remove_href
+        && in_html
+        && let Ok(target) = Page::from_url_with_fallback(resolved_href_no_hash)
+        && let Some(baseline) = get_baseline_status(&target)
+    {
+        el.set_attribute("data-baseline", &baseline.to_string())?;
+        // Only the discouraged statuses have a title in the l10n data so far.
+        if !el.has_attribute("title")
+            && let Ok(title) = baseline_title(baseline, page.locale())
+        {
+            el.set_attribute("title", title)?;
         }
     }
 

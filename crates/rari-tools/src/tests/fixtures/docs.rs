@@ -144,6 +144,18 @@ impl DocFixtures {
 
     /// Create a doc with custom markdown content
     pub fn create_doc_with_content(slug: &str, locale: Locale, content: &str) {
+        Self::write_doc(slug, locale, "", content);
+    }
+
+    pub fn create_doc_with_status(slug: &str, locale: Locale, status: &[&str], content: &str) {
+        let entries = status
+            .iter()
+            .map(|status| format!("  - {status}\n"))
+            .collect::<String>();
+        Self::write_doc(slug, locale, &format!("status:\n{entries}"), content);
+    }
+
+    fn write_doc(slug: &str, locale: Locale, front_matter: &str, content: &str) {
         let locale_root = root_for_locale(locale).unwrap();
         let folder_path = Self::path_from_slug(slug, locale);
         let abs_folder_path = locale_root.join(&folder_path);
@@ -151,15 +163,12 @@ impl DocFixtures {
         let title = Self::capitalize(slug.split('/').last().unwrap());
         let full_content = formatdoc! {
             r#"---
-            title: {}
-            slug: {}
-            ---
+            title: {title}
+            slug: {slug}
+            {front_matter}---
 
-            {}
-            "#,
-            title,
-            slug,
-            content
+            {content}
+            "#
         };
 
         fs::create_dir_all(&abs_folder_path).unwrap();
