@@ -2,7 +2,7 @@ use rari_data::baseline::BaselineStatus;
 use rari_templ_func::rari_f;
 use rari_types::locale::Locale;
 
-use crate::baseline::is_mocked_banner_section;
+use crate::baseline::{get_baseline, is_mocked_banner_section};
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
@@ -29,7 +29,14 @@ pub fn non_standard_inline() -> Result<String, DocError> {
 pub fn deprecated_inline() -> Result<String, DocError> {
     let mut out = String::new();
     if is_mocked_banner_section(env.slug) {
-        write_baseline(&mut out, BaselineStatus::Discouraged, env.locale)?;
+        let baseline = match get_baseline(env.browser_compat).map(|baseline| baseline.status()) {
+            // if we're on a "removing" page, show a removing icon - it's more likely to be correct
+            Some(BaselineStatus::Removing) => BaselineStatus::Removing,
+            // the badge marks an item within the page, so the page's own status doesn't describe it -
+            // a widely available page still has discouraged members
+            _ => BaselineStatus::Discouraged,
+        };
+        write_baseline(&mut out, baseline, env.locale)?;
     } else {
         write_deprecated(&mut out, env.locale)?;
     }
