@@ -43,7 +43,7 @@ pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>
 
 pub(crate) fn is_mocked_banner_section(slug: &str) -> bool {
     // only mock banners under Web and WebAssembly, as those are the sections we have Baseline banners
-    // don't mock under Web/Accessibility, as we don't
+    // don't mock under Web/Accessibility, as we don't have Baseline banners there
     ["Web/", "WebAssembly/"]
         .iter()
         .any(|prefix| slug.starts_with(prefix))
