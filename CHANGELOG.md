@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.32](https://github.com/mdn/rari/compare/v0.2.31...v0.2.32) (2026-08-14)
+
+
+### Features
+
+* **baseline:** mock baseline icon in deprecated_inline ([#832](https://github.com/mdn/rari/issues/832)) ([d5e518f](https://github.com/mdn/rari/commit/d5e518fefc7a7f803fd166760417509ec1ee7778))
+* **baseline:** mock baseline removing icon in deprecated_inline ([#833](https://github.com/mdn/rari/issues/833)) ([822d6c9](https://github.com/mdn/rari/commit/822d6c95b99b692cbdac1fd463dcc3180da1e06c))
+
+
+### Miscellaneous
+
+* **deps:** bump quote from 1.0.46 to 1.0.47 ([#829](https://github.com/mdn/rari/issues/829)) ([2fe9576](https://github.com/mdn/rari/commit/2fe9576d20efb4f1dff87109b0121f88a1af1555))
+* **deps:** bump tree-sitter-mdn from 0.1.5 to 0.1.6 ([#830](https://github.com/mdn/rari/issues/830)) ([2ff4b75](https://github.com/mdn/rari/commit/2ff4b75d8850d89bb7af35b7ab7ccac3f045c41b))
+
 ## [0.2.31](https://github.com/mdn/rari/compare/v0.2.30...v0.2.31) (2026-08-12)
 
 
