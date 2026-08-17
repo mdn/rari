@@ -100,18 +100,23 @@ pub fn write_li_with_details(
     code: bool,
     inner: &str,
 ) -> Result<(), DocError> {
+    let locale_page = if locale != Default::default() {
+        &Page::from_url_with_locale_and_fallback(page.url(), locale)?
+    } else {
+        page
+    };
     out.push_str("<li><details><summary>");
     render_internal_link(
         out,
-        page.url(),
+        locale_page.url(),
         None,
-        &html_escape::encode_safe(page.short_title().unwrap_or(page.title())),
+        &html_escape::encode_safe(locale_page.short_title().unwrap_or(locale_page.title())),
         None,
         &LinkModifier {
             badges: page.status(),
             badge_locale: locale,
             code,
-            only_en_us: page.locale() != locale,
+            only_en_us: locale_page.locale() != locale,
             baseline: get_baseline_status(page),
         },
         true,
