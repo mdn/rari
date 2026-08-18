@@ -3,12 +3,19 @@ use rari_types::{AnyArg, Arg};
 
 use super::listsubpages::listsubpages;
 use crate::error::DocError;
-use crate::templ::legacy::fix_broken_legacy_url;
+use crate::templ::legacy::normalize_and_check_url_arg;
 
 /// List sub pages
 #[rari_f(register = "crate::Templ")]
 pub fn quicklinkswithsubpages(url: Option<String>) -> Result<String, DocError> {
-    let url = url.map(|s| fix_broken_legacy_url(&s, env.locale).to_string());
+    let url = match url {
+        Some(s) => match normalize_and_check_url_arg(&s, env.locale) {
+            Some(url) => Some(url),
+            None => return Ok(String::new()),
+        },
+        None => None,
+    };
+
     listsubpages(
         env,
         url,
