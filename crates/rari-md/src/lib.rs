@@ -20,37 +20,56 @@ pub(crate) mod utils;
 
 use dl::{convert_dl, is_dl};
 
-/// Returns the byte offset of the next opening `<a` tag in `bytes` at or after `pos`.
-/// Only matches tags where `<a` is followed by whitespace or `>` (not `<abbr>`, `<aside>`, etc.).
-fn find_next_opening_a(bytes: &[u8], pos: usize) -> Option<usize> {
+/// Tag names whose raw-HTML occurrences should get `data-sourcepos` injected so
+/// rari-doc's link/image checkers can report exact source positions.
+const ANNOTATED_TAGS: &[&[u8]] = &[b"a", b"img"];
+
+/// Returns `(offset, tag_name_len)` of the next opening tag matching one of
+/// `names` (ASCII case-insensitive) in `bytes` at or after `pos`. The tag name
+/// must be followed by whitespace, `>`, or `/` to avoid matching prefixes like
+/// `<abbr>` for `a` or `<image>` for `img`.
+fn find_next_opening_tag(bytes: &[u8], pos: usize, names: &[&[u8]]) -> Option<(usize, usize)> {
     for (offset, &byte) in bytes[pos..].iter().enumerate() {
         if byte != b'<' {
             continue;
         }
         let tag_start = pos + offset;
-        // `bytes.get` returns `None` if `<` is the last byte — no room for a tag name.
-        let first_tag_byte = bytes.get(tag_start + 1).copied()?;
-        // Must be 'a' or 'A', not '/' (closing tag) and not another letter
-        if first_tag_byte == b'a' || first_tag_byte == b'A' {
-            // Must be followed by whitespace or '>'
-            if let Some(b) = bytes.get(tag_start + 2).copied()
-                && matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b'>')
-            {
-                return Some(tag_start);
+        for name in names {
+            if tag_name_matches(bytes, tag_start, name) {
+                return Some((tag_start, name.len()));
             }
         }
     }
     None
 }
 
-/// Injects `data-sourcepos` into every `<a` tag in `html`.
-fn inject_sourcepos_in_opening_a(html: &mut String, sp: &str) {
+/// Returns `true` if `bytes[at..]` starts with `<{name}` (case-insensitive)
+/// followed by a tag-name terminator (whitespace, `>`, or `/`).
+fn tag_name_matches(bytes: &[u8], at: usize, name: &[u8]) -> bool {
+    if bytes.get(at).copied() != Some(b'<') {
+        return false;
+    }
+    for (i, &nb) in name.iter().enumerate() {
+        match bytes.get(at + 1 + i).copied() {
+            Some(b) if b.eq_ignore_ascii_case(&nb) => continue,
+            _ => return false,
+        }
+    }
+    matches!(
+        bytes.get(at + 1 + name.len()).copied(),
+        Some(b' ' | b'\t' | b'\n' | b'\r' | b'>' | b'/')
+    )
+}
+
+/// Injects `data-sourcepos` into every opening tag in `html` whose name appears
+/// in `names`.
+fn inject_sourcepos_in_opening_tags(html: &mut String, sp: &str, names: &[&[u8]]) {
     let attr = format!(" data-sourcepos=\"{sp}\"");
     let attr_len = attr.len();
     let mut pos = 0;
-    while let Some(lt) = find_next_opening_a(html.as_bytes(), pos) {
-        html.insert_str(lt + 2, &attr);
-        pos = lt + 2 + attr_len;
+    while let Some((lt, name_len)) = find_next_opening_tag(html.as_bytes(), pos, names) {
+        html.insert_str(lt + 1 + name_len, &attr);
+        pos = lt + 1 + name_len + attr_len;
     }
 }
 
@@ -72,9 +91,10 @@ fn advance_line_tracking(
     (line, line_start)
 }
 
-/// Walks an HTML block literal, injecting `data-sourcepos` into every `<a` tag.
+/// Walks an HTML block literal, injecting `data-sourcepos` into every opening
+/// tag whose name appears in [`ANNOTATED_TAGS`].
 /// `block_start_line` is the 1-based line number of the first line of the block in the source.
-/// Returns `None` if no `<a` tags were found (no allocation performed).
+/// Returns `None` if no annotated tags were found (no allocation performed).
 fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Option<String> {
     let bytes = literal.as_bytes();
     let mut pos = 0;
@@ -82,7 +102,7 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Opt
     let mut line_start = 0; // byte offset of current line's start within `literal`
     let mut result: Option<String> = None;
 
-    while let Some(lt) = find_next_opening_a(bytes, pos) {
+    while let Some((lt, name_len)) = find_next_opening_tag(bytes, pos, ANNOTATED_TAGS) {
         (line, line_start) = advance_line_tracking(bytes, pos, lt, line, line_start);
         let start_col = lt - line_start + 1;
 
@@ -98,14 +118,15 @@ fn inject_sourcepos_in_html_block(literal: &str, block_start_line: usize) -> Opt
         let (end_line, end_line_start) = advance_line_tracking(bytes, lt, gt, line, line_start);
         let end_col = gt - end_line_start + 1;
 
+        let after_tag_name = lt + 1 + name_len;
         let r = result.get_or_insert_with(|| String::with_capacity(literal.len() + 64));
-        r.push_str(&literal[pos..lt + 2]);
+        r.push_str(&literal[pos..after_tag_name]);
         write!(
             r,
             " data-sourcepos=\"{line}:{start_col}-{end_line}:{end_col}\""
         )
         .unwrap();
-        pos = lt + 2;
+        pos = after_tag_name;
     }
     if let Some(r) = &mut result {
         r.push_str(&literal[pos..]);
@@ -133,21 +154,23 @@ fn find_opening_tag_end(bytes: &[u8], tag_start: usize) -> Option<usize> {
     None
 }
 
-/// Injects `data-sourcepos` attributes into raw HTML `<a>` tags in `HtmlInline` and
-/// `HtmlBlock` AST nodes.
-/// Allows `fix_link.rs` to report accurate line numbers for ill-cased or
-/// redirected links that appear as raw HTML rather than Markdown link syntax.
-fn annotate_raw_html_links(node: &AstNode<'_>) {
+/// Injects `data-sourcepos` attributes into raw HTML `<a>` and `<img>` tags in
+/// `HtmlInline` and `HtmlBlock` AST nodes.
+/// Allows `fix_link.rs`/`fix_img.rs` to report accurate line numbers for ill-cased or
+/// redirected links and missing image assets that appear as raw HTML rather
+/// than Markdown link/image syntax.
+fn annotate_raw_html_tags(node: &AstNode<'_>) {
     let mut data = node.data.borrow_mut();
     let sp = data.sourcepos;
     match &mut data.value {
         NodeValue::HtmlInline(html) => {
-            inject_sourcepos_in_opening_a(
+            inject_sourcepos_in_opening_tags(
                 html,
                 &format!(
                     "{}:{}-{}:{}",
                     sp.start.line, sp.start.column, sp.end.line, sp.end.column
                 ),
+                ANNOTATED_TAGS,
             );
         }
         NodeValue::HtmlBlock(nhb) => {
@@ -213,7 +236,7 @@ pub fn m2h_internal(
             fix_p(node)
         }
         if m2h_options.sourcepos {
-            annotate_raw_html_links(node);
+            annotate_raw_html_tags(node);
         }
     });
 
@@ -407,40 +430,68 @@ mod test {
 
     // ── raw-HTML sourcepos injection ─────────────────────────────────────────
 
+    fn find_a(bytes: &[u8], pos: usize) -> Option<usize> {
+        find_next_opening_tag(bytes, pos, &[b"a"]).map(|(off, _)| off)
+    }
+
+    fn inject_a(html: &mut String, sp: &str) {
+        inject_sourcepos_in_opening_tags(html, sp, &[b"a"]);
+    }
+
     #[test]
     fn test_find_next_opening_a() {
-        assert_eq!(find_next_opening_a(b"<a href=\"/foo\">", 0), Some(0));
-        assert_eq!(find_next_opening_a(b"text <a href>", 0), Some(5));
-        assert_eq!(find_next_opening_a(b"<A HREF=\"/foo\">", 0), Some(0)); // uppercase
-        assert_eq!(find_next_opening_a(b"<a>", 0), Some(0)); // bare anchor
-        assert_eq!(find_next_opening_a(b"</a>", 0), None); // closing tag
-        assert_eq!(find_next_opening_a(b"<abbr>", 0), None); // not an <a>
-        assert_eq!(find_next_opening_a(b"<aside>", 0), None); // not an <a>
+        assert_eq!(find_a(b"<a href=\"/foo\">", 0), Some(0));
+        assert_eq!(find_a(b"text <a href>", 0), Some(5));
+        assert_eq!(find_a(b"<A HREF=\"/foo\">", 0), Some(0)); // uppercase
+        assert_eq!(find_a(b"<a>", 0), Some(0)); // bare anchor
+        assert_eq!(find_a(b"</a>", 0), None); // closing tag
+        assert_eq!(find_a(b"<abbr>", 0), None); // not an <a>
+        assert_eq!(find_a(b"<aside>", 0), None); // not an <a>
         // Skips non-<a> tags, finds <a> further in
-        assert_eq!(find_next_opening_a(b"<abbr><a href>", 0), Some(6));
+        assert_eq!(find_a(b"<abbr><a href>", 0), Some(6));
         // `<a` with nothing after it is a truncated tag — not a match
-        assert_eq!(find_next_opening_a(b"<a", 0), None);
-        assert_eq!(find_next_opening_a(b"text<a", 0), None);
+        assert_eq!(find_a(b"<a", 0), None);
+        assert_eq!(find_a(b"text<a", 0), None);
+    }
+
+    #[test]
+    fn test_find_next_opening_img() {
+        let find_img =
+            |b: &[u8], p: usize| find_next_opening_tag(b, p, &[b"img"]).map(|(off, _)| off);
+        assert_eq!(find_img(b"<img src=\"x.png\">", 0), Some(0));
+        assert_eq!(find_img(b"<IMG SRC=\"x.png\">", 0), Some(0));
+        assert_eq!(find_img(b"<img/>", 0), Some(0)); // void/self-closing
+        assert_eq!(find_img(b"<img>", 0), Some(0));
+        assert_eq!(find_img(b"<image>", 0), None); // not <img>
+        assert_eq!(find_img(b"</img>", 0), None); // closing tag
+        assert_eq!(find_img(b"<img", 0), None); // truncated
     }
 
     #[test]
     fn test_inject_sourcepos_in_opening_a() {
         let mut html = String::from("<a href=\"/foo\">");
-        inject_sourcepos_in_opening_a(&mut html, "1:1-1:15");
+        inject_a(&mut html, "1:1-1:15");
         assert_eq!(html, "<a data-sourcepos=\"1:1-1:15\" href=\"/foo\">");
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_opening_img() {
+        let mut html = String::from("<img src=\"x.png\">");
+        inject_sourcepos_in_opening_tags(&mut html, "1:1-1:17", &[b"img"]);
+        assert_eq!(html, "<img data-sourcepos=\"1:1-1:17\" src=\"x.png\">");
     }
 
     #[test]
     fn test_inject_sourcepos_in_opening_a_uppercase() {
         let mut html = String::from("<A HREF=\"/foo\">");
-        inject_sourcepos_in_opening_a(&mut html, "1:1-1:15");
+        inject_a(&mut html, "1:1-1:15");
         assert_eq!(html, "<A data-sourcepos=\"1:1-1:15\" HREF=\"/foo\">");
     }
 
     #[test]
     fn test_inject_sourcepos_closing_tag_unchanged() {
         let mut html = String::from("</a>");
-        inject_sourcepos_in_opening_a(&mut html, "1:1-1:4");
+        inject_a(&mut html, "1:1-1:4");
         assert_eq!(html, "</a>"); // closing tag must not be modified
     }
 
@@ -521,17 +572,35 @@ mod test {
 
     #[test]
     fn test_inject_sourcepos_in_opening_a_annotates_all() {
-        // `inject_sourcepos_in_opening_a` loops over all `<a>` tags and injects
-        // the same sourcepos string into each one. In the normal flow Comrak
-        // produces one `HtmlInline` node per tag (so the loop runs once), but
-        // the function's contract covers the multi-tag case too.
+        // `inject_sourcepos_in_opening_tags` loops over all matching tags and
+        // injects the same sourcepos string into each one. In the normal flow
+        // Comrak produces one `HtmlInline` node per tag (so the loop runs
+        // once), but the function's contract covers the multi-tag case too.
         let mut html = String::from("<a href=\"/a\"><a href=\"/b\">");
-        inject_sourcepos_in_opening_a(&mut html, "1:1-1:13");
+        inject_a(&mut html, "1:1-1:13");
         assert_eq!(
             html.matches("data-sourcepos=").count(),
             2,
             "Both <a> tags should get data-sourcepos, got: {html}"
         );
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_html_block_img() {
+        // <img> tags inside a raw HTML block should get data-sourcepos.
+        let result = inject_sourcepos_in_html_block("<img src=\"x.png\">", 1).unwrap();
+        assert_eq!(result, "<img data-sourcepos=\"1:1-1:17\" src=\"x.png\">");
+    }
+
+    #[test]
+    fn test_inject_sourcepos_in_html_block_mixed_a_and_img() {
+        // Mixed `<a>` and `<img>` tags in one block should each get
+        // their own sourcepos, with line/column tracking continuing across tags.
+        let input = "<img src=\"x.png\"> and <a href=\"/y\">link</a>";
+        let result = inject_sourcepos_in_html_block(input, 1).unwrap();
+        assert_eq!(result.matches("data-sourcepos=").count(), 2);
+        assert!(result.contains("<img data-sourcepos=\"1:1-1:17\""));
+        assert!(result.contains("<a data-sourcepos=\"1:23-1:35\""));
     }
 
     // ── end-to-end m2h tests ─────────────────────────────────────────────────
@@ -571,6 +640,16 @@ mod test {
         assert!(
             out.contains("data-sourcepos=\"1:1-2:"),
             "sourcepos should start on line 1 and end on line 2, got: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn html_inline_img_gets_sourcepos() -> Result<(), anyhow::Error> {
+        let out = m2h("text <img src=\"x.png\"> end", Locale::EnUs)?;
+        assert!(
+            out.contains("<img data-sourcepos="),
+            "Inline <img> tag should have data-sourcepos injected, got: {out}"
         );
         Ok(())
     }
