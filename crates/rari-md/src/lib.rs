@@ -207,7 +207,7 @@ pub fn m2h_internal(
             _ => (false, false, false),
         };
         if dl {
-            convert_dl(node);
+            convert_dl(&arena, node);
         }
         if templs_p || empty_p {
             fix_p(node)
