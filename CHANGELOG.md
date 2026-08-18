@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.33](https://github.com/mdn/rari/compare/v0.2.32...v0.2.33) (2026-08-18)
+
+
+### Bug Fixes
+
+* **jsref:** nest member sub-pages in the JS reference sidebar ([#728](https://github.com/mdn/rari/issues/728)) ([3a77c9c](https://github.com/mdn/rari/commit/3a77c9c9644c0b46c1ee265c0d7592c1ed09be42))
+* **sidebar:** details root didn't get localised link ([#837](https://github.com/mdn/rari/issues/837)) ([a2ed41c](https://github.com/mdn/rari/commit/a2ed41cdddf3a8df7e1a964307fd5c66a95d2175))
+* **utils:** centralize git calls and panic on non-zero exit codes ([#760](https://github.com/mdn/rari/issues/760)) ([38638cc](https://github.com/mdn/rari/commit/38638ccc547f4210df3bf835f723f494ebafe893))
+
 ## [0.2.32](https://github.com/mdn/rari/compare/v0.2.31...v0.2.32) (2026-08-14)
 
 
