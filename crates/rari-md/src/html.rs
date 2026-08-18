@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 
 use comrak::create_formatter;
-use comrak::html::{collect_text, render_math_code_block, render_sourcepos, write_opening_tag};
+use comrak::html::{render_math_code_block, render_sourcepos, write_opening_tag};
 use comrak::nodes::NodeValue;
 use itertools::Itertools;
 use rari_types::locale::Locale;
@@ -154,7 +154,7 @@ create_formatter!(CustomFormatter<RariContext>, {
             context.cr()?;
             write!(context, "<h{}", nch.level)?;
             if context.options.extension.header_id_prefix.is_some() {
-                let raw_id = collect_text(node);
+                let raw_id = node.collect_text();
 
                 let is_templ = raw_id.contains(DELIM_START);
                 if is_templ {
@@ -227,7 +227,7 @@ create_formatter!(CustomFormatter<RariContext>, {
                     context.write_str("\" title=\"")?;
                     context.escape(&nl.title)?;
                 }
-                let text_content = collect_text(node);
+                let text_content = node.collect_text();
 
                 if text_content == *nl.url {
                     context.write_str("\" data-autolink=\"")?;
