@@ -333,6 +333,20 @@ mod test {
     }
 
     #[test]
+    fn templ_only_p() -> Result<(), anyhow::Error> {
+        let out = m2h("⟬0⟭", Locale::EnUs)?;
+        assert_eq!(out, "⟬0⟭");
+        Ok(())
+    }
+
+    #[test]
+    fn templ_only_p_soft_break() -> Result<(), anyhow::Error> {
+        let out = m2h("⟬0⟭\n⟬1⟭", Locale::EnUs)?;
+        assert_eq!(out, "⟬0⟭\n⟬1⟭");
+        Ok(())
+    }
+
+    #[test]
     fn li_p() -> Result<(), anyhow::Error> {
         let out = m2h("- foo\n- bar\n", Locale::EnUs)?;
         assert_eq!(
