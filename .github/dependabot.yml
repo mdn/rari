@@ -22,6 +22,8 @@ updates:
       interval: weekly
     cooldown:
       default-days: 3
+      exclude:
+        - "@mdn/*"
     groups:
       npm-prod:
         dependency-type: production
@@ -41,6 +43,9 @@ updates:
     directory: /deps
     schedule:
       interval: daily
+    cooldown:
+      exclude:
+        - "@mdn/*"
     ignore:
       - dependency-name: "*"
         update-types:
