@@ -297,6 +297,7 @@ pub enum IssueType {
     TemplIllCasedLink,
     TemplIllCasedArg,
     TemplInvalidArg,
+    TemplMdnDataMissing,
     RedirectedLink,
     BrokenLink,
     IllCasedLink,
@@ -314,6 +315,7 @@ impl FromStr for IssueType {
             "templ-ill-cased-link" => Self::TemplIllCasedLink,
             "templ-ill-cased-arg" => Self::TemplIllCasedArg,
             "templ-invalid-arg" => Self::TemplInvalidArg,
+            "templ-mdn-data-missing" => Self::TemplMdnDataMissing,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
             "ill-cased-link" => Self::IllCasedLink,
@@ -575,6 +577,21 @@ impl DIssue {
                             .get("canonical")
                             .map(|s| s.as_str())
                             .unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: source.name,
+                        href: None,
+                    }
+                }
+                IssueType::TemplMdnDataMissing => {
+                    let source = issue_source(&mut additional);
+                    di.fixed = false;
+                    di.fixable = Some(false);
+                    di.explanation = Some(format!(
+                        "{} references {} which was not found in mdn/data; it may not have been published to the mdn-data npm package yet",
+                        source.label,
+                        additional.get("name").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
