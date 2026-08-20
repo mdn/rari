@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.34](https://github.com/mdn/rari/compare/v0.2.33...v0.2.34) (2026-08-20)
+
+
+### Miscellaneous
+
+* **deps:** bump base64 from 0.22.1 to 0.23.1 ([#847](https://github.com/mdn/rari/issues/847)) ([34c1766](https://github.com/mdn/rari/commit/34c17660b2a0331a3076016928337a79ff21e175))
+* **deps:** bump comrak from 0.52.0 to 0.54.0 ([#839](https://github.com/mdn/rari/issues/839)) ([08eccc5](https://github.com/mdn/rari/commit/08eccc5506071a6c69e0e0d0d528e46c99a8b9e5))
+* **deps:** bump ignore from 0.4.27 to 0.4.32 ([#846](https://github.com/mdn/rari/issues/846)) ([3c967f9](https://github.com/mdn/rari/commit/3c967f96a3536636a2170fca14afe7bc51a336e2))
+* **deps:** bump imagesize from 0.14.0 to 0.15.0 ([#845](https://github.com/mdn/rari/issues/845)) ([497da92](https://github.com/mdn/rari/commit/497da92be0f494f22ef7c198c58f5f728dee2046))
+* **deps:** bump proc-macro2 from 1.0.106 to 1.0.107 ([#849](https://github.com/mdn/rari/issues/849)) ([feff3ac](https://github.com/mdn/rari/commit/feff3ac4d9bc173c1922b0cd22fffdf1e7aa7718))
+* **deps:** bump tower-http from 0.6.11 to 0.7.0 ([#840](https://github.com/mdn/rari/issues/840)) ([31cf8a2](https://github.com/mdn/rari/commit/31cf8a213074a1a0cfdf23986ff46c605fd02e3e))
+
 ## [0.2.33](https://github.com/mdn/rari/compare/v0.2.32...v0.2.33) (2026-08-18)
 
 
