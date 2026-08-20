@@ -104,7 +104,7 @@ tokio = "1"
 inventory = "0.3"
 tree-sitter-mdn = "0.1"
 tree-sitter = "0.23"
-darling = "0.23"
+darling = "0.24"
 quote = "1"
 
 [features]
