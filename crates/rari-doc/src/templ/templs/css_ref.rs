@@ -36,11 +36,17 @@ pub fn css_ref() -> Result<String, DocError> {
     }
 
     let mut out = String::new();
-    out.push_str(r#"<div class="index">"#);
+
+    out.push_str(r#"<div class="index"><nav class="index-nav"><ul>"#);
+    for &letter in index.keys() {
+        let (label, id) = letter_label_and_id(letter);
+        out.extend([r##"<li><a href="#"##, &id, r#"">"#, &label, "</a></li>"]);
+    }
+    out.push_str("</ul></nav>");
+
     for (letter, items) in index {
-        out.push_str("<h3>");
-        out.push_str(&html_escape::encode_safe(letter.encode_utf8(&mut [0; 4])));
-        out.push_str("</h3><ul>");
+        let (label, id) = letter_label_and_id(letter);
+        out.extend([r#"<h3 id=""#, &id, r#"">"#, &label, "</h3><ul>"]);
         for (url, (html_label, _)) in items
             .into_iter()
             .sorted_by(|(_, (_, a)), (_, (_, b))| compare_items(a, b))
@@ -69,6 +75,13 @@ pub fn css_ref() -> Result<String, DocError> {
     out.push_str(r#"</div>"#);
 
     Ok(out)
+}
+
+fn letter_label_and_id(letter: char) -> (String, String) {
+    (
+        letter.to_string(),
+        format!("index-{}", letter.to_ascii_lowercase()),
+    )
 }
 
 fn is_indexed_css_ref_page(page: &Page) -> bool {
