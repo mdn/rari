@@ -2742,7 +2742,7 @@ dependencies = [
  "darling 0.24.0",
  "quote",
  "rari-types",
- "syn 2.0.119",
+ "syn 3.0.3",
 ]
 
 [[package]]
