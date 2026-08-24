@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use itertools::Itertools;
 use rari_templ_func::rari_f;
-use rari_types::fm_types::{FeatureStatus, PageType};
+use rari_types::fm_types::PageType;
 use rari_utils::concat_strs;
 
 use crate::error::DocError;
@@ -54,7 +54,7 @@ pub fn css_ref() -> Result<String, DocError> {
                 Some(&placeholder_label),
                 false,
                 None,
-                false,
+                true,
             )?;
             out.extend([
                 "<li>",
@@ -84,10 +84,7 @@ fn is_indexed_css_ref_page(page: &Page) -> bool {
             | PageType::CssPseudoClass
             | PageType::CssShorthandProperty
             | PageType::CssAtRuleDescriptor
-    ) && !page
-        .status()
-        .iter()
-        .any(|s| matches!(s, FeatureStatus::Deprecated | FeatureStatus::NonStandard))
+    )
 }
 
 fn sort_key(s: &str) -> &str {
