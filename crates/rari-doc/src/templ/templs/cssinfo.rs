@@ -8,6 +8,7 @@ use crate::helpers::css_info::{
     css_info_properties, mdn_data_files, write_computed_output, write_missing,
 };
 use crate::html::links::post_process_templ_links;
+use crate::issues::get_issue_counter;
 
 #[rari_f(register = "crate::Templ")]
 pub fn cssinfo() -> Result<String, DocError> {
@@ -40,6 +41,16 @@ pub fn cssinfo() -> Result<String, DocError> {
     let mut out = String::new();
 
     if props.is_empty() {
+        let what = match at_rule {
+            Some(at_rule) => format!("CSS at-rule descriptor \"{name}\" of \"{at_rule}\""),
+            None => format!("CSS property \"{name}\""),
+        };
+        tracing::warn!(
+            source = "templ-mdn-data-missing",
+            ic = get_issue_counter(),
+            name = %what,
+            "mdn/data has no entry for {what}"
+        );
         write_missing(&mut out, env.locale)?;
         return Ok(out);
     }
