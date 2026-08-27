@@ -88,7 +88,7 @@ reqwest = { version = "0.12", default-features = false, features = [
   "gzip",
 ] }
 indoc = "2"
-base64 = "0.22"
+base64 = "0.23"
 sha2 = "0.11"
 base16ct = { version = "1.0", features = ["alloc"] }
 dashmap = { version = "6", features = ["serde"] }
@@ -104,7 +104,7 @@ tokio = "1"
 inventory = "0.3"
 tree-sitter-mdn = "0.1"
 tree-sitter = "0.23"
-darling = "0.23"
+darling = "0.24"
 quote = "1"
 
 [features]
@@ -139,7 +139,7 @@ clap = { version = "4.5.1", features = ["derive", "env"] }
 clap-verbosity-flag = { version = "3", features = ["tracing"] }
 tabwriter = "1"
 axum = "0.8"
-tower-http = { version = "0.6", features = ["fs"] }
+tower-http = { version = "0.7", features = ["fs"] }
 tower = "0.5"
 dotenvy = "0.15"
 
