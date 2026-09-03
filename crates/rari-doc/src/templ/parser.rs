@@ -16,6 +16,10 @@ pub struct MacroToken {
     pub ident: String,
     pub pos: (usize, usize),
     pub args: Vec<Option<Arg>>,
+    /// Whether the macro contains a syntax error, e.g. a stray parenthesis in
+    /// `{{cssxref(("color")}}`. Its `args` are then whatever tree-sitter managed
+    /// to recover and should not be trusted.
+    pub malformed: bool,
 }
 
 fn from_node<'a>(
@@ -25,7 +29,12 @@ fn from_node<'a>(
 ) -> Option<MacroToken> {
     let ident_node = value.named_child(0).unwrap();
     let ident = content[ident_node.start_byte()..ident_node.end_byte()].to_string();
-    let args = if let Some(args_node) = value.named_child(1) {
+    // Look the arguments up by kind: a syntax error inserts an `ERROR` node,
+    // which would otherwise be mistaken for them.
+    let args = if let Some(args_node) = value
+        .named_children(&mut value.walk())
+        .find(|child| child.kind() == "args")
+    {
         args_node
             .named_children(cursor)
             .map(|arg| ts_to_arg(arg, content))
@@ -43,6 +52,7 @@ fn from_node<'a>(
         pos,
         ident,
         args,
+        malformed: value.has_error(),
     })
 }
 
@@ -206,6 +216,47 @@ mod test {
                 other => panic!("{name}: expected a macro token, got {other:?}"),
             };
             assert_eq!(args, expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn malformed_macros() {
+        let cases: Vec<(&str, &str, bool, Vec<Option<Arg>>)> = vec![
+            (
+                "well-formed",
+                r#"{{cssxref("color")}}"#,
+                false,
+                vec![Some(Arg::String("color".into(), Quotes::Double))],
+            ),
+            (
+                "unparseable argument",
+                "{{htmlelement(\u{300c}label\u{300d})}}",
+                true,
+                vec![None],
+            ),
+            (
+                // The stray `(` inserts an `ERROR` node before the arguments,
+                // which are still recovered by looking them up by kind.
+                "stray opening parenthesis",
+                r#"{{cssxref(("color")}}"#,
+                true,
+                vec![Some(Arg::String("color".into(), Quotes::Double))],
+            ),
+            (
+                "unbalanced quotes",
+                r#"{{WebExtAPIRef("userScripts.,"execute()", "execute()"}}"#,
+                true,
+                vec![],
+            ),
+        ];
+        for (name, input, malformed, expected_args) in cases {
+            let tokens = parse(input).unwrap();
+            let m = match tokens.first() {
+                Some(Token::Macro(m)) => m,
+                other => panic!("{name}: expected a macro token, got {other:?}"),
+            };
+            assert_eq!(m.malformed, malformed, "{name}: malformed");
+            assert_eq!(m.args, expected_args, "{name}: args");
         }
     }
 }

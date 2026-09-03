@@ -298,6 +298,7 @@ pub enum IssueType {
     TemplIllCasedArg,
     TemplInvalidArg,
     TemplArgError,
+    TemplSyntaxError,
     TemplMdnDataMissing,
     RedirectedLink,
     BrokenLink,
@@ -317,6 +318,7 @@ impl FromStr for IssueType {
             "templ-ill-cased-arg" => Self::TemplIllCasedArg,
             "templ-invalid-arg" => Self::TemplInvalidArg,
             "templ-arg-error" => Self::TemplArgError,
+            "templ-syntax-error" => Self::TemplSyntaxError,
             "templ-mdn-data-missing" => Self::TemplMdnDataMissing,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
@@ -586,7 +588,7 @@ impl DIssue {
                         href: None,
                     }
                 }
-                IssueType::TemplArgError => {
+                IssueType::TemplArgError | IssueType::TemplSyntaxError => {
                     let source = issue_source(&mut additional);
                     di.fixed = false;
                     di.fixable = Some(false);
