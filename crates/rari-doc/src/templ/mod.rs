@@ -7,7 +7,6 @@ pub mod api;
 pub mod api_name_index;
 pub mod css_feature_index;
 pub mod js_ref_index;
-pub mod legacy;
 pub mod parser;
 pub mod render;
 pub mod templs;
