@@ -25,7 +25,6 @@ pub mod subpages_with_summaries;
 pub mod svginfo;
 pub mod web_ext_examples;
 pub mod webext_all_examples;
-pub mod xsltref;
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
