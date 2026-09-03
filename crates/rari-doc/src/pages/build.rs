@@ -199,6 +199,10 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     // TODO cleanup
     let mut sidebars = sidebars
         .iter()
+        // A sidebar macro can render to nothing, e.g. when it is skipped on an
+        // unrooted page. Drop it, so `sidebar_html` stays `None` instead of
+        // becoming the empty document that `postprocess_sidebar` would parse.
+        .filter(|s| !s.is_empty())
         .map(|s| postprocess_sidebar(s, page))
         .collect::<Vec<_>>();
     if let Some(sidebar) = &sidebar {

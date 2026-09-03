@@ -36,7 +36,7 @@ use rari_types::{Arg, RariEnv};
 use tracing::error;
 
 use crate::error::DocError;
-use crate::utils::{TEMPL_RECORDER, TemplStatEvent};
+use crate::utils::{TEMPL_RECORDER, TemplStatEvent, is_unrooted};
 
 #[derive(Debug)]
 pub struct Templ {
@@ -92,15 +92,76 @@ pub fn invoke(
         } //
     };
     record_invocation(name, env.locale, true);
+    // Sidebars describe a document's place in a tree, which an unrooted page
+    // no longer has: slug-derived sidebars either fail outright or resolve
+    // against the wrong tree, and static ones highlight nothing. Render none.
+    if matches!(is_sidebar, TemplType::Sidebar) && is_unrooted(env.slug) {
+        return Ok((Default::default(), TemplType::Sidebar));
+    }
     f(env, args).map(|s| (s, is_sidebar))
 }
 
 #[cfg(test)]
 mod test {
+    use rari_types::Quotes;
+    use rari_types::fm_types::PageType;
+    use rari_types::locale::Locale;
+
     use super::*;
 
     #[test]
     fn test_kw() {
         println!("{:?}", *TEMPL_MAP);
+    }
+
+    fn env_for_slug(slug: &str) -> RariEnv<'_> {
+        RariEnv {
+            url: "",
+            locale: Locale::EnUs,
+            title: "",
+            tags: &[],
+            browser_compat: &[],
+            spec_urls: &[],
+            page_type: PageType::default(),
+            slug,
+            status: &[],
+        }
+    }
+
+    /// Sidebar macros render nothing on unrooted pages. Note that these
+    /// assertions never reach the sidebar builders, which would need content
+    /// roots; being skipped is precisely what makes them cheap.
+    #[test]
+    fn test_invoke_skips_sidebars_on_unrooted_pages() {
+        let cases = vec![
+            (
+                "jsref",
+                "conflicting/Web/JavaScript/Reference/Global_Objects/Array/toString",
+            ),
+            ("apiref", "orphaned/Web/API/Window/dialogArguments"),
+            // A static, slug-independent sidebar is skipped just the same.
+            ("cssref", "conflicting/Web/CSS/counter-reset"),
+        ];
+        for (name, slug) in cases {
+            let env = env_for_slug(slug);
+            let (rendered, typ) = invoke(&env, name, vec![]).expect("invoke succeeds");
+            assert!(
+                rendered.is_empty(),
+                "{name} on {slug} rendered {rendered:?}"
+            );
+            assert!(
+                matches!(typ, TemplType::Sidebar),
+                "{name} should stay a sidebar templ"
+            );
+        }
+    }
+
+    /// The skip is gated on the templ type, so ordinary macros keep rendering.
+    #[test]
+    fn test_invoke_renders_non_sidebars_on_unrooted_pages() {
+        let env = env_for_slug("conflicting/Web/API/Window/showModalDialog");
+        let args = vec![Some(Arg::String("hi".to_string(), Quotes::Double))];
+        let (rendered, _) = invoke(&env, "echo", args).expect("invoke succeeds");
+        assert_eq!(rendered, "hi");
     }
 }
