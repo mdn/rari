@@ -10,7 +10,8 @@ use std::path::Path;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
-use rari_types::globals::{content_root, content_translated_root};
+use indexmap::IndexMap;
+use rari_types::globals::{content_root, content_translated_root, popularities};
 use rari_types::locale::Locale;
 use rari_utils::error::RariIoError;
 use tracing::error;
@@ -18,6 +19,23 @@ use tracing::error;
 use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory, PageLike};
 use crate::resolve::url_meta_from;
+
+/// Inverted redirect map: lowercase target URL → list of lowercase source URLs
+/// that redirect to it. Used to aggregate popularity from old URLs into the
+/// page they redirect to.
+///
+/// `_redirects.txt` files do not contain redirect chains, so a single hop is
+/// sufficient.
+pub static REDIRECTS_REVERSED: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(|| {
+    let mut reversed: HashMap<String, Vec<String>> = HashMap::new();
+    for (from, to) in REDIRECTS.iter() {
+        reversed
+            .entry(to.to_lowercase())
+            .or_default()
+            .push(from.clone());
+    }
+    reversed
+});
 
 static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     let mut map = HashMap::new();
@@ -161,6 +179,34 @@ pub fn resolve_redirect<'a>(url: impl AsRef<str>) -> Option<Cow<'a, str>> {
     }
 }
 
+/// Returns the aggregated popularity for `url`: the page's own page views plus
+/// the page views of every URL that redirects to it.
+///
+/// Returns `None` if neither the page nor any URL redirecting to it has an
+/// entry in `popularities.json`.
+pub fn popularity_for(url: &str) -> Option<f64> {
+    let lower = url.to_ascii_lowercase();
+    aggregate_popularity(&lower, &popularities().popularities, &REDIRECTS_REVERSED)
+}
+
+fn aggregate_popularity(
+    lower_url: &str,
+    popularities: &IndexMap<String, f64>,
+    redirects_reversed: &HashMap<String, Vec<String>>,
+) -> Option<f64> {
+    let own = popularities.get(lower_url).copied();
+    let extras: f64 = redirects_reversed
+        .get(lower_url)
+        .into_iter()
+        .flatten()
+        .filter_map(|src| popularities.get(src).copied())
+        .sum();
+    match (own, extras) {
+        (None, 0.0) => None,
+        (own, extras) => Some(own.unwrap_or(0.0) + extras),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,5 +250,96 @@ mod tests {
         // Blog posts should not be affected
         let map = redirects(&[("/en-US/docs/Old", "/en-US/docs/New")]);
         assert_eq!(en_redirect_for_locale("/en-US/blog/some-post", &map), None);
+    }
+
+    fn reverse(redirects: &HashMap<String, String>) -> HashMap<String, Vec<String>> {
+        let mut reversed: HashMap<String, Vec<String>> = HashMap::new();
+        for (from, to) in redirects.iter() {
+            reversed
+                .entry(to.to_lowercase())
+                .or_default()
+                .push(from.clone());
+        }
+        reversed
+    }
+
+    fn pops(entries: &[(&str, f64)]) -> IndexMap<String, f64> {
+        entries
+            .iter()
+            .map(|(k, v)| (k.to_ascii_lowercase(), *v))
+            .collect()
+    }
+
+    #[test]
+    fn popularity_no_redirects_returns_own() {
+        let r = reverse(&redirects(&[]));
+        let p = pops(&[("/en-US/docs/Web/HTML", 1.0)]);
+        assert_eq!(
+            aggregate_popularity("/en-us/docs/web/html", &p, &r),
+            Some(1.0)
+        );
+    }
+
+    #[test]
+    fn popularity_sums_single_redirect_source() {
+        let r = reverse(&redirects(&[(
+            "/en-US/docs/Web/Foo/bar",
+            "/en-US/docs/Web/Reference/Foo/Bar",
+        )]));
+        let p = pops(&[
+            ("/en-US/docs/Web/Reference/Foo/Bar", 1.0),
+            ("/en-US/docs/Web/Foo/bar", 2.0),
+        ]);
+        assert_eq!(
+            aggregate_popularity("/en-us/docs/web/reference/foo/bar", &p, &r),
+            Some(3.0)
+        );
+    }
+
+    #[test]
+    fn popularity_sums_multiple_redirect_sources() {
+        let r = reverse(&redirects(&[
+            ("/en-US/docs/A", "/en-US/docs/Target"),
+            ("/en-US/docs/B", "/en-US/docs/Target"),
+        ]));
+        let p = pops(&[
+            ("/en-US/docs/Target", 1.0),
+            ("/en-US/docs/A", 2.0),
+            ("/en-US/docs/B", 4.0),
+        ]);
+        assert_eq!(
+            aggregate_popularity("/en-us/docs/target", &p, &r),
+            Some(7.0)
+        );
+    }
+
+    #[test]
+    fn popularity_only_from_redirect_sources() {
+        let r = reverse(&redirects(&[("/en-US/docs/Old", "/en-US/docs/New")]));
+        let p = pops(&[("/en-US/docs/Old", 2.5)]);
+        assert_eq!(aggregate_popularity("/en-us/docs/new", &p, &r), Some(2.5));
+    }
+
+    #[test]
+    fn popularity_returns_none_when_absent() {
+        let r = reverse(&redirects(&[]));
+        let p = pops(&[("/en-US/docs/Other", 1.0)]);
+        assert_eq!(aggregate_popularity("/en-us/docs/missing", &p, &r), None);
+    }
+
+    #[test]
+    fn popularity_normalizes_casing_via_public_fn_inputs() {
+        // The public `popularity_for` lowercases its input; verify that the
+        // aggregate helper handles already-lowered input consistently across
+        // mixed-case redirect entries.
+        let r = reverse(&redirects(&[(
+            "/en-US/docs/Old/Page",
+            "/en-US/docs/New/Page",
+        )]));
+        let p = pops(&[("/en-US/docs/New/Page", 1.0), ("/en-US/docs/Old/Page", 3.0)]);
+        assert_eq!(
+            aggregate_popularity("/en-us/docs/new/page", &p, &r),
+            Some(4.0)
+        );
     }
 }

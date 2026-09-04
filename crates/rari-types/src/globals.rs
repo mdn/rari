@@ -167,11 +167,17 @@ pub static POPULARITIES: LazyLock<Popularities> = LazyLock::new(|| {
     let f = globals::data_dir()
         .join("popularities")
         .join("popularities.json");
-    if let Ok(json_str) = fs::read_to_string(f) {
-        serde_json::from_str(&json_str).expect("unable to parse l10n json")
-    } else {
-        Popularities::default()
-    }
+    let Ok(json_str) = fs::read_to_string(f) else {
+        return Popularities::default();
+    };
+    let mut p: Popularities =
+        serde_json::from_str(&json_str).expect("unable to parse popularities json");
+    p.popularities = p
+        .popularities
+        .into_iter()
+        .map(|(k, v)| (k.to_ascii_lowercase(), v))
+        .collect();
+    p
 });
 pub fn popularities() -> &'static Popularities {
     &POPULARITIES
