@@ -14,7 +14,12 @@ pub struct MacroToken {
     pub start: usize,
     pub end: usize,
     pub ident: String,
+    /// 0-based `(row, column)` of the macro start, where `column` is a byte
+    /// offset from the start of the line.
     pub pos: (usize, usize),
+    /// 0-based exclusive `(row, column)` of the macro end, in the same units
+    /// as `pos`.
+    pub end_pos: (usize, usize),
     pub args: Vec<Option<Arg>>,
 }
 
@@ -37,10 +42,13 @@ fn from_node<'a>(
     let end = value.end_byte();
     let start_position = value.start_position();
     let pos = (start_position.row, start_position.column);
+    let end_position = value.end_position();
+    let end_pos = (end_position.row, end_position.column);
     Some(MacroToken {
         start,
         end,
         pos,
+        end_pos,
         ident,
         args,
     })
@@ -153,6 +161,55 @@ mod test {
         for node in tree.root_node().children(&mut cursor) {
             println!("{}", node.grammar_name());
             println!("{node:?}");
+        }
+    }
+
+    /// Macro positions come from tree-sitter and must cover the whole macro,
+    /// including macros that span lines and malformed ones.
+    #[test]
+    fn test_macro_positions() {
+        struct Case {
+            name: &'static str,
+            input: String,
+            pos: (usize, usize),
+            end_pos: (usize, usize),
+        }
+
+        // A malformed macro that occurred in mdn/content (`userScripts`, since
+        // fixed), where a stray comma and quote break the argument list.
+        let malformed = r#"{{WebExtAPIRef("userScripts.,"execute()", "execute()"}}"#;
+        let cases = vec![
+            Case {
+                name: "single line",
+                input: r#"a {{Compat("api.Foo", 0)}} b"#.to_string(),
+                pos: (0, 2),
+                end_pos: (0, 26),
+            },
+            Case {
+                name: "spans two lines",
+                input: "a {{Compat(\"api.Foo\",\n  0)}} b".to_string(),
+                pos: (0, 2),
+                end_pos: (1, 6),
+            },
+            Case {
+                name: "malformed macro",
+                input: format!("{}{malformed}", "x".repeat(59)),
+                pos: (0, 59),
+                end_pos: (0, 59 + malformed.len()),
+            },
+        ];
+
+        for case in cases {
+            let tokens = parse(&case.input).expect("parse must succeed");
+            let mac = tokens
+                .iter()
+                .find_map(|token| match token {
+                    Token::Macro(mac) => Some(mac),
+                    Token::Text(_) => None,
+                })
+                .unwrap_or_else(|| panic!("{}: expected a macro token", case.name));
+            assert_eq!(mac.pos, case.pos, "{}: pos", case.name);
+            assert_eq!(mac.end_pos, case.end_pos, "{}: end_pos", case.name);
         }
     }
 
