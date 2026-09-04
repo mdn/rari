@@ -258,12 +258,8 @@ impl CssRefKind {
     }
 }
 
-/// Maps a reference to the `Web/CSS/Reference/` sub-path documenting it (e.g.
-/// `url` -> `Values/url_value`), or `None` to render it unlinked. The slug is
-/// bare, but keeps a trailing `()` for function types.
-///
-/// Injected because `css-syntax` has no access to the MDN page tree; `None`
-/// links everything under the default category.
+/// Callback resolving a CSS type or property to an MDN reference path.
+/// If it returns `None` the term should be rendered without a link.
 pub type CssRefResolver<'a> = &'a dyn Fn(CssRefKind, &str) -> Option<String>;
 
 pub struct SyntaxRenderer<'a> {
@@ -355,9 +351,6 @@ impl SyntaxRenderer<'_> {
         Ok(out)
     }
 
-    /// Render a `<type>` / `<'property'>` reference, linked only if the
-    /// resolver reports a page for it. Many webref productions are
-    /// spec-internal (`<number-token>`, `<any-value>`) and have none.
     fn render_reference(&self, kind: CssRefKind, slug: &str, encoded: &str) -> String {
         // FIXME: this should have the class type but to be compatible we use property
         let span = format!(r#"<span class="token property">{encoded}</span>"#);
