@@ -854,12 +854,22 @@ mod test {
 
     #[test]
     fn test_render_terms() -> Result<(), SyntaxError> {
+        // Stand-in for the page index: only these constituents have a page.
+        let resolver = |kind: CssRefKind, slug: &str| -> Option<String> {
+            assert_eq!(kind, CssRefKind::Type);
+            match slug {
+                "system-color" => Some("Values/system-color".into()),
+                "contrast-color()" => Some("Values/color_value/contrast-color".into()),
+                "device-cmyk()" => Some("Values/color_value/device-cmyk".into()),
+                _ => None,
+            }
+        };
         let renderer = SyntaxRenderer {
             locale_str: "en-US",
             value_definition_url: "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
-            resolver: None,
+            resolver: Some(&resolver),
         };
         let SyntaxLine {
             name: _, syntax, ..
@@ -868,7 +878,7 @@ mod test {
             let rendered = renderer.render_terms(&group.terms, group.combinator)?;
             assert_eq!(
                 rendered,
-                "  <a href=\"/en-US/docs/Web/CSS/Reference/Values/color-base\"><span class=\"token property\">&lt;color-base&gt;</span></a>        <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>        <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/contrast-color()\"><span class=\"token property\">&lt;contrast-color()&gt;</span></a>  <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/device-cmyk()\"><span class=\"token property\">&lt;device-cmyk()&gt;</span></a>     <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/light-dark-color\"><span class=\"token property\">&lt;light-dark-color&gt;</span></a>  <br/>"
+                "  <span class=\"token property\">&lt;color-base&gt;</span>        <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>        <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/color_value/contrast-color\"><span class=\"token property\">&lt;contrast-color()&gt;</span></a>  <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/color_value/device-cmyk\"><span class=\"token property\">&lt;device-cmyk()&gt;</span></a>     <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token property\">&lt;light-dark-color&gt;</span>  <br/>"
             );
         } else {
             panic!("no group node")
