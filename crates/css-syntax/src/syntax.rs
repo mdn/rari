@@ -135,6 +135,9 @@ pub struct SyntaxLine {
     pub name: String,
     pub syntax: String,
     pub specs: Option<Vec<&'static SpecLink>>,
+    /// `Some` only for constituent expansions; the top-level heading is the
+    /// current page.
+    pub heading_url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -149,6 +152,7 @@ impl Syntax {
             name: name.into(),
             syntax: self.syntax,
             specs: self.specs,
+            heading_url: None,
         }
     }
 }
@@ -247,6 +251,8 @@ pub enum CssRefKind {
     Type,
     /// A `<'property'>` node.
     Property,
+    /// An at-rule keyword, e.g. `@media`.
+    AtRule,
 }
 
 impl CssRefKind {
@@ -254,6 +260,7 @@ impl CssRefKind {
         match self {
             Self::Type => "Values",
             Self::Property => "Properties",
+            Self::AtRule => "At-rules",
         }
     }
 }
@@ -262,21 +269,57 @@ impl CssRefKind {
 /// If it returns `None` the term should be rendered without a link.
 pub type CssRefResolver<'a> = &'a dyn Fn(CssRefKind, &str) -> Option<String>;
 
+/// How to turn formal-syntax references into links.
+#[derive(Default, Clone, Copy)]
+pub struct RefLinks<'a> {
+    pub resolver: Option<CssRefResolver<'a>>,
+    /// `Reference/…` sub-path of the page being rendered, so headings
+    /// resolving to it aren't linked to themselves.
+    pub page_path: Option<&'a str>,
+}
+
 pub struct SyntaxRenderer<'a> {
     pub locale_str: &'a str,
     pub value_definition_url: &'a str,
     pub syntax_tooltip: &'a HashMap<LinkedToken, String>,
     pub constituents: HashSet<Node>,
-    pub resolver: Option<CssRefResolver<'a>>,
+    pub links: RefLinks<'a>,
 }
 
 impl SyntaxRenderer<'_> {
+    /// Heading URL for a constituent expansion, or `None` if undocumented.
+    /// `name` is the rendered heading, e.g. `<rect()>` or `@media`.
+    fn heading_url(&self, kind: CssRefKind, name: &str) -> Option<String> {
+        let slug = name
+            .strip_prefix('<')
+            .and_then(|n| n.strip_suffix('>'))
+            .unwrap_or(name);
+        let path = self.links.resolver?(kind, slug)?;
+        if self
+            .links
+            .page_path
+            .is_some_and(|own| own.eq_ignore_ascii_case(&path))
+        {
+            return None;
+        }
+        Some(format!(
+            "/{}/docs/Web/CSS/Reference/{path}",
+            self.locale_str
+        ))
+    }
+
     pub fn render(&self, output: &mut String, syntax: &SyntaxLine) -> Result<(), SyntaxError> {
         let typ = html_escape::encode_safe(&syntax.name);
-        write!(
-            output,
-            r#"<span class="token property" id="{typ}">{typ} = </span><br/>"#
-        )?;
+        match &syntax.heading_url {
+            Some(url) => write!(
+                output,
+                r#"<span class="token property" id="{typ}"><a href="{url}">{typ}</a> = </span><br/>"#
+            )?,
+            None => write!(
+                output,
+                r#"<span class="token property" id="{typ}">{typ} = </span><br/>"#
+            )?,
+        }
 
         let ast = parse(&syntax.syntax)?;
 
@@ -354,7 +397,7 @@ impl SyntaxRenderer<'_> {
     fn render_reference(&self, kind: CssRefKind, slug: &str, encoded: &str) -> String {
         // FIXME: this should have the class type but to be compatible we use property
         let span = format!(r#"<span class="token property">{encoded}</span>"#);
-        let path = match self.resolver {
+        let path = match self.links.resolver {
             Some(resolve) => match resolve(kind, slug) {
                 Some(path) => path,
                 None => return span,
@@ -537,27 +580,40 @@ impl SyntaxRenderer<'_> {
             for constituent in all_constituents[last_len..].iter_mut() {
                 if let Some(constituent_entry) = match &mut constituent.node {
                     Node::Type(typ) if typ.name.ends_with("()") => {
-                        let syntax =
+                        let mut syntax =
                             get_syntax(CssType::Function(&typ.name[..typ.name.len() - 2]), None);
+                        syntax.heading_url = self.heading_url(CssRefKind::Type, &syntax.name);
                         Some(syntax)
                     }
                     Node::Type(typ) => {
-                        let syntax = get_syntax(CssType::Type(&typ.name), None);
+                        let mut syntax = get_syntax(CssType::Type(&typ.name), None);
                         typ.opts = None;
+                        syntax.heading_url = self.heading_url(CssRefKind::Type, &syntax.name);
                         Some(syntax)
                     }
                     Node::Property(property) => {
                         let mut syntax = get_syntax(CssType::Property(&property.name), None);
                         syntax.name = format!("<{}>", syntax.name);
+                        syntax.heading_url =
+                            self.heading_url(CssRefKind::Property, &property.name);
                         Some(syntax)
                     }
                     // Node::Function(function) => Some(get_syntax(CssType::Function(&function.name))),
                     Node::AtKeyword(at_keyword) => {
-                        Some(get_syntax(CssType::AtRule(&at_keyword.name), None))
+                        let mut syntax = get_syntax(CssType::AtRule(&at_keyword.name), None);
+                        syntax.heading_url =
+                            self.heading_url(CssRefKind::AtRule, &at_keyword.name);
+                        Some(syntax)
                     }
                     _ => None,
                 } && !constituent_entry.syntax.is_empty()
-                    && !constituent_syntaxes.contains(&constituent_entry)
+                    // Ignore `heading_url`, so a type reached as both `<x>` and
+                    // `<'x'>` still collapses to one expansion.
+                    && !constituent_syntaxes.iter().any(|s| {
+                        s.name == constituent_entry.name
+                            && s.syntax == constituent_entry.syntax
+                            && s.specs == constituent_entry.specs
+                    })
                 {
                     constituent.syntax_used = true;
                     constituent_syntaxes.push(constituent_entry)
@@ -611,7 +667,7 @@ pub fn render_formal_syntax(
     value_definition_url: &str,
     syntax_tooltip: &HashMap<LinkedToken, String>,
     sources_prefix: Option<&str>,
-    resolver: Option<CssRefResolver>,
+    links: RefLinks,
 ) -> Result<String, SyntaxError> {
     let scope = scope_from_browser_compat(browser_compat);
 
@@ -628,6 +684,7 @@ pub fn render_formal_syntax(
                     name: name.trim().to_string(),
                     syntax,
                     specs: None,
+                    heading_url: None,
                 },
                 skip_first,
             )
@@ -648,7 +705,7 @@ pub fn render_formal_syntax(
         syntax_tooltip,
         sources_prefix,
         skip_first,
-        resolver,
+        links,
     )
 }
 
@@ -659,14 +716,14 @@ fn render_formal_syntax_internal(
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
     sources_prefix: Option<&str>,
     skip_first: bool,
-    resolver: Option<CssRefResolver>,
+    links: RefLinks,
 ) -> Result<String, SyntaxError> {
     let mut renderer = SyntaxRenderer {
         locale_str,
         value_definition_url,
         syntax_tooltip,
         constituents: Default::default(),
-        resolver,
+        links,
     };
     let mut out = String::new();
     write!(out, r#"<pre class="notranslate css-formal-syntax">"#)?;
@@ -869,7 +926,10 @@ mod test {
             value_definition_url: "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
-            resolver: Some(&resolver),
+            links: RefLinks {
+                resolver: Some(&resolver),
+                ..Default::default()
+            },
         };
         let SyntaxLine {
             name: _, syntax, ..
@@ -896,7 +956,7 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
-            None,
+            Default::default(),
         )?;
         assert_eq!(result, expected);
         Ok(())
@@ -912,7 +972,7 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
-            None,
+            Default::default(),
         )?;
         assert_eq!(result, expected);
         Ok(())
@@ -932,7 +992,10 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
-            Some(&resolver),
+            RefLinks {
+                resolver: Some(&resolver),
+                ..Default::default()
+            },
         )?;
         assert!(
             result.contains(
@@ -962,7 +1025,10 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
-            Some(&unresolvable),
+            RefLinks {
+                resolver: Some(&unresolvable),
+                ..Default::default()
+            },
         )?;
         assert!(
             result
@@ -972,6 +1038,44 @@ mod test {
         assert!(
             !result.contains("Reference/Properties/padding-top"),
             "unresolved property should not be linked: {result}"
+        );
+        Ok(())
+    }
+
+    /// `<'padding-top'>` is documented, `<length-percentage>` is not.
+    #[test]
+    fn test_render_constituent_heading_with_resolver() -> Result<(), SyntaxError> {
+        let resolver = |kind: CssRefKind, slug: &str| match (kind, slug) {
+            (CssRefKind::Property, "padding-top") => Some("Properties/padding-top".to_string()),
+            _ => None,
+        };
+        let result = render_formal_syntax(
+            SyntaxInput::Css(CssType::Property("padding")),
+            None,
+            "en-US",
+            "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
+            &TOOLTIPS,
+            None,
+            RefLinks {
+                resolver: Some(&resolver),
+                ..Default::default()
+            },
+        )?;
+        assert!(
+            result.contains(
+                r#"<span class="token property" id="&lt;padding-top&gt;"><a href="/en-US/docs/Web/CSS/Reference/Properties/padding-top">&lt;padding-top&gt;</a> = </span>"#
+            ),
+            "resolved expansion heading should be linked: {result}"
+        );
+        assert!(
+            result.contains(
+                r#"<span class="token property" id="&lt;length-percentage&gt;">&lt;length-percentage&gt; = </span>"#
+            ),
+            "unresolved expansion heading should stay plain: {result}"
+        );
+        assert!(
+            result.contains(r#"<span class="token property" id="padding">padding = </span>"#),
+            "top-level heading should not be linked: {result}"
         );
         Ok(())
     }
@@ -987,7 +1091,7 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
-            None,
+            Default::default(),
         )?;
         assert_eq!(result, expected);
 
@@ -1000,7 +1104,7 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
-            None,
+            Default::default(),
         )?;
         assert_eq!(result, expected);
 
@@ -1047,7 +1151,7 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
-            None,
+            Default::default(),
         )?;
         assert!(result.contains("&lt;if()&gt;"));
         assert!(result.contains("if-branch"));
@@ -1068,7 +1172,7 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
-            None,
+            Default::default(),
         )?;
         assert!(result.contains("cursor-image"));
         assert!(result.contains("cursor-predefined"));

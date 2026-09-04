@@ -179,6 +179,7 @@ fn resolve_formal_syntax_ref_from_map<'a>(
 ) -> Option<&'a str> {
     match kind {
         CssRefKind::Property => resolve_from_map(map, CssRefCategory::Properties, slug),
+        CssRefKind::AtRule => resolve_from_map(map, CssRefCategory::AtRules, slug),
         // `_function` first, to prefer it over a same-named `_value` page.
         // `Properties/` last, for functions documented under a property
         // (`<palette-mix()>` under `font-palette`).
