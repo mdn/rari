@@ -175,9 +175,6 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
 }
 
 pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
-    // Sidebars are skipped on unrooted pages, see `invoke`. Bail out here too:
-    // a frontmatter entry naming a sidebar that isn't a registered templ goes
-    // straight to `render_sidebar` without passing through `invoke`.
     if is_unrooted(doc.slug()) {
         return Ok(None);
     }

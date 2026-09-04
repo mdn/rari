@@ -165,16 +165,7 @@ pub fn root_for_locale(locale: Locale) -> Result<&'static Path, EnvError> {
     }
 }
 
-/// Whether `slug` belongs to an unrooted document.
-///
-/// `sync_translated_content` moves a translated document aside when its English
-/// source is renamed (`conflicting/…`) or removed (`orphaned/…`). The resulting
-/// slug is no longer part of any document tree, which is why such pages are
-/// built with `no_indexing` and without parents or other translations.
-///
-/// # Arguments
-///
-/// * `slug` - The slug to check, e.g. `conflicting/Web/API/Window/showModalDialog`.
+/// Whether `slug` belongs to an unrooted (`conflicting/…` or `orphaned/…`) document.
 pub fn is_unrooted(slug: &str) -> bool {
     slug.starts_with("conflicting/") || slug.starts_with("orphaned/")
 }
@@ -342,7 +333,6 @@ mod text {
                 "Web/JavaScript/Reference/Global_Objects/Array/toString",
                 false,
             ),
-            // Only a leading path segment counts, not a substring.
             ("Web/API/Element/conflicting/foo", false),
             ("conflictingly/Web/API", false),
             ("", false),

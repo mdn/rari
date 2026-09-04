@@ -92,9 +92,6 @@ pub fn invoke(
         } //
     };
     record_invocation(name, env.locale, true);
-    // Sidebars describe a document's place in a tree, which an unrooted page
-    // no longer has: slug-derived sidebars either fail outright or resolve
-    // against the wrong tree, and static ones highlight nothing. Render none.
     if matches!(is_sidebar, TemplType::Sidebar) && is_unrooted(env.slug) {
         return Ok((Default::default(), TemplType::Sidebar));
     }
@@ -128,9 +125,6 @@ mod test {
         }
     }
 
-    /// Sidebar macros render nothing on unrooted pages. Note that these
-    /// assertions never reach the sidebar builders, which would need content
-    /// roots; being skipped is precisely what makes them cheap.
     #[test]
     fn test_invoke_skips_sidebars_on_unrooted_pages() {
         let cases = vec![
@@ -139,7 +133,6 @@ mod test {
                 "conflicting/Web/JavaScript/Reference/Global_Objects/Array/toString",
             ),
             ("apiref", "orphaned/Web/API/Window/dialogArguments"),
-            // A static, slug-independent sidebar is skipped just the same.
             ("cssref", "conflicting/Web/CSS/counter-reset"),
         ];
         for (name, slug) in cases {
@@ -156,7 +149,6 @@ mod test {
         }
     }
 
-    /// The skip is gated on the templ type, so ordinary macros keep rendering.
     #[test]
     fn test_invoke_renders_non_sidebars_on_unrooted_pages() {
         let env = env_for_slug("conflicting/Web/API/Window/showModalDialog");
