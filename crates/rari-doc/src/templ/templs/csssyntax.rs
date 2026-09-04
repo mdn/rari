@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use css_syntax::syntax::{CssType, LinkedToken, SyntaxInput, render_formal_syntax};
+use css_syntax::syntax::{CssRefKind, CssType, LinkedToken, SyntaxInput, render_formal_syntax};
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 use crate::html::links::post_process_templ_links;
+use crate::templ::css_feature_index::resolve_formal_syntax_ref;
 
 static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     [(LinkedToken::Asterisk, "Asterisk: the entity may occur zero, one or several times".to_string()),
@@ -21,6 +22,11 @@ static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     (LinkedToken::DoubleBar, "Double bar: one or several of the entities must be present, in any order".to_string()),
     (LinkedToken::DoubleAmpersand, "Double ampersand: all of the entities must be present, in any order".to_string())].into_iter().collect()
 });
+
+/// Hands the CSS feature index to the formal-syntax renderer.
+fn resolve_reference(kind: CssRefKind, slug: &str) -> Option<String> {
+    resolve_formal_syntax_ref(kind, slug).map(str::to_string)
+}
 
 #[rari_f(register = "crate::Templ")]
 pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
@@ -85,7 +91,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
-        None,
+        Some(&resolve_reference),
     )?;
     post_process_templ_links(&html)
 }
@@ -103,7 +109,7 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
-        None,
+        Some(&resolve_reference),
     )?;
     post_process_templ_links(&html)
 }
