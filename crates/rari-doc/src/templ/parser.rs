@@ -46,8 +46,18 @@ fn from_node<'a>(
     })
 }
 
+/// Returns `None` for an unparseable argument (a tree-sitter `ERROR` node), but
+/// an empty [`Arg::String`] for a blank one (`""` or `{{foo(,"bar")}}`).
 fn ts_to_arg(value: tree_sitter::Node<'_>, content: &str) -> Option<Arg> {
     match value.kind() {
+        "none" => Some(Arg::String(
+            String::new(),
+            match content[value.start_byte()..].chars().next() {
+                Some('\'') => Quotes::Single,
+                Some('`') => Quotes::Back,
+                _ => Quotes::Double,
+            },
+        )),
         "string" => {
             if let Some(child) = value.child(0) {
                 ts_to_arg(child, content)
@@ -157,11 +167,45 @@ mod test {
     }
 
     #[test]
-    fn with_empty_string_arg() {
-        let p = parse(r#"{{foo("")}}"#);
-        assert!(matches!(
-            p.unwrap().first(),
-            Some(Token::Macro(macro_token)) if macro_token.args.first() == Some(&None)
-        ));
+    fn arg_shapes() {
+        let blank = Some(Arg::String(String::new(), Quotes::Double));
+        let cases: Vec<(&str, &str, Vec<Option<Arg>>)> = vec![
+            (
+                "empty string literal",
+                r#"{{foo("")}}"#,
+                vec![blank.clone()],
+            ),
+            (
+                "empty string literal among others",
+                r#"{{foo('', 'CSS')}}"#,
+                vec![
+                    Some(Arg::String(String::new(), Quotes::Single)),
+                    Some(Arg::String("CSS".into(), Quotes::Single)),
+                ],
+            ),
+            (
+                "omitted argument",
+                r#"{{foo(,"CSS")}}"#,
+                vec![
+                    blank.clone(),
+                    Some(Arg::String("CSS".into(), Quotes::Double)),
+                ],
+            ),
+            ("no parentheses", "{{foo}}", vec![]),
+            ("empty parentheses", "{{foo()}}", vec![]),
+            (
+                "unparseable argument",
+                "{{foo(\u{300c}label\u{300d})}}",
+                vec![None],
+            ),
+        ];
+        for (name, input, expected) in cases {
+            let tokens = parse(input).unwrap();
+            let args = match tokens.first() {
+                Some(Token::Macro(m)) => m.args.clone(),
+                other => panic!("{name}: expected a macro token, got {other:?}"),
+            };
+            assert_eq!(args, expected, "{name}");
+        }
     }
 }

@@ -25,6 +25,31 @@ pub enum ArgError {
     MustBeBool,
     #[error("must be provided")]
     MustBeProvided,
+    #[error("must not be empty")]
+    MustNotBeEmpty,
+    #[error("could not be parsed")]
+    MustBeParsable,
+    /// An [`ArgError`] annotated with the templ and the 1-based position and
+    /// name of the offending parameter.
+    #[error("{templ} argument {pos} ({name}) {source}")]
+    At {
+        templ: &'static str,
+        pos: usize,
+        name: &'static str,
+        #[source]
+        source: Box<ArgError>,
+    },
+}
+
+impl ArgError {
+    pub fn at(templ: &'static str, pos: usize, name: &'static str, source: ArgError) -> Self {
+        ArgError::At {
+            templ,
+            pos,
+            name,
+            source: Box::new(source),
+        }
+    }
 }
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -40,6 +65,14 @@ pub enum Arg {
     Int(i64),
     Float(f64),
     Bool(bool),
+}
+
+impl Arg {
+    /// Whether this is an empty string literal (`""`) or an omitted argument
+    /// (`{{foo(,"bar")}}`).
+    pub fn is_blank(&self) -> bool {
+        matches!(self, Arg::String(s, _) if s.is_empty())
+    }
 }
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
