@@ -4,9 +4,14 @@
 //! types, functions, selectors, at-rules, descriptors) to their canonical
 //! sub-path under `Web/CSS/Reference/`, replacing per-call
 //! `RariApi::get_page_nowarn` lookups during URL construction.
+//!
+//! Also used by `csssyntax` (see `resolve_formal_syntax_ref`) to decide whether
+//! a `<type>` in a formal-syntax box is documented at all.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
+
+use css_syntax::syntax::CssRefKind;
 
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
@@ -159,6 +164,36 @@ pub(crate) fn resolve_css_feature(category: CssRefCategory, slug: &str) -> Optio
     resolve_from_map(&CSS_FEATURE_INDEX, category, slug)
 }
 
+/// Resolve a formal-syntax `<type>` / `<'property'>` reference to the
+/// `Web/CSS/Reference/` sub-path documenting it, or `None` when none does (many
+/// webref productions are spec-internal). The lookup chain mirrors `cssxref`'s,
+/// so both land on the same page for a given name.
+pub(crate) fn resolve_formal_syntax_ref(kind: CssRefKind, slug: &str) -> Option<&'static str> {
+    resolve_formal_syntax_ref_from_map(&CSS_FEATURE_INDEX, kind, slug)
+}
+
+fn resolve_formal_syntax_ref_from_map<'a>(
+    map: &'a HashMap<String, Vec<String>>,
+    kind: CssRefKind,
+    slug: &str,
+) -> Option<&'a str> {
+    match kind {
+        CssRefKind::Property => resolve_from_map(map, CssRefCategory::Properties, slug),
+        // `_function` first, to prefer it over a same-named `_value` page.
+        // `Properties/` last, for functions documented under a property
+        // (`<palette-mix()>` under `font-palette`).
+        CssRefKind::Type if slug.ends_with("()") => {
+            let bare = slug.trim_end_matches("()");
+            resolve_from_map(map, CssRefCategory::Values, &format!("{bare}_function"))
+                .or_else(|| resolve_from_map(map, CssRefCategory::Values, bare))
+                .or_else(|| resolve_from_map(map, CssRefCategory::Properties, bare))
+        }
+        // No `Properties/` fallback: `rect()`'s `<top>`/`<right>`/`<bottom>`/
+        // `<left>` are positional argument types, not those properties.
+        CssRefKind::Type => resolve_from_map(map, CssRefCategory::Values, slug),
+    }
+}
+
 fn resolve_from_map<'a>(
     map: &'a HashMap<String, Vec<String>>,
     category: CssRefCategory,
@@ -206,6 +241,118 @@ mod tests {
             index_one(&mut map, after_ref);
         }
         map
+    }
+
+    /// The real layout for slugs `csssyntax` emits.
+    fn formal_syntax_fixture() -> HashMap<String, Vec<String>> {
+        let mut map: HashMap<String, Vec<String>> = HashMap::new();
+        for after_ref in [
+            "Properties/box-shadow",
+            "Properties/font-palette/palette-mix",
+            "Properties/padding-top",
+            "Values/color_value",
+            "Values/color_value/contrast-color",
+            "Values/cross-fade",
+            "Values/flex_value",
+            "Values/image/image-set",
+            "Values/length",
+            "Values/url_function",
+            "Values/url_value",
+        ] {
+            index_one(&mut map, after_ref);
+        }
+        map
+    }
+
+    #[test]
+    fn formal_syntax_refs_resolve_to_documented_pages_only() {
+        let map = formal_syntax_fixture();
+        // (label, node kind, slug as `render_node` normalizes it, expected sub-path)
+        let cases = vec![
+            (
+                "plain type",
+                CssRefKind::Type,
+                "length",
+                Some("Values/length"),
+            ),
+            (
+                "type aliased by `_value`, function sibling exists",
+                CssRefKind::Type,
+                "url",
+                Some("Values/url_value"),
+            ),
+            (
+                "type aliased by `_value`, no function sibling",
+                CssRefKind::Type,
+                "flex",
+                Some("Values/flex_value"),
+            ),
+            (
+                "function type nested under its parent type",
+                CssRefKind::Type,
+                "image-set()",
+                Some("Values/image/image-set"),
+            ),
+            (
+                "function type at the top level",
+                CssRefKind::Type,
+                "cross-fade()",
+                Some("Values/cross-fade"),
+            ),
+            (
+                "function type nested under a property",
+                CssRefKind::Type,
+                "palette-mix()",
+                Some("Properties/font-palette/palette-mix"),
+            ),
+            // `rect()`'s `<top>` is an argument type, not the `top` property.
+            (
+                "type with only a same-named property page",
+                CssRefKind::Type,
+                "box-shadow",
+                None,
+            ),
+            (
+                "type pre-normalized to a nested slug by `render_node`",
+                CssRefKind::Type,
+                "color_value/contrast-color",
+                Some("Values/color_value/contrast-color"),
+            ),
+            (
+                "property longhand",
+                CssRefKind::Property,
+                "padding-top",
+                Some("Properties/padding-top"),
+            ),
+            ("syntax production", CssRefKind::Type, "any-value", None),
+            ("tokenizer type", CssRefKind::Type, "number-token", None),
+            (
+                "undocumented function type",
+                CssRefKind::Type,
+                "url-set()",
+                None,
+            ),
+            (
+                "undocumented spec longhand",
+                CssRefKind::Property,
+                "box-shadow-color",
+                None,
+            ),
+            // `<'flex'>` is the shorthand, not the `<flex>` data type.
+            (
+                "property with only a same-named value page",
+                CssRefKind::Property,
+                "flex",
+                None,
+            ),
+        ];
+        for (label, kind, slug, expected) in cases {
+            assert_eq!(
+                resolve_formal_syntax_ref_from_map(&map, kind, slug),
+                expected,
+                "{label}: {kind:?} `{slug}`"
+            );
+        }
     }
 
     #[test]
