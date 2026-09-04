@@ -240,11 +240,38 @@ struct Term {
     pub length: usize,
     pub text: String,
 }
+/// Which `Web/CSS/Reference/` bucket a formal-syntax node refers to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CssRefKind {
+    /// A `<type>` or `<function()>` node.
+    Type,
+    /// A `<'property'>` node.
+    Property,
+}
+
+impl CssRefKind {
+    fn default_category(self) -> &'static str {
+        match self {
+            Self::Type => "Values",
+            Self::Property => "Properties",
+        }
+    }
+}
+
+/// Maps a reference to the `Web/CSS/Reference/` sub-path documenting it (e.g.
+/// `url` -> `Values/url_value`), or `None` to render it unlinked. The slug is
+/// bare, but keeps a trailing `()` for function types.
+///
+/// Injected because `css-syntax` has no access to the MDN page tree; `None`
+/// links everything under the default category.
+pub type CssRefResolver<'a> = &'a dyn Fn(CssRefKind, &str) -> Option<String>;
+
 pub struct SyntaxRenderer<'a> {
     pub locale_str: &'a str,
     pub value_definition_url: &'a str,
     pub syntax_tooltip: &'a HashMap<LinkedToken, String>,
     pub constituents: HashSet<Node>,
+    pub resolver: Option<CssRefResolver<'a>>,
 }
 
 impl SyntaxRenderer<'_> {
@@ -328,6 +355,25 @@ impl SyntaxRenderer<'_> {
         Ok(out)
     }
 
+    /// Render a `<type>` / `<'property'>` reference, linked only if the
+    /// resolver reports a page for it. Many webref productions are
+    /// spec-internal (`<number-token>`, `<any-value>`) and have none.
+    fn render_reference(&self, kind: CssRefKind, slug: &str, encoded: &str) -> String {
+        // FIXME: this should have the class type but to be compatible we use property
+        let span = format!(r#"<span class="token property">{encoded}</span>"#);
+        let path = match self.resolver {
+            Some(resolve) => match resolve(kind, slug) {
+                Some(path) => path,
+                None => return span,
+            },
+            None => format!("{}/{slug}", kind.default_category()),
+        };
+        format!(
+            r#"<a href="/{}/docs/Web/CSS/Reference/{path}">{span}</a>"#,
+            self.locale_str
+        )
+    }
+
     fn render_node(&self, name: &str, node: &Node) -> Result<String, SyntaxError> {
         let out = match node {
             Node::Multiplier(multiplier) => self.render_multiplier(multiplier)?,
@@ -336,10 +382,7 @@ impl SyntaxRenderer<'_> {
                 let encoded = html_escape::encode_safe(name);
                 if name.starts_with("<'") && name.ends_with("'>") {
                     let slug = &name[2..name.len() - 2];
-                    format!(
-                        r#"<a href="/{}/docs/Web/CSS/Reference/Properties/{slug}"><span class="token property">{encoded}</span></a>"#,
-                        self.locale_str
-                    )
+                    self.render_reference(CssRefKind::Property, slug, &encoded)
                 } else {
                     format!(r#"<span class="token property">{encoded}</span>"#)
                 }
@@ -368,11 +411,7 @@ impl SyntaxRenderer<'_> {
                     // FIXME: this should have the class type but to be compatible we use property
                     format!(r#"<span class="token property">{encoded}</span>"#,)
                 } else {
-                    // FIXME: this should have the class type but to be compatible we use property
-                    format!(
-                        r#"<a href="/{}/docs/Web/CSS/Reference/Values/{slug}"><span class="token property">{encoded}</span></a>"#,
-                        self.locale_str
-                    )
+                    self.render_reference(CssRefKind::Type, slug, &encoded)
                 }
             }
             Node::Function(_) => {
@@ -585,6 +624,7 @@ pub fn render_formal_syntax(
     value_definition_url: &str,
     syntax_tooltip: &HashMap<LinkedToken, String>,
     sources_prefix: Option<&str>,
+    resolver: Option<CssRefResolver>,
 ) -> Result<String, SyntaxError> {
     let scope = scope_from_browser_compat(browser_compat);
 
@@ -621,6 +661,7 @@ pub fn render_formal_syntax(
         syntax_tooltip,
         sources_prefix,
         skip_first,
+        resolver,
     )
 }
 
@@ -631,12 +672,14 @@ fn render_formal_syntax_internal(
     syntax_tooltip: &'_ HashMap<LinkedToken, String>,
     sources_prefix: Option<&str>,
     skip_first: bool,
+    resolver: Option<CssRefResolver>,
 ) -> Result<String, SyntaxError> {
     let mut renderer = SyntaxRenderer {
         locale_str,
         value_definition_url,
         syntax_tooltip,
         constituents: Default::default(),
+        resolver,
     };
     let mut out = String::new();
     write!(out, r#"<pre class="notranslate css-formal-syntax">"#)?;
@@ -829,6 +872,7 @@ mod test {
             value_definition_url: "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
+            resolver: None,
         };
         let SyntaxLine {
             name: _, syntax, ..
@@ -855,6 +899,7 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
+            None,
         )?;
         assert_eq!(result, expected);
         Ok(())
@@ -870,10 +915,70 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
+            None,
         )?;
         assert_eq!(result, expected);
         Ok(())
     }
+
+    /// `<angle>` is documented, `<zero>` is not.
+    #[test]
+    fn test_render_type_with_resolver() -> Result<(), SyntaxError> {
+        let resolver = |kind: CssRefKind, slug: &str| match (kind, slug) {
+            (CssRefKind::Type, "angle") => Some("Values/angle".to_string()),
+            _ => None,
+        };
+        let result = render_formal_syntax(
+            SyntaxInput::Css(CssType::Function("hue-rotate")),
+            Some("css.types.filter-function.hue-rotate"),
+            "en-US",
+            "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
+            &TOOLTIPS,
+            None,
+            Some(&resolver),
+        )?;
+        assert!(
+            result.contains(
+                r#"<a href="/en-US/docs/Web/CSS/Reference/Values/angle"><span class="token property">&lt;angle&gt;</span></a>"#
+            ),
+            "resolved type should be linked: {result}"
+        );
+        assert!(
+            result.contains(r#"<span class="token property">&lt;zero&gt;</span>"#),
+            "unresolved type should still render as a token: {result}"
+        );
+        assert!(
+            !result.contains("Reference/Values/zero"),
+            "unresolved type should not be linked: {result}"
+        );
+        Ok(())
+    }
+
+    /// Same for the `<'property'>` branch.
+    #[test]
+    fn test_render_property_with_resolver() -> Result<(), SyntaxError> {
+        let unresolvable = |_: CssRefKind, _: &str| None;
+        let result = render_formal_syntax(
+            SyntaxInput::Css(CssType::Property("padding")),
+            None,
+            "en-US",
+            "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
+            &TOOLTIPS,
+            None,
+            Some(&unresolvable),
+        )?;
+        assert!(
+            result
+                .contains(r#"<span class="token property">&lt;&#x27;padding-top&#x27;&gt;</span>"#),
+            "unresolved property should still render as a token: {result}"
+        );
+        assert!(
+            !result.contains("Reference/Properties/padding-top"),
+            "unresolved property should not be linked: {result}"
+        );
+        Ok(())
+    }
+
     #[test]
     fn test_render_function_scoped() -> Result<(), SyntaxError> {
         // rect() from the clip specs
@@ -884,6 +989,7 @@ mod test {
             "en-US",
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
+            None,
             None,
         )?;
         assert_eq!(result, expected);
@@ -896,6 +1002,7 @@ mod test {
             "en-US",
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
+            None,
             None,
         )?;
         assert_eq!(result, expected);
@@ -943,6 +1050,7 @@ mod test {
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
             None,
+            None,
         )?;
         assert!(result.contains("&lt;if()&gt;"));
         assert!(result.contains("if-branch"));
@@ -962,6 +1070,7 @@ mod test {
             "en-US",
             "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             &TOOLTIPS,
+            None,
             None,
         )?;
         assert!(result.contains("cursor-image"));
