@@ -382,8 +382,6 @@ impl SyntaxRenderer<'_> {
             }
             Node::Type(typ) => {
                 let encoded = html_escape::encode_safe(name);
-                // Bare feature name; mapping it onto MDN's page layout is the
-                // resolver's job.
                 let slug = match name {
                     name if name.starts_with('<') && name.ends_with('>') => {
                         &name[1..name.find(" [").or(name.find('[')).unwrap_or(name.len() - 1)]
