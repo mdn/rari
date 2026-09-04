@@ -375,29 +375,57 @@ fn byte_col_to_char_col_1based(line: &str, col: i64) -> i64 {
     byte_to_char_column(line, (col - 1) as usize) as i64 + 1
 }
 
+/// Look up a 1-based issue line in `content`, which excludes the frontmatter.
+fn content_line(content: &str, fm_offset: usize, line: i64) -> Option<&str> {
+    let line_idx = (line.saturating_sub(1) as usize).saturating_sub(fm_offset);
+    content.lines().nth(line_idx)
+}
+
+/// Convert the 1-based byte columns of an issue to 1-based character columns.
+///
+/// Start and end are resolved against their own lines: an issue can span
+/// lines, in which case `end_col` is a column within `end_line`, not within
+/// `line`. Positions that cannot be resolved fall back to the byte columns.
+fn char_columns(
+    content: &str,
+    fm_offset: usize,
+    line: i64,
+    col: i64,
+    end_line: i64,
+    end_col: i64,
+) -> (i64, i64) {
+    if line == 0 || col <= 0 {
+        return (col, end_col);
+    }
+    let Some(line_content) = content_line(content, fm_offset, line) else {
+        return (col, end_col);
+    };
+    let char_col = byte_col_to_char_col_1based(line_content, col);
+    let char_end_col = if end_col <= 0 {
+        0
+    } else if end_line > 0 && end_line != line {
+        match content_line(content, fm_offset, end_line) {
+            Some(end_line_content) => byte_col_to_char_col_1based(end_line_content, end_col),
+            None => end_col,
+        }
+    } else {
+        byte_col_to_char_col_1based(line_content, end_col)
+    };
+    (char_col, char_end_col)
+}
+
 impl DIssue {
     pub fn from_issue(issue: Issue, page: &Page) -> Option<Self> {
         if let Ok(id) = usize::try_from(issue.ic) {
             // Convert 1-based byte columns to 1-based character columns for display.
-            let (char_col, char_end_col) = if issue.line != 0 && issue.col > 0 {
-                // Get the line content (adjust for frontmatter offset)
-                let line_idx =
-                    (issue.line.saturating_sub(1) as usize).saturating_sub(page.fm_offset());
-                if let Some(line_content) = page.content().lines().nth(line_idx) {
-                    let char_col = byte_col_to_char_col_1based(line_content, issue.col);
-                    let char_end_col = if issue.end_col > 0 {
-                        byte_col_to_char_col_1based(line_content, issue.end_col)
-                    } else {
-                        0
-                    };
-                    (char_col, char_end_col)
-                } else {
-                    // Fallback: if we can't get the line, use byte positions (legacy behavior)
-                    (issue.col, issue.end_col)
-                }
-            } else {
-                (issue.col, issue.end_col)
-            };
+            let (char_col, char_end_col) = char_columns(
+                page.content(),
+                page.fm_offset(),
+                issue.line,
+                issue.col,
+                issue.end_line,
+                issue.end_col,
+            );
 
             let mut di = DisplayIssue {
                 id: id as i64,
@@ -684,6 +712,123 @@ mod tests {
         assert_eq!(byte_col_to_char_col_1based(emoji, 1), 1); // 'a'
         assert_eq!(byte_col_to_char_col_1based(emoji, 3), 3); // emoji starts at byte 3 (1-based)
         assert_eq!(byte_col_to_char_col_1based(emoji, 7), 4); // 'c' after the 4-byte emoji
+    }
+
+    #[test]
+    fn test_char_columns() {
+        // Line 1 is ASCII, line 2 contains a 4-byte emoji before its end.
+        let content = "abc {{Macro(\"x\",\n  \"🔥\", \"nope\")}} d\nascii only\n";
+
+        struct Case {
+            name: &'static str,
+            fm_offset: usize,
+            line: i64,
+            col: i64,
+            end_line: i64,
+            end_col: i64,
+            expected: (i64, i64),
+        }
+
+        let cases = vec![
+            Case {
+                name: "single ascii line",
+                fm_offset: 0,
+                line: 1,
+                col: 5,
+                end_line: 1,
+                end_col: 16,
+                expected: (5, 16),
+            },
+            Case {
+                // Byte column 19 on line 2 is its second `}`, the 16th character.
+                name: "end column on a later line with a multi-byte char",
+                fm_offset: 0,
+                line: 1,
+                col: 5,
+                end_line: 2,
+                end_col: 19,
+                expected: (5, 16),
+            },
+            Case {
+                name: "end line 0 sentinel falls back to the start line",
+                fm_offset: 0,
+                line: 1,
+                col: 5,
+                end_line: 0,
+                end_col: 16,
+                expected: (5, 16),
+            },
+            Case {
+                name: "unresolvable end line keeps the byte column",
+                fm_offset: 0,
+                line: 1,
+                col: 5,
+                end_line: 99,
+                end_col: 19,
+                expected: (5, 19),
+            },
+            Case {
+                name: "no end column",
+                fm_offset: 0,
+                line: 1,
+                col: 5,
+                end_line: 1,
+                end_col: 0,
+                expected: (5, 0),
+            },
+            Case {
+                name: "overflowed end column",
+                fm_offset: 0,
+                line: 1,
+                col: 5,
+                end_line: -1,
+                end_col: -1,
+                expected: (5, 0),
+            },
+            Case {
+                name: "no start column",
+                fm_offset: 0,
+                line: 2,
+                col: 0,
+                end_line: 2,
+                end_col: 19,
+                expected: (0, 19),
+            },
+            Case {
+                name: "unresolvable start line keeps the byte columns",
+                fm_offset: 0,
+                line: 99,
+                col: 5,
+                end_line: 99,
+                end_col: 19,
+                expected: (5, 19),
+            },
+            Case {
+                name: "frontmatter offset shifts both lookups",
+                fm_offset: 10,
+                line: 11,
+                col: 5,
+                end_line: 12,
+                end_col: 19,
+                expected: (5, 16),
+            },
+        ];
+
+        for case in cases {
+            assert_eq!(
+                char_columns(
+                    content,
+                    case.fm_offset,
+                    case.line,
+                    case.col,
+                    case.end_line,
+                    case.end_col
+                ),
+                case.expected,
+                "{}",
+                case.name
+            );
+        }
     }
 
     #[test]
