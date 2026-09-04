@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use css_syntax::syntax::{CssRefKind, CssType, LinkedToken, SyntaxInput, render_formal_syntax};
+use css_syntax::syntax::{
+    CssRefKind, CssType, LinkedToken, RefLinks, SyntaxInput, render_formal_syntax,
+};
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 
@@ -91,7 +93,10 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
-        Some(&resolve_reference),
+        RefLinks {
+            resolver: Some(&resolve_reference),
+            page_path: env.slug.strip_prefix("Web/CSS/Reference/"),
+        },
     )?;
     post_process_templ_links(&html)
 }
@@ -109,7 +114,10 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
-        Some(&resolve_reference),
+        RefLinks {
+            resolver: Some(&resolve_reference),
+            page_path: env.slug.strip_prefix("Web/CSS/Reference/"),
+        },
     )?;
     post_process_templ_links(&html)
 }
