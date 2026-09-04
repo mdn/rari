@@ -92,6 +92,12 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                     end_col = end_col
                 );
                 let _enter = span.enter();
+                if mac.malformed {
+                    warn!(
+                        source = "templ-syntax-error",
+                        "Macro {name} has invalid syntax"
+                    );
+                }
                 match invoke(env, &name, mac.args) {
                     Ok((rendered, TemplType::Sidebar)) => {
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
@@ -105,6 +111,10 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                     Err(e) if deny_warnings() => return Err(e),
                     Err(e) => {
                         match &e {
+                            // A malformed macro already reported a syntax error and its
+                            // recovered arguments are unreliable, so don't also complain
+                            // about them.
+                            DocError::ArgError(_) if mac.malformed => {}
                             DocError::ArgError(_) => warn!(source = "templ-arg-error", "Macro {e}"),
                             _ => warn!("{e}"),
                         }
