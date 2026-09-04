@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.34](https://github.com/mdn/rari/compare/v0.2.33...v0.2.34) (2026-09-04)
+
+
+### Features
+
+* **css_ref:** add alphabetical navigation to the index ([#851](https://github.com/mdn/rari/issues/851)) ([1049e3e](https://github.com/mdn/rari/commit/1049e3e818ea60a04359925613775f8cb9e0fa9f))
+
+
+### Bug Fixes
+
+* **css_ref:** list deprecated and non-standard pages with badges ([#850](https://github.com/mdn/rari/issues/850)) ([45b8e3c](https://github.com/mdn/rari/commit/45b8e3c1c37fb2e34efbbf0ca0b0c885cfcf6dd6))
+* **mdn-data:** surface missing mdn-data CSS property/at-rule entries as flaws ([#838](https://github.com/mdn/rari/issues/838)) ([7c92341](https://github.com/mdn/rari/commit/7c923417223f2683b84717efdb3a39844e157477))
+
+
+### Miscellaneous
+
+* **deps:** bump base64 from 0.22.1 to 0.23.1 ([#847](https://github.com/mdn/rari/issues/847)) ([34c1766](https://github.com/mdn/rari/commit/34c17660b2a0331a3076016928337a79ff21e175))
+* **deps:** bump comrak from 0.52.0 to 0.54.0 ([#839](https://github.com/mdn/rari/issues/839)) ([08eccc5](https://github.com/mdn/rari/commit/08eccc5506071a6c69e0e0d0d528e46c99a8b9e5))
+* **deps:** bump config from 0.15.23 to 0.15.25 ([#857](https://github.com/mdn/rari/issues/857)) ([28c7eb7](https://github.com/mdn/rari/commit/28c7eb7368a78033bd5cef9a409ccbdf8e84ac25))
+* **deps:** bump darling from 0.23.0 to 0.24.0 ([#848](https://github.com/mdn/rari/issues/848)) ([58d19ea](https://github.com/mdn/rari/commit/58d19ea6df715644a34bdf411755c31ca8dff13b))
+* **deps:** bump flate2 from 1.1.9 to 1.1.10 ([#863](https://github.com/mdn/rari/issues/863)) ([1b0e00c](https://github.com/mdn/rari/commit/1b0e00ced7099e9dd7332e01550f9f21f435e0ff))
+* **deps:** bump html-escape from 0.2.14 to 0.2.15 ([#861](https://github.com/mdn/rari/issues/861)) ([d69bb4f](https://github.com/mdn/rari/commit/d69bb4fedb97c272f2d54f192f48b3a2a34514b7))
+* **deps:** bump icu_locale_core from 2.2.0 to 2.3.0 ([#860](https://github.com/mdn/rari/issues/860)) ([03b460d](https://github.com/mdn/rari/commit/03b460d74d10531635fd18ebc0a4fd6e8fbb1134))
+* **deps:** bump ignore from 0.4.27 to 0.4.32 ([#846](https://github.com/mdn/rari/issues/846)) ([3c967f9](https://github.com/mdn/rari/commit/3c967f96a3536636a2170fca14afe7bc51a336e2))
+* **deps:** bump ignore from 0.4.32 to 0.4.33 ([#854](https://github.com/mdn/rari/issues/854)) ([f745981](https://github.com/mdn/rari/commit/f7459818b778c556f7c2dffe277b91ea261dd00c))
+* **deps:** bump imagesize from 0.14.0 to 0.15.0 ([#845](https://github.com/mdn/rari/issues/845)) ([497da92](https://github.com/mdn/rari/commit/497da92be0f494f22ef7c198c58f5f728dee2046))
+* **deps:** bump json-schema-to-typescript from 15.0.4 to 16.0.0 in /rari-npm ([#862](https://github.com/mdn/rari/issues/862)) ([40973dd](https://github.com/mdn/rari/commit/40973ddfc8a378d01527f60d73c01980369f4f38))
+* **deps:** bump json-schema-to-typescript in /rari-npm ([40973dd](https://github.com/mdn/rari/commit/40973ddfc8a378d01527f60d73c01980369f4f38))
+* **deps:** bump proc-macro2 from 1.0.106 to 1.0.107 ([#849](https://github.com/mdn/rari/issues/849)) ([feff3ac](https://github.com/mdn/rari/commit/feff3ac4d9bc173c1922b0cd22fffdf1e7aa7718))
+* **deps:** bump quick-xml from 0.41.0 to 0.42.0 ([#856](https://github.com/mdn/rari/issues/856)) ([1927894](https://github.com/mdn/rari/commit/1927894e06881d731db71b46970e36bd9563a0d6))
+* **deps:** bump schemars from 1.2.1 to 1.2.2 ([#864](https://github.com/mdn/rari/issues/864)) ([b88ef34](https://github.com/mdn/rari/commit/b88ef3431f19d1c2da764a8f5ab5491e7b8f2bcf))
+* **deps:** bump tower-http from 0.6.11 to 0.7.0 ([#840](https://github.com/mdn/rari/issues/840)) ([31cf8a2](https://github.com/mdn/rari/commit/31cf8a213074a1a0cfdf23986ff46c605fd02e3e))
+* **deps:** bump validator from 0.20.0 to 0.21.0 ([#855](https://github.com/mdn/rari/issues/855)) ([f97a9b4](https://github.com/mdn/rari/commit/f97a9b402dfdb3cd75a87424742b19f82aab67e7))
+* **templ:** remove `xsltref` ([#867](https://github.com/mdn/rari/issues/867)) ([734de29](https://github.com/mdn/rari/commit/734de29eec886b68a48021e15d2b876fbb81812c))
+
 ## [0.2.33](https://github.com/mdn/rari/compare/v0.2.32...v0.2.33) (2026-08-18)
 
 
