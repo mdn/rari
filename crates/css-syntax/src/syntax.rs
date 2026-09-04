@@ -153,10 +153,8 @@ impl Syntax {
     }
 }
 
-/// Types too large to expand inline as a constituent. Governs expansion only,
-/// not linking.
 #[inline]
-fn skip(name: &str) -> bool {
+fn should_skip_expansion(name: &str) -> bool {
     name == "color" || name == "gradient"
 }
 
@@ -174,7 +172,7 @@ fn get_syntax_internal(typ: CssType, scope: Option<&str>, top_level: bool) -> Sy
         }
         CssType::Type(name) => {
             let name = name.trim_end_matches("_value");
-            if skip(name) && !top_level {
+            if should_skip_expansion(name) && !top_level {
                 Syntax::default().to_syntax_line(format!("<{name}>"))
             } else {
                 get_generic_syntax(name, scope, &CSS_REF.types).to_syntax_line(format!("<{name}>"))
@@ -748,7 +746,7 @@ fn get_nodes_for_syntaxes(
             &ast?,
             &WalkOptions::<Vec<Constituent>> {
                 enter: |node: &Node, context: &mut Vec<Constituent>| {
-                    if !skip(node.str_name())
+                    if !should_skip_expansion(node.str_name())
                         && !context.iter().any(|constituent| constituent.node == *node)
                     {
                         context.push(node.clone().into())
