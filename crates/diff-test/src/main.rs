@@ -157,8 +157,6 @@ struct BuildArgs {
     fast: bool,
     #[arg(long)]
     value: bool,
-    #[arg(short, long)]
-    verbose: bool,
     #[arg(long)]
     sidebars: bool,
     #[arg(long)]
