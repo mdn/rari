@@ -165,7 +165,6 @@ pub fn root_for_locale(locale: Locale) -> Result<&'static Path, EnvError> {
     }
 }
 
-/// Whether `slug` belongs to an unrooted (`conflicting/…` or `orphaned/…`) document.
 pub fn is_unrooted(slug: &str) -> bool {
     slug.starts_with("conflicting/") || slug.starts_with("orphaned/")
 }
