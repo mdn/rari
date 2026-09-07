@@ -58,7 +58,6 @@ jobs:
         env:
           CONTENT_TRANSLATED_ROOT: ${{ github.workspace }}/translated-content/files
         run: echo "CONTENT_TRANSLATED_ROOT=$CONTENT_TRANSLATED_ROOT" >> "$GITHUB_ENV"
-        background: true
 
       - name: Wait for setup
         wait-all:
@@ -76,10 +75,8 @@ jobs:
         if: inputs.diff
         working-directory: content
         run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
-        background: true
 
       - name: Diff translated-content
         if: inputs.diff && inputs.translated-content
         working-directory: translated-content
         run: git diff --color=always --word-diff --word-diff-regex='[[:alnum:]_]+'
-        background: true
