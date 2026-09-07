@@ -20,6 +20,7 @@ use lol_html::{ElementContentHandlers, RewriteStrSettings, Selector, element, re
 use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
+use serde::Serialize;
 use serde_json::Value;
 use xml::fmt_html;
 
@@ -166,7 +167,7 @@ struct BuildArgs {
     stats_out: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 struct DiffStats {
     changed_files: usize,
     total_files: usize,
@@ -188,14 +189,6 @@ impl DiffStats {
         } else {
             0.0
         }
-    }
-
-    fn to_json(&self) -> Value {
-        serde_json::json!({
-            "changed_files": self.changed_files,
-            "total_files": self.total_files,
-            "changes": self.changes,
-        })
     }
 }
 
@@ -557,7 +550,7 @@ fn main() -> Result<(), anyhow::Error> {
             );
 
             if let Some(stats_out) = &arg.stats_out {
-                fs::write(stats_out, serde_json::to_vec_pretty(&stats.to_json())?)?;
+                fs::write(stats_out, serde_json::to_vec_pretty(&stats)?)?;
             }
         }
     }
@@ -641,7 +634,7 @@ mod tests {
                 case.name
             );
             assert_eq!(
-                stats.to_json(),
+                serde_json::to_value(&stats).unwrap(),
                 serde_json::json!({
                     "changed_files": case.expected_changed_files,
                     "total_files": case.total_files,
