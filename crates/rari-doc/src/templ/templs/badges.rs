@@ -14,11 +14,6 @@ pub fn experimental_inline() -> Result<String, DocError> {
 }
 
 #[rari_f(register = "crate::Templ")]
-pub fn experimentalbadge() -> Result<String, DocError> {
-    experimental_inline(env)
-}
-
-#[rari_f(register = "crate::Templ")]
 pub fn non_standard_inline() -> Result<String, DocError> {
     let mut out = String::new();
     write_non_standard(&mut out, env.locale)?;
