@@ -199,6 +199,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     // TODO cleanup
     let mut sidebars = sidebars
         .iter()
+        .filter(|s| !s.is_empty())
         .map(|s| postprocess_sidebar(s, page))
         .collect::<Vec<_>>();
     if let Some(sidebar) = &sidebar {
