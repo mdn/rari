@@ -95,7 +95,7 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                 if mac.malformed {
                     warn!(
                         source = "templ-syntax-error",
-                        "Macro {name} has invalid syntax"
+                        "Macro {name} has syntax error"
                     );
                 }
                 match invoke(env, &name, mac.args) {
