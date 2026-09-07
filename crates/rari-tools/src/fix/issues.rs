@@ -182,7 +182,7 @@ impl Candidate {
     }
 }
 
-/// Returns candidates in priority order: full href, then slug.
+/// Returns candidates in priority order: full href, slug, then both as pointy-bracket destinations.
 fn build_candidates(href: &str, suggestion: &str) -> Vec<Candidate> {
     let slug = extract_slug_from_href(href);
     let slug_suggestion = extract_slug_from_href(suggestion);
@@ -190,6 +190,18 @@ fn build_candidates(href: &str, suggestion: &str) -> Vec<Candidate> {
     let mut candidates = vec![Candidate::new(href, suggestion)];
     if href.starts_with('/') {
         candidates.push(Candidate::new(slug, slug_suggestion));
+    }
+
+    // Inside a pointy-bracket destination (`](<...>)`), CommonMark requires `<` and `>`
+    // to be backslash-escaped, so the raw markdown differs from the rendered href.
+    if href.contains('<') || href.contains('>') {
+        let pointy = |s: &str| format!("<{}>", s.replace('<', "\\<").replace('>', "\\>"));
+
+        candidates.push(Candidate::new(pointy(href), pointy(suggestion)));
+
+        if href.starts_with('/') {
+            candidates.push(Candidate::new(pointy(slug), pointy(slug_suggestion)));
+        }
     }
 
     candidates
@@ -1292,6 +1304,64 @@ Some content here.
     }
 
     #[test]
+    fn test_backslash_escaped_angle_brackets_in_url() {
+        let raw = r#"---
+title: Expressions and operators
+slug: Web/JavaScript/Guide/Expressions_and_operators
+---
+| [Left shift](</ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#\<\<_(Left_shift)>) | desc |
+"#;
+
+        let issues = vec![DIssue::BrokenLink {
+            display_issue: DisplayIssue {
+                id: 1,
+                explanation: Some("Redirect detected".to_string()),
+                suggestion: Some(
+                    "/ru/docs/Web/JavaScript/Reference/Operators/New_Operators#<<_(New_left_shift)"
+                        .to_string(),
+                ),
+                fixable: Some(true),
+                fixed: false,
+                line: Some(5),
+                column: Some(14),
+                end_line: Some(5),
+                end_column: Some(88),
+                source_context: None,
+                filepath: Some("/path/to/index.md".to_string()),
+                name: IssueType::RedirectedLink,
+            },
+            href: Some(
+                "/ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#<<_(Left_shift)"
+                    .to_string(),
+            ),
+        }];
+
+        let suggestions = collect_suggestions(raw, &issues);
+
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(
+            suggestions[0].search,
+            "</ru/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators#\\<\\<_(Left_shift)>"
+        );
+        // Replace must keep the pointy-bracket form with escaped `<<`, not raw `<<`.
+        assert_eq!(
+            suggestions[0].replace,
+            "</ru/docs/Web/JavaScript/Reference/Operators/New_Operators#\\<\\<_(New_left_shift)>"
+        );
+
+        let result = apply_suggestions(raw, &suggestions).unwrap();
+        assert_eq!(
+            result,
+            r#"---
+title: Expressions and operators
+slug: Web/JavaScript/Guide/Expressions_and_operators
+---
+| [Left shift](</ru/docs/Web/JavaScript/Reference/Operators/New_Operators#\<\<_(New_left_shift)>) | desc |
+"#
+        );
+    }
+
+    #[test]
     fn test_build_candidates() {
         struct Case {
             name: &'static str,
@@ -1325,6 +1395,57 @@ Some content here.
                 href: "Web/API/Foo",
                 suggestion: "Web/API/Bar",
                 expected: vec![("Web/API/Foo", "Web/API/Bar")],
+            },
+            Case {
+                name: "angle brackets in href only",
+                href: "/ru/docs/Bitwise_Operators#<<_(Left_shift)",
+                suggestion: "/ru/docs/Operators/Left_shift",
+                expected: vec![
+                    (
+                        "/ru/docs/Bitwise_Operators#<<_(Left_shift)",
+                        "/ru/docs/Operators/Left_shift",
+                    ),
+                    ("Bitwise_Operators#<<_(Left_shift)", "Operators/Left_shift"),
+                    (
+                        "</ru/docs/Bitwise_Operators#\\<\\<_(Left_shift)>",
+                        "</ru/docs/Operators/Left_shift>",
+                    ),
+                    (
+                        "<Bitwise_Operators#\\<\\<_(Left_shift)>",
+                        "<Operators/Left_shift>",
+                    ),
+                ],
+            },
+            Case {
+                name: "angle brackets in href and suggestion",
+                href: "/a#<<_old",
+                suggestion: "/b#<<_new",
+                expected: vec![
+                    ("/a#<<_old", "/b#<<_new"),
+                    ("a#<<_old", "b#<<_new"),
+                    ("</a#\\<\\<_old>", "</b#\\<\\<_new>"),
+                    ("<a#\\<\\<_old>", "<b#\\<\\<_new>"),
+                ],
+            },
+            Case {
+                name: "greater-than only",
+                href: "/a#>>_shift",
+                suggestion: "/b",
+                expected: vec![
+                    ("/a#>>_shift", "/b"),
+                    ("a#>>_shift", "b"),
+                    ("</a#\\>\\>_shift>", "</b>"),
+                    ("<a#\\>\\>_shift>", "<b>"),
+                ],
+            },
+            Case {
+                name: "angle brackets without leading slash",
+                href: "foo#<<_x",
+                suggestion: "bar#<<_y",
+                expected: vec![
+                    ("foo#<<_x", "bar#<<_y"),
+                    ("<foo#\\<\\<_x>", "<bar#\\<\\<_y>"),
+                ],
             },
         ];
 
