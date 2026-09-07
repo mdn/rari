@@ -16,9 +16,6 @@ pub struct MacroToken {
     pub ident: String,
     pub pos: (usize, usize),
     pub args: Vec<Option<Arg>>,
-    /// Whether the macro contains a syntax error, e.g. a stray parenthesis in
-    /// `{{cssxref(("color")}}`. Its `args` are then whatever tree-sitter managed
-    /// to recover and should not be trusted.
     pub malformed: bool,
 }
 
