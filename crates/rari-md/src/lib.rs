@@ -192,7 +192,6 @@ pub fn m2h_internal(
 ) -> Result<String, MarkdownError> {
     let arena = Arena::new();
     let mut options = Options::default();
-    options.extension.tagfilter = false;
     options.render.sourcepos = m2h_options.sourcepos;
     options.render.r#unsafe = true;
     options.extension.table = true;
