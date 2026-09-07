@@ -85,6 +85,7 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
+        None,
     )?;
     post_process_templ_links(&html)
 }
@@ -102,6 +103,7 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
+        None,
     )?;
     post_process_templ_links(&html)
 }
