@@ -1,0 +1,101 @@
+name: PR Diff Companion
+
+on:
+  workflow_run:
+    workflows: ["Build Content and Diff"]
+    types: [completed]
+
+permissions:
+  # Download artifact of the triggering run.
+  actions: read
+  # Label and comment on the pull request.
+  pull-requests: write
+
+jobs:
+  label:
+    if: |
+      github.repository_owner == 'mdn' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Identify PR
+        id: identify-pr
+        env:
+          BASE_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          # Fork PRs control the artifact, so trust only the event payload and the API.
+          # Filter on head.sha: the endpoint also lists PRs that merely contain the commit.
+          PR_NUMBER=$(gh api "repos/$HEAD_REPO/commits/$HEAD_SHA/pulls" \
+            --jq 'first(.[] | select(.base.repo.full_name == env.BASE_REPO and .head.sha == env.HEAD_SHA and .state == "open") | .number)')
+          if [[ -z "$PR_NUMBER" ]]; then
+            echo "::notice::No open PR with head $HEAD_SHA; nothing to do."
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Download diff stats
+        if: steps.identify-pr.outputs.number != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: build-diff-stats
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Label PR and comment
+        if: steps.identify-pr.outputs.number != ''
+        env:
+          PR: ${{ steps.identify-pr.outputs.number }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$PR" =~ ^[0-9]+$ ]] || exit 1
+
+          ARTIFACT_ID=$(gh api "/repos/$GH_REPO/actions/runs/$RUN_ID/artifacts" \
+            --jq '.artifacts[] | select(.name == "build-diff-report") | .id')
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]] || exit 1
+
+          read -r CHANGED TOTAL CHANGES <<<"$(jq -r '
+            [.changed_files, .total_files, .changes]
+            | map(numbers | floor) | select(length == 3) | @tsv' diff-stats.json)"
+          [[ "$CHANGED" =~ ^[0-9]+$ && "$TOTAL" =~ ^[0-9]+$ && "$CHANGES" =~ ^[0-9]+$ ]] || exit 1
+
+          if (( CHANGED == 0 )); then
+            LABEL="diff: none"
+          elif (( CHANGED <= 10 )); then
+            LABEL="diff: 1-10 pages"
+          elif (( CHANGED <= 100 )); then
+            LABEL="diff: 11-100 pages"
+          elif (( CHANGED <= 1000 )); then
+            LABEL="diff: 101-1000 pages"
+          else
+            LABEL="diff: 1000+ pages"
+          fi
+          export LABEL
+
+          STALE=$(gh pr view "$PR" --json labels \
+            --jq '[.labels[].name | select(startswith("diff: ") and . != env.LABEL)] | join(",")')
+          gh pr edit "$PR" --add-label "$LABEL" ${STALE:+--remove-label "$STALE"}
+
+          export MARKER='<!-- rari-build-diff -->'
+          COMMENT_ID=$(gh api --paginate "/repos/$GH_REPO/issues/$PR/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains(env.MARKER))) | .id' \
+            | head -n1)
+
+          if (( CHANGED > 0 )); then
+            PERCENTAGE=$(awk -v c="$CHANGED" -v t="$TOTAL" 'BEGIN { printf "%.1f", (t > 0 ? c / t * 100 : 0) }')
+            BODY="$MARKER
+          **Build diff:** $CHANGES changes in $CHANGED of $TOTAL pages ($PERCENTAGE%)
+
+          [Download report](https://github.com/$GH_REPO/actions/runs/$RUN_ID/artifacts/$ARTIFACT_ID) (\`diff.html\`)"
+            if [[ -n "$COMMENT_ID" ]]; then
+              gh api -X PATCH "/repos/$GH_REPO/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
+            else
+              gh api -X POST "/repos/$GH_REPO/issues/$PR/comments" -f body="$BODY" > /dev/null
+            fi
+          elif [[ -n "$COMMENT_ID" ]]; then
+            gh api -X DELETE "/repos/$GH_REPO/issues/comments/$COMMENT_ID"
+          fi
