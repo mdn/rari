@@ -154,7 +154,7 @@ impl Syntax {
 }
 
 #[inline]
-fn skip(name: &str) -> bool {
+fn should_skip_expansion(name: &str) -> bool {
     name == "color" || name == "gradient"
 }
 
@@ -172,7 +172,7 @@ fn get_syntax_internal(typ: CssType, scope: Option<&str>, top_level: bool) -> Sy
         }
         CssType::Type(name) => {
             let name = name.trim_end_matches("_value");
-            if skip(name) && !top_level {
+            if should_skip_expansion(name) && !top_level {
                 Syntax::default().to_syntax_line(format!("<{name}>"))
             } else {
                 get_generic_syntax(name, scope, &CSS_REF.types).to_syntax_line(format!("<{name}>"))
@@ -383,23 +383,17 @@ impl SyntaxRenderer<'_> {
             Node::Type(typ) => {
                 let encoded = html_escape::encode_safe(name);
                 let slug = match name {
-                    "<color>" => "color_value",
-                    "<position>" => "position_value",
-                    "<contrast-color()>" => "color_value/contrast-color",
-                    "<device-cmyk()>" => "color_value/device-cmyk",
-                    "<light-dark()>" => "color_value/light-dark",
                     name if name.starts_with('<') && name.ends_with('>') => {
                         &name[1..name.find(" [").or(name.find('[')).unwrap_or(name.len() - 1)]
                     }
                     name => &name[0..name.find(" [").or(name.find('[')).unwrap_or(name.len())],
                 };
 
-                if !skip(slug)
-                    && (self.constituents.contains(node)
-                        || self.constituents.contains(&Node::Type(Type {
-                            name: typ.name.clone(),
-                            opts: None,
-                        })))
+                if self.constituents.contains(node)
+                    || self.constituents.contains(&Node::Type(Type {
+                        name: typ.name.clone(),
+                        opts: None,
+                    }))
                 {
                     // FIXME: this should have the class type but to be compatible we use property
                     format!(r#"<span class="token property">{encoded}</span>"#,)
@@ -750,7 +744,7 @@ fn get_nodes_for_syntaxes(
             &ast?,
             &WalkOptions::<Vec<Constituent>> {
                 enter: |node: &Node, context: &mut Vec<Constituent>| {
-                    if !skip(node.str_name())
+                    if !should_skip_expansion(node.str_name())
                         && !context.iter().any(|constituent| constituent.node == *node)
                     {
                         context.push(node.clone().into())
@@ -860,12 +854,22 @@ mod test {
 
     #[test]
     fn test_render_terms() -> Result<(), SyntaxError> {
+        // Stand-in for the page index: only these constituents have a page.
+        let resolver = |kind: CssRefKind, slug: &str| -> Option<String> {
+            assert_eq!(kind, CssRefKind::Type);
+            match slug {
+                "system-color" => Some("Values/system-color".into()),
+                "contrast-color()" => Some("Values/color_value/contrast-color".into()),
+                "device-cmyk()" => Some("Values/color_value/device-cmyk".into()),
+                _ => None,
+            }
+        };
         let renderer = SyntaxRenderer {
             locale_str: "en-US",
             value_definition_url: "/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax",
             syntax_tooltip: &TOOLTIPS,
             constituents: Default::default(),
-            resolver: None,
+            resolver: Some(&resolver),
         };
         let SyntaxLine {
             name: _, syntax, ..
@@ -874,7 +878,7 @@ mod test {
             let rendered = renderer.render_terms(&group.terms, group.combinator)?;
             assert_eq!(
                 rendered,
-                "  <a href=\"/en-US/docs/Web/CSS/Reference/Values/color-base\"><span class=\"token property\">&lt;color-base&gt;</span></a>        <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>        <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/color_value/contrast-color\"><span class=\"token property\">&lt;contrast-color()&gt;</span></a>  <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/color_value/device-cmyk\"><span class=\"token property\">&lt;device-cmyk()&gt;</span></a>     <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/light-dark-color\"><span class=\"token property\">&lt;light-dark-color&gt;</span></a>  <br/>"
+                "  <span class=\"token property\">&lt;color-base&gt;</span>        <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token keyword\">currentColor</span>        <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/system-color\"><span class=\"token property\">&lt;system-color&gt;</span></a>      <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/color_value/contrast-color\"><span class=\"token property\">&lt;contrast-color()&gt;</span></a>  <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <a href=\"/en-US/docs/Web/CSS/Reference/Values/color_value/device-cmyk\"><span class=\"token property\">&lt;device-cmyk()&gt;</span></a>     <a href=\"/en-US/docs/Web/CSS/Guides/Values_and_units/Value_definition_syntax#single_bar\" title=\"Single bar: exactly one of the entities must be present\">|</a><br/>  <span class=\"token property\">&lt;light-dark-color&gt;</span>  <br/>"
             );
         } else {
             panic!("no group node")
