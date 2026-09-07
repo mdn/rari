@@ -161,6 +161,42 @@ struct BuildArgs {
     sidebars: bool,
     #[arg(long)]
     flaws: bool,
+    /// Write diff stats as JSON to this path.
+    #[arg(long)]
+    stats_out: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DiffStats {
+    changed_files: usize,
+    total_files: usize,
+    changes: usize,
+}
+
+impl DiffStats {
+    fn new(total_files: usize, same: usize, changes: usize) -> Self {
+        Self {
+            changed_files: total_files.saturating_sub(same),
+            total_files,
+            changes,
+        }
+    }
+
+    fn percentage(&self) -> f64 {
+        if self.total_files > 0 {
+            (self.changed_files as f64 / self.total_files as f64) * 100.0
+        } else {
+            0.0
+        }
+    }
+
+    fn to_json(&self) -> Value {
+        serde_json::json!({
+            "changed_files": self.changed_files,
+            "total_files": self.total_files,
+            "changes": self.changes,
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -509,23 +545,111 @@ fn main() -> Result<(), anyhow::Error> {
                 file.write_all(out.into_iter().collect::<String>().as_bytes())?;
             }
 
-            let changed_files = hits - same.load(Relaxed);
-            let changes = total_changes.load(Relaxed);
-            let percentage = if hits > 0 {
-                (changed_files as f64 / hits as f64) * 100.0
-            } else {
-                0.0
-            };
+            let stats = DiffStats::new(hits, same.load(Relaxed), total_changes.load(Relaxed));
 
             println!(
                 "Took: {:?} - {} changes in {} of {} files ({:.1}%)",
                 start.elapsed(),
-                changes,
-                changed_files,
-                hits,
-                percentage
+                stats.changes,
+                stats.changed_files,
+                stats.total_files,
+                stats.percentage()
             );
+
+            if let Some(stats_out) = &arg.stats_out {
+                fs::write(stats_out, serde_json::to_vec_pretty(&stats.to_json())?)?;
+            }
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn diff_stats() {
+        struct Case {
+            name: &'static str,
+            total_files: usize,
+            same: usize,
+            changes: usize,
+            expected_changed_files: usize,
+            expected_percentage: f64,
+        }
+
+        let cases = vec![
+            Case {
+                name: "empty",
+                total_files: 0,
+                same: 0,
+                changes: 0,
+                expected_changed_files: 0,
+                expected_percentage: 0.0,
+            },
+            Case {
+                name: "no changes",
+                total_files: 100,
+                same: 100,
+                changes: 0,
+                expected_changed_files: 0,
+                expected_percentage: 0.0,
+            },
+            Case {
+                name: "all changed",
+                total_files: 4,
+                same: 0,
+                changes: 9,
+                expected_changed_files: 4,
+                expected_percentage: 100.0,
+            },
+            Case {
+                name: "partial",
+                total_files: 200,
+                same: 150,
+                changes: 75,
+                expected_changed_files: 50,
+                expected_percentage: 25.0,
+            },
+            Case {
+                name: "same exceeds total saturates",
+                total_files: 3,
+                same: 5,
+                changes: 0,
+                expected_changed_files: 0,
+                expected_percentage: 0.0,
+            },
+        ];
+
+        for case in cases {
+            let stats = DiffStats::new(case.total_files, case.same, case.changes);
+            assert_eq!(
+                stats,
+                DiffStats {
+                    changed_files: case.expected_changed_files,
+                    total_files: case.total_files,
+                    changes: case.changes,
+                },
+                "{}",
+                case.name
+            );
+            assert_eq!(
+                stats.percentage(),
+                case.expected_percentage,
+                "{}",
+                case.name
+            );
+            assert_eq!(
+                stats.to_json(),
+                serde_json::json!({
+                    "changed_files": case.expected_changed_files,
+                    "total_files": case.total_files,
+                    "changes": case.changes,
+                }),
+                "{}",
+                case.name
+            );
+        }
+    }
 }
