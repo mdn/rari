@@ -139,50 +139,24 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                 let key = (line_num, decoded_href.to_string());
                 let min_byte_offset = next_search_from.get(&key).copied().unwrap_or(0);
 
-                // actual_offset returns the END of the href in the raw markdown.
-                // We need to find the START by searching backward for the text.
-                let offset_end = actual_offset(raw, dissue, min_byte_offset);
-
-                // Ensure offset_end is on a char boundary
-                let offset_end_adjusted =
-                    adjust_to_char_boundary(raw, offset_end, Direction::Forward);
-
-                // Try 1: Search for the full href
-                let try_search = |search_text: &str| -> Option<usize> {
-                    let search_start = offset_end.saturating_sub(search_text.len());
-
-                    // Ensure search_start is on a char boundary
-                    let search_start =
-                        adjust_to_char_boundary(raw, search_start, Direction::Backward);
-
-                    if let Some(relative_pos) =
-                        raw[search_start..offset_end_adjusted].rfind(search_text)
-                    {
-                        let href_start = search_start + relative_pos;
-                        let href_end = href_start + search_text.len();
-
-                        // Verify this is the correct match
-                        if (href_end == offset_end || href_end == offset_end_adjusted)
-                            && &raw[href_start..href_end] == search_text
-                        {
-                            return Some(href_start);
-                        }
-                    }
-                    None
-                };
+                // The column refers to the rendered HTML, not the markdown, so search from the line start.
+                let line_start =
+                    calculate_line_start_offset(raw, (line_num as usize).saturating_sub(1));
+                let search_from = line_start.max(min_byte_offset);
 
                 // Try finding the full href first, fallback to slug
-                let result = search_with_slug_fallback(&decoded_href, try_search).map(
-                    |(href_start, search_text)| {
-                        // If we found the full href, use full suggestion; if slug, extract slug from suggestion
-                        let replace_text = if search_text == decoded_href.as_ref() {
-                            decoded_suggestion.to_string()
-                        } else {
-                            extract_slug_from_href(&decoded_suggestion).to_string()
-                        };
-                        (href_start, search_text, replace_text)
-                    },
-                );
+                let result = search_with_slug_fallback(&decoded_href, |search_text| {
+                    find_non_prefix_match(raw, search_from, search_text)
+                })
+                .map(|(href_start, search_text)| {
+                    // If we found the full href, use full suggestion; if slug, extract slug from suggestion
+                    let replace_text = if search_text == decoded_href.as_ref() {
+                        decoded_suggestion.to_string()
+                    } else {
+                        extract_slug_from_href(&decoded_suggestion).to_string()
+                    };
+                    (href_start, search_text, replace_text)
+                });
 
                 if let Some((href_start, search_text, replace_text)) = result {
                     // Record the end of this match so the next identical href on the same
@@ -194,16 +168,11 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                         replace: replace_text,
                     })
                 } else {
-                    // Show context around the offset for debugging
-                    let search_start = offset_end.saturating_sub(decoded_href.len());
-                    let context_start = search_start;
-                    let context_end = offset_end_adjusted.min(raw.len());
-                    let context = &raw[context_start..context_end];
                     tracing::warn!(
-                        "Could not locate '{}' before offset {} (searched region: {:?})",
+                        "Could not locate '{}' on line {} (searched from byte offset {})",
                         decoded_href,
-                        offset_end,
-                        context
+                        line_num,
+                        search_from
                     );
                     None
                 }
@@ -332,45 +301,6 @@ pub fn fix_page(page: &Page) -> Result<bool, ToolError> {
         buffed.write_all(fixed.as_bytes())?;
     }
     Ok(is_fixed)
-}
-
-pub fn actual_offset(raw: &str, dissue: &DIssue, min_byte_offset: usize) -> usize {
-    let href = match dissue {
-        DIssue::BrokenLink {
-            href: Some(href), ..
-        } => href,
-        DIssue::Macros {
-            href: Some(href), ..
-        } => href,
-        _ => return 0,
-    };
-
-    // Try to find the href in the markdown. First try the full href, then fallback to slug.
-    let decoded_href = html_escape::decode_html_entities(href);
-
-    // Get line information from the issue
-    let line_num = dissue.display_issue().line;
-    if let Some(line) = line_num {
-        let line_idx = (line as usize).saturating_sub(1);
-        let line_start_offset = calculate_line_start_offset(raw, line_idx);
-
-        // Start searching from the later of the line start or the min_byte_offset.
-        // min_byte_offset is set to past the end of the previous match for the same
-        // href on the same line, so repeated identical hrefs each find their own occurrence.
-        let search_from = line_start_offset.max(min_byte_offset);
-
-        // Try searching for the full href first, fallback to slug
-        if let Some((offset, _found_text)) =
-            search_with_slug_fallback(&decoded_href, |search_text| {
-                find_non_prefix_match(raw, search_from, search_text)
-                    .map(|start| start + search_text.len())
-            })
-        {
-            return offset;
-        }
-    }
-
-    0
 }
 
 /// Finds a match for search_text that is NOT a prefix of a longer string.
