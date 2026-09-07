@@ -12,7 +12,7 @@ use crate::anchor::anchorize;
 use crate::ctype::isspace;
 use crate::ext::DELIM_START;
 use crate::node_card::{NoteCard, is_callout};
-use crate::utils::{escape_href, tagfilter_block};
+use crate::utils::escape_href;
 
 #[derive(Default)]
 pub struct RariContext {
@@ -189,8 +189,6 @@ create_formatter!(CustomFormatter<RariContext>, {
                 context.escape(literal)?;
             } else if !context.options.render.r#unsafe {
                 context.write_str("<!-- raw HTML omitted -->")?;
-            } else if context.options.extension.tagfilter {
-                tagfilter_block(literal, context)?;
             } else {
                 context.write_str(literal)?;
             }
