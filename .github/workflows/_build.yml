@@ -239,6 +239,7 @@ jobs:
               -o -path '*/en-us/web/css/reference/properties/color/index.md' \
               -o -path '*/en-us/web/css/reference/properties/index.md' \
               -o -path '*/en-us/web/css/reference/selectors/index.md' \
+              -o -path '*/en-us/web/css/reference/values/calc/index.md' \
               -o -path '*/en-us/web/css/reference/values/index.md' \
               -o -path '*/en-us/web/html/guides/cheatsheet/index.md' \
               -o -path '*/en-us/web/html/guides/date_and_time_formats/index.md' \
