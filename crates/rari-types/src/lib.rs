@@ -29,8 +29,6 @@ pub enum ArgError {
     MustNotBeEmpty,
     #[error("could not be parsed")]
     MustBeParsable,
-    /// An [`ArgError`] annotated with the templ and the 1-based position and
-    /// name of the offending parameter.
     #[error("{templ} argument {pos} ({name}) {source}")]
     At {
         templ: &'static str,
@@ -68,8 +66,6 @@ pub enum Arg {
 }
 
 impl Arg {
-    /// Whether this is an empty string literal (`""`) or an omitted argument
-    /// (`{{foo(,"bar")}}`).
     pub fn is_blank(&self) -> bool {
         matches!(self, Arg::String(s, _) if s.is_empty())
     }
