@@ -10,6 +10,7 @@ use rari_types::locale::Locale;
 
 use super::l10n::l10n_json_data;
 use super::titles::api_page_title;
+use crate::baseline::get_baseline_status;
 use crate::error::DocError;
 use crate::html::links::{LinkModifier, render_internal_link};
 use crate::pages::page::{Page, PageLike, PageReader};
@@ -82,12 +83,47 @@ pub fn write_li_with_badges(
             badge_locale: locale,
             code,
             only_en_us: locale_page.locale() != locale,
+            baseline: get_baseline_status(page),
         },
         true,
     )?;
     if closed {
         write!(out, "</li>")?;
     }
+    Ok(())
+}
+
+pub fn write_li_with_details(
+    out: &mut String,
+    page: &Page,
+    locale: Locale,
+    code: bool,
+    inner: &str,
+) -> Result<(), DocError> {
+    let locale_page = if locale != Default::default() {
+        &Page::from_url_with_locale_and_fallback(page.url(), locale)?
+    } else {
+        page
+    };
+    out.push_str("<li><details><summary>");
+    render_internal_link(
+        out,
+        locale_page.url(),
+        None,
+        &html_escape::encode_safe(locale_page.short_title().unwrap_or(locale_page.title())),
+        None,
+        &LinkModifier {
+            badges: page.status(),
+            badge_locale: locale,
+            code,
+            only_en_us: locale_page.locale() != locale,
+            baseline: get_baseline_status(page),
+        },
+        true,
+    )?;
+    out.push_str("</summary><ol>");
+    out.push_str(inner);
+    out.push_str("</ol></details></li>");
     Ok(())
 }
 
@@ -105,6 +141,7 @@ pub fn write_parent_li(out: &mut String, page: &Page, locale: Locale) -> Result<
             badge_locale: locale,
             code: false,
             only_en_us: page.locale() != locale,
+            baseline: get_baseline_status(page),
         },
         true,
     )?;
@@ -192,11 +229,7 @@ pub fn list_sub_pages_nested_internal(
                 write_li_with_badges(out, &sub_page, locale, code, true)?;
             }
         } else {
-            if page_type_match {
-                write_li_with_badges(out, &sub_page, locale, code, false)?;
-            }
             let mut sub_pages_out = String::new();
-
             list_sub_pages_nested_internal(
                 &mut sub_pages_out,
                 sub_page.url(),
@@ -209,13 +242,12 @@ pub fn list_sub_pages_nested_internal(
                     include_parent,
                 },
             )?;
-            if !sub_pages_out.is_empty() {
-                out.push_str("<ol>");
-                out.push_str(&sub_pages_out);
-                out.push_str("</ol>");
-            }
             if page_type_match {
-                out.push_str("</li>");
+                if sub_pages_out.is_empty() {
+                    write_li_with_badges(out, &sub_page, locale, code, true)?;
+                } else {
+                    write_li_with_details(out, &sub_page, locale, code, &sub_pages_out)?;
+                }
             }
         }
     }

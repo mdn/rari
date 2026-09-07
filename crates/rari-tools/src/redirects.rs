@@ -304,6 +304,33 @@ pub fn remove_redirects_by_targets(locale: Locale, targets: &[String]) -> Result
     Ok(())
 }
 
+/// Validates that a redirect file uses tabs (not spaces) as delimiters.
+///
+/// This ensures the file is in canonical form with tabs as field separators.
+/// Lines with space separators should be normalized via `fix_redirects`.
+///
+/// Returns one error per offending line so callers can report them all at once.
+fn validate_redirects_format(path: &Path) -> Result<Vec<ToolError>, ToolError> {
+    let lines = read_lines(path)?;
+    let mut errors = Vec::new();
+    for (line_num, line) in lines.map_while(Result::ok).enumerate() {
+        if line.starts_with('#') || line.trim().is_empty() {
+            continue;
+        }
+        // A line uses a space separator if it has no tab but splits into
+        // multiple fields on whitespace.
+        let has_space_separator = !line.contains('\t') && line.split_whitespace().count() >= 2;
+
+        if has_space_separator {
+            errors.push(ToolError::InvalidRedirectSeparator(
+                line_num + 1,
+                line.trim().to_string(),
+            ));
+        }
+    }
+    Ok(errors)
+}
+
 /// Optimizes and rewrites redirect rules for supported locales.
 ///
 /// This function:
@@ -444,20 +471,30 @@ pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolEr
     let locales = Locale::for_generic_and_spas();
     let locales_to_validate = locale_filter.unwrap_or(locales);
 
+    // Accumulate all validation errors so the whole file set is reported in one pass.
+    let mut errors: Vec<ToolError> = Vec::new();
+
     let mut pairs = HashMap::new();
     let mut per_locale_pairs: HashMap<Locale, HashMap<_, _>> = HashMap::new();
     for locale in locales {
         let path = redirects_path(*locale)?;
+        // Validate file format (must use tabs, not spaces)
+        if locales_to_validate.contains(locale) {
+            errors.extend(validate_redirects_format(&path)?);
+        }
         let iter = read_redirects_raw(&path)?.into_iter();
         if locales_to_validate.contains(locale) {
             let v = iter.collect::<Vec<_>>();
-            if let Some(t) = v.windows(2).find(|t| t[0].0 > t[1].0) {
-                return Err(ToolError::InvalidRedirectOrder(
-                    t[0].0.to_string(),
-                    t[0].1.to_string(),
-                    t[1].0.to_string(),
-                    t[0].1.to_string(),
-                ));
+            // Report every out-of-order pair, not just the first.
+            for t in v.windows(2) {
+                if t[0].0 > t[1].0 {
+                    errors.push(ToolError::InvalidRedirectOrder(
+                        t[0].0.to_string(),
+                        t[0].1.to_string(),
+                        t[1].0.to_string(),
+                        t[0].1.to_string(),
+                    ));
+                }
             }
             per_locale_pairs
                 .entry(*locale)
@@ -473,50 +510,76 @@ pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolEr
     for locale in locales_to_validate {
         if let Some(locale_pairs) = per_locale_pairs.get(locale) {
             let old_sorted_map = locale_pairs.iter().collect::<BTreeMap<_, _>>();
-            if let Some(locale_pairs) = fix_redirects_internal(locale_pairs)?.get(locale) {
-                let new_sorted_map = locale_pairs.clone().into_iter().collect::<BTreeMap<_, _>>();
-                validate_pairs(locale_pairs, *locale)?;
-                compare_sorted_redirects(old_sorted_map, new_sorted_map)?;
+            match fix_redirects_internal(locale_pairs) {
+                Ok(fixed) => {
+                    if let Some(locale_pairs) = fixed.get(locale) {
+                        let new_sorted_map =
+                            locale_pairs.clone().into_iter().collect::<BTreeMap<_, _>>();
+                        errors.extend(collect_invalid_pairs(locale_pairs, *locale));
+                        errors.extend(compare_sorted_redirects(old_sorted_map, new_sorted_map));
+                    }
+                }
+                Err(e) => errors.push(e),
             }
         }
     }
 
     // Fix and validate cross locales.
 
-    let mut fixed_paris = fix_redirects_internal(&pairs)?;
-
-    for locale in locales_to_validate {
-        let locale_prefix = concat_strs!("/", locale.as_url_str(), "/");
-        let old_sorted_map: BTreeMap<_, _> = pairs
-            .iter()
-            .filter(|(from, _)| from.starts_with(&locale_prefix))
-            .collect();
-        let new_sorted_map: BTreeMap<_, _> = fixed_paris
-            .remove(locale)
-            .unwrap_or_default()
-            .into_iter()
-            .collect();
-        compare_sorted_redirects(old_sorted_map, new_sorted_map)?;
+    match fix_redirects_internal(&pairs) {
+        Ok(mut fixed_pairs) => {
+            for locale in locales_to_validate {
+                let locale_prefix = concat_strs!("/", locale.as_url_str(), "/");
+                let old_sorted_map: BTreeMap<_, _> = pairs
+                    .iter()
+                    .filter(|(from, _)| from.starts_with(&locale_prefix))
+                    .collect();
+                let new_sorted_map: BTreeMap<_, _> = fixed_pairs
+                    .remove(locale)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .collect();
+                errors.extend(compare_sorted_redirects(old_sorted_map, new_sorted_map));
+            }
+        }
+        Err(e) => errors.push(e),
     }
 
-    Ok(())
+    // The within-locale and cross-locale phases can surface the same mismatch;
+    // deduplicate by message so each distinct problem is reported once.
+    let mut seen = HashSet::new();
+    errors.retain(|e| seen.insert(e.to_string()));
+
+    match errors.len() {
+        0 => Ok(()),
+        1 => Err(errors.pop().unwrap()),
+        _ => Err(ToolError::Multiple(errors)),
+    }
 }
 
+/// Collects all mismatches between the old and the optimized redirect maps.
+///
+/// Returns one error per differing entry so callers can report them all at once.
 fn compare_sorted_redirects(
     old_sorted_map: BTreeMap<&String, &String>,
     new_sorted_map: BTreeMap<String, String>,
-) -> Result<(), ToolError> {
-    for (old, new) in old_sorted_map.into_iter().zip(new_sorted_map.into_iter()) {
-        if old.0 != &new.0 || old.1 != &new.1 {
-            return Err(ToolError::InvalidRedirect(
-                old.0.clone(),
-                old.1.clone(),
-                new.0,
-                new.1,
-            ));
-        }
-    }
-    Ok(())
+) -> Vec<ToolError> {
+    old_sorted_map
+        .into_iter()
+        .zip(new_sorted_map)
+        .filter_map(|(old, new)| {
+            if old.0 != &new.0 || old.1 != &new.1 {
+                Some(ToolError::InvalidRedirect(
+                    old.0.clone(),
+                    old.1.clone(),
+                    new.0,
+                    new.1,
+                ))
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 /// Gets the path to the redirects file for a specific locale.
@@ -544,6 +607,23 @@ fn validate_pairs(pairs: &HashMap<String, String>, locale: Locale) -> Result<(),
         validate_to_url(to, locale)?;
     }
     Ok(())
+}
+
+/// Validates a list of redirect pairs, collecting every invalid URL.
+///
+/// Unlike [`validate_pairs`], this returns one error per invalid `from`/`to`
+/// URL instead of stopping at the first, so callers can report them all at once.
+fn collect_invalid_pairs(pairs: &HashMap<String, String>, locale: Locale) -> Vec<ToolError> {
+    let mut errors = Vec::new();
+    for (from, to) in pairs {
+        if let Err(e) = validate_from_url(from, locale) {
+            errors.push(e);
+        }
+        if let Err(e) = validate_to_url(to, locale) {
+            errors.push(e);
+        }
+    }
+    errors
 }
 
 /// Validates the 'from' URL in a redirect pair.
@@ -704,22 +784,21 @@ fn check_url_invalid_symbols(url: &str) -> Result<(), ToolError> {
     Ok(())
 }
 
-/// Reads redirect pairs from a file and populates the provided `HashMap`.
+/// Reads redirect pairs from a file, yielding `(from, to)` tuples.
 ///
 /// This function processes a file located at the specified `path`, where each line in the file
-/// represents a redirect pair in the format `from\tto`. Lines that start with the `#` character
-/// are treated as comments and are ignored. Only lines containing exactly two fields separated
-/// by a tab (`\t`) are considered valid and are inserted into the map.
+/// represents a redirect pair. Lines that start with the `#` character are treated as comments
+/// and are ignored. The canonical separator is a tab (`\t`), but a run of any whitespace is also
+/// accepted as a separator (normalized to a tab on the next write), provided the target field
+/// starts with `/` or `http`; spaces within the `from` URL are therefore preserved.
 ///
 /// # Arguments
 ///
 /// * `path` - A reference to a `Path` that points to the redirects file.
-/// * `map` - A mutable reference to a `HashMap<String, String>` where the redirect pairs will
-///   be stored. The `from` path serves as the key, and the `to` path serves as the value.
 ///
 /// # Returns
 ///
-/// * `Ok(())` if the redirects are successfully read and inserted into the `map`.
+/// * `Ok(_)` with an iterator over the `(from, to)` redirect pairs.
 /// * `Err(ToolError)` if an error occurs while reading the file or processing its contents.
 ///
 /// # Errors
@@ -735,12 +814,26 @@ pub(crate) fn read_redirects_raw(
         if line.starts_with('#') {
             return None;
         }
-        let mut from_to = line.trim().splitn(2, '\t');
-        if let (Some(from), Some(to)) = (from_to.next(), from_to.next()) {
-            Some((from.trim().into(), to.trim().into()))
-        } else {
-            None
+        let trimmed = line.trim();
+        // Canonical form: a single tab separates the two fields.
+        if let Some((from, to)) = trimmed.split_once('\t') {
+            return Some((from.trim().into(), to.trim().into()));
         }
+        // Lenient fallback: tolerate space-separated entries (normalized to
+        // tabs on the next write). The target URL starts with '/' or 'http',
+        // so split on the whitespace run immediately preceding it.
+        let mut ws_start = None;
+        for (pos, c) in trimmed.char_indices() {
+            if c.is_whitespace() {
+                ws_start.get_or_insert(pos);
+            } else if let Some(start) = ws_start.take() {
+                // A whitespace run ends here; if a URL starts, it's the separator.
+                if c == '/' || trimmed[pos..].starts_with("http") {
+                    return Some((trimmed[..start].into(), trimmed[pos..].into()));
+                }
+            }
+        }
+        None
     });
     Ok(iter)
 }
@@ -1383,6 +1476,30 @@ mod tests {
     }
 
     #[test]
+    fn validate_reports_all_errors() {
+        // Neither target exists, so both redirects are invalid.
+        let _docs = DocFixtures::new(&[], Locale::EnUs);
+        let pairs = [("docs/A", "docs/X"), ("docs/B", "docs/Y")]
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .into_iter()
+            .collect::<Vec<_>>();
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let _redirects = RedirectFixtures::new(&pairs, Locale::EnUs);
+
+        let res = validate_redirects(Some(&[Locale::EnUs]));
+        // Both invalid targets should be reported together, not just the first.
+        let Err(ToolError::Multiple(errors)) = res else {
+            panic!("expected ToolError::Multiple, got {res:?}");
+        };
+        assert_eq!(errors.len(), 2);
+        assert!(
+            errors
+                .iter()
+                .all(|e| matches!(e, ToolError::InvalidRedirectToURL(..)))
+        );
+    }
+
+    #[test]
     fn test_fix_redirects_removes_existing_from_documents() {
         // Create a document that will exist
         let _docs = DocFixtures::new(&["A".to_string(), "B".to_string()], Locale::EnUs);
@@ -1411,5 +1528,114 @@ mod tests {
         assert!(!pairs.contains_key("/en-US/docs/A"));
         // The other redirect should still exist
         assert!(pairs.contains_key("/en-US/docs/nonexistent"));
+    }
+
+    #[test]
+    fn test_read_and_write_normalizes_whitespace() {
+        // Create documents for validation
+        let _docs = DocFixtures::new(&["A".to_string(), "B".to_string()], Locale::EnUs);
+
+        // Create initial pairs via fixture (uses tabs)
+        let pairs = [("docs/A".to_string(), "docs/B".to_string())];
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let redirects_fixture = RedirectFixtures::new(&pairs, Locale::EnUs);
+
+        // Manually edit the file to use spaces instead of tabs (simulating the bug)
+        use std::fs;
+        let content = rari_utils::io::read_to_string(&redirects_fixture.path).unwrap();
+        // Replace the tab with multiple spaces
+        let broken_content = content.replace('\t', "    ");
+        fs::write(&redirects_fixture.path, broken_content).unwrap();
+
+        // Verify the file has spaces instead of tabs
+        let raw_content = fs::read(&redirects_fixture.path).unwrap();
+        assert!(
+            String::from_utf8(raw_content.clone())
+                .unwrap()
+                .contains("    /en-US/docs")
+        );
+
+        // Read the file with spaces
+        let result = read_redirects_raw(&redirects_fixture.path).unwrap();
+        let read_pairs: Vec<(String, String)> = result.into_iter().collect();
+
+        // Verify the entry was read correctly despite spaces
+        assert_eq!(read_pairs.len(), 1);
+        assert_eq!(read_pairs[0].0, "/en-US/docs/A");
+        assert_eq!(read_pairs[0].1, "/en-US/docs/B");
+
+        // Now write back (which should normalize to tabs)
+        write_redirects(&redirects_fixture.path, &read_pairs.into_iter().collect()).unwrap();
+
+        // Verify the written file uses tabs
+        let written_content = fs::read(&redirects_fixture.path).unwrap();
+        let written_str = String::from_utf8(written_content).unwrap();
+        // Should have tabs, not multiple spaces for field separation
+        assert!(written_str.contains("\t"));
+        assert!(!written_str.contains("    /en-US/docs"));
+    }
+
+    #[test]
+    fn test_validate_redirects_catches_space_separators() {
+        use std::fs;
+
+        // Create documents
+        let _docs = DocFixtures::new(&["A".to_string(), "B".to_string()], Locale::EnUs);
+
+        // Create a fixture with tabs
+        let pairs = [("docs/A".to_string(), "docs/B".to_string())];
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let redirects_fixture = RedirectFixtures::new(&pairs, Locale::EnUs);
+
+        // Manually edit to use spaces instead of tabs
+        let content = rari_utils::io::read_to_string(&redirects_fixture.path).unwrap();
+        let broken_content = content.replace('\t', "    ");
+        fs::write(&redirects_fixture.path, broken_content).unwrap();
+
+        // validate_redirects should catch the space separator
+        let result = validate_redirects(Some(&[Locale::EnUs]));
+        assert!(matches!(
+            result,
+            Err(ToolError::InvalidRedirectSeparator(..))
+        ));
+    }
+
+    #[test]
+    fn test_read_redirects_preserves_spaces_in_urls() {
+        use std::fs;
+
+        // Create documents
+        let _docs = DocFixtures::new(&["File System API".to_string()], Locale::EnUs);
+
+        // Create a fixture (which uses tabs)
+        let pairs = [(
+            "docs/File System API".to_string(),
+            "docs/File System API".to_string(),
+        )];
+        let _all_redirects = RedirectFixtures::all_locales_empty();
+        let redirects_fixture = RedirectFixtures::new(&pairs, Locale::EnUs);
+
+        // Manually edit to test spaces in URLs alongside whitespace separators
+        let content = "# DO NOT EDIT THIS FILE MANUALLY.\n\
+# Use the CLI instead.\n\
+#\n\
+# FROM-URL\tTO-URL\n\
+/en-US/docs/Web/Guide/API/File System\t/en-US/docs/Web/API/File_System_API\n\
+/en-US/docs/Web/Guide/API/File System/Introduction  /en-US/docs/Web/API/File_System_API\n";
+        fs::write(&redirects_fixture.path, content).unwrap();
+
+        // Read the file
+        let result = read_redirects_raw(&redirects_fixture.path).unwrap();
+        let pairs: Vec<(String, String)> = result.into_iter().collect();
+
+        // Verify URLs with spaces are preserved
+        assert_eq!(pairs.len(), 2);
+        assert_eq!(pairs[0].0, "/en-US/docs/Web/Guide/API/File System");
+        assert_eq!(pairs[0].1, "/en-US/docs/Web/API/File_System_API");
+        assert_eq!(
+            pairs[1].0,
+            "/en-US/docs/Web/Guide/API/File System/Introduction"
+        );
+        assert_eq!(pairs[1].1, "/en-US/docs/Web/API/File_System_API");
     }
 }

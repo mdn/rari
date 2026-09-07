@@ -1,24 +1,29 @@
 use std::borrow::Cow;
 
 use lol_html::{RewriteStrSettings, element, rewrite_str};
+use rari_data::baseline::BaselineStatus;
 use rari_md::anchor::anchorize;
 use rari_types::fm_types::FeatureStatus;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
+use crate::baseline::get_baseline_status;
 use crate::error::DocError;
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
 use crate::redirects::resolve_redirect;
 use crate::resolve::locale_from_url;
 use crate::templ::api::RariApi;
-use crate::templ::templs::badges::{write_deprecated, write_experimental, write_non_standard};
+use crate::templ::templs::badges::{
+    write_baseline, write_deprecated, write_experimental, write_non_standard,
+};
 
 pub struct LinkModifier<'a> {
     pub badges: &'a [FeatureStatus],
     pub badge_locale: Locale,
     pub code: bool,
     pub only_en_us: bool,
+    pub baseline: Option<BaselineStatus>,
 }
 
 pub fn render_internal_link(
@@ -58,6 +63,13 @@ pub fn render_internal_link(
     if modifier.code {
         out.push_str("</code>");
     }
+    // Only the discouraged statuses get an icon for now.
+    let discouraged_baseline = modifier
+        .baseline
+        .filter(|baseline| baseline.is_discouraged());
+    if let Some(baseline) = discouraged_baseline {
+        write_baseline(out, baseline, modifier.badge_locale)?;
+    }
     if !modifier.badges.is_empty() {
         if modifier.badges.contains(&FeatureStatus::Experimental) {
             write_experimental(out, modifier.badge_locale)?;
@@ -65,7 +77,7 @@ pub fn render_internal_link(
         if modifier.badges.contains(&FeatureStatus::NonStandard) {
             write_non_standard(out, modifier.badge_locale)?;
         }
-        if modifier.badges.contains(&FeatureStatus::Deprecated) {
+        if modifier.badges.contains(&FeatureStatus::Deprecated) && discouraged_baseline.is_none() {
             write_deprecated(out, modifier.badge_locale)?;
         }
     }
@@ -147,6 +159,11 @@ pub fn render_link_via_page(
                     badge_locale: locale,
                     code,
                     only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
+                    baseline: if with_badges {
+                        get_baseline_status(&page)
+                    } else {
+                        None
+                    },
                 },
                 true,
             );
@@ -255,16 +272,19 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
     })];
     Ok(rewrite_str(
         html,
-        RewriteStrSettings {
-            element_content_handlers,
-            ..Default::default()
-        },
+        element_content_handlers.into_iter().fold(
+            RewriteStrSettings::new(),
+            RewriteStrSettings::append_element_content_handler,
+        ),
     )?)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::post_process_templ_links;
+    use super::{
+        BaselineStatus, FeatureStatus, LinkModifier, Locale, post_process_templ_links,
+        render_internal_link,
+    };
 
     #[test]
     fn tags_internal_links_so_fix_link_skips_them() {
@@ -300,5 +320,90 @@ mod tests {
         let output = post_process_templ_links(input).unwrap();
         // Still exactly one occurrence (we didn't add another).
         assert_eq!(output.matches("data-templ-link").count(), 1);
+    }
+
+    fn render_with(badges: &[FeatureStatus], baseline: Option<BaselineStatus>) -> String {
+        let mut out = String::new();
+        render_internal_link(
+            &mut out,
+            "/en-US/docs/Web/API/Document/write",
+            None,
+            "write()",
+            None,
+            &LinkModifier {
+                badges,
+                badge_locale: Locale::EnUs,
+                code: false,
+                only_en_us: false,
+                baseline,
+            },
+            true,
+        )
+        .unwrap();
+        out
+    }
+
+    fn render_with_baseline(baseline: Option<BaselineStatus>) -> String {
+        render_with(&[], baseline)
+    }
+
+    #[test]
+    fn discouraged_renders_a_baseline_icon() {
+        let out = render_with_baseline(Some(BaselineStatus::Discouraged));
+        assert!(
+            out.contains(
+                r#"<span role="img" class="icon icon-baseline discouraged" title="This feature is discouraged." aria-label="Discouraged"></span>"#
+            ),
+            "got: {out}"
+        );
+    }
+
+    #[test]
+    fn removing_renders_a_baseline_icon() {
+        let out = render_with_baseline(Some(BaselineStatus::Removing));
+        assert!(
+            out.contains(
+                r#"<span role="img" class="icon icon-baseline removing" title="This feature is scheduled for removal." aria-label="To be removed"></span>"#
+            ),
+            "got: {out}"
+        );
+    }
+
+    #[test]
+    fn a_link_with_no_baseline_renders_no_icon() {
+        assert!(!render_with_baseline(None).contains("icon"));
+    }
+
+    #[test]
+    fn a_discouraged_baseline_replaces_the_deprecated_badge() {
+        for baseline in [BaselineStatus::Discouraged, BaselineStatus::Removing] {
+            let out = render_with(&[FeatureStatus::Deprecated], Some(baseline));
+            assert!(out.contains("icon-baseline"), "got: {out}");
+            assert!(!out.contains("icon-deprecated"), "got: {out}");
+        }
+    }
+
+    #[test]
+    fn a_baseline_that_is_not_discouraged_keeps_the_deprecated_badge() {
+        for baseline in [
+            None,
+            Some(BaselineStatus::High),
+            Some(BaselineStatus::Low),
+            Some(BaselineStatus::Limited),
+        ] {
+            let out = render_with(&[FeatureStatus::Deprecated], baseline);
+            assert!(out.contains("icon-deprecated"), "got: {out}");
+            assert!(!out.contains("icon-baseline"), "got: {out}");
+        }
+    }
+
+    #[test]
+    fn a_discouraged_baseline_leaves_the_other_badges_alone() {
+        let out = render_with(
+            &[FeatureStatus::Experimental, FeatureStatus::NonStandard],
+            Some(BaselineStatus::Discouraged),
+        );
+        assert!(out.contains("icon-experimental"), "got: {out}");
+        assert!(out.contains("icon-nonstandard"), "got: {out}");
     }
 }

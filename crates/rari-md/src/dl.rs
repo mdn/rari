@@ -1,4 +1,5 @@
-use comrak::nodes::{AstNode, NodeValue};
+use comrak::Arena;
+use comrak::nodes::{AstNode, NodeDescriptionItem, NodeValue};
 
 pub(crate) fn is_dl<'a>(list: &'a AstNode<'a>) -> bool {
     list.children().all(|child| {
@@ -25,7 +26,7 @@ pub(crate) fn is_dl<'a>(list: &'a AstNode<'a>) -> bool {
     })
 }
 
-pub(crate) fn convert_dl<'a>(list: &'a AstNode<'a>) {
+pub(crate) fn convert_dl<'a>(arena: &'a Arena<'a>, list: &'a AstNode<'a>) {
     list.data.borrow_mut().value = NodeValue::DescriptionList;
     for child in list.children() {
         child.data.borrow_mut().value = NodeValue::DescriptionTerm;
@@ -34,8 +35,14 @@ pub(crate) fn convert_dl<'a>(list: &'a AstNode<'a>) {
             continue;
         }
         last_child.detach();
-        for item in last_child.reverse_children() {
-            if let Some(i) = item.first_child() {
+
+        let item = arena.alloc(NodeValue::DescriptionItem(NodeDescriptionItem::default()).into());
+        child.insert_before(item);
+        child.detach();
+        item.append(child);
+
+        for details in last_child.children() {
+            if let Some(i) = details.first_child() {
                 if !matches!(i.data.borrow().value, NodeValue::Paragraph) {
                     break;
                 }
@@ -48,9 +55,9 @@ pub(crate) fn convert_dl<'a>(list: &'a AstNode<'a>) {
                     }
                 }
             }
-            item.data.borrow_mut().value = NodeValue::DescriptionDetails;
-            item.detach();
-            child.insert_after(item);
+            details.data.borrow_mut().value = NodeValue::DescriptionDetails;
+            details.detach();
+            item.append(details);
         }
     }
 }

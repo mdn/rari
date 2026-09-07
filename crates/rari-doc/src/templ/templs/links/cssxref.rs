@@ -136,7 +136,7 @@ pub fn cssxref_internal(
         .map(|a| format!("#{a}"))
         .or_else(|| anchor.map(str::to_string))
         .unwrap_or_default();
-    let url = format!("{}{}{}", &base_url, &url_path, &fragment);
+    let url = format!("{}{}{}", base_url, url_path, fragment);
 
     let display_name = if display_name.is_some() {
         encoded_maybe_display_name.to_string()

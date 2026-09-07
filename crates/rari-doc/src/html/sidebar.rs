@@ -19,6 +19,7 @@ use tracing::{Level, span};
 use super::links::{LinkFlags, LinkModifier, render_link_from_page, render_link_via_page};
 use super::modifier::insert_attribute;
 use super::rewriter::post_process_html;
+use crate::baseline::get_baseline_status;
 use crate::cached_readers::read_sidebar;
 use crate::error::DocError;
 use crate::helpers;
@@ -30,7 +31,7 @@ use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
 use crate::pages::types::utils::FmTempl;
 use crate::templ::templs::{exists, invoke};
-use crate::utils::{is_default, serialize_t_or_vec, t_or_vec};
+use crate::utils::{is_default, is_unrooted, serialize_t_or_vec, t_or_vec};
 
 fn cache_side_bar(sidebar: &str) -> bool {
     cache_content()
@@ -174,6 +175,9 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
 }
 
 pub fn build_sidebars(doc: &Doc) -> Result<Option<String>, DocError> {
+    if is_unrooted(doc.slug()) {
+        return Ok(None);
+    }
     Ok(if doc.meta.sidebar.is_empty() {
         None
     } else {
@@ -703,6 +707,7 @@ impl SidebarMetaEntry {
                         badge_locale: page.locale(),
                         code: self.code,
                         only_en_us: page.locale() != locale,
+                        baseline: get_baseline_status(page),
                     },
                 )?;
             }

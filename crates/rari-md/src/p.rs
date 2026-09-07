@@ -33,10 +33,16 @@ pub(crate) fn is_empty_p<'a>(p: &'a AstNode<'a>) -> bool {
 }
 
 pub(crate) fn fix_p<'a>(p: &'a AstNode<'a>) {
-    for child in p.reverse_children() {
-        p.insert_before(child)
+    let mut literal = String::new();
+    for child in p.children() {
+        match &child.data.borrow().value {
+            NodeValue::Text(t) => literal.push_str(t),
+            NodeValue::SoftBreak => literal.push('\n'),
+            _ => {}
+        }
+        child.detach();
     }
-    p.detach();
+    p.data.borrow_mut().value = NodeValue::Raw(literal);
 }
 
 #[cfg(test)]

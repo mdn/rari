@@ -43,7 +43,7 @@ pub fn webextapiref(
     let mut url = format!(
         "/{}/docs/Mozilla/Add-ons/WebExtensions/API/{}",
         env.locale.as_url_str(),
-        &api.replace(' ', "_").replace("()", "").replace('.', "/"),
+        api.replace(' ', "_").replace("()", "").replace('.', "/"),
     );
     if let Some(anchor) = anchor {
         if !anchor.starts_with('#') {

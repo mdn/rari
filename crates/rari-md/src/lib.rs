@@ -207,7 +207,7 @@ pub fn m2h_internal(
             _ => (false, false, false),
         };
         if dl {
-            convert_dl(node);
+            convert_dl(&arena, node);
         }
         if templs_p || empty_p {
             fix_p(node)
@@ -329,6 +329,20 @@ mod test {
     fn macro_nl() -> Result<(), anyhow::Error> {
         let out = m2h("{{bar}}{{foo}}", Locale::EnUs)?;
         assert_eq!(out, "<p data-sourcepos=\"1:1-1:14\">{{bar}}{{foo}}</p>\n");
+        Ok(())
+    }
+
+    #[test]
+    fn templ_only_p() -> Result<(), anyhow::Error> {
+        let out = m2h("⟬0⟭", Locale::EnUs)?;
+        assert_eq!(out, "⟬0⟭");
+        Ok(())
+    }
+
+    #[test]
+    fn templ_only_p_soft_break() -> Result<(), anyhow::Error> {
+        let out = m2h("⟬0⟭\n⟬1⟭", Locale::EnUs)?;
+        assert_eq!(out, "⟬0⟭\n⟬1⟭");
         Ok(())
     }
 

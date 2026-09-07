@@ -138,6 +138,9 @@ impl Settings {
         settings.blog_root = settings
             .blog_root
             .and_then(|br| br.parent().map(|p| p.to_path_buf()));
+        settings
+            .build_out_root
+            .get_or_insert_with(|| PathBuf::from("build"));
         Ok(settings)
     }
 }

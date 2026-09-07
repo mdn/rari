@@ -6,7 +6,7 @@ use locale::Locale;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::fm_types::PageType;
+use crate::fm_types::{FeatureStatus, PageType};
 
 pub mod error;
 pub mod fm_types;
@@ -25,6 +25,29 @@ pub enum ArgError {
     MustBeBool,
     #[error("must be provided")]
     MustBeProvided,
+    #[error("must not be empty")]
+    MustNotBeEmpty,
+    #[error("could not be parsed")]
+    MustBeParsable,
+    #[error("{templ} argument {pos} ({name}) {source}")]
+    At {
+        templ: &'static str,
+        pos: usize,
+        name: &'static str,
+        #[source]
+        source: Box<ArgError>,
+    },
+}
+
+impl ArgError {
+    pub fn at(templ: &'static str, pos: usize, name: &'static str, source: ArgError) -> Self {
+        ArgError::At {
+            templ,
+            pos,
+            name,
+            source: Box::new(source),
+        }
+    }
 }
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -40,6 +63,12 @@ pub enum Arg {
     Int(i64),
     Float(f64),
     Bool(bool),
+}
+
+impl Arg {
+    pub fn is_blank(&self) -> bool {
+        matches!(self, Arg::String(s, _) if s.is_empty())
+    }
 }
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -136,6 +165,7 @@ pub struct RariEnv<'a> {
     pub spec_urls: &'a [String],
     pub page_type: PageType,
     pub slug: &'a str,
+    pub status: &'a [FeatureStatus],
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
