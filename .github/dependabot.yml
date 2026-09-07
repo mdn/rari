@@ -4,6 +4,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      exclude:
+        - tree-sitter-mdn
     commit-message:
       prefix: chore
       include: scope
