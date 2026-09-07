@@ -87,10 +87,9 @@ jobs:
 
           if (( CHANGED > 0 )); then
             PERCENTAGE=$(awk -v c="$CHANGED" -v t="$TOTAL" 'BEGIN { printf "%.1f", (t > 0 ? c / t * 100 : 0) }')
-            BODY="$MARKER
-          **Build diff:** $CHANGES changes in $CHANGED of $TOTAL pages ($PERCENTAGE%)
-
-          [Download report](https://github.com/$GH_REPO/actions/runs/$RUN_ID/artifacts/$ARTIFACT_ID) (\`diff.html\`)"
+            printf -v BODY '%s\n**Build diff:** %s changes in %s of %s pages (%s%%)\n\n[Download report](%s) (`diff.html`)' \
+              "$MARKER" "$CHANGES" "$CHANGED" "$TOTAL" "$PERCENTAGE" \
+              "https://github.com/$GH_REPO/actions/runs/$RUN_ID/artifacts/$ARTIFACT_ID"
             if [[ -n "$COMMENT_ID" ]]; then
               gh api -X PATCH "/repos/$GH_REPO/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
             else
