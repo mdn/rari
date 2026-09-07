@@ -25,37 +25,6 @@ fn extract_slug_from_href(href: &str) -> &str {
     }
 }
 
-/// Searches for an href in text, trying the full href first, then falling back to just the slug.
-///
-/// This handles template-generated links where the markdown contains only the slug portion
-/// (e.g., "Web/API/Foo") rather than the full href ("/en-US/docs/Web/API/Foo").
-///
-/// # Arguments
-/// * `href` - The full href to search for
-/// * `search_fn` - Function that searches for text and returns an offset if found
-///
-/// # Returns
-/// Tuple of (found_offset, text_that_was_found) if successful, None otherwise
-fn search_with_slug_fallback<F>(href: &str, mut search_fn: F) -> Option<(usize, String)>
-where
-    F: FnMut(&str) -> Option<usize>,
-{
-    // Try full href first
-    if let Some(offset) = search_fn(href) {
-        return Some((offset, href.to_string()));
-    }
-
-    // Fallback: try just the slug
-    if href.starts_with("/") {
-        let slug = extract_slug_from_href(href);
-        if let Some(offset) = search_fn(slug) {
-            return Some((offset, slug.to_string()));
-        }
-    }
-
-    None
-}
-
 pub fn get_fixable_issues(page: &Page) -> Result<Vec<DIssue>, ToolError> {
     let _ = page.build()?;
 
@@ -128,57 +97,30 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
                 } => (display_issue, href),
                 _ => return None,
             };
-            if let Some(suggestion) = display_issue.suggestion.as_deref() {
-                // The href and suggestion from HTML may contain HTML entities (&#x27; for ', &lt; for <, etc.)
-                // Decode them to match the raw markdown content
-                let decoded_href = html_escape::decode_html_entities(href);
-                let decoded_suggestion = html_escape::decode_html_entities(suggestion);
 
-                // For repeated identical hrefs on the same line, search past the last match.
-                let line_num = display_issue.line.unwrap_or(0);
-                let key = (line_num, decoded_href.to_string());
-                let min_byte_offset = next_search_from.get(&key).copied().unwrap_or(0);
+            let suggestion = display_issue.suggestion.as_deref()?;
 
-                // The column refers to the rendered HTML, not the markdown, so search from the line start.
-                let line_start =
-                    calculate_line_start_offset(raw, (line_num as usize).saturating_sub(1));
-                let search_from = line_start.max(min_byte_offset);
+            // The href and suggestion from HTML may contain HTML entities (&#x27; for ', &lt; for <, etc.)
+            // Decode them to match the raw markdown content.
+            let decoded_href = html_escape::decode_html_entities(href);
+            let decoded_suggestion = html_escape::decode_html_entities(suggestion);
 
-                // Try finding the full href first, fallback to slug
-                let result = search_with_slug_fallback(&decoded_href, |search_text| {
-                    find_non_prefix_match(raw, search_from, search_text)
-                })
-                .map(|(href_start, search_text)| {
-                    // If we found the full href, use full suggestion; if slug, extract slug from suggestion
-                    let replace_text = if search_text == decoded_href.as_ref() {
-                        decoded_suggestion.to_string()
-                    } else {
-                        extract_slug_from_href(&decoded_suggestion).to_string()
-                    };
-                    (href_start, search_text, replace_text)
-                });
+            let line_num = display_issue.line.unwrap_or(0);
+            let key = (line_num, decoded_href.to_string());
+            let min_byte_offset = next_search_from.get(&key).copied().unwrap_or(0);
 
-                if let Some((href_start, search_text, replace_text)) = result {
-                    // Record the end of this match so the next identical href on the same
-                    // line starts searching from here.
-                    next_search_from.insert(key, href_start + search_text.len());
-                    Some(SearchReplaceWithOffset {
-                        offset: href_start,
-                        search: search_text,
-                        replace: replace_text,
-                    })
-                } else {
-                    tracing::warn!(
-                        "Could not locate '{}' on line {} (searched from byte offset {})",
-                        decoded_href,
-                        line_num,
-                        search_from
-                    );
-                    None
-                }
-            } else {
-                None
-            }
+            let result = issue_to_suggestion(
+                raw,
+                &decoded_href,
+                &decoded_suggestion,
+                line_num,
+                min_byte_offset,
+            )?;
+
+            // Record the end of this match so the next identical href on the same
+            // line starts searching from here.
+            next_search_from.insert(key, result.offset + result.search.len());
+            Some(result)
         })
         .collect::<Vec<_>>();
 
@@ -186,6 +128,71 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
     suggestions.dedup();
 
     suggestions
+}
+
+/// Locates `href` on its line in the raw markdown and returns the matching search/replace pair.
+///
+/// Returns `None` (and logs a warning) if no candidate matches.
+fn issue_to_suggestion(
+    raw: &str,
+    href: &str,
+    suggestion: &str,
+    line_num: i64,
+    min_byte_offset: usize,
+) -> Option<SearchReplaceWithOffset> {
+    // The column refers to the rendered HTML, not the markdown, so search from the line start.
+    let line_start = calculate_line_start_offset(raw, (line_num as usize).saturating_sub(1));
+    let search_from = line_start.max(min_byte_offset);
+
+    let result = build_candidates(href, suggestion)
+        .into_iter()
+        .find_map(|c| {
+            find_non_prefix_match(raw, search_from, &c.search).map(|offset| {
+                SearchReplaceWithOffset {
+                    offset,
+                    search: c.search,
+                    replace: c.replace,
+                }
+            })
+        });
+
+    if result.is_none() {
+        tracing::warn!(
+            "Could not locate '{}' on line {} (searched from byte offset {})",
+            href,
+            line_num,
+            search_from
+        );
+    }
+
+    result
+}
+
+struct Candidate {
+    search: String,
+    replace: String,
+}
+
+impl Candidate {
+    fn new(search: impl Into<String>, replace: impl Into<String>) -> Self {
+        Self {
+            search: search.into(),
+            replace: replace.into(),
+        }
+    }
+}
+
+/// Returns candidates in priority order: full href, then slug.
+fn build_candidates(href: &str, suggestion: &str) -> Vec<Candidate> {
+    let slug = extract_slug_from_href(href);
+    let slug_suggestion = extract_slug_from_href(suggestion);
+
+    let mut candidates = vec![Candidate::new(href, suggestion)];
+    if href.starts_with('/') {
+        candidates.push(Candidate::new(slug, slug_suggestion));
+    }
+
+    candidates
 }
 
 /// Applies search/replace suggestions to raw content, returning the modified text
@@ -1282,5 +1289,56 @@ slug: Web/JavaScript/Guide/Indexed_collections
 Some content here.
 "#
         );
+    }
+
+    #[test]
+    fn test_build_candidates() {
+        struct Case {
+            name: &'static str,
+            href: &'static str,
+            suggestion: &'static str,
+            /// Expected `(search, replace)` pairs in priority order.
+            expected: Vec<(&'static str, &'static str)>,
+        }
+
+        let cases = vec![
+            Case {
+                name: "full URL with /docs/ segment",
+                href: "/en-US/docs/Web/API/Foo",
+                suggestion: "/en-US/docs/Web/API/Bar",
+                expected: vec![
+                    ("/en-US/docs/Web/API/Foo", "/en-US/docs/Web/API/Bar"),
+                    ("Web/API/Foo", "Web/API/Bar"),
+                ],
+            },
+            Case {
+                name: "full URL without /docs/ segment",
+                href: "/Web/API/Foo",
+                suggestion: "/Web/API/Bar",
+                expected: vec![
+                    ("/Web/API/Foo", "/Web/API/Bar"),
+                    ("Web/API/Foo", "Web/API/Bar"),
+                ],
+            },
+            Case {
+                name: "slug-only href",
+                href: "Web/API/Foo",
+                suggestion: "Web/API/Bar",
+                expected: vec![("Web/API/Foo", "Web/API/Bar")],
+            },
+        ];
+
+        for case in cases {
+            let actual = build_candidates(case.href, case.suggestion)
+                .into_iter()
+                .map(|c| (c.search, c.replace))
+                .collect::<Vec<_>>();
+            let expected = case
+                .expected
+                .into_iter()
+                .map(|(search, replace)| (search.to_string(), replace.to_string()))
+                .collect::<Vec<_>>();
+            assert_eq!(actual, expected, "{}", case.name);
+        }
     }
 }
