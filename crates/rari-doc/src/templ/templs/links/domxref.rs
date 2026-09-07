@@ -57,7 +57,12 @@ pub fn domxref(
         .replace(".prototype.", ".")
         .replace('.', "/");
     if api.is_empty() {
-        return Err(DocError::ArgError(ArgError::MustBeProvided));
+        return Err(DocError::ArgError(ArgError::at(
+            "domxref",
+            1,
+            "api_name",
+            ArgError::MustNotBeEmpty,
+        )));
     }
     let resolved = resolve_api_name(&api);
     let mut url = format!(

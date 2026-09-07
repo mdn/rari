@@ -42,11 +42,13 @@ pub(crate) fn render_for_summary(input: &str) -> Result<String, DocError> {
                         .get(1)
                         .or(mac.args.first())
                         .and_then(|f| f.clone())
+                        .filter(|arg| !arg.is_blank())
                         .map(|arg| AnyArg::try_from(arg).unwrap().to_string()),
                     _ => mac
                         .args
                         .first()
                         .and_then(|f| f.clone())
+                        .filter(|arg| !arg.is_blank())
                         .map(|arg| format!("<code>{}</code>", AnyArg::try_from(arg).unwrap())),
                 } {
                     out.push_str(&s)
@@ -102,7 +104,10 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                     }
                     Err(e) if deny_warnings() => return Err(e),
                     Err(e) => {
-                        warn!("{e}",);
+                        match &e {
+                            DocError::ArgError(_) => warn!(source = "templ-arg-error", "Macro {e}"),
+                            _ => warn!("{e}"),
+                        }
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
                         //templs.push(format!("___ERROR in ({ident}): {e}___"));
                         templs.push(e.to_string())
