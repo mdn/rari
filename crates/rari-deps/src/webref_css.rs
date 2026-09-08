@@ -17,9 +17,10 @@ static CSS_REF: OnceLock<WebrefCss> = OnceLock::new();
 /// Returns the transformed webref CSS data, downloading it first if missing.
 pub fn css_ref_data() -> &'static WebrefCss {
     CSS_REF.get_or_init(|| {
-        let path = data_dir().join("@webref/css").join("webref_css.json");
+        let data_dir = data_dir();
+        let path = data_dir.join("@webref/css").join("webref_css.json");
         if !path.exists() {
-            update_webref_css(data_dir()).expect("failed to download @webref/css");
+            update_webref_css(data_dir).expect("failed to download @webref/css");
         }
         let json_str = fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
