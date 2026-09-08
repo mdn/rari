@@ -1044,9 +1044,9 @@ Some content here.
 
     #[test]
     fn test_repeated_href_on_same_line() {
-        // Regression test: the same href appearing multiple times on one line must each be fixed.
-        // Previously, actual_offset always found the *first* occurrence, producing identical
-        // SearchReplaceWithOffset entries that dedup collapsed to one.
+        // The same href appearing multiple times on one line must each be fixed. Without
+        // `next_search_from`, every issue would match the *first* occurrence, producing identical
+        // `SearchReplaceWithOffset` entries that `dedup()` collapses to one.
         let raw = r#"---
 title: HTML elements
 slug: Web/HTML/Reference/Elements
