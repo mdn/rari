@@ -18,8 +18,11 @@ static CSS_REF: OnceLock<WebrefCss> = OnceLock::new();
 pub fn css_ref_data() -> &'static WebrefCss {
     CSS_REF.get_or_init(|| {
         let data_dir = data_dir();
-        let path = data_dir.join("@webref/css").join("webref_css.json");
+        let package_dir = data_dir.join("@webref/css");
+        let path = package_dir.join("webref_css.json");
         if !path.exists() {
+            // A fresh `last_check.json` makes `get_package` skip the download, so drop it.
+            let _ = fs::remove_file(package_dir.join("last_check.json"));
             update_webref_css(data_dir).expect("failed to download @webref/css");
         }
         let json_str = fs::read_to_string(&path)
