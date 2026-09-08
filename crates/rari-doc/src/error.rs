@@ -118,6 +118,8 @@ pub enum DocError {
     DocsReadError,
     #[error("No RariEnv for Page")]
     NoRariEnv,
+    #[error("Webref lookup failed: {0}")]
+    WebrefLookupFailed(String),
 }
 
 /// Represents various errors that can occur while processing URLs.

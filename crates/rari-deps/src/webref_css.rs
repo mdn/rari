@@ -328,11 +328,19 @@ fn spec_url_to_title_map(base_path: &Path) -> Result<BTreeMap<String, String>, D
 // Since version 7.x of webref-css, there is no link title information available (under `specs` key in the 6.x series)
 // As a workaround, we use a link->title mapping extracted from the `browser-specs` package.
 pub fn update_webref_css(base_path: &Path) -> Result<(), DepsError> {
-    if let Some(package_path) = get_package("@webref/css", &deps().webref_css, base_path)? {
+    let downloaded = get_package("@webref/css", &deps().webref_css, base_path)?.is_some();
+    let package_path = base_path.join("@webref/css");
+    let dest_path = package_path.join("webref_css.json");
+    // The transformed file only keeps the fields rari knows about, so a new rari
+    // version may need fields a cached transform dropped.
+    let version_path = package_path.join("webref_css.rari-version");
+    let version = env!("CARGO_PKG_VERSION");
+    let stale = fs::read_to_string(&version_path).ok().as_deref() != Some(version);
+    if downloaded || stale || !dest_path.exists() {
         let url_to_title = spec_url_to_title_map(base_path)?;
         let webref_css = transform(&package_path, &url_to_title)?;
-        let webref_css_dest_path = package_path.join("webref_css.json");
-        fs::write(webref_css_dest_path, serde_json::to_string(&webref_css)?)?;
+        fs::write(dest_path, serde_json::to_string(&webref_css)?)?;
+        fs::write(version_path, version)?;
     }
     Ok(())
 }
