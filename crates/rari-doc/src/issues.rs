@@ -299,6 +299,7 @@ pub enum IssueType {
     TemplInvalidArg,
     TemplArgError,
     TemplSyntaxError,
+    TemplUnknown,
     TemplMdnDataMissing,
     RedirectedLink,
     BrokenLink,
@@ -319,6 +320,7 @@ impl FromStr for IssueType {
             "templ-invalid-arg" => Self::TemplInvalidArg,
             "templ-arg-error" => Self::TemplArgError,
             "templ-syntax-error" => Self::TemplSyntaxError,
+            "templ-unknown" => Self::TemplUnknown,
             "templ-mdn-data-missing" => Self::TemplMdnDataMissing,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
@@ -593,6 +595,17 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(false);
                     di.explanation = additional.remove("message");
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: source.name,
+                        href: None,
+                    }
+                }
+                IssueType::TemplUnknown => {
+                    let source = issue_source(&mut additional);
+                    di.fixed = false;
+                    di.fixable = Some(false);
+                    di.explanation = Some(format!("{} does not exist", source.label));
                     DIssue::Macros {
                         display_issue: di,
                         macro_name: source.name,
