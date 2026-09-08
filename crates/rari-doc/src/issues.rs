@@ -300,7 +300,6 @@ pub enum IssueType {
     TemplArgError,
     TemplSyntaxError,
     TemplUnknown,
-    TemplMdnDataMissing,
     RedirectedLink,
     BrokenLink,
     IllCasedLink,
@@ -321,7 +320,6 @@ impl FromStr for IssueType {
             "templ-arg-error" => Self::TemplArgError,
             "templ-syntax-error" => Self::TemplSyntaxError,
             "templ-unknown" => Self::TemplUnknown,
-            "templ-mdn-data-missing" => Self::TemplMdnDataMissing,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
             "ill-cased-link" => Self::IllCasedLink,
@@ -638,21 +636,6 @@ impl DIssue {
                         href: None,
                     }
                 }
-                IssueType::TemplMdnDataMissing => {
-                    let source = issue_source(&mut additional);
-                    di.fixed = false;
-                    di.fixable = Some(false);
-                    di.explanation = Some(format!(
-                        "{} references {} which was not found in mdn/data; it may not have been published to the mdn-data npm package yet",
-                        source.label,
-                        additional.get("name").map(|s| s.as_str()).unwrap_or("?")
-                    ));
-                    DIssue::Macros {
-                        display_issue: di,
-                        macro_name: source.name,
-                        href: None,
-                    }
-                }
                 _ => {
                     di.explanation = additional.remove("message");
                     DIssue::Unknown { display_issue: di }
@@ -885,7 +868,7 @@ mod tests {
 
     /// Regression test: nested templ spans must not corrupt position fields.
     ///
-    /// When `cssxref` is rendered inside `cssinfo` via `render_and_decode_ref`,
+    /// When a macro is rendered inside another macro's output,
     /// the inner call uses `offset=0`, so macros on the first row get `line=0`.
     /// The old per-field merge would take `col=23` from the inner synthetic span
     /// while `end_col=11` came from the outer markdown-positioned span, producing

@@ -13,8 +13,6 @@ pub struct Deps {
     pub bcd: VersionReq,
     #[serde(rename = "browser-specs")]
     pub browser_specs: VersionReq,
-    #[serde(rename = "mdn-data")]
-    pub mdn_data: VersionReq,
     #[serde(rename = "web-features")]
     pub web_features: VersionReq,
     #[serde(rename = "web-specs")]
