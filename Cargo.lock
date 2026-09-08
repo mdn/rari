@@ -600,7 +600,6 @@ dependencies = [
  "css-syntax-types",
  "html-escape",
  "rari-deps",
- "rari-types",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
