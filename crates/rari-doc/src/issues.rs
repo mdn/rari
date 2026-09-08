@@ -16,6 +16,7 @@ use tracing_subscriber::registry::{LookupSpan, SpanRef};
 
 use crate::pages::page::{Page, PageLike};
 use crate::position_utils::byte_to_char_column;
+use crate::utils::is_unrooted_url;
 
 pub static ISSUE_COUNTER_F: OnceLock<fn() -> i64> = OnceLock::new();
 static ISSUE_COUNTER: AtomicI64 = AtomicI64::new(0);
@@ -513,10 +514,11 @@ impl DIssue {
                 }
                 IssueType::RedirectedLink => {
                     di.fixed = false;
-                    di.fixable = Some(true);
+                    di.fixable = Some(is_fixable_redirect(di.suggestion.as_deref()));
                     di.explanation = Some(format!(
-                        "Link {} is a redirect",
-                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                        "Link {} is a redirect{}",
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?"),
+                        redirect_target_note(di.suggestion.as_deref())
                     ));
                     DIssue::BrokenLink {
                         display_issue: di,
@@ -553,11 +555,15 @@ impl DIssue {
                 IssueType::TemplRedirectedLink => {
                     let source = issue_source(&mut additional);
                     di.fixed = false;
-                    di.fixable = Some(is_fixable_template(source.name.as_deref()));
+                    di.fixable = Some(
+                        is_fixable_template(source.name.as_deref())
+                            && is_fixable_redirect(di.suggestion.as_deref()),
+                    );
                     di.explanation = Some(format!(
-                        "{} produces link {} which is a redirect",
+                        "{} produces link {} which is a redirect{}",
                         source.label,
-                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?"),
+                        redirect_target_note(di.suggestion.as_deref())
                     ));
                     DIssue::Macros {
                         display_issue: di,
@@ -709,6 +715,20 @@ fn issue_source(additional: &mut HashMap<&str, String>) -> IssueSource {
     }
 }
 
+/// Redirects into `conflicting/` or `orphaned/` have no real target; rewriting
+/// links to them would only hide the flaw.
+fn is_fixable_redirect(suggestion: Option<&str>) -> bool {
+    !suggestion.is_some_and(is_unrooted_url)
+}
+
+fn redirect_target_note(suggestion: Option<&str>) -> &'static str {
+    if is_fixable_redirect(suggestion) {
+        ""
+    } else {
+        " to an unrooted (conflicting/orphaned) page"
+    }
+}
+
 /// Check if a template macro issue can be automatically fixed.
 /// Only navigation templates have fixable slug parameters in the markdown source.
 fn is_fixable_template(macro_name: Option<&str>) -> bool {
@@ -854,6 +874,27 @@ mod tests {
                 "{}",
                 case.name
             );
+        }
+    }
+
+    #[test]
+    fn test_is_fixable_redirect() {
+        let cases = vec![
+            ("no suggestion", None, true),
+            ("regular target", Some("/en-US/docs/Web/API/Window"), true),
+            (
+                "conflicting target",
+                Some("/es/docs/conflicting/Web/API/Window"),
+                false,
+            ),
+            (
+                "orphaned target",
+                Some("/ja/docs/orphaned/Web/API/Window"),
+                false,
+            ),
+        ];
+        for (name, suggestion, expected) in cases {
+            assert_eq!(is_fixable_redirect(suggestion), expected, "{name}");
         }
     }
 
