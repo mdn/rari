@@ -258,6 +258,7 @@ impl PageLike for BlogPost {
             spec_urls: &[],
             page_type: PageType::BlogPost,
             slug: &self.meta.slug,
+            status: &[],
         })
     }
 

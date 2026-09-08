@@ -174,30 +174,18 @@ fn do_remove(
             ))))?;
 
         // Execute the recursive remove command
-        let output = exec_git_with_test_fallback(
+        exec_git_with_test_fallback(
             &[OsStr::new("rm"), OsStr::new("-rf"), parent.as_os_str()],
             root_for_locale(locale)?,
-        );
-
-        if !output.status.success() {
-            return Err(ToolError::GitError(format!(
-                "Failed to remove files: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        )
+        .map_err(|e| ToolError::GitError(format!("Failed to remove files: {e}")))?;
     } else {
         // Execute the single file remove command
-        let output = exec_git_with_test_fallback(
+        exec_git_with_test_fallback(
             &[OsStr::new("rm"), path.as_os_str()],
             root_for_locale(locale)?,
-        );
-
-        if !output.status.success() {
-            return Err(ToolError::GitError(format!(
-                "Failed to remove files: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        )
+        .map_err(|e| ToolError::GitError(format!("Failed to remove files: {e}")))?;
     }
 
     // update the wiki history

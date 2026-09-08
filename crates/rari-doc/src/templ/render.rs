@@ -42,11 +42,13 @@ pub(crate) fn render_for_summary(input: &str) -> Result<String, DocError> {
                         .get(1)
                         .or(mac.args.first())
                         .and_then(|f| f.clone())
+                        .filter(|arg| !arg.is_blank())
                         .map(|arg| AnyArg::try_from(arg).unwrap().to_string()),
                     _ => mac
                         .args
                         .first()
                         .and_then(|f| f.clone())
+                        .filter(|arg| !arg.is_blank())
                         .map(|arg| format!("<code>{}</code>", AnyArg::try_from(arg).unwrap())),
                 } {
                     out.push_str(&s)
@@ -71,10 +73,13 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
             Token::Macro(mac) => {
                 let ident = &mac.ident;
                 let name = ident.to_ascii_lowercase();
-                let line = i64::try_from(mac.pos.0 + offset).unwrap_or(-1);
-                // mac.pos.1 is in bytes from tree-sitter
-                let col = i64::try_from(mac.pos.1).unwrap_or(-1);
-                // Calculate end_col in bytes: start byte + length of macro in bytes
+                // tree-sitter positions are 0-based; add 1 to report 1-based
+                // positions, consistent with comrak's sourcepos (see `fix_link`).
+                let line = i64::try_from(mac.pos.0 + offset + 1).unwrap_or(-1);
+                // mac.pos.1 is a 0-based byte column from tree-sitter.
+                let col = i64::try_from(mac.pos.1 + 1).unwrap_or(-1);
+                // end_col in bytes: start byte + macro byte length. As a 0-based
+                // exclusive end this already equals the 1-based inclusive end column.
                 let macro_byte_len = mac.end - mac.start;
                 let end_col = i64::try_from(mac.pos.1 + macro_byte_len).unwrap_or(-1);
                 let span = span!(
@@ -87,6 +92,12 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                     end_col = end_col
                 );
                 let _enter = span.enter();
+                if mac.malformed {
+                    warn!(
+                        source = "templ-syntax-error",
+                        "Macro {name} has syntax error"
+                    );
+                }
                 match invoke(env, &name, mac.args) {
                     Ok((rendered, TemplType::Sidebar)) => {
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
@@ -99,7 +110,14 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                     }
                     Err(e) if deny_warnings() => return Err(e),
                     Err(e) => {
-                        warn!("{e}",);
+                        match &e {
+                            // A malformed macro already reported a syntax error and its
+                            // recovered arguments are unreliable, so don't also complain
+                            // about them.
+                            DocError::ArgError(_) if mac.malformed => {}
+                            DocError::ArgError(_) => warn!(source = "templ-arg-error", "Macro {e}"),
+                            _ => warn!("{e}"),
+                        }
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
                         //templs.push(format!("___ERROR in ({ident}): {e}___"));
                         templs.push(e.to_string())
@@ -223,5 +241,77 @@ mod test {
         let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, r#""doom""#);
         Ok(())
+    }
+
+    /// Positions emitted by `render` must be 1-based, matching comrak's
+    /// sourcepos (tree-sitter reports 0-based). The macro sits after a text
+    /// prefix so its column is non-zero, and its invalid `sandbox` argument
+    /// makes `EmbedLiveSample` emit a `templ-invalid-arg` warning through a
+    /// pure code path (no content/link resolution required).
+    #[test]
+    fn test_render_reports_1_based_positions() {
+        use tracing::subscriber::set_default;
+        use tracing_subscriber::layer::SubscriberExt;
+
+        use crate::issues::InMemoryLayer;
+
+        let layer = InMemoryLayer::default();
+        let subscriber = tracing_subscriber::registry().with(layer.clone());
+        let _guard = set_default(subscriber);
+
+        let env = RariEnv {
+            ..Default::default()
+        };
+        let prefix = "abc ";
+        let mac = r#"{{EmbedLiveSample("x", 100, 100, "", "", "", "", "nope")}}"#;
+        render(&env, &format!("{prefix}{mac}"), 0).expect("render should succeed");
+
+        let events = layer.get_events();
+        let issues = events.get("").expect("expected an emitted issue");
+        assert_eq!(issues.len(), 1);
+        let issue = &issues[0];
+        // tree-sitter row 0 (+ offset 0), reported 1-based.
+        assert_eq!(issue.line, 1);
+        assert_eq!(issue.end_line, 1);
+        // 0-based byte column `prefix.len()` -> 1-based start column.
+        assert_eq!(issue.col, prefix.len() as i64 + 1);
+        // Inclusive 1-based end column == start byte + macro byte length.
+        assert_eq!(issue.end_col, (prefix.len() + mac.len()) as i64);
+    }
+
+    /// An unknown macro name is a `templ-unknown` flaw, and still renders a
+    /// placeholder rather than failing.
+    #[test]
+    fn test_render_reports_unknown_macro() {
+        use tracing::subscriber::set_default;
+        use tracing_subscriber::layer::SubscriberExt;
+
+        use crate::issues::InMemoryLayer;
+
+        let layer = InMemoryLayer::default();
+        let subscriber = tracing_subscriber::registry().with(layer.clone());
+        let _guard = set_default(subscriber);
+
+        let env = RariEnv {
+            ..Default::default()
+        };
+        let Rendered {
+            content, templs, ..
+        } = render(&env, r#"{{domxreg("Element")}}"#, 0).expect("render should succeed");
+        let out = decode_ref(&content, &templs, None).expect("decode should succeed");
+        assert_eq!(out, "<s>unsupported templ: domxreg</s>");
+
+        let events = layer.get_events();
+        let issues = events.get("").expect("expected an emitted issue");
+        assert_eq!(issues.len(), 1);
+        let fields = &issues[0].fields;
+        assert!(
+            fields.contains(&("source", "templ-unknown".to_string())),
+            "expected a templ-unknown source, got {fields:?}"
+        );
+        assert!(
+            fields.contains(&("templ", "domxreg".to_string())),
+            "expected the macro name on the event, got {fields:?}"
+        );
     }
 }

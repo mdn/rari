@@ -16,6 +16,7 @@ pub struct MacroToken {
     pub ident: String,
     pub pos: (usize, usize),
     pub args: Vec<Option<Arg>>,
+    pub malformed: bool,
 }
 
 fn from_node<'a>(
@@ -25,7 +26,12 @@ fn from_node<'a>(
 ) -> Option<MacroToken> {
     let ident_node = value.named_child(0).unwrap();
     let ident = content[ident_node.start_byte()..ident_node.end_byte()].to_string();
-    let args = if let Some(args_node) = value.named_child(1) {
+    // Look the arguments up by kind: a syntax error inserts an `ERROR` node,
+    // which would otherwise be mistaken for them.
+    let args = if let Some(args_node) = value
+        .named_children(&mut value.walk())
+        .find(|child| child.kind() == "args")
+    {
         args_node
             .named_children(cursor)
             .map(|arg| ts_to_arg(arg, content))
@@ -43,11 +49,22 @@ fn from_node<'a>(
         pos,
         ident,
         args,
+        malformed: value.has_error(),
     })
 }
 
+/// Returns `None` for an unparseable argument (a tree-sitter `ERROR` node), but
+/// an empty [`Arg::String`] for a blank one (`""` or `{{foo(,"bar")}}`).
 fn ts_to_arg(value: tree_sitter::Node<'_>, content: &str) -> Option<Arg> {
     match value.kind() {
+        "none" => Some(Arg::String(
+            String::new(),
+            match content[value.start_byte()..].chars().next() {
+                Some('\'') => Quotes::Single,
+                Some('`') => Quotes::Back,
+                _ => Quotes::Double,
+            },
+        )),
         "string" => {
             if let Some(child) = value.child(0) {
                 ts_to_arg(child, content)
@@ -157,11 +174,86 @@ mod test {
     }
 
     #[test]
-    fn with_empty_string_arg() {
-        let p = parse(r#"{{foo("")}}"#);
-        assert!(matches!(
-            p.unwrap().first(),
-            Some(Token::Macro(macro_token)) if macro_token.args.first() == Some(&None)
-        ));
+    fn arg_shapes() {
+        let blank = Some(Arg::String(String::new(), Quotes::Double));
+        let cases: Vec<(&str, &str, Vec<Option<Arg>>)> = vec![
+            (
+                "empty string literal",
+                r#"{{foo("")}}"#,
+                vec![blank.clone()],
+            ),
+            (
+                "empty string literal among others",
+                r#"{{foo('', 'CSS')}}"#,
+                vec![
+                    Some(Arg::String(String::new(), Quotes::Single)),
+                    Some(Arg::String("CSS".into(), Quotes::Single)),
+                ],
+            ),
+            (
+                "omitted argument",
+                r#"{{foo(,"CSS")}}"#,
+                vec![
+                    blank.clone(),
+                    Some(Arg::String("CSS".into(), Quotes::Double)),
+                ],
+            ),
+            ("no parentheses", "{{foo}}", vec![]),
+            ("empty parentheses", "{{foo()}}", vec![]),
+            (
+                "unparseable argument",
+                "{{foo(\u{300c}label\u{300d})}}",
+                vec![None],
+            ),
+        ];
+        for (name, input, expected) in cases {
+            let tokens = parse(input).unwrap();
+            let args = match tokens.first() {
+                Some(Token::Macro(m)) => m.args.clone(),
+                other => panic!("{name}: expected a macro token, got {other:?}"),
+            };
+            assert_eq!(args, expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn malformed_macros() {
+        let cases: Vec<(&str, &str, bool, Vec<Option<Arg>>)> = vec![
+            (
+                "well-formed",
+                r#"{{cssxref("color")}}"#,
+                false,
+                vec![Some(Arg::String("color".into(), Quotes::Double))],
+            ),
+            (
+                "unparseable argument",
+                "{{htmlelement(\u{300c}label\u{300d})}}",
+                true,
+                vec![None],
+            ),
+            (
+                // The stray `(` inserts an `ERROR` node before the arguments,
+                // which are still recovered by looking them up by kind.
+                "stray opening parenthesis",
+                r#"{{cssxref(("color")}}"#,
+                true,
+                vec![Some(Arg::String("color".into(), Quotes::Double))],
+            ),
+            (
+                "unbalanced quotes",
+                r#"{{WebExtAPIRef("userScripts.,"execute()", "execute()"}}"#,
+                true,
+                vec![],
+            ),
+        ];
+        for (name, input, malformed, expected_args) in cases {
+            let tokens = parse(input).unwrap();
+            let m = match tokens.first() {
+                Some(Token::Macro(m)) => m,
+                other => panic!("{name}: expected a macro token, got {other:?}"),
+            };
+            assert_eq!(m.malformed, malformed, "{name}: malformed");
+            assert_eq!(m.args, expected_args, "{name}: args");
+        }
     }
 }

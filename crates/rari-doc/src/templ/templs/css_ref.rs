@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use itertools::Itertools;
 use rari_templ_func::rari_f;
-use rari_types::fm_types::{FeatureStatus, PageType};
+use rari_types::fm_types::PageType;
 use rari_utils::concat_strs;
 
 use crate::error::DocError;
@@ -36,11 +36,17 @@ pub fn css_ref() -> Result<String, DocError> {
     }
 
     let mut out = String::new();
-    out.push_str(r#"<div class="index">"#);
+
+    out.push_str(r#"<div class="index"><nav class="index-nav"><ul>"#);
+    for &letter in index.keys() {
+        let (label, id) = letter_label_and_id(letter);
+        out.extend([r##"<li><a href="#"##, &id, r#"">"#, &label, "</a></li>"]);
+    }
+    out.push_str("</ul></nav>");
+
     for (letter, items) in index {
-        out.push_str("<h3>");
-        out.push_str(&html_escape::encode_safe(letter.encode_utf8(&mut [0; 4])));
-        out.push_str("</h3><ul>");
+        let (label, id) = letter_label_and_id(letter);
+        out.extend([r#"<h3 id=""#, &id, r#"">"#, &label, "</h3><ul>"]);
         for (url, (html_label, _)) in items
             .into_iter()
             .sorted_by(|(_, (_, a)), (_, (_, b))| compare_items(a, b))
@@ -54,7 +60,7 @@ pub fn css_ref() -> Result<String, DocError> {
                 Some(&placeholder_label),
                 false,
                 None,
-                false,
+                true,
             )?;
             out.extend([
                 "<li>",
@@ -71,6 +77,13 @@ pub fn css_ref() -> Result<String, DocError> {
     Ok(out)
 }
 
+fn letter_label_and_id(letter: char) -> (String, String) {
+    (
+        letter.to_string(),
+        format!("index-{}", letter.to_ascii_lowercase()),
+    )
+}
+
 fn is_indexed_css_ref_page(page: &Page) -> bool {
     matches!(
         page.page_type(),
@@ -84,18 +97,16 @@ fn is_indexed_css_ref_page(page: &Page) -> bool {
             | PageType::CssPseudoClass
             | PageType::CssShorthandProperty
             | PageType::CssAtRuleDescriptor
-    ) && !page
-        .status()
-        .iter()
-        .any(|s| matches!(s, FeatureStatus::Deprecated | FeatureStatus::NonStandard))
+    )
+}
+
+fn sort_key(s: &str) -> &str {
+    strip_vendor_prefix(s)
+        .trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-')
 }
 
 fn compare_items(a: &str, b: &str) -> Ordering {
-    let ord = a
-        .trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-')
-        .cmp(
-            b.trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-'),
-        );
+    let ord = sort_key(a).cmp(sort_key(b));
     if ord == Ordering::Equal {
         a.cmp(b)
     } else {
@@ -103,8 +114,21 @@ fn compare_items(a: &str, b: &str) -> Ordering {
     }
 }
 
+fn strip_vendor_prefix(s: &str) -> &str {
+    if let Some(rest) = s.strip_prefix('-')
+        && let Some(idx) = rest.find('-')
+        && idx > 0
+        && rest[..idx].chars().all(|c| c.is_ascii_alphabetic())
+    {
+        &rest[idx + 1..]
+    } else {
+        s
+    }
+}
+
 fn initial_letter(s: &str) -> char {
-    s.chars()
+    strip_vendor_prefix(s)
+        .chars()
         .find(|&c| c.is_ascii_alphabetic() || c == '-')
         .unwrap_or('?')
         .to_ascii_uppercase()
@@ -199,8 +223,12 @@ mod tests {
     fn test_initial_letter() {
         assert_eq!(initial_letter("background-color"), 'B');
         assert_eq!(initial_letter("`font-family`"), 'F');
-        assert_eq!(initial_letter("-webkit-foo"), '-');
+        assert_eq!(initial_letter("-webkit-foo"), 'F');
+        assert_eq!(initial_letter("-moz-user-select"), 'U');
+        assert_eq!(initial_letter("-ms-flex"), 'F');
+        assert_eq!(initial_letter("-o-transition"), 'T');
         assert_eq!(initial_letter("@font-face"), 'F');
+        assert_eq!(initial_letter("--*"), '-');
         assert_eq!(initial_letter(""), '?');
     }
 
@@ -213,5 +241,13 @@ mod tests {
         // trimmed forms are equal, fall back to raw comparison.
         assert_eq!(compare_items("@apple", "apple"), Ordering::Less);
         assert_eq!(compare_items("apple", "@apple"), Ordering::Greater);
+        // Vendor prefixes are stripped, so a prefixed property sorts next to
+        // its unprefixed sibling.
+        assert_eq!(compare_items("-webkit-box-align", "color"), Ordering::Less);
+        assert_eq!(
+            compare_items("-webkit-box-align", "block-size"),
+            Ordering::Greater
+        );
+        assert_eq!(compare_items("-webkit-foo", "foo"), Ordering::Less);
     }
 }

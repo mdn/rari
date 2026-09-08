@@ -148,7 +148,7 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
     let mapping = args.iter().filter_map(|arg| match arg {
 		syn::FnArg::Typed(ty) => Some(ty),
 		_ => None,
-	}).map(|arg| {
+	}).enumerate().map(|(i, arg)| {
 	let ty = &arg.ty;
 	let option = if let syn::Type::Path(p) = &**ty {
 		is_option(p)
@@ -156,17 +156,31 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
 		false
 	};
 	let ident = &arg.pat;
+	let templ = &name;
+	let pos = i + 1;
+	let arg_name = ident.to_token_stream().to_string();
 	if option {
-		quote! { let #ident: #ty = match args_iter.next().map(|arg| arg.map(TryInto::try_into)) {
+		quote! { let #ident: #ty = match args_iter.next().flatten() {
             None => None,
-			Some(None) => None,
-            Some(Some(Ok(o))) => Some(o),
-            Some(Some(Err(e))) => {
-              return Err(e.into());
-            },
+			Some(arg) if arg.is_blank() => None,
+            Some(arg) => Some(
+                TryInto::try_into(arg).map_err(|e| ArgError::at(#templ, #pos, #arg_name, e))?
+            ),
 		}; }
 	} else {
-		quote! { let #ident: #ty = args_iter.next().flatten().ok_or(ArgError::MustBeProvided).and_then(TryInto::try_into)?; }
+		quote! { let #ident: #ty = match args_iter.next() {
+            None => return Err(
+                ArgError::at(#templ, #pos, #arg_name, ArgError::MustBeProvided).into()
+            ),
+            Some(None) => return Err(
+                ArgError::at(#templ, #pos, #arg_name, ArgError::MustBeParsable).into()
+            ),
+            Some(Some(arg)) if arg.is_blank() => return Err(
+                ArgError::at(#templ, #pos, #arg_name, ArgError::MustNotBeEmpty).into()
+            ),
+            Some(Some(arg)) => TryInto::try_into(arg)
+                .map_err(|e| ArgError::at(#templ, #pos, #arg_name, e))?,
+		}; }
 	}
 	});
     let block = dup.block;

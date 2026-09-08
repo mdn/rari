@@ -5,9 +5,12 @@
 //! support status for specific browser compatibility keys.
 use std::sync::LazyLock;
 
-use rari_data::baseline::{Baseline, WebFeatures};
+use rari_data::baseline::{Baseline, BaselineStatus, WebFeatures};
+use rari_types::fm_types::FeatureStatus;
 use rari_types::globals::data_dir;
 use tracing::error;
+
+use crate::pages::page::Page;
 
 static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
     let web_features = WebFeatures::from_file(&data_dir().join("web-features/package/data.json"));
@@ -38,6 +41,38 @@ pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>
     None
 }
 
+pub(crate) fn is_mocked_banner_section(slug: &str) -> bool {
+    // only mock banners under Web and WebAssembly, as those are the sections we have Baseline banners
+    // don't mock under Web/Accessibility, as we don't have Baseline banners there
+    ["Web/", "WebAssembly/"]
+        .iter()
+        .any(|prefix| slug.starts_with(prefix))
+        && !slug.starts_with("Web/Accessibility/")
+}
+
+pub(crate) fn get_mocked_baseline_status(
+    fm_status: &[FeatureStatus],
+    slug: &str,
+) -> Option<BaselineStatus> {
+    if !fm_status.contains(&FeatureStatus::Deprecated) {
+        return None;
+    }
+    if !is_mocked_banner_section(slug) {
+        return None;
+    }
+    Some(BaselineStatus::Discouraged)
+}
+
+pub(crate) fn get_baseline_status(page: &Page) -> Option<BaselineStatus> {
+    let doc = match page {
+        Page::Doc(doc) => doc,
+        _ => return None,
+    };
+    get_baseline(&doc.meta.browser_compat)
+        .map(|baseline| baseline.status())
+        .or_else(|| get_mocked_baseline_status(&doc.meta.status, &doc.meta.slug))
+}
+
 fn get_baseline_from<'a>(
     browser_compat: &[String],
     web_features: &'a WebFeatures,
@@ -56,8 +91,10 @@ fn get_baseline_from<'a>(
 #[cfg(test)]
 mod tests {
     use rari_data::baseline::BaselineHighLow;
+    use rari_types::locale::Locale;
 
     use super::*;
+    use crate::pages::types::spa::SPA;
 
     static TEST_WEB_FEATURES: LazyLock<WebFeatures> = LazyLock::new(|| {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -99,6 +136,12 @@ mod tests {
     }
 
     #[test]
+    fn non_doc_pages_have_no_status() {
+        let page = SPA::from_slug("blog", Locale::EnUs).unwrap();
+        assert!(get_baseline_status(&page).is_none());
+    }
+
+    #[test]
     fn multiple_one_missing() {
         assert!(get(&["api.high", "api.NonExistent"]).is_none());
     }
@@ -112,5 +155,50 @@ mod tests {
     fn multiple_same_feature() {
         let b = get(&["api.high", "api.high-adjacent"]).unwrap();
         assert_eq!(b.support.baseline, BaselineHighLow::High);
+    }
+
+    fn mocked(slug: &str) -> Option<BaselineStatus> {
+        get_mocked_baseline_status(&[FeatureStatus::Deprecated], slug)
+    }
+
+    #[test]
+    fn a_deprecated_page_in_a_baseline_section_is_discouraged() {
+        for slug in [
+            "Web/API/AudioProcessingEvent",
+            "WebAssembly/JavaScript_interface/Memory",
+        ] {
+            assert_eq!(mocked(slug), Some(BaselineStatus::Discouraged), "{slug}");
+        }
+    }
+
+    #[test]
+    fn a_deprecated_page_outside_the_baseline_sections_is_not_mocked() {
+        for slug in [
+            "Mozilla/Add-ons/WebExtensions/API/tabs",
+            "Games/Techniques/3D_on_the_web",
+            "Learn_web_development/Core/Scripting",
+        ] {
+            assert_eq!(mocked(slug), None, "{slug}");
+        }
+    }
+
+    #[test]
+    fn the_excluded_section_is_not_mocked() {
+        assert_eq!(
+            mocked("Web/Accessibility/ARIA/Reference/Attributes/aria-dropeffect"),
+            None
+        );
+    }
+
+    #[test]
+    fn a_page_without_deprecated_status_is_not_mocked() {
+        let statuses: [&[FeatureStatus]; 2] = [&[], &[FeatureStatus::Experimental]];
+        for status in statuses {
+            assert_eq!(
+                get_mocked_baseline_status(status, "Web/API/Thing"),
+                None,
+                "{status:?}"
+            );
+        }
     }
 }
