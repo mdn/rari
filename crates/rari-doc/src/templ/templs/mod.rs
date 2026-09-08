@@ -35,6 +35,7 @@ use rari_types::{Arg, RariEnv};
 use tracing::error;
 
 use crate::error::DocError;
+use crate::issues::get_issue_counter;
 use crate::utils::{TEMPL_RECORDER, TemplStatEvent, is_unrooted};
 
 #[derive(Debug)]
@@ -85,6 +86,14 @@ pub fn invoke(
         None if name == "xulelem" => return Ok((Default::default(), TemplType::None)),
         None if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
         None => {
+            let ic = get_issue_counter();
+            // The `banner` span doesn't set `templ`, unlike `render`'s.
+            tracing::warn!(
+                source = "templ-unknown",
+                ic = ic,
+                templ = name.as_str(),
+                "Unknown macro {name}"
+            );
             let rendered = format!("<s>unsupported templ: {name}</s>");
             record_invocation(name, env.locale, false);
             return Ok((rendered, TemplType::None));

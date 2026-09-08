@@ -285,4 +285,40 @@ mod test {
         // Inclusive 1-based end column == start byte + macro byte length.
         assert_eq!(issue.end_col, (prefix.len() + mac.len()) as i64);
     }
+
+    /// An unknown macro name is a `templ-unknown` flaw, and still renders a
+    /// placeholder rather than failing.
+    #[test]
+    fn test_render_reports_unknown_macro() {
+        use tracing::subscriber::set_default;
+        use tracing_subscriber::layer::SubscriberExt;
+
+        use crate::issues::InMemoryLayer;
+
+        let layer = InMemoryLayer::default();
+        let subscriber = tracing_subscriber::registry().with(layer.clone());
+        let _guard = set_default(subscriber);
+
+        let env = RariEnv {
+            ..Default::default()
+        };
+        let Rendered {
+            content, templs, ..
+        } = render(&env, r#"{{domxreg("Element")}}"#, 0).expect("render should succeed");
+        let out = decode_ref(&content, &templs, None).expect("decode should succeed");
+        assert_eq!(out, "<s>unsupported templ: domxreg</s>");
+
+        let events = layer.get_events();
+        let issues = events.get("").expect("expected an emitted issue");
+        assert_eq!(issues.len(), 1);
+        let fields = &issues[0].fields;
+        assert!(
+            fields.contains(&("source", "templ-unknown".to_string())),
+            "expected a templ-unknown source, got {fields:?}"
+        );
+        assert!(
+            fields.contains(&("templ", "domxreg".to_string())),
+            "expected the macro name on the event, got {fields:?}"
+        );
+    }
 }
