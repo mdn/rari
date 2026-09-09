@@ -714,8 +714,8 @@ fn issue_source(additional: &mut HashMap<&str, String>) -> IssueSource {
     }
 }
 
-/// Redirects into `conflicting/` or `orphaned/` have no real target; rewriting
-/// links to them would only hide the flaw.
+/// Redirects into `conflicting/` or `orphaned/` point at unrooted pages;
+/// rewriting links to them would only hide the flaw.
 fn unrooted_note(unrooted: bool) -> &'static str {
     if unrooted {
         " to an unrooted (conflicting/orphaned) page"
