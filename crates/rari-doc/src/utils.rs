@@ -353,6 +353,8 @@ mod text {
         let cases = vec![
             ("/es/docs/conflicting/Web/API/Window", true),
             ("/en-US/docs/orphaned/Web/API/GlobalEventHandlers", true),
+            ("/docs/conflicting/Web/API/Window", true),
+            ("/es/docs/orphaned/Web/API/Window#foo", true),
             ("/en-US/docs/Web/API/Window", false),
             ("/es/docs/Web/API/conflicting/foo", false),
             ("/en-US/conflicting/Web/API", false),
