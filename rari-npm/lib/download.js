@@ -219,25 +219,22 @@ async function getAssetFromGithubApi(opts, assetName, downloadFolder) {
  * @param {string} destinationDir
  */
 async function extractZipEntry(zipPath, fileName, destinationDir) {
+  // Closed by `eachEntry()` on end, error, or early exit (`autoClose`).
   const zipfile = await yauzl.openPromise(zipPath);
-  try {
-    for await (const entry of zipfile.eachEntry()) {
-      if (entry.fileName !== fileName) {
-        throw new Error(`Unexpected zip entry: ${entry.fileName}`);
-      }
-      // Unix mode lives in the upper 16 bits.
-      const fileType = (entry.externalFileAttributes >>> 16) & 0o170000;
-      if (fileType !== 0 && fileType !== 0o100000) {
-        throw new Error(`Zip entry ${entry.fileName} is not a regular file`);
-      }
-      const readStream = await zipfile.openReadStreamPromise(entry);
-      await pipeline(
-        readStream,
-        createWriteStream(path.join(destinationDir, fileName)),
-      );
+  for await (const entry of zipfile.eachEntry()) {
+    if (entry.fileName !== fileName) {
+      throw new Error(`Unexpected zip entry: ${entry.fileName}`);
     }
-  } finally {
-    zipfile.close();
+    // Unix mode lives in the upper 16 bits.
+    const fileType = (entry.externalFileAttributes >>> 16) & 0o170000;
+    if (fileType !== 0 && fileType !== 0o100000) {
+      throw new Error(`Zip entry ${entry.fileName} is not a regular file`);
+    }
+    const readStream = await zipfile.openReadStreamPromise(entry);
+    await pipeline(
+      readStream,
+      createWriteStream(path.join(destinationDir, fileName)),
+    );
   }
 }
 
