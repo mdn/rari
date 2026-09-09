@@ -212,7 +212,7 @@ async function getAssetFromGithubApi(opts, assetName, downloadFolder) {
 }
 
 /**
- * Extract a single regular file from a zip archive, rejecting all other entries.
+ * Extract a single regular file from a zip archive, skipping all other entries.
  *
  * @param {string} zipPath
  * @param {string} fileName
@@ -223,7 +223,8 @@ async function extractZipEntry(zipPath, fileName, destinationDir) {
   const zipfile = await yauzl.openPromise(zipPath);
   for await (const entry of zipfile.eachEntry()) {
     if (entry.fileName !== fileName) {
-      throw new Error(`Unexpected zip entry: ${entry.fileName}`);
+      console.log(`Skipping zip entry: ${entry.fileName}`);
+      continue;
     }
     // Unix mode lives in the upper 16 bits.
     const fileType = (entry.externalFileAttributes >>> 16) & 0o170000;
