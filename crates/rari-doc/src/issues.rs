@@ -513,12 +513,13 @@ impl DIssue {
                     }
                 }
                 IssueType::RedirectedLink => {
+                    let unrooted = di.suggestion.as_deref().is_some_and(is_unrooted_url);
                     di.fixed = false;
-                    di.fixable = Some(is_fixable_redirect(di.suggestion.as_deref()));
+                    di.fixable = Some(!unrooted);
                     di.explanation = Some(format!(
                         "Link {} is a redirect{}",
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?"),
-                        redirect_target_note(di.suggestion.as_deref())
+                        unrooted_note(unrooted)
                     ));
                     DIssue::BrokenLink {
                         display_issue: di,
@@ -554,16 +555,14 @@ impl DIssue {
                 }
                 IssueType::TemplRedirectedLink => {
                     let source = issue_source(&mut additional);
+                    let unrooted = di.suggestion.as_deref().is_some_and(is_unrooted_url);
                     di.fixed = false;
-                    di.fixable = Some(
-                        is_fixable_template(source.name.as_deref())
-                            && is_fixable_redirect(di.suggestion.as_deref()),
-                    );
+                    di.fixable = Some(is_fixable_template(source.name.as_deref()) && !unrooted);
                     di.explanation = Some(format!(
                         "{} produces link {} which is a redirect{}",
                         source.label,
                         additional.get("url").map(|s| s.as_str()).unwrap_or("?"),
-                        redirect_target_note(di.suggestion.as_deref())
+                        unrooted_note(unrooted)
                     ));
                     DIssue::Macros {
                         display_issue: di,
@@ -717,15 +716,11 @@ fn issue_source(additional: &mut HashMap<&str, String>) -> IssueSource {
 
 /// Redirects into `conflicting/` or `orphaned/` have no real target; rewriting
 /// links to them would only hide the flaw.
-fn is_fixable_redirect(suggestion: Option<&str>) -> bool {
-    !suggestion.is_some_and(is_unrooted_url)
-}
-
-fn redirect_target_note(suggestion: Option<&str>) -> &'static str {
-    if is_fixable_redirect(suggestion) {
-        ""
-    } else {
+fn unrooted_note(unrooted: bool) -> &'static str {
+    if unrooted {
         " to an unrooted (conflicting/orphaned) page"
+    } else {
+        ""
     }
 }
 
@@ -874,27 +869,6 @@ mod tests {
                 "{}",
                 case.name
             );
-        }
-    }
-
-    #[test]
-    fn test_is_fixable_redirect() {
-        let cases = vec![
-            ("no suggestion", None, true),
-            ("regular target", Some("/en-US/docs/Web/API/Window"), true),
-            (
-                "conflicting target",
-                Some("/es/docs/conflicting/Web/API/Window"),
-                false,
-            ),
-            (
-                "orphaned target",
-                Some("/ja/docs/orphaned/Web/API/Window"),
-                false,
-            ),
-        ];
-        for (name, suggestion, expected) in cases {
-            assert_eq!(is_fixable_redirect(suggestion), expected, "{name}");
         }
     }
 
