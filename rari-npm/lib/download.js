@@ -4,9 +4,10 @@ import * as https from "https";
 import { createWriteStream } from "fs";
 import { unlink, access, constants, mkdir, chmod } from "fs/promises";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 
 import { x } from "tar";
-import extract from "extract-zip";
+import yauzl from "yauzl";
 
 import packageJson from "../package.json" with { type: "json" };
 
@@ -211,13 +212,43 @@ async function getAssetFromGithubApi(opts, assetName, downloadFolder) {
 }
 
 /**
+ * Extract a single regular file from a zip archive, rejecting all other entries.
+ *
+ * @param {string} zipPath
+ * @param {string} fileName
+ * @param {string} destinationDir
+ */
+async function extractZipEntry(zipPath, fileName, destinationDir) {
+  const zipfile = await yauzl.openPromise(zipPath);
+  try {
+    for await (const entry of zipfile.eachEntry()) {
+      if (entry.fileName !== fileName) {
+        throw new Error(`Unexpected zip entry: ${entry.fileName}`);
+      }
+      // Unix mode lives in the upper 16 bits.
+      const fileType = (entry.externalFileAttributes >>> 16) & 0o170000;
+      if (fileType !== 0 && fileType !== 0o100000) {
+        throw new Error(`Zip entry ${entry.fileName} is not a regular file`);
+      }
+      const readStream = await zipfile.openReadStreamPromise(entry);
+      await pipeline(
+        readStream,
+        createWriteStream(path.join(destinationDir, fileName)),
+      );
+    }
+  } finally {
+    zipfile.close();
+  }
+}
+
+/**
  * @param {string} packedFilePath
  * @param {string} destinationDir
  */
 async function unpack(packedFilePath, destinationDir) {
   const rari_name = "rari";
   if (isWindows) {
-    await extract(packedFilePath, { dir: destinationDir });
+    await extractZipEntry(packedFilePath, `${rari_name}.exe`, destinationDir);
   } else {
     await x({ cwd: destinationDir, file: packedFilePath });
   }
