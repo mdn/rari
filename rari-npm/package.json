@@ -25,10 +25,10 @@
     "node": ">=20"
   },
   "dependencies": {
-    "yauzl": "^3.4.0",
     "https-proxy-agent": "^9.0.0",
     "proxy-from-env": "^2.0.0",
     "tar": "^7.4.3",
+    "yauzl": "^3.4.0",
     "json-schema-to-typescript": "^16.0.0"
   }
 }
