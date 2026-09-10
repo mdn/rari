@@ -59,7 +59,7 @@ jobs:
               exit 1
             fi
             RELEASE_REF="refs/tags/$RECOVERY_TAG"
-            if ! git rev-parse --verify "$RELEASE_REF^{commit}" > /dev/null; then
+            if ! git rev-parse --verify "$RELEASE_REF^{commit}" > /dev/null 2>&1; then
               echo "::error::Release tag $RECOVERY_TAG does not exist"
               exit 1
             fi
