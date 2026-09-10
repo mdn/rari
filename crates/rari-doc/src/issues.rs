@@ -16,6 +16,7 @@ use tracing_subscriber::registry::{LookupSpan, SpanRef};
 
 use crate::pages::page::{Page, PageLike};
 use crate::position_utils::byte_to_char_column;
+use crate::utils::is_unrooted_url;
 
 pub static ISSUE_COUNTER_F: OnceLock<fn() -> i64> = OnceLock::new();
 static ISSUE_COUNTER: AtomicI64 = AtomicI64::new(0);
@@ -512,11 +513,13 @@ impl DIssue {
                     }
                 }
                 IssueType::RedirectedLink => {
+                    let unrooted = di.suggestion.as_deref().is_some_and(is_unrooted_url);
                     di.fixed = false;
-                    di.fixable = Some(true);
+                    di.fixable = Some(!unrooted);
                     di.explanation = Some(format!(
-                        "Link {} is a redirect",
-                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                        "Link {} is a redirect{}",
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?"),
+                        unrooted_note(unrooted)
                     ));
                     DIssue::BrokenLink {
                         display_issue: di,
@@ -552,12 +555,14 @@ impl DIssue {
                 }
                 IssueType::TemplRedirectedLink => {
                     let source = issue_source(&mut additional);
+                    let unrooted = di.suggestion.as_deref().is_some_and(is_unrooted_url);
                     di.fixed = false;
-                    di.fixable = Some(is_fixable_template(source.name.as_deref()));
+                    di.fixable = Some(is_fixable_template(source.name.as_deref()) && !unrooted);
                     di.explanation = Some(format!(
-                        "{} produces link {} which is a redirect",
+                        "{} produces link {} which is a redirect{}",
                         source.label,
-                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?"),
+                        unrooted_note(unrooted)
                     ));
                     DIssue::Macros {
                         display_issue: di,
@@ -706,6 +711,16 @@ fn issue_source(additional: &mut HashMap<&str, String>) -> IssueSource {
     IssueSource {
         label,
         name: macro_name.or(sidebar_name),
+    }
+}
+
+/// Redirects into `conflicting/` or `orphaned/` point at unrooted pages;
+/// rewriting links to them would only hide the flaw.
+fn unrooted_note(unrooted: bool) -> &'static str {
+    if unrooted {
+        " to an unrooted (conflicting/orphaned) page"
+    } else {
+        ""
     }
 }
 
