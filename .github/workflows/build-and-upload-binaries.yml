@@ -35,3 +35,18 @@ jobs:
           target: ${{ matrix.target }}
           build-tool: ${{ matrix.build-tool }}
           profile: release-lto
+
+  publish-npm:
+    needs: upload-assets
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      # A separate run on the release tag keeps npm provenance tied to the release commit.
+      - name: Dispatch npm publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh workflow run publish-npm.yml --ref "$RELEASE_TAG" -f publish=true

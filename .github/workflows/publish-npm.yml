@@ -1,15 +1,8 @@
 name: publish-npm
 
 on:
-  workflow_run:
-    workflows: [build-and-upload-binaries]
-    types: [completed]
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Release tag to publish (e.g. v0.2.35)"
-        required: true
-        type: string
       publish:
         description: "Actually publish (otherwise dry run)"
         required: true
@@ -22,15 +15,12 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     env:
-      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish }}
+      DRY_RUN: ${{ !inputs.publish }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Both refs are maintainer-controlled: workflow_run only follows the release workflow, and workflow_dispatch requires write access.
-          ref: ${{ inputs.tag || github.event.workflow_run.head_sha }}
           persist-credentials: false
 
       - name: Setup Node
@@ -40,16 +30,13 @@ jobs:
           registry-url: "https://registry.npmjs.org/"
           package-manager-cache: false
 
-      # The checked-out ref decides what gets published, so a mismatching tag would publish under a different version.
+      # Dispatch on the release tag so npm provenance identifies the published source.
       - name: Check tag
-        if: ${{ github.event_name == 'workflow_dispatch' }}
         working-directory: ./rari-npm
-        env:
-          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="v$(node -p 'require("./package.json").version')"
-          if [ "$INPUT_TAG" != "$TAG" ]; then
-            echo "::error::Tag $INPUT_TAG does not match package.json version $TAG"
+          TAG="refs/tags/v$(node -p 'require("./package.json").version')"
+          if [ "$GITHUB_REF" != "$TAG" ]; then
+            echo "::error::Run this workflow on $TAG (current ref: $GITHUB_REF)"
             exit 1
           fi
 
