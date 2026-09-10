@@ -893,6 +893,7 @@ dependencies = [
  "quick-xml 0.42.0",
  "rayon",
  "regex",
+ "serde",
  "serde_json",
 ]
 
