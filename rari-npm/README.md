@@ -66,8 +66,10 @@ below if it does not. Already-published npm versions cannot be overwritten.
 
 If the publishing workflow needs a fix, create a branch from the release tag,
 apply the workflow fix, commit it, and push the branch. Keep `rari-npm/`
-unchanged, including its package version. For an older release, the branch must
-include the recovery-enabled `publish-npm.yml`.
+unchanged, including its package version: recovery only covers fixes outside
+`rari-npm/`, so a broken package script or file requires a new release instead.
+For an older release, the branch must include the recovery-enabled
+`publish-npm.yml`.
 
 ```bash
 git switch -c recover-v0.2.35 v0.2.35
