@@ -3,6 +3,11 @@ name: publish-npm
 on:
   workflow_dispatch:
     inputs:
+      recovery_tag:
+        description: "Release tag to recover from a branch with workflow fixes (optional)"
+        required: false
+        default: ""
+        type: string
       publish:
         description: "Actually publish (otherwise dry run)"
         required: true
@@ -22,6 +27,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Recovery needs the release tag and history to verify ancestry.
+          fetch-depth: ${{ inputs.recovery_tag != '' && '0' || '1' }}
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -30,14 +37,40 @@ jobs:
           registry-url: "https://registry.npmjs.org/"
           package-manager-cache: false
 
-      # Dispatch on the release tag so npm provenance identifies the published source.
-      - name: Check tag
+      # Keep the dispatched checkout so provenance identifies the actual source.
+      - name: Check release source
         working-directory: ./rari-npm
+        env:
+          RECOVERY_TAG: ${{ inputs.recovery_tag }}
         run: |
-          TAG="refs/tags/v$(node -p 'require("./package.json").version')"
-          if [ "$GITHUB_REF" != "$TAG" ]; then
-            echo "::error::Run this workflow on $TAG (current ref: $GITHUB_REF)"
-            exit 1
+          VERSION_TAG="v$(node -p 'require("./package.json").version')"
+          if [ -z "$RECOVERY_TAG" ]; then
+            if [ "$GITHUB_REF" != "refs/tags/$VERSION_TAG" ]; then
+              echo "::error::Run this workflow on refs/tags/$VERSION_TAG (current ref: $GITHUB_REF)"
+              exit 1
+            fi
+          else
+            if [[ "$GITHUB_REF" != refs/heads/* ]]; then
+              echo "::error::Recovery must run on a branch"
+              exit 1
+            fi
+            if [ "$RECOVERY_TAG" != "$VERSION_TAG" ]; then
+              echo "::error::Recovery tag must match package.json version $VERSION_TAG"
+              exit 1
+            fi
+            RELEASE_REF="refs/tags/$RECOVERY_TAG"
+            if ! git rev-parse --verify "$RELEASE_REF^{commit}" > /dev/null; then
+              echo "::error::Release tag $RECOVERY_TAG does not exist"
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$RELEASE_REF" HEAD; then
+              echo "::error::Recovery branch must descend from $RECOVERY_TAG"
+              exit 1
+            fi
+            if ! git diff --quiet "$RELEASE_REF" HEAD -- .; then
+              echo "::error::rari-npm/ must be unchanged from $RECOVERY_TAG"
+              exit 1
+            fi
           fi
 
       - name: Generate Schema
