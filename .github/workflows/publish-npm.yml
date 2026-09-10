@@ -84,13 +84,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v$(node -p 'require("./package.json").version')"
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'rari-*' --dir assets
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'rari-*' --dir "$RUNNER_TEMP/assets"
 
       - name: Prepare platform packages
         working-directory: ./rari-npm
         run: |
           npm run prepare-platform-packages
-          npm run unpack-release-assets -- assets
+          npm run unpack-release-assets -- "$RUNNER_TEMP/assets"
 
       - name: Generate types
         working-directory: ./rari-npm
