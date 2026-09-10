@@ -76,7 +76,7 @@ jobs:
 
       - name: Install
         working-directory: ./rari-npm
-        run: npm install --ignore-scripts # skip the postinstall download, the binary comes from the release assets below
+        run: npm ci --ignore-scripts # skip the postinstall download, the binary comes from the release assets below
 
       - name: Download release assets
         working-directory: ./rari-npm
