@@ -50,3 +50,13 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           gh workflow run publish-npm.yml --ref "$RELEASE_TAG" -f publish=true
+          # The dispatch returns before the run exists, so poll briefly for its URL.
+          for _ in $(seq 1 6); do
+            sleep 5
+            RUN_URL="$(gh run list --workflow publish-npm.yml --branch "$RELEASE_TAG" --event workflow_dispatch -L 1 --json url --jq '.[0].url')"
+            if [ -n "$RUN_URL" ]; then
+              echo "npm publishing run: $RUN_URL" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          echo "::warning::Could not find the dispatched publish-npm run"
