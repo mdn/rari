@@ -272,7 +272,7 @@ impl IntoResponse for AppError {
                 DocError::RariIoError(_)
                 | DocError::IOError(_)
                 | DocError::PageNotFound(..)
-                | DocError::UrlError(UrlError::InvalidUrl),
+                | DocError::UrlError(UrlError::InvalidUrl | UrlError::LocaleError(_)),
             ) => (StatusCode::NOT_FOUND, "").into_response(),
 
             _ => (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response(),
