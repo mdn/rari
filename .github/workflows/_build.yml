@@ -146,6 +146,9 @@ jobs:
         working-directory: mdn/rari
         run: |
           chmod +x target/release/rari
+          cp target/release/rari "$RUNNER_TEMP/rari"
+          # Legacy location, remove once content uses @mdn/rari with RARI_BINARY_PATH support.
+          mkdir -p ../content/node_modules/@mdn/rari/bin
           cp target/release/rari ../content/node_modules/@mdn/rari/bin/
           rm -rf target
 
@@ -168,6 +171,7 @@ jobs:
 
           # Increase GitHub API limit.
           GITHUB_TOKEN: ${{ github.token }}
+          RARI_BINARY_PATH: ${{ runner.temp }}/rari
 
           PARTIAL_BUILD: ${{ inputs.partial }}
           FILE_LIST: ${{ github.workspace }}/files.txt

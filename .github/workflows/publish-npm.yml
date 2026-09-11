@@ -94,13 +94,11 @@ jobs:
 
       - name: Generate types
         working-directory: ./rari-npm
-        run: |
-          mkdir -p bin
-          cp npm/linux-x64/bin/rari bin/rari
-          npm run export-schema
-          npm run generate-types
+        env:
+          RARI_BINARY_PATH: ${{ github.workspace }}/rari-npm/npm/linux-x64/bin/rari
+        run: npm run export-schema && npm run generate-types
 
-      # Platform packages first, as @mdn/rari will pin them as optionalDependencies.
+      # Platform packages first, as @mdn/rari pins them as optionalDependencies.
       # Skips versions that are already published, so a re-run after a partial failure succeeds
       # (except in dry runs, which always show what would be published).
       - name: Publish
