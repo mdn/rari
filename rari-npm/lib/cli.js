@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import os from "node:os";
 import process from "node:process";
 import { rariBin } from "./index.js";
 
