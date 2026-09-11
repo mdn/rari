@@ -44,3 +44,20 @@ npm install --ignore-scripts /path/to/rari/rari-npm/mdn-rari-*.tgz
 mkdir -p node_modules/@mdn/rari/bin
 cp /path/to/rari/target/debug/rari node_modules/@mdn/rari/bin/rari
 ```
+
+## Publishing
+
+After all release binaries have been uploaded, the build workflow dispatches
+`publish-npm.yml` on the release tag. Running on the tag ensures npm provenance
+identifies the commit used to create the package.
+
+To manually retry publishing, first run a dry run on the release tag:
+
+```bash
+gh workflow run publish-npm.yml --repo mdn/rari --ref v0.2.35 -f publish=false
+```
+
+Use `-f publish=true` to publish. The selected ref must be a tag matching the
+version in `rari-npm/package.json`, and the release binaries must already exist.
+The tag must also contain the dispatch-enabled `publish-npm.yml`; older tags
+cannot use this workflow. Already-published npm versions cannot be overwritten.
