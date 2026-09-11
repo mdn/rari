@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.35](https://github.com/mdn/rari/compare/v0.2.34...v0.2.35) (2026-09-11)
+
+
+### Features
+
+* **csssyntax:** link constituent expansion headings ([#685](https://github.com/mdn/rari/issues/685)) ([1668aba](https://github.com/mdn/rari/commit/1668aba00f094d5a8aa38daaf29956e61ca5e4db))
+* **templ:** report unknown macros as `templ-unknown` flaws ([#909](https://github.com/mdn/rari/issues/909)) ([88f0dd2](https://github.com/mdn/rari/commit/88f0dd2bf2e3aa2e1e36207f66fd5c2b764cf516))
+
+
+### Bug Fixes
+
+* **csssyntax:** skip unrooted pages ([#935](https://github.com/mdn/rari/issues/935)) ([4e521db](https://github.com/mdn/rari/commit/4e521dbb8ccd463376e6a793d3dcefc02de6c735))
+* **issues:** report correct end position for multi-line macros ([#872](https://github.com/mdn/rari/issues/872)) ([880ef56](https://github.com/mdn/rari/commit/880ef5693eba119c43e24237cfc7103dba9cddf3))
+* **issues:** resolve issue end column against its own line ([#871](https://github.com/mdn/rari/issues/871)) ([043cfb7](https://github.com/mdn/rari/commit/043cfb7a8d36cb3c5ff1512bf33051b809ddb76b))
+* **npm:** import `os` for signal exit codes ([#936](https://github.com/mdn/rari/issues/936)) ([ff185be](https://github.com/mdn/rari/commit/ff185bee918f3c5aa5ff1dbfed8d7bf541c56a5d))
+* **serve:** return 404 for unknown top-level paths ([#932](https://github.com/mdn/rari/issues/932)) ([136529a](https://github.com/mdn/rari/commit/136529a374d8015e03a1ddefb3dffb76e21fbec3))
+
+
+### Miscellaneous
+
+* **deps:** bump rss from 2.1.1 to 2.1.2 ([#923](https://github.com/mdn/rari/issues/923)) ([5466421](https://github.com/mdn/rari/commit/5466421adb3c5f6468d2684635dbb576bf7a68c1))
+
 ## [0.2.34](https://github.com/mdn/rari/compare/v0.2.33...v0.2.34) (2026-09-07)
 
 
