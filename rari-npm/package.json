@@ -11,9 +11,8 @@
   },
   "homepage": "https://github.com/mdn/rari/tree/main/rari-npm",
   "scripts": {
-    "postinstall": "node ./lib/postinstall.js",
     "export-schema": "node ./lib/cli.js export-schema",
-    "generate-types": "node ./lib/generate-types.js",
+    "generate-types": "node ./tooling/generate-types.js",
     "prepare-platform-packages": "node ./scripts/prepare-platform-packages.mjs",
     "unpack-release-assets": "node ./scripts/unpack-release-assets.mjs"
   },
@@ -26,11 +25,16 @@
   "engines": {
     "node": ">=20"
   },
-  "dependencies": {
-    "extract-zip": "^2.0.1",
-    "https-proxy-agent": "^9.0.0",
-    "proxy-from-env": "^2.0.0",
-    "tar": "^7.4.3",
-    "json-schema-to-typescript": "^16.0.0"
+  "files": [
+    "lib/",
+    "schema.json"
+  ],
+  "optionalDependencies": {
+    "@mdn/rari-darwin-arm64": "0.2.34",
+    "@mdn/rari-darwin-x64": "0.2.34",
+    "@mdn/rari-linux-arm64": "0.2.34",
+    "@mdn/rari-linux-x64": "0.2.34",
+    "@mdn/rari-win32-arm64": "0.2.34",
+    "@mdn/rari-win32-x64": "0.2.34"
   }
 }

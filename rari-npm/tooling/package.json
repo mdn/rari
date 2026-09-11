@@ -1,0 +1,8 @@
+{
+  "name": "@mdn/rari-npm-tooling",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "json-schema-to-typescript": "^16.0.0"
+  }
+}
