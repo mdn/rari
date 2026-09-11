@@ -158,6 +158,41 @@ mod test {
     }
 
     #[test]
+    fn test_invoke_skips_csssyntax_on_unrooted_pages() {
+        let cases = vec![
+            ("conflicting/Web/CSS/clip", PageType::None),
+            (
+                "orphaned/Web/CSS/-webkit-overflow-scrolling",
+                PageType::None,
+            ),
+            ("conflicting/Web/CSS/clip", PageType::CssProperty),
+            (
+                "orphaned/Web/CSS/-webkit-overflow-scrolling",
+                PageType::CssProperty,
+            ),
+        ];
+        for (slug, page_type) in cases {
+            let mut env = env_for_slug(slug);
+            env.page_type = page_type;
+            let (rendered, typ) = invoke(&env, "csssyntax", vec![]).expect("invoke succeeds");
+            assert!(
+                rendered.is_empty(),
+                "csssyntax on {slug} ({page_type:?}) rendered {rendered:?}"
+            );
+            assert!(matches!(typ, TemplType::None));
+        }
+    }
+
+    #[test]
+    fn test_invoke_csssyntax_requires_page_type_on_rooted_pages() {
+        let env = env_for_slug("Web/CSS/Reference/Properties/clip");
+        assert!(matches!(
+            invoke(&env, "csssyntax", vec![]),
+            Err(DocError::CssPageTypeRequired)
+        ));
+    }
+
+    #[test]
     fn test_invoke_renders_non_sidebars_on_unrooted_pages() {
         let env = env_for_slug("conflicting/Web/API/Window/showModalDialog");
         let args = vec![Some(Arg::String("hi".to_string(), Quotes::Double))];
