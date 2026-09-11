@@ -11,6 +11,7 @@ use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 use crate::html::links::post_process_templ_links;
 use crate::templ::css_feature_index::resolve_formal_syntax_ref;
+use crate::utils::is_unrooted;
 
 static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     [(LinkedToken::Asterisk, "Asterisk: the entity may occur zero, one or several times".to_string()),
@@ -32,6 +33,10 @@ fn resolve_reference(kind: CssRefKind, slug: &str) -> Option<String> {
 
 #[rari_f(register = "crate::Templ")]
 pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
+    if is_unrooted(env.slug) {
+        return Ok(String::new());
+    }
+
     let page_type = env.page_type;
     let mut slug_rev_iter = env.slug.rsplitn(3, '/');
     let slug_name = slug_rev_iter.next().unwrap();
@@ -53,17 +58,6 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         | rari_types::fm_types::PageType::CssPseudoElement
         | rari_types::fm_types::PageType::CssSelector => {
             warn!("CSS syntax not supported for {:?}", page_type);
-            return Err(DocError::CssSyntaxError(
-                css_syntax::error::SyntaxError::NoSyntaxFound,
-            ));
-        }
-        rari_types::fm_types::PageType::None
-            if env.slug.starts_with("orphaned/") || env.slug.starts_with("conflicting/") =>
-        {
-            warn!(
-                "CSS syntax not available for conflicting/orphaned page: {}",
-                env.slug
-            );
             return Err(DocError::CssSyntaxError(
                 css_syntax::error::SyntaxError::NoSyntaxFound,
             ));
