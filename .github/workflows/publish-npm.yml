@@ -74,9 +74,9 @@ jobs:
             fi
           fi
 
-      - name: Install
-        working-directory: ./rari-npm
-        run: npm ci --ignore-scripts # skip the postinstall download, the binary comes from the release assets below
+      - name: Install type-generation dependencies
+        working-directory: ./rari-npm/tooling
+        run: npm ci
 
       - name: Download release assets
         working-directory: ./rari-npm

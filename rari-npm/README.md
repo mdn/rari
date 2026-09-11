@@ -19,6 +19,7 @@ cp target/debug/rari rari-npm/bin/rari
 Then from `rari-npm/`, export the schema and regenerate the types:
 
 ```bash
+npm ci --prefix tooling
 npm run export-schema   # writes schema.json using the local binary
 npm run generate-types  # generates lib/rari-types.d.ts from schema.json
 ```
@@ -44,6 +45,10 @@ npm install --ignore-scripts /path/to/rari/rari-npm/mdn-rari-*.tgz
 mkdir -p node_modules/@mdn/rari/bin
 cp /path/to/rari/target/debug/rari node_modules/@mdn/rari/bin/rari
 ```
+
+Type-generation dependencies live in the private `tooling/` package with its own
+lockfile. Publishing installs only these dependencies; platform packages do not
+need to exist on npm yet.
 
 ## Publishing
 
