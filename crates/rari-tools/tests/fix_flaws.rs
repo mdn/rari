@@ -6,8 +6,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use indoc::formatdoc;
-use rari_doc::issues::IN_MEMORY;
-use rari_doc::pages::page::{Page, PageLike};
+use rari_doc::issues::{DIssue, IN_MEMORY, IssueType};
+use rari_doc::pages::page::{Page, PageBuilder, PageLike};
 use rari_doc::utils::root_for_locale;
 use rari_tools::fix::issues::{fix_page, get_fixable_issues};
 use rari_types::locale::Locale;
@@ -77,6 +77,10 @@ fn skips_redirects_to_unrooted_pages() {
                 "Web/API/Source",
                 "[Target](/en-US/docs/Web/API/OldTarget) and [Gone](/en-US/docs/Web/API/OldGone)",
             ),
+            (
+                "Web/API/MacroSource",
+                r#"{{NextMenu("Web/API/OldTarget", "Web/API/OldGone")}}"#,
+            ),
         ],
         &[
             ("Web/API/OldTarget", "Web/API/Target"),
@@ -86,23 +90,68 @@ fn skips_redirects_to_unrooted_pages() {
     tracing::subscriber::set_global_default(tracing_subscriber::registry().with(IN_MEMORY.clone()))
         .unwrap();
 
-    let page = Page::from_url("/en-US/docs/Web/API/Source").unwrap();
+    let cases = [
+        (
+            "markdown links",
+            IssueType::RedirectedLink,
+            "/en-US/docs/Web/API/Source",
+            "[Target](/en-US/docs/Web/API/Target) and [Gone](/en-US/docs/Web/API/OldGone)",
+        ),
+        (
+            "navigation macro",
+            IssueType::TemplRedirectedLink,
+            "/en-US/docs/Web/API/MacroSource",
+            r#"{{NextMenu("Web/API/Target", "Web/API/OldGone")}}"#,
+        ),
+    ];
+    for (name, issue_type, url, expected) in cases {
+        let page = Page::from_url(url).unwrap();
+        let issues = get_fixable_issues(&page).unwrap();
+        let suggestions = issues
+            .iter()
+            .map(|issue| issue.display_issue().suggestion.as_deref())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            suggestions,
+            vec![Some("/en-US/docs/Web/API/Target")],
+            "{name}"
+        );
 
-    let issues = get_fixable_issues(&page).unwrap();
-    let suggestions = issues
-        .iter()
-        .map(|issue| issue.display_issue().suggestion.as_deref())
-        .collect::<Vec<_>>();
-    assert_eq!(suggestions, vec![Some("/en-US/docs/Web/API/Target")]);
+        assert!(fix_page(&page).unwrap(), "{name}");
+        let fixed = fs::read_to_string(page.full_path()).unwrap();
+        assert!(fixed.contains(expected), "{name}: {fixed}");
 
-    assert!(fix_page(&page).unwrap());
-    let fixed = fs::read_to_string(page.full_path()).unwrap();
-    assert!(
-        fixed.contains("[Target](/en-US/docs/Web/API/Target)"),
-        "{fixed}"
-    );
-    assert!(
-        fixed.contains("[Gone](/en-US/docs/Web/API/OldGone)"),
-        "{fixed}"
-    );
+        let page = Page::from_url(url).unwrap();
+        page.build().unwrap();
+        let (_, issues) = IN_MEMORY
+            .get_events()
+            .remove(page.full_path().to_string_lossy().as_ref())
+            .unwrap_or_default();
+        let redirects = issues
+            .into_iter()
+            .filter_map(|issue| DIssue::from_issue(issue, &page))
+            .filter(|issue| {
+                matches!(
+                    (&issue.display_issue().name, &issue_type),
+                    (IssueType::RedirectedLink, IssueType::RedirectedLink)
+                        | (
+                            IssueType::TemplRedirectedLink,
+                            IssueType::TemplRedirectedLink
+                        )
+                )
+            })
+            .map(|issue| {
+                let display = issue.display_issue();
+                (display.suggestion.clone(), display.fixable)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            redirects,
+            vec![(
+                Some("/en-US/docs/orphaned/Web/API/Gone".to_string()),
+                Some(false),
+            )],
+            "{name}: unrooted redirect remains reported after fixing"
+        );
+    }
 }
