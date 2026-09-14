@@ -9,7 +9,7 @@ on:
         default: ""
         type: string
       stage_tag:
-        description: "Release binaries to stage from a branch (optional)"
+        description: "Release tag whose binaries to reuse for staging (optional)"
         required: false
         default: ""
         type: string
