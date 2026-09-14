@@ -103,7 +103,9 @@ gh workflow run publish-npm.yml --repo mdn/rari --ref 924-stage-npm-packages \
 After inspecting the dry run, repeat with `-f publish=true` to upload all seven
 packages using `npm stage publish` with provenance. They remain unavailable to
 normal installs until approved. This exercises npm authentication, which a dry
-run does not test.
+run does not test. Each package's trusted publisher configuration on npmjs.com
+must allow `npm stage publish` (the "Allowed actions" setting); configurations
+created before September 2026 only allow `npm publish` by default.
 
 The workflow assigns `<version>-stage.<run-id>.<attempt>` to the wrapper, its
 platform dependency pins, and the generated platform packages. Each attempt gets
