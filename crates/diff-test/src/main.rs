@@ -162,9 +162,19 @@ struct BuildArgs {
     sidebars: bool,
     #[arg(long)]
     flaws: bool,
-    /// Write diff stats as JSON to this path.
+    /// Write diff stats as JSON to this path (requires exactly one of --html or --csv).
     #[arg(long)]
     stats_out: Option<PathBuf>,
+}
+
+impl BuildArgs {
+    fn validate(&self) -> Result<(), anyhow::Error> {
+        anyhow::ensure!(
+            self.stats_out.is_none() || self.html != self.csv,
+            "--stats-out requires exactly one of --html or --csv"
+        );
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -405,6 +415,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     match &cli.command {
         Commands::Diff(arg) => {
+            arg.validate()?;
             println!("Gathering everything 🧺");
             let start = std::time::Instant::now();
             let a = gather(&arg.root_a, arg.query.as_deref())?;
@@ -560,6 +571,78 @@ fn main() -> Result<(), anyhow::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stats_output_requires_exactly_one_format() {
+        struct Case {
+            name: &'static str,
+            flags: &'static [&'static str],
+            valid: bool,
+        }
+
+        let cases = [
+            Case {
+                name: "stats without format",
+                flags: &["--stats-out", "stats.json"],
+                valid: false,
+            },
+            Case {
+                name: "stats with html",
+                flags: &["--stats-out", "stats.json", "--html"],
+                valid: true,
+            },
+            Case {
+                name: "stats with csv",
+                flags: &["--stats-out", "stats.json", "--csv"],
+                valid: true,
+            },
+            Case {
+                name: "stats with both formats",
+                flags: &["--stats-out", "stats.json", "--html", "--csv"],
+                valid: false,
+            },
+            Case {
+                name: "no stats or format",
+                flags: &[],
+                valid: true,
+            },
+            Case {
+                name: "html without stats",
+                flags: &["--html"],
+                valid: true,
+            },
+            Case {
+                name: "csv without stats",
+                flags: &["--csv"],
+                valid: true,
+            },
+            Case {
+                name: "both formats without stats",
+                flags: &["--html", "--csv"],
+                valid: true,
+            },
+        ];
+
+        for case in cases {
+            let cli = Cli::try_parse_from(
+                ["diff-test", "diff", "--out", "report", "base", "pr"]
+                    .into_iter()
+                    .chain(case.flags.iter().copied()),
+            )
+            .unwrap_or_else(|err| panic!("{}: {err}", case.name));
+            let Commands::Diff(args) = cli.command;
+            let result = args.validate();
+            assert_eq!(result.is_ok(), case.valid, "{}", case.name);
+            if let Err(err) = result {
+                assert_eq!(
+                    err.to_string(),
+                    "--stats-out requires exactly one of --html or --csv",
+                    "{}",
+                    case.name
+                );
+            }
+        }
+    }
 
     #[test]
     fn diff_stats() {
