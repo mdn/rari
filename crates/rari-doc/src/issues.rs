@@ -301,6 +301,7 @@ pub enum IssueType {
     TemplSyntaxError,
     TemplUnknown,
     TemplMdnDataMissing,
+    TemplBcdMissing,
     RedirectedLink,
     BrokenLink,
     IllCasedLink,
@@ -322,6 +323,7 @@ impl FromStr for IssueType {
             "templ-syntax-error" => Self::TemplSyntaxError,
             "templ-unknown" => Self::TemplUnknown,
             "templ-mdn-data-missing" => Self::TemplMdnDataMissing,
+            "templ-bcd-missing" => Self::TemplBcdMissing,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
             "ill-cased-link" => Self::IllCasedLink,
@@ -632,6 +634,20 @@ impl DIssue {
                     di.fixed = false;
                     di.fixable = Some(false);
                     di.explanation = Some(format!("{} does not exist", source.label));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: source.name,
+                        href: None,
+                    }
+                }
+                IssueType::TemplBcdMissing => {
+                    let source = issue_source(&mut additional);
+                    di.fixed = false;
+                    di.fixable = Some(false);
+                    di.explanation = Some(format!(
+                        "Unknown browser-compat entry: {}",
+                        additional.get("query").map(String::as_str).unwrap_or("?")
+                    ));
                     DIssue::Macros {
                         display_issue: di,
                         macro_name: source.name,
