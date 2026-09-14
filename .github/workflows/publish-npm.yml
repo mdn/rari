@@ -8,8 +8,13 @@ on:
         required: false
         default: ""
         type: string
+      stage_tag:
+        description: "Release binaries to stage from a branch (optional)"
+        required: false
+        default: ""
+        type: string
       publish:
-        description: "Actually publish (otherwise dry run)"
+        description: "Actually publish or stage (otherwise dry run)"
         required: true
         default: false
         type: boolean
@@ -23,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DRY_RUN: ${{ !inputs.publish }}
+      STAGE_TAG: ${{ inputs.stage_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -45,7 +51,16 @@ jobs:
           RECOVERY_TAG: ${{ inputs.recovery_tag }}
         run: |
           VERSION_TAG="v$(node -p 'require("./package.json").version')"
-          if [ -z "$RECOVERY_TAG" ]; then
+          if [ -n "$STAGE_TAG" ]; then
+            if [ -n "$RECOVERY_TAG" ]; then
+              echo "::error::stage_tag and recovery_tag are mutually exclusive"
+              exit 1
+            fi
+            if [[ "$GITHUB_REF" != refs/heads/* ]]; then
+              echo "::error::Staging must run on a branch"
+              exit 1
+            fi
+          elif [ -z "$RECOVERY_TAG" ]; then
             if [ "$GITHUB_REF" != "refs/tags/$VERSION_TAG" ]; then
               echo "::error::Run this workflow on refs/tags/$VERSION_TAG (current ref: $GITHUB_REF)"
               exit 1
@@ -83,8 +98,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v$(node -p 'require("./package.json").version')"
+          TAG="${STAGE_TAG:-v$(node -p 'require("./package.json").version')}"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'rari-*' --dir "$RUNNER_TEMP/assets"
+
+      - name: Set staging version
+        if: ${{ inputs.stage_tag != '' }}
+        working-directory: ./rari-npm
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const base = pkg.version.split(/[+-]/)[0];
+          pkg.version = `${base}-stage.${process.env.GITHUB_RUN_ID}.${process.env.GITHUB_RUN_ATTEMPT}`;
+          for (const name of Object.keys(pkg.optionalDependencies)) {
+            pkg.optionalDependencies[name] = pkg.version;
+          }
+          writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          console.log(`Staging version: ${pkg.version}`);
+          JS
 
       - name: Prepare platform packages
         working-directory: ./rari-npm
@@ -99,23 +130,28 @@ jobs:
         run: npm run export-schema && npm run generate-types
 
       # Platform packages first, as @mdn/rari pins them as optionalDependencies.
-      # Skips versions that are already published, so a re-run after a partial failure succeeds
-      # (except in dry runs, which always show what would be published).
+      # Release retries skip published versions; staging retries get a new version.
       - name: Publish
         working-directory: ./rari-npm
         run: |
           set -eo pipefail
+          COMMAND=(publish)
+          FLAGS=(--access public)
+          if [ -n "$STAGE_TAG" ]; then
+            COMMAND=(stage publish)
+            FLAGS+=(--tag staging)
+          fi
           if [ "$DRY_RUN" = "true" ]; then
-            FLAGS="--dry-run"
+            FLAGS+=(--dry-run)
           else
-            FLAGS="--provenance"
+            FLAGS+=(--provenance)
           fi
           for dir in npm/*/ ./; do
             NAME="$(node -p "require('./$dir/package.json').name")"
             VERSION="$(node -p "require('./$dir/package.json').version")"
-            if [ "$DRY_RUN" != "true" ] && npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            if [ -z "$STAGE_TAG" ] && [ "$DRY_RUN" != "true" ] && npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
               echo "Skipping $NAME@$VERSION, already published"
               continue
             fi
-            (cd "$dir" && npm publish --access public $FLAGS)
+            (cd "$dir" && npm "${COMMAND[@]}" "${FLAGS[@]}")
           done
