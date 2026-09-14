@@ -1,15 +1,35 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
+use std::sync::OnceLock;
 
 use css_syntax_types::{BrowserSpec, SpecLink, WebrefCss};
-use rari_types::globals::deps;
+use rari_types::globals::{data_dir, deps};
 use rari_utils::io::read_to_string;
 use serde_json::Value;
 use url::Url;
 
 use crate::error::DepsError;
 use crate::npm::get_package;
+
+static CSS_REF: OnceLock<WebrefCss> = OnceLock::new();
+
+/// Returns the transformed webref CSS data, downloading it first if missing.
+pub fn css_ref_data() -> &'static WebrefCss {
+    CSS_REF.get_or_init(|| {
+        let data_dir = data_dir();
+        let package_dir = data_dir.join("@webref/css");
+        let path = package_dir.join("webref_css.json");
+        if !path.exists() {
+            // A fresh `last_check.json` makes `get_package` skip the download, so drop it.
+            let _ = fs::remove_file(package_dir.join("last_check.json"));
+            update_webref_css(data_dir).expect("failed to download @webref/css");
+        }
+        let json_str = fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
+        serde_json::from_str(&json_str).expect("failed to parse webref_css.json")
+    })
+}
 
 fn normalize_name(name: &str) -> String {
     name.trim_start_matches('<')
