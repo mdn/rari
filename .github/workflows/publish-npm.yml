@@ -1,29 +1,44 @@
 name: publish-npm
 
 on:
-  workflow_run:
-    workflows: [build-and-upload-binaries]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Actually publish (otherwise dry run)"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   id-token: write # OIDC for npm Trusted Publishing
 
 jobs:
-  on-success:
+  publish:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    env:
+      DRY_RUN: ${{ !inputs.publish }}
     steps:
-      - name: Setup
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Checkout
+      - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: rari-npm/.nvmrc
           registry-url: "https://registry.npmjs.org/"
           package-manager-cache: false
+
+      # Dispatch on the release tag so npm provenance identifies the published source.
+      - name: Check tag
+        working-directory: ./rari-npm
+        run: |
+          TAG="refs/tags/v$(node -p 'require("./package.json").version')"
+          if [ "$GITHUB_REF" != "$TAG" ]; then
+            echo "::error::Run this workflow on $TAG (current ref: $GITHUB_REF)"
+            exit 1
+          fi
 
       - name: Generate Schema
         working-directory: ./rari-npm
@@ -33,4 +48,9 @@ jobs:
 
       - name: Publish
         working-directory: ./rari-npm
-        run: npm publish --access public --provenance
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            npm publish --access public --dry-run
+          else
+            npm publish --access public --provenance
+          fi

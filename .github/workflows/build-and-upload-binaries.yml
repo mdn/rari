@@ -35,3 +35,24 @@ jobs:
           target: ${{ matrix.target }}
           build-tool: ${{ matrix.build-tool }}
           profile: release-lto
+
+  publish-npm:
+    needs: upload-assets
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      # A separate run on the release tag keeps npm provenance tied to the release commit.
+      - name: Dispatch npm publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          RUN_URL="$(gh api --method POST \
+            "repos/{owner}/{repo}/actions/workflows/publish-npm.yml/dispatches" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            -f ref="$RELEASE_TAG" \
+            -F 'inputs[publish]=true' \
+            --jq '.html_url')"
+          echo "npm publishing run: $RUN_URL" >> "$GITHUB_STEP_SUMMARY"
