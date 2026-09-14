@@ -109,6 +109,9 @@ jobs:
           import { readFileSync, writeFileSync } from 'node:fs';
           const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
           const base = pkg.version.split(/[+-]/)[0];
+          if (`v${base}` !== process.env.STAGE_TAG) {
+            console.log(`::notice::Staging ${base} with binaries from ${process.env.STAGE_TAG}`);
+          }
           pkg.version = `${base}-stage.${process.env.GITHUB_RUN_ID}.${process.env.GITHUB_RUN_ATTEMPT}`;
           for (const name of Object.keys(pkg.optionalDependencies)) {
             pkg.optionalDependencies[name] = pkg.version;
