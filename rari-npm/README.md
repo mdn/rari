@@ -87,3 +87,52 @@ Recovery verifies that the release tag matches the package version, that the
 branch descends from the tag, and that `rari-npm/` matches the tag exactly.
 The release binaries must already exist. Provenance remains enabled and
 identifies the recovery commit, including the workflow fix.
+
+### Staging from a branch
+
+Use staged publishing to test packaging and Trusted Publishing before cutting a
+release. The selected branch must contain this workflow and the package changes
+to test. `stage_tag` selects an existing release whose binaries will be reused;
+it cannot be combined with `recovery_tag`.
+
+```bash
+gh workflow run publish-npm.yml --repo mdn/rari --ref my-branch \
+  -f stage_tag=v0.2.34 -f publish=false
+```
+
+After inspecting the dry run, repeat with `-f publish=true` to upload all seven
+packages using `npm stage publish` with provenance. They remain unavailable to
+normal installs until approved. This exercises npm authentication, which a dry
+run does not test. Each package's trusted publisher configuration on npmjs.com
+must allow `npm stage publish` (the "Allowed actions" setting); configurations
+created before September 2026 only allow `npm publish` by default.
+
+The workflow assigns `<version>-stage.<run-id>.<attempt>` to the wrapper, its
+platform dependency pins, and the generated platform packages. Each attempt gets
+a unique version, avoiding collisions with releases and pending stages. The
+staged packages use the `staging` dist-tag if approved. Their binaries report the
+original release version; provenance identifies the dispatched branch commit.
+
+With an authenticated npm session, use the stage IDs from the workflow output to
+download the wrapper and your platform package, then install both tarballs in a
+temporary project and run the CLI:
+
+```bash
+npm stage download <wrapper-stage-id>
+npm stage download <platform-stage-id>
+npm install --ignore-scripts /path/to/wrapper.tgz /path/to/platform.tgz
+npx --no-install rari --version
+node --input-type=module -e 'import { rariBin } from "@mdn/rari"; console.log(rariBin)'
+```
+
+Installing both tarballs tests binary resolution without install scripts. It
+does not test registry resolution of optional dependencies, because staged
+packages are not publicly installable. Reject test stages when finished:
+
+```bash
+npm stage reject <stage-id>
+```
+
+Downloading and rejecting stages require your npm session, not the workflow's
+OIDC credentials. Rejection requires 2FA. See the
+[npm stage documentation](https://docs.npmjs.com/cli/commands/npm-stage/).
