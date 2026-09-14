@@ -59,5 +59,28 @@ gh workflow run publish-npm.yml --repo mdn/rari --ref v0.2.35 -f publish=false
 
 Use `-f publish=true` to publish. The selected ref must be a tag matching the
 version in `rari-npm/package.json`, and the release binaries must already exist.
-The tag must also contain the dispatch-enabled `publish-npm.yml`; older tags
-cannot use this workflow. Already-published npm versions cannot be overwritten.
+The tag must also contain the dispatch-enabled `publish-npm.yml`; use recovery
+below if it does not. Already-published npm versions cannot be overwritten.
+
+### Recovering a failed release
+
+If the publishing workflow needs a fix, create a branch from the release tag,
+apply the workflow fix, commit it, and push the branch. Keep `rari-npm/`
+unchanged, including its package version: recovery only covers fixes outside
+`rari-npm/`, so a broken package script or file requires a new release instead.
+For an older release, the branch must include the recovery-enabled
+`publish-npm.yml`.
+
+```bash
+git switch -c recover-v0.2.35 v0.2.35
+# Apply and commit the workflow fix.
+git push origin recover-v0.2.35
+gh workflow run publish-npm.yml --repo mdn/rari --ref recover-v0.2.35 \
+  -f recovery_tag=v0.2.35 -f publish=false
+```
+
+After inspecting the dry run, repeat the dispatch with `-f publish=true`.
+Recovery verifies that the release tag matches the package version, that the
+branch descends from the tag, and that `rari-npm/` matches the tag exactly.
+The release binaries must already exist. Provenance remains enabled and
+identifies the recovery commit, including the workflow fix.
