@@ -96,7 +96,7 @@ to test. `stage_tag` selects an existing release whose binaries will be reused;
 it cannot be combined with `recovery_tag`.
 
 ```bash
-gh workflow run publish-npm.yml --repo mdn/rari --ref 924-stage-npm-packages \
+gh workflow run publish-npm.yml --repo mdn/rari --ref my-branch \
   -f stage_tag=v0.2.34 -f publish=false
 ```
 
