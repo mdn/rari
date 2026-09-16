@@ -2674,6 +2674,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tar",
+ "tempfile",
  "thiserror 2.0.20",
  "tracing",
  "url",
