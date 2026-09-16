@@ -94,7 +94,7 @@ jobs:
         run: cargo test --locked --verbose --workspace --all-targets --no-fail-fast
 
       - name: Run doc tests
-        run: cargo test --locked --verbose --workspace --doc --features doctest --no-fail-fast
+        run: cargo test --locked --verbose --workspace --doc --no-fail-fast
 
   lint:
     runs-on: ubuntu-latest

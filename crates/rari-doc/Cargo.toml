@@ -59,7 +59,7 @@ memoize = "0.6"
 unescaper = "0.2"
 
 
-css-syntax = { path = "../css-syntax", features = ["rari"] }
+css-syntax = { path = "../css-syntax" }
 
 [dev-dependencies]
 rari-types = { path = "../rari-types", features = ["testing"] }
