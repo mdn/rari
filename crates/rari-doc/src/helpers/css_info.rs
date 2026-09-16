@@ -131,6 +131,18 @@ pub fn css_info_properties(
     Ok(out)
 }
 
+const INITIAL_L10N_VALUES: [&str; 9] = [
+    "\"\"",
+    "\". \"",
+    "autoForSmartphoneBrowsersSupportingInflation",
+    "dependsOnUserAgent",
+    "noPracticalInitialValue",
+    "noneButOverriddenInUserAgentCSS",
+    "seeProse",
+    "startOrNamelessValueIfLTRRightIfRTL",
+    "zoomForTheTopLevelNoneForTheRest",
+];
+
 pub fn write_computed_output(
     env: &RariEnv,
     out: &mut String,
@@ -186,7 +198,7 @@ pub fn write_computed_output(
                     .get(&s[1..s.len() - 1])
                     .unwrap_or(&Value::Null);
                 return write_computed_output(env, out, locale, s_data, property, at_rule);
-            } else if property == "initial" && !mdn_data_files().css_l10n.contains_key(s) {
+            } else if property == "initial" && !INITIAL_L10N_VALUES.contains(&s.as_str()) {
                 return Ok(write!(out, "<code>{s}</code>")?);
             } else {
                 let replaced_keywords = s
@@ -346,4 +358,42 @@ pub fn write_missing(out: &mut String, locale: Locale) -> Result<(), DocError> {
 fn remove_me_replace_placeholder(s: &str, replacements: &[&str]) -> String {
     s.replace("$1$", replacements.first().unwrap_or(&"$1$"))
         .replace("$2$", replacements.get(1).unwrap_or(&"$2$"))
+}
+
+#[cfg(test)]
+mod tests {
+    use rari_types::RariEnv;
+    use rari_types::locale::Locale;
+    use serde_json::json;
+
+    use super::{get_css_l10n_for_locale, write_computed_output};
+
+    fn render_initial_value(initial_value: &str, locale: Locale) -> String {
+        let mut out = String::new();
+        let css_info_data = json!({ "initial": initial_value });
+        let env = RariEnv {
+            locale,
+            ..Default::default()
+        };
+
+        write_computed_output(&env, &mut out, locale, &css_info_data, "initial", None)
+            .expect("rendering initial value should succeed");
+
+        out
+    }
+
+    #[test]
+    fn renders_keyword_initial_value_as_code_for_locales() {
+        assert_eq!(render_initial_value("all", Locale::Ja), "<code>all</code>");
+    }
+
+    #[test]
+    fn renders_known_initial_l10n_value_through_translation_branch() {
+        let localized = get_css_l10n_for_locale("dependsOnUserAgent", Locale::Ja);
+
+        assert_eq!(
+            render_initial_value("dependsOnUserAgent", Locale::Ja),
+            localized
+        );
+    }
 }

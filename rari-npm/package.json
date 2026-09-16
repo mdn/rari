@@ -1,19 +1,21 @@
 {
   "name": "@mdn/rari",
-  "version": "0.2.27",
+  "version": "0.2.34",
   "description": "npm package for rari",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mdn/rari"
+    "url": "git+https://github.com/mdn/rari.git"
   },
   "homepage": "https://github.com/mdn/rari/tree/main/rari-npm",
   "scripts": {
     "postinstall": "node ./lib/postinstall.js",
     "export-schema": "node ./lib/cli.js export-schema",
-    "generate-types": "node ./lib/generate-types.js"
+    "generate-types": "node ./lib/generate-types.js",
+    "prepare-platform-packages": "node ./scripts/prepare-platform-packages.mjs",
+    "unpack-release-assets": "node ./scripts/unpack-release-assets.mjs"
   },
   "bin": {
     "rari": "lib/cli.js"
@@ -29,6 +31,6 @@
     "https-proxy-agent": "^9.0.0",
     "proxy-from-env": "^2.0.0",
     "tar": "^7.4.3",
-    "json-schema-to-typescript": "^15.0.0"
+    "json-schema-to-typescript": "^16.0.0"
   }
 }

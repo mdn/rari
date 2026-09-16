@@ -1,13 +1,17 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use css_syntax::syntax::{CssType, LinkedToken, SyntaxInput, render_formal_syntax};
+use css_syntax::syntax::{
+    CssRefKind, CssType, LinkedToken, RefLinks, SyntaxInput, render_formal_syntax,
+};
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
 
 use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 use crate::html::links::post_process_templ_links;
+use crate::templ::css_feature_index::resolve_formal_syntax_ref;
+use crate::utils::is_unrooted;
 
 static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     [(LinkedToken::Asterisk, "Asterisk: the entity may occur zero, one or several times".to_string()),
@@ -22,8 +26,17 @@ static TOOLTIPS: LazyLock<HashMap<LinkedToken, String>> = LazyLock::new(|| {
     (LinkedToken::DoubleAmpersand, "Double ampersand: all of the entities must be present, in any order".to_string())].into_iter().collect()
 });
 
+/// Hands the CSS feature index to the formal-syntax renderer.
+fn resolve_reference(kind: CssRefKind, slug: &str) -> Option<String> {
+    resolve_formal_syntax_ref(kind, slug).map(str::to_string)
+}
+
 #[rari_f(register = "crate::Templ")]
 pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
+    if is_unrooted(env.slug) {
+        return Ok(String::new());
+    }
+
     let page_type = env.page_type;
     let mut slug_rev_iter = env.slug.rsplitn(3, '/');
     let slug_name = slug_rev_iter.next().unwrap();
@@ -45,17 +58,6 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         | rari_types::fm_types::PageType::CssPseudoElement
         | rari_types::fm_types::PageType::CssSelector => {
             warn!("CSS syntax not supported for {:?}", page_type);
-            return Err(DocError::CssSyntaxError(
-                css_syntax::error::SyntaxError::NoSyntaxFound,
-            ));
-        }
-        rari_types::fm_types::PageType::None
-            if env.slug.starts_with("orphaned/") || env.slug.starts_with("conflicting/") =>
-        {
-            warn!(
-                "CSS syntax not available for conflicting/orphaned page: {}",
-                env.slug
-            );
             return Err(DocError::CssSyntaxError(
                 css_syntax::error::SyntaxError::NoSyntaxFound,
             ));
@@ -85,6 +87,10 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
+        RefLinks {
+            resolver: Some(&resolve_reference),
+            page_path: env.slug.strip_prefix("Web/CSS/Reference/"),
+        },
     )?;
     post_process_templ_links(&html)
 }
@@ -102,6 +108,10 @@ pub fn csssyntaxraw(syntax: String) -> Result<String, DocError> {
         ),
         &TOOLTIPS,
         Some(sources_prefix),
+        RefLinks {
+            resolver: Some(&resolve_reference),
+            page_path: env.slug.strip_prefix("Web/CSS/Reference/"),
+        },
     )?;
     post_process_templ_links(&html)
 }

@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use itertools::Itertools;
 use rari_templ_func::rari_f;
-use rari_types::fm_types::{FeatureStatus, PageType};
+use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
@@ -15,7 +15,8 @@ use crate::pages::types::doc::Doc;
 use crate::templ::api::RariApi;
 
 /// Private-use placeholders to smuggle `<code>` tags through `RariApi::link`,
-/// which would otherwise re-encode them as `&lt;code&gt;`.
+/// which re-encodes provided content as `&lt;code&gt;` on its page-not-found
+/// fallback path.
 const CODE_OPEN_PLACEHOLDER: &str = "\u{E000}";
 const CODE_CLOSE_PLACEHOLDER: &str = "\u{E001}";
 
@@ -28,17 +29,10 @@ pub fn css_ref() -> Result<String, DocError> {
         .iter()
         .filter(|&page| is_indexed_css_ref_page(page))
     {
-        // Use the translated page's title for the displayed label if a
-        // translation exists, falling back to the en-US page already in hand.
-        // `fallback: false` avoids re-loading the en-US doc when no
-        // translation exists.
         let translated = (env.locale != Locale::EnUs)
             .then(|| Doc::page_from_slug(page.slug(), env.locale, false).ok())
             .flatten();
-        // The index letter and sort key always come from the en-US title, so
-        // the A–Z index stays keyed on the CSS term across locales. Translated
-        // titles lead with a descriptor word (e.g. "Propriété CSS …") and would
-        // otherwise cluster every entry under a single letter.
+        // Keep index order keyed to the en-US CSS term, not localized descriptors.
         let (en_html_label, plain_label) = labels_from_page(page);
         let html_label = match &translated {
             Some(translated) => labels_from_page(translated).0,
@@ -52,11 +46,17 @@ pub fn css_ref() -> Result<String, DocError> {
     }
 
     let mut out = String::new();
-    out.push_str(r#"<div class="index">"#);
+
+    out.push_str(r#"<div class="index"><nav class="index-nav"><ul>"#);
+    for &letter in index.keys() {
+        let (label, id) = letter_label_and_id(letter);
+        out.extend([r##"<li><a href="#"##, &id, r#"">"#, &label, "</a></li>"]);
+    }
+    out.push_str("</ul></nav>");
+
     for (letter, items) in index {
-        out.push_str("<h3>");
-        out.push_str(&html_escape::encode_safe(letter.encode_utf8(&mut [0; 4])));
-        out.push_str("</h3><ul>");
+        let (label, id) = letter_label_and_id(letter);
+        out.extend([r#"<h3 id=""#, &id, r#"">"#, &label, "</h3><ul>"]);
         for (url, (html_label, _)) in items
             .into_iter()
             .sorted_by(|(_, (_, a)), (_, (_, b))| compare_items(a, b))
@@ -70,7 +70,7 @@ pub fn css_ref() -> Result<String, DocError> {
                 Some(&placeholder_label),
                 false,
                 None,
-                false,
+                true,
             )?;
             out.extend([
                 "<li>",
@@ -87,6 +87,13 @@ pub fn css_ref() -> Result<String, DocError> {
     Ok(out)
 }
 
+fn letter_label_and_id(letter: char) -> (String, String) {
+    (
+        letter.to_string(),
+        format!("index-{}", letter.to_ascii_lowercase()),
+    )
+}
+
 fn is_indexed_css_ref_page(page: &Page) -> bool {
     matches!(
         page.page_type(),
@@ -100,18 +107,16 @@ fn is_indexed_css_ref_page(page: &Page) -> bool {
             | PageType::CssPseudoClass
             | PageType::CssShorthandProperty
             | PageType::CssAtRuleDescriptor
-    ) && !page
-        .status()
-        .iter()
-        .any(|s| matches!(s, FeatureStatus::Deprecated | FeatureStatus::NonStandard))
+    )
+}
+
+fn sort_key(s: &str) -> &str {
+    strip_vendor_prefix(s)
+        .trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-')
 }
 
 fn compare_items(a: &str, b: &str) -> Ordering {
-    let ord = a
-        .trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-')
-        .cmp(
-            b.trim_matches(|c: char| !c.is_ascii_alphabetic() && c != '(' && c != ')' && c != '-'),
-        );
+    let ord = sort_key(a).cmp(sort_key(b));
     if ord == Ordering::Equal {
         a.cmp(b)
     } else {
@@ -119,8 +124,21 @@ fn compare_items(a: &str, b: &str) -> Ordering {
     }
 }
 
+fn strip_vendor_prefix(s: &str) -> &str {
+    if let Some(rest) = s.strip_prefix('-')
+        && let Some(idx) = rest.find('-')
+        && idx > 0
+        && rest[..idx].chars().all(|c| c.is_ascii_alphabetic())
+    {
+        &rest[idx + 1..]
+    } else {
+        s
+    }
+}
+
 fn initial_letter(s: &str) -> char {
-    s.chars()
+    strip_vendor_prefix(s)
+        .chars()
         .find(|&c| c.is_ascii_alphabetic() || c == '-')
         .unwrap_or('?')
         .to_ascii_uppercase()
@@ -160,66 +178,67 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_compute_labels_plain_title() {
-        let (html, plain) = compute_labels(
-            "background-color",
-            PageType::CssProperty,
-            "Web/CSS/background-color",
-        );
-        assert_eq!(html, "background-color");
-        assert_eq!(plain, "background-color");
-    }
+    fn test_compute_labels() {
+        let cases = vec![
+            (
+                "plain_title",
+                "background-color",
+                PageType::CssProperty,
+                "Web/CSS/background-color",
+                "background-color",
+                "background-color",
+            ),
+            (
+                "backticks",
+                "`background-color`",
+                PageType::CssProperty,
+                "Web/CSS/background-color",
+                "<code>background-color</code>",
+                "background-color",
+            ),
+            (
+                "partial_backticks",
+                "`<input>`: The Input element",
+                PageType::CssSelector,
+                "Web/CSS/whatever",
+                "<code>&lt;input&gt;</code>: The Input element",
+                "<input>: The Input element",
+            ),
+            (
+                "at_rule_descriptor",
+                "`font-family`",
+                PageType::CssAtRuleDescriptor,
+                "Web/CSS/Reference/At-rules/@font-face/font-family",
+                "<code>font-family</code> (<code>@font-face</code>)",
+                "font-family (@font-face)",
+            ),
+            (
+                "at_rule_descriptor_no_at_rule_in_slug",
+                "font-family",
+                PageType::CssAtRuleDescriptor,
+                "Web/CSS/font-family",
+                "font-family",
+                "font-family",
+            ),
+        ];
 
-    #[test]
-    fn test_compute_labels_backticks() {
-        let (html, plain) = compute_labels(
-            "`background-color`",
-            PageType::CssProperty,
-            "Web/CSS/background-color",
-        );
-        assert_eq!(html, "<code>background-color</code>");
-        assert_eq!(plain, "background-color");
-    }
-
-    #[test]
-    fn test_compute_labels_partial_backticks() {
-        let (html, plain) = compute_labels(
-            "`<input>`: The Input element",
-            PageType::CssSelector,
-            "Web/CSS/whatever",
-        );
-        assert_eq!(html, "<code>&lt;input&gt;</code>: The Input element");
-        assert_eq!(plain, "<input>: The Input element");
-    }
-
-    #[test]
-    fn test_compute_labels_at_rule_descriptor() {
-        let (html, plain) = compute_labels(
-            "`font-family`",
-            PageType::CssAtRuleDescriptor,
-            "Web/CSS/Reference/At-rules/@font-face/font-family",
-        );
-        assert_eq!(html, "<code>font-family</code> (<code>@font-face</code>)");
-        assert_eq!(plain, "font-family (@font-face)");
-    }
-
-    #[test]
-    fn test_compute_labels_at_rule_descriptor_no_at_rule_in_slug() {
-        let (html, plain) = compute_labels(
-            "font-family",
-            PageType::CssAtRuleDescriptor,
-            "Web/CSS/font-family",
-        );
-        assert_eq!(html, "font-family");
-        assert_eq!(plain, "font-family");
+        for (name, title_raw, page_type, slug, expected_html, expected_plain) in cases {
+            let (html, plain) = compute_labels(title_raw, page_type, slug);
+            assert_eq!(html, expected_html, "html mismatch for case `{name}`");
+            assert_eq!(plain, expected_plain, "plain mismatch for case `{name}`");
+        }
     }
 
     #[test]
     fn test_initial_letter() {
         assert_eq!(initial_letter("background-color"), 'B');
         assert_eq!(initial_letter("`font-family`"), 'F');
-        assert_eq!(initial_letter("-webkit-foo"), '-');
+        assert_eq!(initial_letter("-webkit-foo"), 'F');
+        assert_eq!(initial_letter("-moz-user-select"), 'U');
+        assert_eq!(initial_letter("-ms-flex"), 'F');
+        assert_eq!(initial_letter("-o-transition"), 'T');
         assert_eq!(initial_letter("@font-face"), 'F');
+        assert_eq!(initial_letter("--*"), '-');
         assert_eq!(initial_letter(""), '?');
     }
 
@@ -232,5 +251,13 @@ mod tests {
         // trimmed forms are equal, fall back to raw comparison.
         assert_eq!(compare_items("@apple", "apple"), Ordering::Less);
         assert_eq!(compare_items("apple", "@apple"), Ordering::Greater);
+        // Vendor prefixes are stripped, so a prefixed property sorts next to
+        // its unprefixed sibling.
+        assert_eq!(compare_items("-webkit-box-align", "color"), Ordering::Less);
+        assert_eq!(
+            compare_items("-webkit-box-align", "block-size"),
+            Ordering::Greater
+        );
+        assert_eq!(compare_items("-webkit-foo", "foo"), Ordering::Less);
     }
 }
