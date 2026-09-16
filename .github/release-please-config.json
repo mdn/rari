@@ -25,13 +25,8 @@
         },
         {
           "type": "json",
-          "path": "rari-npm/package-lock.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "json",
-          "path": "rari-npm/package-lock.json",
-          "jsonpath": "$.packages[''].version"
+          "path": "rari-npm/package.json",
+          "jsonpath": "$.optionalDependencies.*"
         }
       ]
     }

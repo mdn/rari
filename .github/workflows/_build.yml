@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      RARI_BINARY_PATH: ${{ github.workspace }}/rari
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
 
@@ -146,6 +147,9 @@ jobs:
         working-directory: mdn/rari
         run: |
           chmod +x target/release/rari
+          cp target/release/rari "$RARI_BINARY_PATH"
+          # Legacy location, remove once content uses @mdn/rari with RARI_BINARY_PATH support.
+          mkdir -p ../content/node_modules/@mdn/rari/bin
           cp target/release/rari ../content/node_modules/@mdn/rari/bin/
           rm -rf target
 

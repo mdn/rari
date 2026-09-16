@@ -5,7 +5,7 @@ import fs from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const schemaPath = join(__dirname, '..', 'schema.json');
-const typesPath = join(__dirname, 'rari-types.d.ts');
+const typesPath = join(__dirname, '..', 'lib', 'rari-types.d.ts');
 
 compileFromFile(schemaPath, {
   additionalProperties: false,
