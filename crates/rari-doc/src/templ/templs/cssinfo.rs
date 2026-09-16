@@ -16,6 +16,15 @@ use crate::html::links::post_process_templ_links;
 
 const GLOBAL_SCOPE: &str = "__global_scope__";
 
+const PROSE_INITIAL_VALUES: [&str; 6] = [
+    "See individual properties",
+    "depends on user agent",
+    "not defined for shorthand properties",
+    "see individual properties",
+    "the guaranteed-invalid value (but see prose)",
+    "n/a (see prose)",
+];
+
 #[rari_f(register = "crate::Templ")]
 pub fn cssinfo() -> Result<String, DocError> {
     let name = env
@@ -132,6 +141,20 @@ fn render_css_value(value: &str, locale: Locale) -> String {
     escape_css_value(css_l10n_for_value(value, locale))
 }
 
+fn is_prose_initial_value(value: &str) -> bool {
+    PROSE_INITIAL_VALUES.contains(&value)
+}
+
+fn render_initial_value(value: &str, locale: Locale) -> String {
+    let is_prose = is_prose_initial_value(value);
+    let value = render_css_value(value, locale);
+    if is_prose {
+        value
+    } else {
+        format!("<code>{value}</code>")
+    }
+}
+
 fn render_at_rule_descriptor_def(
     descriptor: &AtRuleDescriptor,
     out: &mut String,
@@ -150,8 +173,11 @@ fn render_at_rule_descriptor_def(
     )?;
 
     if let Some(value) = &descriptor.initial {
-        let value = render_css_value(value, locale);
-        write_table_row(out, &css_initial(locale)?, &format!("<code>{value}</code>"))?;
+        write_table_row(
+            out,
+            &css_initial(locale)?,
+            &render_initial_value(value, locale),
+        )?;
     }
 
     let computed = descriptor
@@ -176,8 +202,11 @@ fn render_property_def(
     out.push_str(r#"<table class="properties"><tbody>"#);
 
     if let Some(value) = &property.initial {
-        let value = render_css_value(value, locale);
-        write_table_row(out, &css_initial(locale)?, &format!("<code>{value}</code>"))?;
+        write_table_row(
+            out,
+            &css_initial(locale)?,
+            &render_initial_value(value, locale),
+        )?;
     }
     if let Some(value) = &property.applies_to {
         write_table_row(
@@ -224,6 +253,40 @@ fn render_property_def(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identifies_prose_initial_values() {
+        let cases = [
+            ("lowercase", "see individual properties", true),
+            ("capitalized", "See individual properties", true),
+            ("user agent", "depends on user agent", true),
+            ("shorthand", "not defined for shorthand properties", true),
+            ("prose reference", "n/a (see prose)", true),
+            (
+                "guaranteed invalid",
+                "the guaranteed-invalid value (but see prose)",
+                true,
+            ),
+            ("keyword", "auto", false),
+            ("multiple CSS tokens", "0 1 auto", false),
+        ];
+
+        for (name, value, expected) in cases {
+            assert_eq!(is_prose_initial_value(value), expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn renders_prose_initial_values_without_code() {
+        assert_eq!(
+            render_initial_value("see individual properties", Locale::EnUs),
+            "see individual properties"
+        );
+        assert_eq!(
+            render_initial_value("auto", Locale::EnUs),
+            "<code>auto</code>"
+        );
+    }
 
     #[test]
     fn test_scope_from_browser_compat() {
