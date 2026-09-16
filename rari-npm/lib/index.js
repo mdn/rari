@@ -17,8 +17,8 @@ function resolveRariBin() {
       `Could not find the rari binary for ${process.platform}-${process.arch}. ` +
         `Make sure ${PLATFORM_PACKAGE} is installed: it is an optional dependency ` +
         `of @mdn/rari, so it is missing when installing with --omit=optional, ` +
-        `when the platform is unsupported, or when the lockfile was generated on ` +
-        `another platform. Alternatively, set RARI_BINARY_PATH to a rari binary.`,
+        `or when the platform is unsupported. Alternatively, set RARI_BINARY_PATH ` +
+        `to a rari binary.`,
       { cause: error },
     );
   }
