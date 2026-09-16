@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0](https://github.com/mdn/rari/compare/v0.2.35...v1.0.0) (2026-09-16)
+
+
+### Features
+
+* **npm:** load binary from platform package ([#925](https://github.com/mdn/rari/issues/925)) ([f6b9023](https://github.com/mdn/rari/commit/f6b9023a5e627fe12dc0400afc6e9c569e37e868))
+
 ## [0.2.35](https://github.com/mdn/rari/compare/v0.2.34...v0.2.35) (2026-09-16)
 
 
