@@ -360,25 +360,91 @@ fn remove_me_replace_placeholder(s: &str, replacements: &[&str]) -> String {
         .replace("$2$", replacements.get(1).unwrap_or(&"$2$"))
 }
 
-/// Translates a formal definition value from `L10n-CSSFormalDefinitions.json`.
-///
-/// Falls back to the raw webref value, since translations are filled in
-/// incrementally and a missing en-US entry only means the value is new.
-pub fn css_l10n_for_value(value: &str, locale: Locale) -> &str {
-    l10n_json_data("CSSFormalDefinitions", value, locale)
-        .inspect_err(|e| {
-            let locale = locale.as_url_str();
-            if locale == Locale::default().as_url_str() {
-                tracing::warn!(
-                    "Missing en-US entry in content/files/jsondata/L10n-CSSFormalDefinitions.json: {value} ({e})"
-                );
-            } else {
-                tracing::info!(
-                    "Missing {locale} translation in content/files/jsondata/L10n-CSSFormalDefinitions.json: {value} ({e})"
-                );
-            }
+const CSS_GRAMMAR_KEYWORDS: [&str; 6] = [
+    "anchor-visible",
+    "decimal",
+    "relative-colorimetric",
+    "symbolic",
+    "true",
+    "upright",
+];
+
+fn is_css_numeric_token(value: &str) -> bool {
+    let value = value.strip_suffix('%').unwrap_or(value);
+    if value.parse::<f64>().is_ok() {
+        return true;
+    }
+    let split_at = value
+        .char_indices()
+        .find_map(|(index, character)| character.is_ascii_alphabetic().then_some(index))
+        .unwrap_or(value.len());
+    let (number, unit) = value.split_at(split_at);
+
+    !number.is_empty()
+        && number.parse::<f64>().is_ok()
+        && (unit.is_empty() || unit.bytes().all(|byte| byte.is_ascii_alphabetic()))
+}
+
+fn is_unicode_range(value: &str) -> bool {
+    value.strip_prefix("U+").is_some_and(|range| {
+        !range.is_empty()
+            && range
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() || byte == b'-' || byte == b'?')
+    })
+}
+
+fn is_css_type_token(value: &str) -> bool {
+    value
+        .strip_prefix('<')
+        .and_then(|value| value.strip_suffix('>'))
+        .is_some_and(|name| {
+            !name.is_empty()
+                && name
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'(' | b')'))
         })
-        .unwrap_or(value)
+}
+
+fn is_css_grammar_token(value: &str) -> bool {
+    value.chars().all(|character| !character.is_alphabetic())
+        || is_css_numeric_token(value)
+        || value == "auto"
+        || is_unicode_range(value)
+        || is_css_type_token(value)
+}
+
+fn is_css_grammar_value(value: &str) -> bool {
+    CSS_GRAMMAR_KEYWORDS.contains(&value)
+        || (!value.is_empty() && value.split_ascii_whitespace().all(is_css_grammar_token))
+}
+
+/// Returns an intentionally unlocalized CSS grammar value or localized prose.
+///
+/// New prose must be added to content's `L10n-CSSFormalDefinitions.json`; an
+/// error is returned rather than silently rendering the English source value.
+fn css_l10n_for_value_from<'a, F>(
+    value: &'a str,
+    locale: Locale,
+    lookup: F,
+) -> Result<Cow<'a, str>, DocError>
+where
+    F: FnOnce(&str, Locale) -> Result<&'a str, super::l10n::L10nError>,
+{
+    if is_css_grammar_value(value) {
+        return Ok(Cow::Borrowed(value));
+    }
+    lookup(value, locale).map(Cow::Borrowed).map_err(|e| {
+        DocError::InvalidTempl(format!(
+            "Missing CSS formal-definition localization for {value}: {e}"
+        ))
+    })
+}
+
+pub fn css_l10n_for_value<'a>(value: &'a str, locale: Locale) -> Result<Cow<'a, str>, DocError> {
+    css_l10n_for_value_from(value, locale, |value, locale| {
+        l10n_json_data("CSSFormalDefinitions", value, locale)
+    })
 }
 
 pub fn css_applies_to(locale: Locale) -> Result<String, DocError> {
@@ -419,7 +485,12 @@ mod tests {
     use rari_types::locale::Locale;
     use serde_json::json;
 
-    use super::{get_css_l10n_for_locale, write_computed_output};
+    use crate::helpers::l10n::L10nError;
+
+    use super::{
+        CSS_GRAMMAR_KEYWORDS, css_l10n_for_value_from, get_css_l10n_for_locale,
+        is_css_grammar_value, write_computed_output,
+    };
 
     fn render_initial_value(initial_value: &str, locale: Locale) -> String {
         let mut out = String::new();
@@ -448,5 +519,84 @@ mod tests {
             render_initial_value("dependsOnUserAgent", Locale::Ja),
             localized
         );
+    }
+
+    #[test]
+    fn css_grammar_values_are_intentionally_unlocalized() {
+        let grammar_values = [
+            "\"\"",
+            "\"*\"",
+            "\"-\"",
+            "\". \"",
+            "0",
+            "0 \"\"",
+            "0 1 auto",
+            "0%",
+            "0% 0%",
+            "0px",
+            "0px 0px",
+            "0s",
+            "1",
+            "100%",
+            "1dppx",
+            "1px",
+            "2",
+            "4",
+            "50% 50%",
+            "8",
+            "?",
+            "U+0-10FFFF",
+            "anchor-visible",
+            "decimal",
+            "relative-colorimetric",
+            "symbolic",
+            "true",
+            "upright",
+        ];
+        let prose_values = ["1 auto word", "see text", "specified <length>"];
+
+        assert_eq!(CSS_GRAMMAR_KEYWORDS.len(), 6);
+        assert!(grammar_values.into_iter().all(is_css_grammar_value));
+        assert!(is_css_grammar_value("<length>"));
+        assert!(
+            prose_values
+                .into_iter()
+                .all(|value| !is_css_grammar_value(value))
+        );
+    }
+
+    #[test]
+    fn css_grammar_values_bypass_the_localization_lookup() {
+        let value = css_l10n_for_value_from("0", Locale::EnUs, |_, _| {
+            Err(L10nError::InvalidKey("unexpected lookup".into()))
+        })
+        .expect("CSS grammar should not require a localization");
+
+        assert_eq!(value, "0");
+    }
+
+    #[test]
+    fn missing_prose_localization_is_an_error() {
+        let error = css_l10n_for_value_from("see text", Locale::EnUs, |_, _| {
+            Err(L10nError::InvalidKey("see text".into()))
+        })
+        .expect_err("prose must have an en-US localization");
+
+        assert!(
+            error
+                .to_string()
+                .contains("Missing CSS formal-definition localization")
+        );
+    }
+
+    #[test]
+    fn duplicate_values_share_one_localization_key() {
+        let value = css_l10n_for_value_from("same value", Locale::EnUs, |key, _| {
+            assert_eq!(key, "same value");
+            Ok("localized value")
+        })
+        .expect("one key should resolve repeated source values");
+
+        assert_eq!(value, "localized value");
     }
 }

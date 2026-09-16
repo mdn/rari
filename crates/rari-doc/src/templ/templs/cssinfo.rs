@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::Write;
 
 use css_syntax::syntax::CssType;
@@ -124,6 +125,16 @@ fn write_table_row(out: &mut String, label: &str, value: &str) -> Result<(), Doc
     )?)
 }
 
+fn escape_css_value(value: &str) -> Cow<'_, str> {
+    html_escape::encode_text(value)
+}
+
+fn localized_css_value(value: &str, locale: Locale) -> Result<Cow<'static, str>, DocError> {
+    Ok(Cow::Owned(
+        escape_css_value(&css_l10n_for_value(value, locale)?).into_owned(),
+    ))
+}
+
 fn render_at_rule_descriptor_def(
     descriptor: &AtRuleDescriptor,
     out: &mut String,
@@ -142,7 +153,7 @@ fn render_at_rule_descriptor_def(
     )?;
 
     if let Some(value) = &descriptor.initial {
-        let value = css_l10n_for_value(value, locale);
+        let value = localized_css_value(value, locale)?;
         write_table_row(out, &css_initial(locale)?, &format!("<code>{value}</code>"))?;
     }
 
@@ -153,7 +164,7 @@ fn render_at_rule_descriptor_def(
     write_table_row(
         out,
         &css_computed(locale)?,
-        css_l10n_for_value(computed, locale),
+        &localized_css_value(computed, locale)?,
     )?;
 
     out.push_str(r#"</tbody></table>"#);
@@ -168,28 +179,28 @@ fn render_property_def(
     out.push_str(r#"<table class="properties"><tbody>"#);
 
     if let Some(value) = &property.initial {
-        let value = css_l10n_for_value(value, locale);
+        let value = localized_css_value(value, locale)?;
         write_table_row(out, &css_initial(locale)?, &format!("<code>{value}</code>"))?;
     }
     if let Some(value) = &property.applies_to {
         write_table_row(
             out,
             &css_applies_to(locale)?,
-            css_l10n_for_value(value, locale),
+            &localized_css_value(value, locale)?,
         )?;
     }
     if let Some(value) = &property.inherited {
         write_table_row(
             out,
             &css_inherited(locale)?,
-            css_l10n_for_value(value, locale),
+            &localized_css_value(value, locale)?,
         )?;
     }
     if let Some(value) = &property.computed_value {
         write_table_row(
             out,
             &css_computed(locale)?,
-            css_l10n_for_value(value, locale),
+            &localized_css_value(value, locale)?,
         )?;
     }
     if let Some(value) = &property.percentages
@@ -198,14 +209,14 @@ fn render_property_def(
         write_table_row(
             out,
             &css_percentages(locale)?,
-            css_l10n_for_value(value, locale),
+            &localized_css_value(value, locale)?,
         )?;
     }
     if let Some(value) = &property.animation_type {
         write_table_row(
             out,
             &css_animation_type(locale)?,
-            css_l10n_for_value(value, locale),
+            &localized_css_value(value, locale)?,
         )?;
     }
 
@@ -271,5 +282,13 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn escapes_css_grammar_tokens_in_localized_text() {
+        assert_eq!(
+            escape_css_value("specified <basic-shape> & value"),
+            "specified &lt;basic-shape&gt; &amp; value"
+        );
     }
 }
