@@ -124,6 +124,14 @@ fn write_table_row(out: &mut String, label: &str, value: &str) -> Result<(), Doc
     )?)
 }
 
+fn escape_css_value(value: &str) -> String {
+    html_escape::encode_text(value).into_owned()
+}
+
+fn render_css_value(value: &str, locale: Locale) -> String {
+    escape_css_value(css_l10n_for_value(value, locale))
+}
+
 fn render_at_rule_descriptor_def(
     descriptor: &AtRuleDescriptor,
     out: &mut String,
@@ -142,7 +150,7 @@ fn render_at_rule_descriptor_def(
     )?;
 
     if let Some(value) = &descriptor.initial {
-        let value = css_l10n_for_value(value, locale);
+        let value = render_css_value(value, locale);
         write_table_row(out, &css_initial(locale)?, &format!("<code>{value}</code>"))?;
     }
 
@@ -153,7 +161,7 @@ fn render_at_rule_descriptor_def(
     write_table_row(
         out,
         &css_computed(locale)?,
-        css_l10n_for_value(computed, locale),
+        &render_css_value(computed, locale),
     )?;
 
     out.push_str(r#"</tbody></table>"#);
@@ -168,28 +176,28 @@ fn render_property_def(
     out.push_str(r#"<table class="properties"><tbody>"#);
 
     if let Some(value) = &property.initial {
-        let value = css_l10n_for_value(value, locale);
+        let value = render_css_value(value, locale);
         write_table_row(out, &css_initial(locale)?, &format!("<code>{value}</code>"))?;
     }
     if let Some(value) = &property.applies_to {
         write_table_row(
             out,
             &css_applies_to(locale)?,
-            css_l10n_for_value(value, locale),
+            &render_css_value(value, locale),
         )?;
     }
     if let Some(value) = &property.inherited {
         write_table_row(
             out,
             &css_inherited(locale)?,
-            css_l10n_for_value(value, locale),
+            &render_css_value(value, locale),
         )?;
     }
     if let Some(value) = &property.computed_value {
         write_table_row(
             out,
             &css_computed(locale)?,
-            css_l10n_for_value(value, locale),
+            &render_css_value(value, locale),
         )?;
     }
     if let Some(value) = &property.percentages
@@ -198,14 +206,14 @@ fn render_property_def(
         write_table_row(
             out,
             &css_percentages(locale)?,
-            css_l10n_for_value(value, locale),
+            &render_css_value(value, locale),
         )?;
     }
     if let Some(value) = &property.animation_type {
         write_table_row(
             out,
             &css_animation_type(locale)?,
-            css_l10n_for_value(value, locale),
+            &render_css_value(value, locale),
         )?;
     }
 
@@ -271,5 +279,21 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn test_render_css_value_as_html() -> Result<(), Box<dyn std::error::Error>> {
+        let grammar_placeholders = "<angle> <basic-shape> <color> <custom-ident> <display-box> <image> <integer> <length> <number> <percentage> <resolution> <string> <time> <transform-function> <url>";
+        let escaped = escape_css_value(grammar_placeholders);
+        let html = rari_md::m2h(
+            &format!("<table><tr><td>{escaped}</td></tr></table>"),
+            Locale::EnUs,
+        )?;
+
+        assert_eq!(
+            html,
+            "<table><tr><td>&lt;angle&gt; &lt;basic-shape&gt; &lt;color&gt; &lt;custom-ident&gt; &lt;display-box&gt; &lt;image&gt; &lt;integer&gt; &lt;length&gt; &lt;number&gt; &lt;percentage&gt; &lt;resolution&gt; &lt;string&gt; &lt;time&gt; &lt;transform-function&gt; &lt;url&gt;</td></tr></table>\n"
+        );
+        Ok(())
     }
 }
