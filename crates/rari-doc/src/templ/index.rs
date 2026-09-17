@@ -1,15 +1,20 @@
 /// Render the alphabetical navigation shared by index-producing templates.
+///
+/// Deliberately not a `<nav>`: pages can hold several indexes, and unnamed
+/// navigation landmarks are indistinguishable for screen reader users. The
+/// wrapper stays an element so Fred's `.index .index-nav ul` styling applies
+/// without matching the index's own `.index > ul`.
 pub(crate) fn render_index_navigation(
     out: &mut String,
     letters: impl IntoIterator<Item = char>,
     id_prefix: &str,
 ) {
-    out.push_str(r#"<nav class="index-nav"><ul>"#);
+    out.push_str(r#"<div class="index-nav"><ul>"#);
     for letter in letters {
         let (label, id) = index_letter_label_and_id(letter, id_prefix);
         out.extend([r##"<li><a href="#"##, &id, r#"">"#, &label, "</a></li>"]);
     }
-    out.push_str("</ul></nav>");
+    out.push_str("</ul></div>");
 }
 
 /// Normalize an index initial. ASCII-only, as index initials come from page
@@ -41,12 +46,12 @@ mod tests {
             (
                 "index",
                 vec!['A', 'B'],
-                r##"<nav class="index-nav"><ul><li><a href="#index-a">A</a></li><li><a href="#index-b">B</a></li></ul></nav>"##,
+                r##"<div class="index-nav"><ul><li><a href="#index-a">A</a></li><li><a href="#index-b">B</a></li></ul></div>"##,
             ),
             (
                 "index-interfaces",
                 vec!['C'],
-                r##"<nav class="index-nav"><ul><li><a href="#index-interfaces-c">C</a></li></ul></nav>"##,
+                r##"<div class="index-nav"><ul><li><a href="#index-interfaces-c">C</a></li></ul></div>"##,
             ),
         ];
 
