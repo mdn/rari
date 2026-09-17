@@ -481,7 +481,6 @@ fn main() -> Result<(), Error> {
         rari_deps::web_features::update_web_features(rari_types::globals::data_dir())?;
         rari_deps::developer_signals::update_developer_signals(rari_types::globals::data_dir())?;
         rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;
-        rari_deps::mdn_data::update_mdn_data(rari_types::globals::data_dir())?;
         rari_deps::web_ext_examples::update_web_ext_examples(rari_types::globals::data_dir())?;
         rari_deps::popularities::update_popularities(rari_types::globals::data_dir())?;
     }
