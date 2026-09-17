@@ -19,6 +19,9 @@ use crate::templ::index::{index_letter_label_and_id, render_index_navigation};
 const CODE_OPEN_PLACEHOLDER: &str = "\u{E000}";
 const CODE_CLOSE_PLACEHOLDER: &str = "\u{E001}";
 
+/// Fragment ID prefix, shared by the navigation and the letter headings.
+const INDEX_ID_PREFIX: &str = "index";
+
 #[rari_f(register = "crate::Templ")]
 pub fn css_ref() -> Result<String, DocError> {
     let mut index = BTreeMap::<char, HashMap<&str, (String, String)>>::new();
@@ -39,10 +42,10 @@ pub fn css_ref() -> Result<String, DocError> {
     let mut out = String::new();
 
     out.push_str(r#"<div class="index">"#);
-    render_index_navigation(&mut out, index.keys().copied(), "index");
+    render_index_navigation(&mut out, index.keys().copied(), INDEX_ID_PREFIX);
 
     for (letter, items) in index {
-        let (label, id) = index_letter_label_and_id(letter, "index");
+        let (label, id) = index_letter_label_and_id(letter, INDEX_ID_PREFIX);
         out.extend([r#"<h3 id=""#, &id, r#"">"#, &label, "</h3><ul>"]);
         for (url, (html_label, _)) in items
             .into_iter()
