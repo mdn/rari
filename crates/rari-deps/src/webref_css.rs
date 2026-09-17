@@ -1,15 +1,39 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
+use std::sync::OnceLock;
 
 use css_syntax_types::{BrowserSpec, SpecLink, WebrefCss};
-use rari_types::globals::deps;
+use rari_types::globals::{data_dir, deps};
 use rari_utils::io::read_to_string;
 use serde_json::Value;
 use url::Url;
 
 use crate::error::DepsError;
 use crate::npm::get_package;
+
+static CSS_REF: OnceLock<WebrefCss> = OnceLock::new();
+
+/// Returns the transformed webref CSS data, downloading it first if missing.
+pub fn css_ref_data() -> &'static WebrefCss {
+    CSS_REF.get_or_init(|| load_css_ref_data(data_dir(), update_webref_css))
+}
+
+fn load_css_ref_data(
+    data_dir: &Path,
+    update: impl FnOnce(&Path) -> Result<(), DepsError>,
+) -> WebrefCss {
+    let package_dir = data_dir.join("@webref/css");
+    let path = package_dir.join("webref_css.json");
+    if !path.exists() {
+        // A fresh `last_check.json` makes `get_package` skip the download, so drop it.
+        let _ = fs::remove_file(package_dir.join("last_check.json"));
+        update(data_dir).expect("failed to download @webref/css");
+    }
+    let json_str = fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
+    serde_json::from_str(&json_str).expect("failed to parse webref_css.json")
+}
 
 fn normalize_name(name: &str) -> String {
     name.trim_start_matches('<')
@@ -322,6 +346,86 @@ mod test {
     use std::path::PathBuf;
 
     use super::*;
+
+    #[test]
+    fn test_load_css_ref_data() {
+        struct Case {
+            name: &'static str,
+            cached: bool,
+            last_check: bool,
+            expected_updates: usize,
+        }
+
+        let cases = [
+            Case {
+                name: "cached data skips update",
+                cached: true,
+                last_check: true,
+                expected_updates: 0,
+            },
+            Case {
+                name: "missing data triggers update",
+                cached: false,
+                last_check: false,
+                expected_updates: 1,
+            },
+            Case {
+                name: "missing data clears fresh last check before update",
+                cached: false,
+                last_check: true,
+                expected_updates: 1,
+            },
+        ];
+        let expected = serde_json::json!({
+            "atrules": {},
+            "functions": {},
+            "properties": {"__global_scope__": {}},
+            "selectors": {},
+            "types": {},
+        });
+        let json = serde_json::to_string(&expected).unwrap();
+
+        for case in cases {
+            let directory = tempfile::tempdir().unwrap();
+            let package_dir = directory.path().join("@webref/css");
+            let path = package_dir.join("webref_css.json");
+            let last_check = package_dir.join("last_check.json");
+            if case.cached || case.last_check {
+                fs::create_dir_all(&package_dir).unwrap();
+            }
+            if case.cached {
+                fs::write(&path, &json).unwrap();
+            }
+            if case.last_check {
+                let current = crate::current::Current {
+                    current_version: Some(semver::Version::new(8, 0, 0)),
+                    latest_last_check: Some(chrono::Utc::now()),
+                };
+                fs::write(&last_check, serde_json::to_string(&current).unwrap()).unwrap();
+            }
+
+            let mut updates = 0;
+            let data = load_css_ref_data(directory.path(), |base_path| {
+                updates += 1;
+                assert_eq!(base_path, directory.path(), "{}", case.name);
+                assert!(!last_check.exists(), "{}", case.name);
+                fs::create_dir_all(&package_dir)?;
+                fs::write(&path, &json)?;
+                Ok(())
+            });
+
+            assert_eq!(updates, case.expected_updates, "{}", case.name);
+            assert_eq!(
+                serde_json::to_value(data).unwrap(),
+                expected,
+                "{}",
+                case.name
+            );
+            if case.cached {
+                assert!(last_check.exists(), "{}", case.name);
+            }
+        }
+    }
 
     fn url_titles_map(json_path: &PathBuf) -> BTreeMap<String, String> {
         if let Ok(existing_browser_specs) = fs::read_to_string(json_path) {

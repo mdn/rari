@@ -596,7 +596,6 @@ dependencies = [
 name = "css-syntax"
 version = "1.0.0"
 dependencies = [
- "anyhow",
  "css-definition-syntax",
  "css-syntax-types",
  "html-escape",
@@ -604,6 +603,7 @@ dependencies = [
  "rari-types",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.20",
 ]
 
@@ -2674,6 +2674,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tar",
+ "tempfile",
  "thiserror 2.0.20",
  "tracing",
  "url",
