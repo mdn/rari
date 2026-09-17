@@ -9,6 +9,9 @@ use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 use crate::templ::index::{index_letter, index_letter_label_and_id, render_index_navigation};
 
+/// Fragment ID prefix, shared by the navigation and the letter headings.
+const INDEX_ID_PREFIX: &str = "index-interfaces";
+
 #[rari_f(register = "crate::Templ")]
 pub fn apilistalpha() -> Result<String, DocError> {
     let mut out = String::new();
@@ -30,9 +33,9 @@ pub fn apilistalpha() -> Result<String, DocError> {
     let letters = pages_by_letter.keys().copied();
 
     out.push_str(r#"<div class="index">"#);
-    render_index_navigation(&mut out, letters, "index-interfaces");
+    render_index_navigation(&mut out, letters, INDEX_ID_PREFIX);
     for (letter, pages) in pages_by_letter {
-        let (label, id) = index_letter_label_and_id(letter, "index-interfaces");
+        let (label, id) = index_letter_label_and_id(letter, INDEX_ID_PREFIX);
         out.extend([r#"<h3 id=""#, &id, r#"">"#, &label, "</h3><ul>"]);
         for page in pages {
             out.extend([
