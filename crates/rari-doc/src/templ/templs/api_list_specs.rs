@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools;
 use rari_templ_func::rari_f;
+use tracing::warn;
 
 use crate::error::DocError;
 use crate::helpers::json_data::json_data_group;
@@ -18,9 +19,12 @@ pub fn listgroups() -> Result<String, DocError> {
 
     let mut out_by_letter = BTreeMap::new();
 
-    for (_, group) in group_data.iter().sorted_by(|(a, _), (b, _)| a.cmp(b)) {
+    for (name, group) in group_data.iter().sorted_by(|(a, _), (b, _)| a.cmp(b)) {
         if let Some(overview) = group.overview.first() {
-            let first_letter = index_letter(overview.chars().next().unwrap_or_default());
+            let Some(first_letter) = overview.chars().next().map(index_letter) else {
+                warn!("Skipping group {name} with an empty overview");
+                continue;
+            };
             let page = Doc::page_from_slug(
                 &format!("Web/API/{}", overview.replace(' ', "_")),
                 env.locale,
