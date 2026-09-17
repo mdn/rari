@@ -4,7 +4,6 @@ use std::sync::LazyLock;
 use rari_templ_func::rari_f;
 use rari_types::fm_types::PageType;
 use rari_types::globals::data_dir;
-use serde_json::Value;
 
 use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
@@ -48,10 +47,10 @@ pub fn webextallcompattables() -> Result<String, DocError> {
 }
 
 static BCD_KEYS: LazyLock<Option<HashSet<String>>> = LazyLock::new(|| {
-    let path = data_dir().join("@mdn/browser-compat-data/package/data.json");
+    let path = data_dir().join("@mdn/browser-compat-data/bcd_keys.json");
     let keys = std::fs::read_to_string(path)
         .map_err(DocError::from)
-        .and_then(|data| Ok(bcd_keys(&serde_json::from_str(&data)?)));
+        .and_then(|data| Ok(serde_json::from_str(&data)?));
     match keys {
         Ok(keys) => Some(keys),
         Err(error) => {
@@ -60,31 +59,6 @@ static BCD_KEYS: LazyLock<Option<HashSet<String>>> = LazyLock::new(|| {
         }
     }
 });
-
-fn bcd_keys(data: &Value) -> HashSet<String> {
-    fn collect(data: &Value, path: &str, keys: &mut HashSet<String>) -> bool {
-        let Some(object) = data.as_object() else {
-            return false;
-        };
-        let mut has_compat = object.contains_key("__compat");
-        for (key, value) in object.iter().filter(|(key, _)| *key != "__compat") {
-            let child = if path.is_empty() {
-                key.clone()
-            } else {
-                format!("{path}.{key}")
-            };
-            has_compat |= collect(value, &child, keys);
-        }
-        if has_compat && !path.is_empty() {
-            keys.insert(path.to_string());
-        }
-        has_compat
-    }
-
-    let mut keys = HashSet::new();
-    collect(data, "", &mut keys);
-    keys
-}
 
 fn compat_internal(browser_compat: &[impl AsRef<str>]) -> String {
     if browser_compat.is_empty() {
@@ -131,16 +105,20 @@ mod test {
     fn test_compat_bcd_keys() {
         use tracing_subscriber::layer::SubscriberExt;
 
-        use super::{bcd_keys, compat_with_keys};
+        use super::compat_with_keys;
         use crate::issues::InMemoryLayer;
 
-        let keys = bcd_keys(&serde_json::json!({
-            "css": {"types": {"color": {
-                "color-mix": {"__compat": {"support": {}}},
-                "color": {"display-p3": {"__compat": {"support": {}}}}
-            }}},
-            "browsers": {"firefox": {"name": "Firefox"}}
-        }));
+        let keys = [
+            "css",
+            "css.types",
+            "css.types.color",
+            "css.types.color.color-mix",
+            "css.types.color.color",
+            "css.types.color.color.display-p3",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
         let valid = "css.types.color.color-mix";
         let invalid = "css.types.color.color.display-p3-linear";
         let cases = vec![
