@@ -9,6 +9,9 @@ use crate::helpers::subpages::write_li_with_badges;
 use crate::pages::types::doc::Doc;
 use crate::templ::index::{index_letter, index_letter_label_and_id, render_index_navigation};
 
+/// Fragment ID prefix, shared by the navigation and the letter headings.
+const INDEX_ID_PREFIX: &str = "index-specifications";
+
 #[rari_f(register = "crate::Templ")]
 pub fn listgroups() -> Result<String, DocError> {
     let group_data = json_data_group();
@@ -30,13 +33,9 @@ pub fn listgroups() -> Result<String, DocError> {
 
     let mut out = String::new();
     out.push_str(r#"<div class="index">"#);
-    render_index_navigation(
-        &mut out,
-        out_by_letter.keys().copied(),
-        "index-specifications",
-    );
+    render_index_navigation(&mut out, out_by_letter.keys().copied(), INDEX_ID_PREFIX);
     for (letter, content) in out_by_letter {
-        let (label, id) = index_letter_label_and_id(letter, "index-specifications");
+        let (label, id) = index_letter_label_and_id(letter, INDEX_ID_PREFIX);
         out.extend([
             r#"<h3 id=""#,
             &id,
