@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -22,7 +22,7 @@ fn update_bcd_data(
     get_bcd_package: impl FnOnce(&Path) -> Result<Option<PathBuf>, DepsError>,
 ) -> Result<(), DepsError> {
     if let Some(path) = get_bcd_package(base_path)? {
-        extract_spec_urls(&path)?;
+        extract_data(&path)?;
     } else {
         ensure_spec_urls(&base_path.join("@mdn/browser-compat-data"))?;
     }
@@ -79,9 +79,38 @@ fn ensure_spec_urls(package_path: &Path) -> Result<(), DepsError> {
     Ok(())
 }
 
+fn gather_bcd_keys(value: &Value, path: &str, keys: &mut HashSet<String>) -> bool {
+    let Some(object) = value.as_object() else {
+        return false;
+    };
+    let mut has_compat = object.contains_key("__compat");
+    for (key, value) in object.iter().filter(|(key, _)| *key != "__compat") {
+        let child = if path.is_empty() {
+            key.clone()
+        } else {
+            format!("{path}.{key}")
+        };
+        has_compat |= gather_bcd_keys(value, &child, keys);
+    }
+    if has_compat && !path.is_empty() {
+        keys.insert(path.to_string());
+    }
+    has_compat
+}
+
+fn extract_data(package_path: &Path) -> Result<(), DepsError> {
+    extract_spec_urls(package_path)?;
+    let text = read_to_string(package_path.join("package/data.json"))?;
+    let json: Value = serde_json::from_str(&text)?;
+    let mut keys = HashSet::new();
+    gather_bcd_keys(&json, "", &mut keys);
+    fs::write(package_path.join("bcd_keys.json"), serde_json::to_string(&keys)?)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
-    use super::{ensure_spec_urls, update_bcd_data};
+    use super::{ensure_spec_urls, gather_bcd_keys, update_bcd_data};
     use serde_json::json;
     use std::fs;
     use std::path::Path;
@@ -195,5 +224,31 @@ mod test {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn test_gather_bcd_keys() {
+        let data = json!({
+            "css": {"types": {"color": {
+                "color-mix": {"__compat": {"support": {}}},
+                "color": {"display-p3": {"__compat": {"support": {}}}}
+            }}},
+            "browsers": {"firefox": {"name": "Firefox"}}
+        });
+        let mut keys = HashSet::new();
+
+        gather_bcd_keys(&data, "", &mut keys);
+
+        assert_eq!(
+            keys,
+            HashSet::from([
+                "css".to_string(),
+                "css.types".to_string(),
+                "css.types.color".to_string(),
+                "css.types.color.color-mix".to_string(),
+                "css.types.color.color".to_string(),
+                "css.types.color.color.display-p3".to_string(),
+            ])
+        );
     }
 }
