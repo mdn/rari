@@ -4,12 +4,14 @@ use std::collections::{BTreeMap, HashMap};
 use itertools::Itertools;
 use rari_templ_func::rari_f;
 use rari_types::fm_types::PageType;
+use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
 use crate::error::DocError;
 use crate::helpers::subpages::get_sub_pages;
 use crate::helpers::title::{TitleFormat, render_title};
 use crate::pages::page::{Page, PageLike};
+use crate::pages::types::doc::Doc;
 use crate::templ::api::RariApi;
 
 /// Private-use placeholders to smuggle `<code>` tags through `RariApi::link`,
@@ -27,7 +29,15 @@ pub fn css_ref() -> Result<String, DocError> {
         .iter()
         .filter(|&page| is_indexed_css_ref_page(page))
     {
-        let (html_label, plain_label) = labels_from_page(page);
+        let translated = (env.locale != Locale::EnUs)
+            .then(|| Doc::page_from_slug(page.slug(), env.locale, false).ok())
+            .flatten();
+        // Keep index order keyed to the en-US CSS term, not localized descriptors.
+        let (en_html_label, plain_label) = labels_from_page(page);
+        let html_label = match &translated {
+            Some(translated) => labels_from_page(translated).0,
+            None => en_html_label,
+        };
         let initial = initial_letter(&plain_label);
         let entry = index.entry(initial).or_default();
         entry
