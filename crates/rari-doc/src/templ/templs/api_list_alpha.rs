@@ -21,8 +21,13 @@ pub fn apilistalpha() -> Result<String, DocError> {
         .iter()
         .filter(|page| page.page_type() == PageType::WebApiInterface)
     {
-        if let Some(letter) = page.title().chars().next().map(index_letter) {
-            pages_by_letter.entry(letter).or_default().push(page);
+        // Group by the rendered label, so the letter always matches what is shown.
+        let page_label = page.short_title().unwrap_or(page.title());
+        if let Some(letter) = page_label.chars().next().map(index_letter) {
+            pages_by_letter
+                .entry(letter)
+                .or_default()
+                .push((page, page_label));
         }
     }
 
@@ -31,7 +36,7 @@ pub fn apilistalpha() -> Result<String, DocError> {
     for (letter, pages) in pages_by_letter {
         let (label, id) = index_letter_label_and_id(letter, INDEX_ID_PREFIX);
         out.extend([r#"<h3 id=""#, &id, r#"">"#, &label, "</h3><ul>"]);
-        for page in pages {
+        for (page, page_label) in pages {
             out.extend([
                 "<li>",
                 &RariApi::link(
@@ -39,7 +44,7 @@ pub fn apilistalpha() -> Result<String, DocError> {
                     Some(env.locale),
                     None,
                     true,
-                    Some(page.short_title().unwrap_or(page.title())),
+                    Some(page_label),
                     true,
                 )?,
                 "</li>",
