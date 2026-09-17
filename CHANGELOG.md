@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1](https://github.com/mdn/rari/compare/v1.0.0...v1.0.1) (2026-09-17)
+
+
+### Miscellaneous
+
+* **deps:** bump clap from 4.6.6 to 4.6.7 ([#940](https://github.com/mdn/rari/issues/940)) ([805b7fd](https://github.com/mdn/rari/commit/805b7fd25acc22d01608118753096ddeba806fd2))
+* **deps:** bump syn from 3.0.5 to 3.0.6 ([#942](https://github.com/mdn/rari/issues/942)) ([f0f7621](https://github.com/mdn/rari/commit/f0f762146f384b101adb33bb8c198c51cacaef8d))
+
 ## [1.0.0](https://github.com/mdn/rari/compare/v0.2.35...v1.0.0) (2026-09-16)
 
 
