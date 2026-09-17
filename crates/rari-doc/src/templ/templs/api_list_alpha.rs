@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use rari_templ_func::rari_f;
 use rari_types::fm_types::PageType;
 
@@ -5,48 +7,50 @@ use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
+use crate::templ::index::{index_letter, index_letter_label_and_id, render_index_navigation};
 
 #[rari_f(register = "crate::Templ")]
 pub fn apilistalpha() -> Result<String, DocError> {
     let mut out = String::new();
     let pages = get_sub_pages("/en-US/docs/Web/API", Some(1), SubPagesSorter::Title)?;
-
-    let mut current_letter = None;
-
-    out.push_str(r#"<div class="index">"#);
-    for page in pages
+    let pages = pages
         .iter()
         .filter(|page| page.page_type() == PageType::WebApiInterface)
-    {
-        let first_letter = page.title().chars().next();
-
-        if first_letter != current_letter {
-            if current_letter.is_some() {
-                out.push_str("</ul>");
-            }
-            current_letter = first_letter;
-            if let Some(current_letter) = current_letter {
-                out.push_str("<h3>");
-                out.push_str(&html_escape::encode_safe(
-                    current_letter.encode_utf8(&mut [0; 4]),
-                ));
-                out.push_str("</h3><ul>");
-            }
+        .collect::<Vec<_>>();
+    let mut pages_by_letter = BTreeMap::new();
+    for page in pages {
+        if let Some(letter) = page.title().chars().next().map(index_letter) {
+            pages_by_letter
+                .entry(letter)
+                .or_insert_with(Vec::new)
+                .push(page);
         }
-        out.extend([
-            "<li>",
-            &RariApi::link(
-                page.url(),
-                Some(env.locale),
-                None,
-                true,
-                Some(page.short_title().unwrap_or(page.title())),
-                true,
-            )?,
-            "</li>",
-        ]);
     }
-    out.push_str(r#"</div>"#);
+
+    let letters = pages_by_letter.keys().copied();
+
+    out.push_str(r#"<div class="index">"#);
+    render_index_navigation(&mut out, letters, "index-interfaces");
+    for (letter, pages) in pages_by_letter {
+        let (label, id) = index_letter_label_and_id(letter, "index-interfaces");
+        out.extend([r#"<h3 id=""#, &id, r#"">"#, &label, "</h3><ul>"]);
+        for page in pages {
+            out.extend([
+                "<li>",
+                &RariApi::link(
+                    page.url(),
+                    Some(env.locale),
+                    None,
+                    true,
+                    Some(page.short_title().unwrap_or(page.title())),
+                    true,
+                )?,
+                "</li>",
+            ]);
+        }
+        out.push_str("</ul>");
+    }
+    out.push_str("</div>");
 
     Ok(out)
 }

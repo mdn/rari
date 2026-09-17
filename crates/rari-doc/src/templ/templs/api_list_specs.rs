@@ -7,6 +7,7 @@ use crate::error::DocError;
 use crate::helpers::json_data::json_data_group;
 use crate::helpers::subpages::write_li_with_badges;
 use crate::pages::types::doc::Doc;
+use crate::templ::index::{index_letter, index_letter_label_and_id, render_index_navigation};
 
 #[rari_f(register = "crate::Templ")]
 pub fn listgroups() -> Result<String, DocError> {
@@ -16,7 +17,7 @@ pub fn listgroups() -> Result<String, DocError> {
 
     for (_, group) in group_data.iter().sorted_by(|(a, _), (b, _)| a.cmp(b)) {
         if let Some(overview) = group.overview.first() {
-            let first_letter = overview.chars().next().unwrap_or_default();
+            let first_letter = index_letter(overview.chars().next().unwrap_or_default());
             let page = Doc::page_from_slug(
                 &format!("Web/API/{}", overview.replace(' ', "_")),
                 env.locale,
@@ -29,10 +30,22 @@ pub fn listgroups() -> Result<String, DocError> {
 
     let mut out = String::new();
     out.push_str(r#"<div class="index">"#);
+    render_index_navigation(
+        &mut out,
+        out_by_letter.keys().copied(),
+        "index-specifications",
+    );
     for (letter, content) in out_by_letter {
-        out.push_str(r#"<h3>"#);
-        out.push(letter);
-        out.extend([r#"</h3><ul>"#, content.as_str(), r#"</ul>"#]);
+        let (label, id) = index_letter_label_and_id(letter, "index-specifications");
+        out.extend([
+            r#"<h3 id=""#,
+            &id,
+            r#"">"#,
+            &label,
+            r#"</h3><ul>"#,
+            content.as_str(),
+            r#"</ul>"#,
+        ]);
     }
     out.push_str(r#"</div>"#);
 
