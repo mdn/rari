@@ -9,6 +9,11 @@ pub(crate) fn render_index_navigation(
     letters: impl IntoIterator<Item = char>,
     id_prefix: &str,
 ) {
+    let mut letters = letters.into_iter().peekable();
+    if letters.peek().is_none() {
+        return;
+    }
+
     out.push_str(r#"<div class="index-nav"><ul>"#);
     for letter in letters {
         let (label, id) = index_letter_label_and_id(letter, id_prefix);
@@ -48,6 +53,7 @@ mod tests {
                 vec!['A', 'B'],
                 r##"<div class="index-nav"><ul><li><a href="#index-a">A</a></li><li><a href="#index-b">B</a></li></ul></div>"##,
             ),
+            ("index", vec![], ""),
             (
                 "index-interfaces",
                 vec!['C'],
