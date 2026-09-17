@@ -12,10 +12,16 @@ pub(crate) fn render_index_navigation(
     out.push_str("</ul></nav>");
 }
 
+/// Normalize an index initial. ASCII-only, as index initials come from page
+/// titles that are effectively ASCII, and `char::to_uppercase` can expand to
+/// multiple chars.
 pub(crate) fn index_letter(letter: char) -> char {
     letter.to_ascii_uppercase()
 }
 
+/// Returns the (label, fragment ID) for an index initial, both escaped for
+/// direct interpolation into HTML: the ID is escaped as an attribute value and
+/// reused verbatim in `href="#..."`, where it decodes to the same raw ID.
 pub(crate) fn index_letter_label_and_id(letter: char, id_prefix: &str) -> (String, String) {
     let letter = index_letter(letter);
     let id = format!("{id_prefix}-{}", letter.to_ascii_lowercase());
