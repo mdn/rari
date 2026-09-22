@@ -21,6 +21,8 @@ pub fn listgroups() -> Result<String, DocError> {
 
     for (name, group) in group_data.iter().sorted_by(|(a, _), (b, _)| a.cmp(b)) {
         if let Some(overview) = group.overview.first() {
+            // Grouped by the en-US overview title. `write_li_with_badges` renders
+            // the localized title, so headings may not match entries in other locales.
             let Some(first_letter) = overview.chars().next().map(index_letter) else {
                 warn!("Skipping group {name} with an empty overview");
                 continue;
