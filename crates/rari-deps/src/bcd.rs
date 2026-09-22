@@ -76,17 +76,38 @@ mod test {
 
     #[test]
     fn test_ensure_spec_urls() {
+        struct Case {
+            name: &'static str,
+            output: Option<&'static str>,
+            unchanged: bool,
+        }
+
+        const VALID: &str = "{\n  \"css.types.color\": [\"url\"]\n}";
+
         let cases = [
-            ("missing", None, false),
-            ("invalid", Some("not json"), false),
-            (
-                "valid",
-                Some("{\n  \"css.types.color\": [\"url\"]\n}"),
-                true,
-            ),
+            Case {
+                name: "missing",
+                output: None,
+                unchanged: false,
+            },
+            Case {
+                name: "invalid",
+                output: Some("not json"),
+                unchanged: false,
+            },
+            Case {
+                name: "valid",
+                output: Some(VALID),
+                unchanged: true,
+            },
         ];
 
-        for (name, output, unchanged) in cases {
+        for Case {
+            name,
+            output,
+            unchanged,
+        } in cases
+        {
             let dir = tempdir().unwrap();
             let package_path = dir.path();
             fs::create_dir(package_path.join("package")).unwrap();
@@ -106,7 +127,7 @@ mod test {
 
             let actual = fs::read_to_string(package_path.join("spec_urls.json")).unwrap();
             if unchanged {
-                assert_eq!(actual, "{\n  \"css.types.color\": [\"url\"]\n}", "{name}");
+                assert_eq!(actual, VALID, "{name}");
             } else {
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(&actual).unwrap(),
