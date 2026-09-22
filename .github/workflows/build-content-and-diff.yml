@@ -19,6 +19,7 @@ env:
   BUILD_PR: ${{ github.workspace }}/build-pr
   CONTENT_ROOT: ${{ github.workspace }}/content/files
   DIFF: ${{ github.workspace }}/diff.html
+  STATS: ${{ github.workspace }}/diff-stats.json
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -84,11 +85,28 @@ jobs:
 
       - name: Generate diff
         working-directory: rari-pr
-        run: cargo run --locked --quiet -p diff-test diff --fast --flaws --html --value --out "$DIFF" --verbose "$BUILD_BASE" "$BUILD_PR"
+        run: |
+          cargo run --locked --quiet -p diff-test diff --fast --flaws --html --value \
+            --out "$DIFF" --stats-out "$STATS" "$BUILD_BASE" "$BUILD_PR"
+
+      - name: Summarize diff
+        run: |
+          {
+            echo "## Build diff"
+            echo
+            jq -r '"**\(.changed_files)** of \(.total_files) pages changed (\(.changes) changes)"' "$STATS"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload diff
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: build-diff-report
           path: ${{ env.DIFF }}
+          if-no-files-found: error
+
+      - name: Upload diff stats
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: build-diff-stats
+          path: ${{ env.STATS }}
           if-no-files-found: error
