@@ -65,16 +65,16 @@ jobs:
           GH_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          [[ "$PR" =~ ^[0-9]+$ ]] || exit 1
+          [[ "$PR" =~ ^[0-9]+$ ]] || { echo "::error::Invalid PR number: $PR"; exit 1; }
 
           ARTIFACT_ID=$(gh api "/repos/$GH_REPO/actions/runs/$RUN_ID/artifacts" \
             --jq '.artifacts[] | select(.name == "build-diff-report") | .id')
-          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]] || exit 1
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]] || { echo "::error::No build-diff-report artifact in run $RUN_ID"; exit 1; }
 
           read -r CHANGED TOTAL CHANGES <<<"$(jq -r '
             [.changed_files, .total_files, .changes]
             | map(numbers | floor) | select(length == 3) | @tsv' diff-stats.json)"
-          [[ "$CHANGED" =~ ^[0-9]+$ && "$TOTAL" =~ ^[0-9]+$ && "$CHANGES" =~ ^[0-9]+$ ]] || exit 1
+          [[ "$CHANGED" =~ ^[0-9]+$ && "$TOTAL" =~ ^[0-9]+$ && "$CHANGES" =~ ^[0-9]+$ ]] || { echo "::error::Invalid diff-stats.json"; exit 1; }
 
           if (( CHANGED == 0 )); then
             LABEL="diff: none"
