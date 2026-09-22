@@ -10,9 +10,9 @@ use crate::error::DepsError;
 use crate::npm::get_package;
 
 pub fn update_bcd(base_path: &Path) -> Result<(), DepsError> {
-    if let Some(path) = get_package("@mdn/browser-compat-data", &deps().bcd, base_path)? {
-        extract_spec_urls(&path)?;
-    }
+    let package_path = base_path.join("@mdn/browser-compat-data");
+    get_package("@mdn/browser-compat-data", &deps().bcd, base_path)?;
+    ensure_spec_urls(&package_path)?;
     get_package("web-specs", &deps().web_specs, base_path)?;
     Ok(())
 }
@@ -52,4 +52,67 @@ pub fn extract_spec_urls(package_path: &Path) -> Result<(), DepsError> {
     let spec_urls_out_path = package_path.join("spec_urls.json");
     fs::write(spec_urls_out_path, serde_json::to_string(&map)?)?;
     Ok(())
+}
+
+fn ensure_spec_urls(package_path: &Path) -> Result<(), DepsError> {
+    let output_path = package_path.join("spec_urls.json");
+    let valid = read_to_string(&output_path)
+        .ok()
+        .and_then(|data| serde_json::from_str::<HashMap<String, Vec<String>>>(&data).ok())
+        .is_some();
+    if !valid {
+        extract_spec_urls(package_path)?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::ensure_spec_urls;
+    use serde_json::json;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_ensure_spec_urls() {
+        let cases = [
+            ("missing", None, false),
+            ("invalid", Some("not json"), false),
+            (
+                "valid",
+                Some("{\n  \"css.types.color\": [\"url\"]\n}"),
+                true,
+            ),
+        ];
+
+        for (name, output, unchanged) in cases {
+            let dir = tempdir().unwrap();
+            let package_path = dir.path();
+            fs::create_dir(package_path.join("package")).unwrap();
+            fs::write(
+                package_path.join("package/data.json"),
+                json!({
+                    "css": {"types": {"color": {"__compat": {"spec_url": "url"}}}}
+                })
+                .to_string(),
+            )
+            .unwrap();
+            if let Some(output) = output {
+                fs::write(package_path.join("spec_urls.json"), output).unwrap();
+            }
+
+            ensure_spec_urls(package_path).unwrap();
+
+            let actual = fs::read_to_string(package_path.join("spec_urls.json")).unwrap();
+            if unchanged {
+                assert_eq!(actual, "{\n  \"css.types.color\": [\"url\"]\n}", "{name}");
+            } else {
+                assert_eq!(
+                    serde_json::from_str::<serde_json::Value>(&actual).unwrap(),
+                    json!({"css.types.color": ["url"]}),
+                    "{name}"
+                );
+            }
+        }
+    }
 }
