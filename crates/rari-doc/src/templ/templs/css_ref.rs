@@ -11,7 +11,7 @@ use crate::helpers::subpages::get_sub_pages;
 use crate::helpers::title::{TitleFormat, render_title};
 use crate::pages::page::{Page, PageLike};
 use crate::templ::api::RariApi;
-use crate::templ::index::{index_letter_label_and_id, render_index_navigation};
+use crate::templ::index::{index_letter, index_letter_label_and_id, render_index_navigation};
 
 /// Private-use placeholders to smuggle `<code>` tags through `RariApi::link`,
 /// which re-encodes provided content as `&lt;code&gt;` on its page-not-found
@@ -120,11 +120,12 @@ fn strip_vendor_prefix(s: &str) -> &str {
 }
 
 fn initial_letter(s: &str) -> char {
-    strip_vendor_prefix(s)
-        .chars()
-        .find(|&c| c.is_ascii_alphabetic() || c == '-')
-        .unwrap_or('?')
-        .to_ascii_uppercase()
+    index_letter(
+        strip_vendor_prefix(s)
+            .chars()
+            .find(|&c| c.is_ascii_alphabetic() || c == '-')
+            .unwrap_or('?'),
+    )
 }
 
 /// Returns the (HTML, plain) labels for a CSS reference page.

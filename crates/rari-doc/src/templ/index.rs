@@ -32,8 +32,10 @@ pub(crate) fn index_letter(letter: char) -> char {
 /// Returns the (label, fragment ID) for an index initial, both escaped for
 /// direct interpolation into HTML: the ID is escaped as an attribute value and
 /// reused verbatim in `href="#..."`, where it decodes to the same raw ID.
+///
+/// Callers must group by letters normalized via [`index_letter`]; this does not
+/// normalize again, so mixed-case keys would render duplicate entries and IDs.
 pub(crate) fn index_letter_label_and_id(letter: char, id_prefix: &str) -> (String, String) {
-    let letter = index_letter(letter);
     let id = format!("{id_prefix}-{}", letter.to_ascii_lowercase());
     (
         html_escape::encode_safe(&letter.to_string()).into_owned(),
@@ -79,9 +81,19 @@ mod tests {
     #[test]
     fn test_index_letter_normalizes_ascii_case() {
         assert_eq!(index_letter('c'), 'C');
+        assert_eq!(index_letter('C'), 'C');
+        assert_eq!(index_letter('-'), '-');
+    }
+
+    #[test]
+    fn test_index_letter_label_and_id_keeps_letter_case() {
+        assert_eq!(
+            index_letter_label_and_id('C', "index"),
+            ("C".into(), "index-c".into())
+        );
         assert_eq!(
             index_letter_label_and_id('c', "index"),
-            ("C".into(), "index-c".into())
+            ("c".into(), "index-c".into())
         );
     }
 }
