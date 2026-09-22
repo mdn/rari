@@ -93,9 +93,8 @@ jobs:
             --jq '[.labels[].name | select(startswith("diff: ") and . != env.LABEL)] | join(",")')
 
           export MARKER='<!-- rari-build-diff -->'
-          COMMENT_ID=$(gh api --paginate "/repos/$GH_REPO/issues/$PR/comments" \
-            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains(env.MARKER))) | .id' \
-            | head -n1)
+          COMMENT_ID=$(gh api --paginate --slurp "/repos/$GH_REPO/issues/$PR/comments" \
+            | jq -r 'first(.[][] | select(.user.login == "github-actions[bot]" and (.body | contains(env.MARKER))) | .id) // empty')
 
           CURRENT_HEAD=$(gh api "/repos/$GH_REPO/pulls/$PR" \
             --jq 'select(.state == "open") | .head.sha')
