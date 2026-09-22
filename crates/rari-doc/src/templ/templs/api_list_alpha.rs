@@ -15,7 +15,8 @@ const INDEX_ID_PREFIX: &str = "index-interfaces";
 #[rari_f(register = "crate::Templ")]
 pub fn apilistalpha() -> Result<String, DocError> {
     let mut out = String::new();
-    let pages = get_sub_pages("/en-US/docs/Web/API", Some(1), SubPagesSorter::Title)?;
+    // Sort by the same label used for grouping, so buckets stay ordered.
+    let pages = get_sub_pages("/en-US/docs/Web/API", Some(1), SubPagesSorter::ShortTitle)?;
     let mut pages_by_letter: BTreeMap<char, Vec<_>> = BTreeMap::new();
     for page in pages
         .iter()
