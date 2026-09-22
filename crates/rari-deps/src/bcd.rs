@@ -54,6 +54,7 @@ pub fn extract_spec_urls(package_path: &Path) -> Result<(), DepsError> {
     Ok(())
 }
 
+/// Regenerates `spec_urls.json` if an interrupted run left `last_check.json` fresh but the derived file missing or truncated.
 fn ensure_spec_urls(package_path: &Path) -> Result<(), DepsError> {
     let output_path = package_path.join("spec_urls.json");
     let valid = read_to_string(&output_path)
