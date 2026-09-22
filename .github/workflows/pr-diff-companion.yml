@@ -116,5 +116,6 @@ jobs:
               gh api -X POST "/repos/$GH_REPO/issues/$PR/comments" -f body="$BODY" > /dev/null
             fi
           elif [[ -n "$COMMENT_ID" ]]; then
-            gh api -X DELETE "/repos/$GH_REPO/issues/comments/$COMMENT_ID"
+            printf -v BODY '%s\n**Build diff:** No pages changed.' "$MARKER"
+            gh api -X PATCH "/repos/$GH_REPO/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
           fi
