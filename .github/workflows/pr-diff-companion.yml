@@ -74,7 +74,7 @@ jobs:
           read -r CHANGED TOTAL CHANGES <<<"$(jq -r '
             [.changed_files, .total_files, .changes]
             | map(numbers | floor) | select(length == 3) | @tsv' diff-stats.json)"
-          [[ "$CHANGED" =~ ^[0-9]+$ && "$TOTAL" =~ ^[0-9]+$ && "$CHANGES" =~ ^[0-9]+$ ]] || { echo "::error::Invalid diff-stats.json"; exit 1; }
+          [[ "$CHANGED" =~ ^[0-9]{1,9}$ && "$TOTAL" =~ ^[0-9]{1,9}$ && "$CHANGES" =~ ^[0-9]{1,9}$ ]] || { echo "::error::Invalid diff-stats.json"; exit 1; }
 
           if (( CHANGED == 0 )); then
             LABEL="diff: none"
