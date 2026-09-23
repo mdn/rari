@@ -153,22 +153,47 @@ mod test {
     }
 
     #[test]
-    fn test_updated_package_reextracts_spec_urls() {
-        let dir = tempdir().unwrap();
-        let package_path = dir.path().join("@mdn/browser-compat-data");
-        write_data_json(&package_path, "new-url");
-        fs::write(
-            package_path.join("spec_urls.json"),
-            json!({"css.types.color": ["old-url"]}).to_string(),
-        )
-        .unwrap();
+    fn test_update_bcd_data() {
+        struct Case {
+            name: &'static str,
+            downloaded: bool,
+            output: Option<&'static str>,
+        }
 
-        update_bcd_data(dir.path(), |_| Ok(Some(package_path.clone()))).unwrap();
+        let cases = [
+            Case {
+                name: "downloaded package replaces valid spec URLs",
+                downloaded: true,
+                output: Some(r#"{"css.types.color": ["old-url"]}"#),
+            },
+            Case {
+                name: "cached package regenerates missing spec URLs",
+                downloaded: false,
+                output: None,
+            },
+        ];
 
-        let actual = fs::read_to_string(package_path.join("spec_urls.json")).unwrap();
-        assert_eq!(
-            serde_json::from_str::<serde_json::Value>(&actual).unwrap(),
-            json!({"css.types.color": ["new-url"]})
-        );
+        for Case {
+            name,
+            downloaded,
+            output,
+        } in cases
+        {
+            let dir = tempdir().unwrap();
+            let package_path = dir.path().join("@mdn/browser-compat-data");
+            write_data_json(&package_path, "new-url");
+            if let Some(output) = output {
+                fs::write(package_path.join("spec_urls.json"), output).unwrap();
+            }
+
+            update_bcd_data(dir.path(), |_| Ok(downloaded.then(|| package_path.clone()))).unwrap();
+
+            let actual = fs::read_to_string(package_path.join("spec_urls.json")).unwrap();
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&actual).unwrap(),
+                json!({"css.types.color": ["new-url"]}),
+                "{name}"
+            );
+        }
     }
 }
