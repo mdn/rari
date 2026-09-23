@@ -644,6 +644,30 @@ fn get_syntax_for_browser_compat(typ: CssType<'_>, browser_compat: Option<&str>)
     get_syntax_internal(typ, scope_from_browser_compat(browser_compat), true)
 }
 
+/// Whether any entry resolves to a different top-level syntax or specs than the first.
+/// Constituents are resolved unscoped, so they cannot differ.
+pub fn has_distinct_syntaxes(typ: CssType<'_>, browser_compat: &[String]) -> bool {
+    let Some((first, rest)) = browser_compat.split_first() else {
+        return false;
+    };
+    let first_scope = scope_from_browser_compat(Some(first));
+    let mut other_scopes = rest
+        .iter()
+        .map(|entry| scope_from_browser_compat(Some(entry)))
+        .filter(|scope| *scope != first_scope)
+        .peekable();
+    if other_scopes.peek().is_none() {
+        return false;
+    }
+    // Specs are compared too, as they are rendered in the sources footer.
+    let rendered_parts = |scope| {
+        let SyntaxLine { syntax, specs, .. } = get_syntax_internal(typ, scope, true);
+        (syntax, specs)
+    };
+    let first_parts = rendered_parts(first_scope);
+    other_scopes.any(|scope| rendered_parts(scope) != first_parts)
+}
+
 pub fn render_formal_syntax(
     syntax: SyntaxInput,
     browser_compat: Option<&str>,
@@ -1105,6 +1129,62 @@ mod test {
 
         let result = get_syntax(CssType::Function("rect"), Some("clip"));
         assert_eq!(result.syntax, "rect( <top>, <right>, <bottom>, <left> )");
+    }
+
+    #[test]
+    fn test_distinct_browser_compat_syntaxes() {
+        let cases = [
+            (
+                "shared display scope",
+                CssType::Type("display-inside"),
+                vec![
+                    "css.properties.display.flow-root",
+                    "css.properties.display.flex",
+                ],
+                false,
+            ),
+            (
+                "global at-rule fallback",
+                CssType::AtRule("@scope"),
+                vec!["css.at-rules.scope", "css.selectors.nesting.at-scope"],
+                false,
+            ),
+            (
+                "different function scopes",
+                CssType::Function("rect"),
+                vec!["css.types.basic-shape.rect", "css.properties.clip.rect"],
+                true,
+            ),
+            (
+                "different scope after matching entry",
+                CssType::Function("rect"),
+                vec![
+                    "css.types.basic-shape.rect",
+                    "css.types.basic-shape.rect",
+                    "css.properties.clip.rect",
+                ],
+                true,
+            ),
+            (
+                "single entry",
+                CssType::Function("rect"),
+                vec!["css.properties.clip.rect"],
+                false,
+            ),
+        ];
+
+        for (name, typ, entries, expected) in cases {
+            let entries = entries.into_iter().map(str::to_string).collect::<Vec<_>>();
+            assert_eq!(
+                has_distinct_syntaxes(typ, &entries),
+                expected,
+                "{name}: {:?}",
+                entries
+                    .iter()
+                    .map(|entry| get_syntax_for_browser_compat(typ, Some(entry)))
+                    .collect::<Vec<_>>()
+            );
+        }
     }
 
     #[test]
