@@ -637,11 +637,11 @@ pub enum SyntaxInput<'a> {
 }
 
 fn scope_from_browser_compat(browser_compat: Option<&str>) -> Option<&str> {
-    if let Some(bc) = browser_compat {
-        bc.split(".").collect::<Vec<&str>>().get(2).copied()
-    } else {
-        None
-    }
+    browser_compat.and_then(|entry| entry.split('.').nth(2))
+}
+
+fn get_syntax_for_browser_compat(typ: CssType<'_>, browser_compat: Option<&str>) -> SyntaxLine {
+    get_syntax_internal(typ, scope_from_browser_compat(browser_compat), true)
 }
 
 pub fn render_formal_syntax(
@@ -653,8 +653,6 @@ pub fn render_formal_syntax(
     sources_prefix: Option<&str>,
     links: RefLinks,
 ) -> Result<String, SyntaxError> {
-    let scope = scope_from_browser_compat(browser_compat);
-
     let (syntax, skip_first) = match syntax {
         SyntaxInput::SyntaxString(syntax_str) => {
             let (name, syntax, skip_first) =
@@ -674,7 +672,7 @@ pub fn render_formal_syntax(
             )
         }
         SyntaxInput::Css(css) => {
-            let syntax: SyntaxLine = get_syntax_internal(css, scope, true);
+            let syntax = get_syntax_for_browser_compat(css, browser_compat);
             if syntax.syntax.is_empty() {
                 return Err(SyntaxError::NoSyntaxFound);
             }
