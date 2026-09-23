@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use rari_types::globals::deps;
 use rari_utils::io::read_to_string;
@@ -10,10 +10,22 @@ use crate::error::DepsError;
 use crate::npm::get_package;
 
 pub fn update_bcd(base_path: &Path) -> Result<(), DepsError> {
-    let package_path = base_path.join("@mdn/browser-compat-data");
-    get_package("@mdn/browser-compat-data", &deps().bcd, base_path)?;
-    ensure_spec_urls(&package_path)?;
+    update_bcd_data(base_path, |base_path| {
+        get_package("@mdn/browser-compat-data", &deps().bcd, base_path)
+    })?;
     get_package("web-specs", &deps().web_specs, base_path)?;
+    Ok(())
+}
+
+fn update_bcd_data(
+    base_path: &Path,
+    get_bcd_package: impl FnOnce(&Path) -> Result<Option<PathBuf>, DepsError>,
+) -> Result<(), DepsError> {
+    if let Some(path) = get_bcd_package(base_path)? {
+        extract_spec_urls(&path)?;
+    } else {
+        ensure_spec_urls(&base_path.join("@mdn/browser-compat-data"))?;
+    }
     Ok(())
 }
 
@@ -69,7 +81,7 @@ fn ensure_spec_urls(package_path: &Path) -> Result<(), DepsError> {
 
 #[cfg(test)]
 mod test {
-    use super::ensure_spec_urls;
+    use super::{ensure_spec_urls, update_bcd_data};
     use serde_json::json;
     use std::fs;
     use tempfile::tempdir;
@@ -136,5 +148,30 @@ mod test {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_updated_package_reextracts_spec_urls() {
+        let dir = tempdir().unwrap();
+        let package_path = dir.path().join("@mdn/browser-compat-data");
+        fs::create_dir_all(package_path.join("package")).unwrap();
+        fs::write(
+            package_path.join("package/data.json"),
+            json!({"css": {"types": {"color": {"__compat": {"spec_url": "new-url"}}}}}).to_string(),
+        )
+        .unwrap();
+        fs::write(
+            package_path.join("spec_urls.json"),
+            json!({"css.types.color": ["old-url"]}).to_string(),
+        )
+        .unwrap();
+
+        update_bcd_data(dir.path(), |_| Ok(Some(package_path.clone()))).unwrap();
+
+        let actual = fs::read_to_string(package_path.join("spec_urls.json")).unwrap();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&actual).unwrap(),
+            json!({"css.types.color": ["new-url"]})
+        );
     }
 }
