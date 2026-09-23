@@ -84,7 +84,17 @@ mod test {
     use super::{ensure_spec_urls, update_bcd_data};
     use serde_json::json;
     use std::fs;
+    use std::path::Path;
     use tempfile::tempdir;
+
+    fn write_data_json(package_path: &Path, spec_url: &str) {
+        fs::create_dir_all(package_path.join("package")).unwrap();
+        fs::write(
+            package_path.join("package/data.json"),
+            json!({"css": {"types": {"color": {"__compat": {"spec_url": spec_url}}}}}).to_string(),
+        )
+        .unwrap();
+    }
 
     #[test]
     fn test_ensure_spec_urls() {
@@ -122,15 +132,7 @@ mod test {
         {
             let dir = tempdir().unwrap();
             let package_path = dir.path();
-            fs::create_dir(package_path.join("package")).unwrap();
-            fs::write(
-                package_path.join("package/data.json"),
-                json!({
-                    "css": {"types": {"color": {"__compat": {"spec_url": "url"}}}}
-                })
-                .to_string(),
-            )
-            .unwrap();
+            write_data_json(package_path, "url");
             if let Some(output) = output {
                 fs::write(package_path.join("spec_urls.json"), output).unwrap();
             }
@@ -154,12 +156,7 @@ mod test {
     fn test_updated_package_reextracts_spec_urls() {
         let dir = tempdir().unwrap();
         let package_path = dir.path().join("@mdn/browser-compat-data");
-        fs::create_dir_all(package_path.join("package")).unwrap();
-        fs::write(
-            package_path.join("package/data.json"),
-            json!({"css": {"types": {"color": {"__compat": {"spec_url": "new-url"}}}}}).to_string(),
-        )
-        .unwrap();
+        write_data_json(&package_path, "new-url");
         fs::write(
             package_path.join("spec_urls.json"),
             json!({"css.types.color": ["old-url"]}).to_string(),
