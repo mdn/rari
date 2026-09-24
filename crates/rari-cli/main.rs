@@ -30,6 +30,7 @@ use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
 use rari_doc::templ::templs::TEMPL_MAP;
+use rari_doc::templ::xref_index::xref_names;
 use rari_doc::utils::{TEMPL_RECORDER_SENDER, TemplStatEvent, locale_and_typ_from_path};
 use rari_sitemap::Sitemaps;
 use rari_tools::add_redirect::add_redirect;
@@ -89,7 +90,24 @@ enum Commands {
     /// Subcommands for altering content programmatically
     #[command(subcommand)]
     Content(ContentSubcommand),
+    /// Subcommands for inspecting macros
+    #[command(subcommand)]
+    Templ(TemplSubcommand),
     Lsp,
+}
+
+#[derive(Subcommand)]
+enum TemplSubcommand {
+    /// Lists all pages resolvable by the `xref` macro, with the shortest argument for each.
+    XrefList(XrefListArgs),
+}
+
+#[derive(Args)]
+struct XrefListArgs {
+    /// Only list pages whose argument or slug contains <FILTER> (case-insensitive)
+    filter: Option<String>,
+    #[arg(long, help = "Print as JSON")]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -1007,6 +1025,30 @@ fn main() -> Result<(), Error> {
                     all_pages.len(),
                     fixed.len()
                 );
+            }
+        },
+        Commands::Templ(templ_subcommand) => match templ_subcommand {
+            TemplSubcommand::XrefList(args) => {
+                let _ = SETTINGS.set(Settings::new()?);
+                let filter = args.filter.as_deref().map(str::to_lowercase);
+                let names = xref_names().into_iter().filter(|(name, slug)| {
+                    filter.as_deref().is_none_or(|filter| {
+                        name.to_lowercase().contains(filter) || slug.to_lowercase().contains(filter)
+                    })
+                });
+                if args.json {
+                    let names = names
+                        .map(|(name, slug)| serde_json::json!({ "name": name, "slug": slug }))
+                        .collect::<Vec<_>>();
+                    serde_json::to_writer_pretty(std::io::stdout(), &names)?;
+                    writeln!(std::io::stdout())?;
+                } else {
+                    let mut tw = TabWriter::new(std::io::stdout());
+                    for (name, slug) in names {
+                        writeln!(&mut tw, "{name}\t{slug}")?;
+                    }
+                    tw.flush()?;
+                }
             }
         },
         Commands::Update(args) => update(args.version)?,
