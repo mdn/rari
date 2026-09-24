@@ -44,6 +44,22 @@ updates:
       include: scope
 
   - package-ecosystem: npm
+    directory: /rari-npm/tooling
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
+    groups:
+      npm-dev:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: build
+      include: scope
+
+  - package-ecosystem: npm
     directory: /deps
     schedule:
       interval: daily

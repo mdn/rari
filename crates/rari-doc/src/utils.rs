@@ -27,6 +27,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory};
+use crate::resolve::strip_locale_from_url;
 
 const FM_START_DELIM: &str = "---\n";
 const FM_START_DELIM_LEN: usize = FM_START_DELIM.len();
@@ -167,6 +168,12 @@ pub fn root_for_locale(locale: Locale) -> Result<&'static Path, EnvError> {
 
 pub fn is_unrooted(slug: &str) -> bool {
     slug.starts_with("conflicting/") || slug.starts_with("orphaned/")
+}
+
+/// Whether a doc URL (e.g. `/es/docs/conflicting/Web/API`) points at an unrooted slug.
+pub fn is_unrooted_url(url: &str) -> bool {
+    let (_, path) = strip_locale_from_url(url);
+    path.strip_prefix("/docs/").is_some_and(is_unrooted)
 }
 
 /// Determines the locale and page category from the given file path.
@@ -338,6 +345,24 @@ mod text {
         ];
         for (slug, expected) in cases {
             assert_eq!(is_unrooted(slug), expected, "is_unrooted({slug:?})");
+        }
+    }
+
+    #[test]
+    fn test_is_unrooted_url() {
+        let cases = vec![
+            ("/es/docs/conflicting/Web/API/Window", true),
+            ("/en-US/docs/orphaned/Web/API/GlobalEventHandlers", true),
+            ("/docs/conflicting/Web/API/Window", true),
+            ("/es/docs/orphaned/Web/API/Window#foo", true),
+            ("/en-US/docs/Web/API/Window", false),
+            ("/es/docs/Web/API/conflicting/foo", false),
+            ("/en-US/conflicting/Web/API", false),
+            ("conflicting/Web/API", false),
+            ("", false),
+        ];
+        for (url, expected) in cases {
+            assert_eq!(is_unrooted_url(url), expected, "is_unrooted_url({url:?})");
         }
     }
 

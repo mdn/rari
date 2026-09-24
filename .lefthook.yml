@@ -14,10 +14,10 @@ pre-push:
   parallel: true
   commands:
     test:
-      run: cargo test --locked --verbose --workspace --all-targets --features doctest --no-fail-fast
+      run: cargo test --locked --verbose --workspace --all-targets --no-fail-fast
 
     test-doc:
-      run: cargo test --locked --verbose --workspace --doc --features doctest --no-fail-fast
+      run: cargo test --locked --verbose --workspace --doc --no-fail-fast
 
 output:
   - summary

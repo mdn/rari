@@ -1,4 +1,6 @@
 {
+  "next": { "en-US": "Next" },
+  "prev_next_menu": { "en-US": "Overview: " },
   "baseline_discouraged_title": { "en-US": "This feature is discouraged." },
   "baseline_discouraged_abbreviation": { "en-US": "Discouraged" },
   "baseline_removing_title": { "en-US": "This feature is scheduled for removal." },
