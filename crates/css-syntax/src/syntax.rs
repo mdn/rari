@@ -1133,51 +1133,67 @@ mod test {
 
     #[test]
     fn test_distinct_browser_compat_syntaxes() {
+        struct Case {
+            name: &'static str,
+            typ: CssType<'static>,
+            entries: &'static [&'static str],
+            expected_distinct: bool,
+        }
+
         let cases = [
-            (
-                "shared display scope",
-                CssType::Type("display-inside"),
-                vec![
+            Case {
+                name: "shared display scope",
+                typ: CssType::Type("display-inside"),
+                entries: &[
                     "css.properties.display.flow-root",
                     "css.properties.display.flex",
                 ],
-                false,
-            ),
-            (
-                "global at-rule fallback",
-                CssType::AtRule("@scope"),
-                vec!["css.at-rules.scope", "css.selectors.nesting.at-scope"],
-                false,
-            ),
-            (
-                "different function scopes",
-                CssType::Function("rect"),
-                vec!["css.types.basic-shape.rect", "css.properties.clip.rect"],
-                true,
-            ),
-            (
-                "different scope after matching entry",
-                CssType::Function("rect"),
-                vec![
+                expected_distinct: false,
+            },
+            Case {
+                name: "global at-rule fallback",
+                typ: CssType::AtRule("@scope"),
+                entries: &["css.at-rules.scope", "css.selectors.nesting.at-scope"],
+                expected_distinct: false,
+            },
+            Case {
+                name: "different function scopes",
+                typ: CssType::Function("rect"),
+                entries: &["css.types.basic-shape.rect", "css.properties.clip.rect"],
+                expected_distinct: true,
+            },
+            Case {
+                name: "different scope after matching entry",
+                typ: CssType::Function("rect"),
+                entries: &[
                     "css.types.basic-shape.rect",
                     "css.types.basic-shape.rect",
                     "css.properties.clip.rect",
                 ],
-                true,
-            ),
-            (
-                "single entry",
-                CssType::Function("rect"),
-                vec!["css.properties.clip.rect"],
-                false,
-            ),
+                expected_distinct: true,
+            },
+            Case {
+                name: "single entry",
+                typ: CssType::Function("rect"),
+                entries: &["css.properties.clip.rect"],
+                expected_distinct: false,
+            },
         ];
 
-        for (name, typ, entries, expected) in cases {
-            let entries = entries.into_iter().map(str::to_string).collect::<Vec<_>>();
+        for Case {
+            name,
+            typ,
+            entries,
+            expected_distinct,
+        } in cases
+        {
+            let entries = entries
+                .iter()
+                .map(|entry| (*entry).to_string())
+                .collect::<Vec<_>>();
             assert_eq!(
                 has_distinct_syntaxes(typ, &entries),
-                expected,
+                expected_distinct,
                 "{name}: {:?}",
                 entries
                     .iter()
