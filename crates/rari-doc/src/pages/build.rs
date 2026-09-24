@@ -12,13 +12,13 @@ use tracing::{Level, span};
 
 use super::json::{
     BuiltPage, Compat, ContributorSpotlightHyData, JsonBlogPostDoc, JsonBlogPostPage,
-    JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, Prose, Section,
-    Source, SpecificationSection, TocEntry,
+    JsonCurriculumPage, JsonDoc, JsonDocPage, JsonGenericHyData, JsonGenericPage, PageStatus,
+    Prose, Section, Source, SpecificationSection, TocEntry,
 };
 use super::page::{Page, PageBuilder, PageLike};
 use super::types::contributors::ContributorSpotlight;
 use super::types::generic::Generic;
-use crate::baseline::get_baseline;
+use crate::baseline::{get_baseline, get_mocked_baseline_status};
 use crate::error::DocError;
 use crate::helpers::parents::parents;
 use crate::helpers::title::{TitleFormat, page_title, render_title, transform_title};
@@ -199,6 +199,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     // TODO cleanup
     let mut sidebars = sidebars
         .iter()
+        .filter(|s| !s.is_empty())
         .map(|s| postprocess_sidebar(s, page))
         .collect::<Vec<_>>();
     if let Some(sidebar) = &sidebar {
@@ -247,6 +248,13 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         build_sidebars(doc)?
     };
     let baseline = get_baseline(&doc.meta.browser_compat);
+    let status = baseline
+        .as_ref()
+        .map(|baseline| baseline.status())
+        .or_else(|| get_mocked_baseline_status(&doc.meta.status, &doc.meta.slug))
+        .map(|baseline_status| PageStatus {
+            baseline: Some(baseline_status),
+        });
     let folder = doc
         .meta
         .path
@@ -320,6 +328,7 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
             toc,
             fragments,
             baseline,
+            status,
             modified,
             summary,
             popularity,

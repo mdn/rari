@@ -283,6 +283,7 @@ impl PageLike for Doc {
             spec_urls: &self.meta.spec_urls,
             page_type: self.meta.page_type,
             slug: &self.meta.slug,
+            status: &self.meta.status,
         })
     }
 

@@ -272,7 +272,7 @@ impl IntoResponse for AppError {
                 DocError::RariIoError(_)
                 | DocError::IOError(_)
                 | DocError::PageNotFound(..)
-                | DocError::UrlError(UrlError::InvalidUrl),
+                | DocError::UrlError(UrlError::InvalidUrl | UrlError::LocaleError(_)),
             ) => (StatusCode::NOT_FOUND, "").into_response(),
 
             _ => (StatusCode::INTERNAL_SERVER_ERROR, error!("🤷: {}", self.0)).into_response(),
@@ -302,7 +302,7 @@ pub fn serve() -> Result<(), anyhow::Error> {
                 .fallback(wrapped_handler);
 
             const PORT: u16 = 8083;
-            let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{PORT}"))
+            let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{PORT}"))
                 .await
                 .map_err(|e| {
                     error!("Failed to bind to port {PORT}: {}", e);
@@ -310,7 +310,7 @@ pub fn serve() -> Result<(), anyhow::Error> {
                 })
                 .unwrap();
 
-            info!("Rari server started on http://0.0.0.0:{PORT}");
+            info!("Rari server started on http://127.0.0.1:{PORT}");
             axum::serve(listener, app).await.unwrap();
         });
     Ok(())

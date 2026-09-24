@@ -1,36 +1,121 @@
 name: publish-npm
 
 on:
-  workflow_run:
-    workflows: [build-and-upload-binaries]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      recovery_tag:
+        description: "Release tag to recover from a branch with workflow fixes (optional)"
+        required: false
+        default: ""
+        type: string
+      publish:
+        description: "Actually publish (otherwise dry run)"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
+  contents: read # download release assets
   id-token: write # OIDC for npm Trusted Publishing
 
 jobs:
-  on-success:
+  publish:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    env:
+      DRY_RUN: ${{ !inputs.publish }}
     steps:
-      - name: Setup
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Recovery needs the release tag and history to verify ancestry.
+          fetch-depth: ${{ inputs.recovery_tag != '' && '0' || '1' }}
 
-      - name: Checkout
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: rari-npm/.nvmrc
           registry-url: "https://registry.npmjs.org/"
           package-manager-cache: false
 
-      - name: Generate Schema
+      # Keep the dispatched checkout so provenance identifies the actual source.
+      - name: Check release source
         working-directory: ./rari-npm
-        run: npm install && npm run export-schema && npm run generate-types
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RECOVERY_TAG: ${{ inputs.recovery_tag }}
+        run: |
+          VERSION_TAG="v$(node -p 'require("./package.json").version')"
+          if [ -z "$RECOVERY_TAG" ]; then
+            if [ "$GITHUB_REF" != "refs/tags/$VERSION_TAG" ]; then
+              echo "::error::Run this workflow on refs/tags/$VERSION_TAG (current ref: $GITHUB_REF)"
+              exit 1
+            fi
+          else
+            if [[ "$GITHUB_REF" != refs/heads/* ]]; then
+              echo "::error::Recovery must run on a branch"
+              exit 1
+            fi
+            if [ "$RECOVERY_TAG" != "$VERSION_TAG" ]; then
+              echo "::error::Recovery tag must match package.json version $VERSION_TAG"
+              exit 1
+            fi
+            RELEASE_REF="refs/tags/$RECOVERY_TAG"
+            if ! git rev-parse --verify "$RELEASE_REF^{commit}" > /dev/null 2>&1; then
+              echo "::error::Release tag $RECOVERY_TAG does not exist"
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$RELEASE_REF" HEAD; then
+              echo "::error::Recovery branch must descend from $RECOVERY_TAG"
+              exit 1
+            fi
+            if ! git diff --quiet "$RELEASE_REF" HEAD -- .; then
+              echo "::error::rari-npm/ must be unchanged from $RECOVERY_TAG"
+              exit 1
+            fi
+          fi
 
+      - name: Install type-generation dependencies
+        working-directory: ./rari-npm/tooling
+        run: npm ci
+
+      - name: Download release assets
+        working-directory: ./rari-npm
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$(node -p 'require("./package.json").version')"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'rari-*' --dir "$RUNNER_TEMP/assets"
+
+      - name: Prepare platform packages
+        working-directory: ./rari-npm
+        run: |
+          npm run prepare-platform-packages
+          npm run unpack-release-assets -- "$RUNNER_TEMP/assets"
+
+      - name: Generate types
+        working-directory: ./rari-npm
+        env:
+          RARI_BINARY_PATH: ${{ github.workspace }}/rari-npm/npm/linux-x64/bin/rari
+        run: npm run export-schema && npm run generate-types
+
+      # Platform packages first, as @mdn/rari pins them as optionalDependencies.
+      # Skips versions that are already published, so a re-run after a partial failure succeeds
+      # (except in dry runs, which always show what would be published).
       - name: Publish
         working-directory: ./rari-npm
-        run: npm publish --access public --provenance
+        run: |
+          set -eo pipefail
+          if [ "$DRY_RUN" = "true" ]; then
+            FLAGS="--dry-run"
+          else
+            FLAGS="--provenance"
+          fi
+          for dir in npm/*/ ./; do
+            NAME="$(node -p "require('./$dir/package.json').name")"
+            VERSION="$(node -p "require('./$dir/package.json').version")"
+            if [ "$DRY_RUN" != "true" ] && npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+              echo "Skipping $NAME@$VERSION, already published"
+              continue
+            fi
+            (cd "$dir" && npm publish --access public $FLAGS)
+          done

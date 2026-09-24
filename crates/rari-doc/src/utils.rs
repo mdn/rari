@@ -27,6 +27,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::DocError;
 use crate::pages::page::{Page, PageCategory};
+use crate::resolve::strip_locale_from_url;
 
 const FM_START_DELIM: &str = "---\n";
 const FM_START_DELIM_LEN: usize = FM_START_DELIM.len();
@@ -163,6 +164,16 @@ pub fn root_for_locale(locale: Locale) -> Result<&'static Path, EnvError> {
         Locale::EnUs => Ok(content_root()),
         _ => content_translated_root().ok_or(EnvError::NoTranslatedContent),
     }
+}
+
+pub fn is_unrooted(slug: &str) -> bool {
+    slug.starts_with("conflicting/") || slug.starts_with("orphaned/")
+}
+
+/// Whether a doc URL (e.g. `/es/docs/conflicting/Web/API`) points at an unrooted slug.
+pub fn is_unrooted_url(url: &str) -> bool {
+    let (_, path) = strip_locale_from_url(url);
+    path.strip_prefix("/docs/").is_some_and(is_unrooted)
 }
 
 /// Determines the locale and page category from the given file path.
@@ -317,6 +328,43 @@ pub(crate) fn deduplicate<T: Eq + Clone + std::hash::Hash>(vec: Vec<T>) -> Vec<T
 #[cfg(test)]
 mod text {
     use super::*;
+
+    #[test]
+    fn test_is_unrooted() {
+        let cases = vec![
+            ("conflicting/Web/API/Window/showModalDialog", true),
+            ("orphaned/Web/API/GlobalEventHandlers", true),
+            ("conflicting/WebAssembly/JavaScript_interface", true),
+            (
+                "Web/JavaScript/Reference/Global_Objects/Array/toString",
+                false,
+            ),
+            ("Web/API/Element/conflicting/foo", false),
+            ("conflictingly/Web/API", false),
+            ("", false),
+        ];
+        for (slug, expected) in cases {
+            assert_eq!(is_unrooted(slug), expected, "is_unrooted({slug:?})");
+        }
+    }
+
+    #[test]
+    fn test_is_unrooted_url() {
+        let cases = vec![
+            ("/es/docs/conflicting/Web/API/Window", true),
+            ("/en-US/docs/orphaned/Web/API/GlobalEventHandlers", true),
+            ("/docs/conflicting/Web/API/Window", true),
+            ("/es/docs/orphaned/Web/API/Window#foo", true),
+            ("/en-US/docs/Web/API/Window", false),
+            ("/es/docs/Web/API/conflicting/foo", false),
+            ("/en-US/conflicting/Web/API", false),
+            ("conflicting/Web/API", false),
+            ("", false),
+        ];
+        for (url, expected) in cases {
+            assert_eq!(is_unrooted_url(url), expected, "is_unrooted_url({url:?})");
+        }
+    }
 
     #[test]
     fn test_trim_ws() {

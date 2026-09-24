@@ -1,10 +1,5 @@
 # Welcome to `rari`
 
-> [!Warning]
-> This project is work in progress and lacking most of its documentation.
-> Anything might change and code will move a lot. We do not encourage using it yet.
-> We'll have an official announcement before we migrate, so stay tuned.
-
 `rari` is the build system for [MDN](https://developer.mozilla.org).
 
 `rari` is hosted by [MDN](https://github.com/mdn).
