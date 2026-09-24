@@ -637,11 +637,35 @@ pub enum SyntaxInput<'a> {
 }
 
 fn scope_from_browser_compat(browser_compat: Option<&str>) -> Option<&str> {
-    if let Some(bc) = browser_compat {
-        bc.split(".").collect::<Vec<&str>>().get(2).copied()
-    } else {
-        None
+    browser_compat.and_then(|entry| entry.split('.').nth(2))
+}
+
+fn get_syntax_for_browser_compat(typ: CssType<'_>, browser_compat: Option<&str>) -> SyntaxLine {
+    get_syntax_internal(typ, scope_from_browser_compat(browser_compat), true)
+}
+
+/// Whether any entry resolves to a different top-level syntax or specs than the first.
+/// Constituents are resolved unscoped, so they cannot differ.
+pub fn has_distinct_syntaxes(typ: CssType<'_>, browser_compat: &[String]) -> bool {
+    let Some((first, rest)) = browser_compat.split_first() else {
+        return false;
+    };
+    let first_scope = scope_from_browser_compat(Some(first));
+    let mut other_scopes = rest
+        .iter()
+        .map(|entry| scope_from_browser_compat(Some(entry)))
+        .filter(|scope| *scope != first_scope)
+        .peekable();
+    if other_scopes.peek().is_none() {
+        return false;
     }
+    // Specs are compared too, as they are rendered in the sources footer.
+    let rendered_parts = |scope| {
+        let SyntaxLine { syntax, specs, .. } = get_syntax_internal(typ, scope, true);
+        (syntax, specs)
+    };
+    let first_parts = rendered_parts(first_scope);
+    other_scopes.any(|scope| rendered_parts(scope) != first_parts)
 }
 
 pub fn render_formal_syntax(
@@ -653,8 +677,6 @@ pub fn render_formal_syntax(
     sources_prefix: Option<&str>,
     links: RefLinks,
 ) -> Result<String, SyntaxError> {
-    let scope = scope_from_browser_compat(browser_compat);
-
     let (syntax, skip_first) = match syntax {
         SyntaxInput::SyntaxString(syntax_str) => {
             let (name, syntax, skip_first) =
@@ -674,7 +696,7 @@ pub fn render_formal_syntax(
             )
         }
         SyntaxInput::Css(css) => {
-            let syntax: SyntaxLine = get_syntax_internal(css, scope, true);
+            let syntax = get_syntax_for_browser_compat(css, browser_compat);
             if syntax.syntax.is_empty() {
                 return Err(SyntaxError::NoSyntaxFound);
             }
@@ -1107,6 +1129,78 @@ mod test {
 
         let result = get_syntax(CssType::Function("rect"), Some("clip"));
         assert_eq!(result.syntax, "rect( <top>, <right>, <bottom>, <left> )");
+    }
+
+    #[test]
+    fn test_distinct_browser_compat_syntaxes() {
+        struct Case {
+            name: &'static str,
+            typ: CssType<'static>,
+            entries: &'static [&'static str],
+            expected_distinct: bool,
+        }
+
+        let cases = [
+            Case {
+                name: "shared display scope",
+                typ: CssType::Type("display-inside"),
+                entries: &[
+                    "css.properties.display.flow-root",
+                    "css.properties.display.flex",
+                ],
+                expected_distinct: false,
+            },
+            Case {
+                name: "global at-rule fallback",
+                typ: CssType::AtRule("@scope"),
+                entries: &["css.at-rules.scope", "css.selectors.nesting.at-scope"],
+                expected_distinct: false,
+            },
+            Case {
+                name: "different function scopes",
+                typ: CssType::Function("rect"),
+                entries: &["css.types.basic-shape.rect", "css.properties.clip.rect"],
+                expected_distinct: true,
+            },
+            Case {
+                name: "different scope after matching entry",
+                typ: CssType::Function("rect"),
+                entries: &[
+                    "css.types.basic-shape.rect",
+                    "css.types.basic-shape.rect",
+                    "css.properties.clip.rect",
+                ],
+                expected_distinct: true,
+            },
+            Case {
+                name: "single entry",
+                typ: CssType::Function("rect"),
+                entries: &["css.properties.clip.rect"],
+                expected_distinct: false,
+            },
+        ];
+
+        for Case {
+            name,
+            typ,
+            entries,
+            expected_distinct,
+        } in cases
+        {
+            let entries = entries
+                .iter()
+                .map(|entry| (*entry).to_string())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                has_distinct_syntaxes(typ, &entries),
+                expected_distinct,
+                "{name}: {:?}",
+                entries
+                    .iter()
+                    .map(|entry| get_syntax_for_browser_compat(typ, Some(entry)))
+                    .collect::<Vec<_>>()
+            );
+        }
     }
 
     #[test]

@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use css_syntax::syntax::{
-    CssRefKind, CssType, LinkedToken, RefLinks, SyntaxInput, render_formal_syntax,
+    CssRefKind, CssType, LinkedToken, RefLinks, SyntaxInput, has_distinct_syntaxes,
+    render_formal_syntax,
 };
 use rari_templ_func::rari_f;
 use tracing::{error, warn};
@@ -70,9 +71,9 @@ pub fn csssyntax(name: Option<String>) -> Result<String, DocError> {
 
     let sources_prefix = l10n_json_data("Template", "formal_syntax_footer", env.locale)?;
 
-    if env.browser_compat.len() > 1 {
+    if has_distinct_syntaxes(typ, env.browser_compat) {
         warn!(
-            "Multiple browser-compat entries found. CSS formal syntax will be rendered using the first entry as the scope: {}",
+            "browser-compat entries resolve to different CSS formal syntaxes. Rendering with the first entry: {}",
             env.browser_compat.first().unwrap()
         );
     }
