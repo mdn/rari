@@ -29,6 +29,7 @@ use rari_doc::pages::page::Page;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::search_index::build_search_index;
+use rari_doc::templ::render::render_macros;
 use rari_doc::templ::templs::TEMPL_MAP;
 use rari_doc::utils::{TEMPL_RECORDER_SENDER, TemplStatEvent, locale_and_typ_from_path};
 use rari_sitemap::Sitemaps;
@@ -89,7 +90,27 @@ enum Commands {
     /// Subcommands for altering content programmatically
     #[command(subcommand)]
     Content(ContentSubcommand),
+    /// Subcommands for inspecting macros
+    #[command(subcommand)]
+    Templ(TemplSubcommand),
     Lsp,
+}
+
+#[derive(Subcommand)]
+enum TemplSubcommand {
+    /// Renders the macros in <INPUT> and prints the result.
+    Render(RenderArgs),
+}
+
+#[derive(Args)]
+struct RenderArgs {
+    /// Text containing macros, e.g. '{{cssxref("color")}}'
+    input: String,
+    #[arg(
+        long,
+        help = "Render in the context of the page at <PAGE>, e.g. /en-US/docs/Web/CSS/color"
+    )]
+    page: Option<String>,
 }
 
 #[derive(Args)]
@@ -1010,6 +1031,13 @@ fn main() -> Result<(), Error> {
                     all_pages.len(),
                     fixed.len()
                 );
+            }
+        },
+        Commands::Templ(templ_subcommand) => match templ_subcommand {
+            TemplSubcommand::Render(args) => {
+                let _ = SETTINGS.set(Settings::new()?);
+                let rendered = render_macros(&args.input, args.page.as_deref())?;
+                writeln!(std::io::stdout(), "{rendered}")?;
             }
         },
         Commands::Update(args) => update(args.version)?,

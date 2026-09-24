@@ -9,6 +9,7 @@ use tracing::{Level, span, warn};
 use super::parser::{Token, parse};
 use super::templs::invoke;
 use crate::error::DocError;
+use crate::pages::page::{Page, PageLike};
 
 pub struct Rendered {
     pub content: String,
@@ -145,6 +146,16 @@ pub(crate) fn render_and_decode_ref(env: &RariEnv, input: &str) -> Result<String
     decode_ref(&content, &templs, None)
 }
 
+/// Renders the macros in `input`, in the context of the page at `page_url` if given.
+pub fn render_macros(input: &str, page_url: Option<&str>) -> Result<String, DocError> {
+    let page = page_url.map(Page::from_url_with_fallback).transpose()?;
+    let env = match &page {
+        Some(page) => page.rari_env().ok_or(DocError::NoRariEnv)?,
+        None => RariEnv::default(),
+    };
+    render_and_decode_ref(&env, input)
+}
+
 pub(crate) fn decode_ref(
     input: &str,
     templs: &[String],
@@ -234,6 +245,13 @@ mod test {
         } = render(&env, r#"{{ echo("doom") }}"#, 0)?;
         let out = decode_ref(&content, &templs, None)?;
         assert_eq!(out, r#"doom"#);
+        Ok(())
+    }
+
+    #[test]
+    fn test_render_macros_without_page() -> Result<(), DocError> {
+        let out = render_macros(r#"before {{ echo("doom") }} after"#, None)?;
+        assert_eq!(out, "before doom after");
         Ok(())
     }
 
