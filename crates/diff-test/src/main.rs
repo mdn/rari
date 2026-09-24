@@ -20,6 +20,7 @@ use lol_html::{ElementContentHandlers, RewriteStrSettings, Selector, element, re
 use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
+use serde::Serialize;
 use serde_json::Value;
 use xml::fmt_html;
 
@@ -157,12 +158,48 @@ struct BuildArgs {
     fast: bool,
     #[arg(long)]
     value: bool,
-    #[arg(short, long)]
-    verbose: bool,
     #[arg(long)]
     sidebars: bool,
     #[arg(long)]
     flaws: bool,
+    /// Write diff stats as JSON to this path (requires exactly one of --html or --csv).
+    #[arg(long)]
+    stats_out: Option<PathBuf>,
+}
+
+impl BuildArgs {
+    fn validate(&self) -> Result<(), anyhow::Error> {
+        anyhow::ensure!(
+            self.stats_out.is_none() || self.html != self.csv,
+            "--stats-out requires exactly one of --html or --csv"
+        );
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct DiffStats {
+    changed_files: usize,
+    total_files: usize,
+    changes: usize,
+}
+
+impl DiffStats {
+    fn new(total_files: usize, same: usize, changes: usize) -> Self {
+        Self {
+            changed_files: total_files.saturating_sub(same),
+            total_files,
+            changes,
+        }
+    }
+
+    fn percentage(&self) -> f64 {
+        if self.total_files > 0 {
+            (self.changed_files as f64 / self.total_files as f64) * 100.0
+        } else {
+            0.0
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -378,6 +415,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     match &cli.command {
         Commands::Diff(arg) => {
+            arg.validate()?;
             println!("Gathering everything 🧺");
             let start = std::time::Instant::now();
             let a = gather(&arg.root_a, arg.query.as_deref())?;
@@ -511,23 +549,183 @@ fn main() -> Result<(), anyhow::Error> {
                 file.write_all(out.into_iter().collect::<String>().as_bytes())?;
             }
 
-            let changed_files = hits - same.load(Relaxed);
-            let changes = total_changes.load(Relaxed);
-            let percentage = if hits > 0 {
-                (changed_files as f64 / hits as f64) * 100.0
-            } else {
-                0.0
-            };
+            let stats = DiffStats::new(hits, same.load(Relaxed), total_changes.load(Relaxed));
 
             println!(
                 "Took: {:?} - {} changes in {} of {} files ({:.1}%)",
                 start.elapsed(),
-                changes,
-                changed_files,
-                hits,
-                percentage
+                stats.changes,
+                stats.changed_files,
+                stats.total_files,
+                stats.percentage()
             );
+
+            if let Some(stats_out) = &arg.stats_out {
+                fs::write(stats_out, serde_json::to_vec_pretty(&stats)?)?;
+            }
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stats_output_requires_exactly_one_format() {
+        struct Case {
+            name: &'static str,
+            flags: &'static [&'static str],
+            valid: bool,
+        }
+
+        let cases = [
+            Case {
+                name: "stats without format",
+                flags: &["--stats-out", "stats.json"],
+                valid: false,
+            },
+            Case {
+                name: "stats with html",
+                flags: &["--stats-out", "stats.json", "--html"],
+                valid: true,
+            },
+            Case {
+                name: "stats with csv",
+                flags: &["--stats-out", "stats.json", "--csv"],
+                valid: true,
+            },
+            Case {
+                name: "stats with both formats",
+                flags: &["--stats-out", "stats.json", "--html", "--csv"],
+                valid: false,
+            },
+            Case {
+                name: "no stats or format",
+                flags: &[],
+                valid: true,
+            },
+            Case {
+                name: "html without stats",
+                flags: &["--html"],
+                valid: true,
+            },
+            Case {
+                name: "csv without stats",
+                flags: &["--csv"],
+                valid: true,
+            },
+            Case {
+                name: "both formats without stats",
+                flags: &["--html", "--csv"],
+                valid: true,
+            },
+        ];
+
+        for case in cases {
+            let cli = Cli::try_parse_from(
+                ["diff-test", "diff", "--out", "report", "base", "pr"]
+                    .into_iter()
+                    .chain(case.flags.iter().copied()),
+            )
+            .unwrap_or_else(|err| panic!("{}: {err}", case.name));
+            let Commands::Diff(args) = cli.command;
+            let result = args.validate();
+            assert_eq!(result.is_ok(), case.valid, "{}", case.name);
+            if let Err(err) = result {
+                assert_eq!(
+                    err.to_string(),
+                    "--stats-out requires exactly one of --html or --csv",
+                    "{}",
+                    case.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn diff_stats() {
+        struct Case {
+            name: &'static str,
+            total_files: usize,
+            same: usize,
+            changes: usize,
+            expected_changed_files: usize,
+            expected_percentage: f64,
+        }
+
+        let cases = vec![
+            Case {
+                name: "empty",
+                total_files: 0,
+                same: 0,
+                changes: 0,
+                expected_changed_files: 0,
+                expected_percentage: 0.0,
+            },
+            Case {
+                name: "no changes",
+                total_files: 100,
+                same: 100,
+                changes: 0,
+                expected_changed_files: 0,
+                expected_percentage: 0.0,
+            },
+            Case {
+                name: "all changed",
+                total_files: 4,
+                same: 0,
+                changes: 9,
+                expected_changed_files: 4,
+                expected_percentage: 100.0,
+            },
+            Case {
+                name: "partial",
+                total_files: 200,
+                same: 150,
+                changes: 75,
+                expected_changed_files: 50,
+                expected_percentage: 25.0,
+            },
+            Case {
+                name: "same exceeds total saturates",
+                total_files: 3,
+                same: 5,
+                changes: 0,
+                expected_changed_files: 0,
+                expected_percentage: 0.0,
+            },
+        ];
+
+        for case in cases {
+            let stats = DiffStats::new(case.total_files, case.same, case.changes);
+            assert_eq!(
+                stats,
+                DiffStats {
+                    changed_files: case.expected_changed_files,
+                    total_files: case.total_files,
+                    changes: case.changes,
+                },
+                "{}",
+                case.name
+            );
+            assert_eq!(
+                stats.percentage(),
+                case.expected_percentage,
+                "{}",
+                case.name
+            );
+            assert_eq!(
+                serde_json::to_value(&stats).unwrap(),
+                serde_json::json!({
+                    "changed_files": case.expected_changed_files,
+                    "total_files": case.total_files,
+                    "changes": case.changes,
+                }),
+                "{}",
+                case.name
+            );
+        }
+    }
 }
