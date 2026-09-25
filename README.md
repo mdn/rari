@@ -38,7 +38,28 @@ repository = "translated-content-de"
 ```
 
 The mapped root takes precedence for that locale. Other translated locales use
-`content_translated_root`. A mapped checkout must contain its locale directory.
+`content_translated_root`. A required mapped checkout must contain its locale
+directory.
+
+To include a recognized locale in default translated-content syncs and allow
+its checkout to be absent, add it to `optional_translated_locales`. For the
+German mapping above:
+
+```toml
+content_translated_root = "/<ABSOLUTE-PATH-TO-mdn/translated-content>/files"
+optional_translated_locales = ["de"]
+
+[translated_content_sources.de]
+root = "/<ABSOLUTE-PATH-TO-mdn/translated-content-de>/files"
+repository = "translated-content-de"
+```
+
+The setting defaults to an empty list. `OPTIONAL_TRANSLATED_LOCALES` accepts a
+comma-separated list as an environment override. An absent optional locale is
+skipped by `sync-translated-content` and `fix-flaws`; a present locale with
+invalid content still fails. Existing translated locales remain selected by
+default, and `additional_locales_for_generics_and_spas` retains its current
+behavior.
 
 ## Contributing
 
