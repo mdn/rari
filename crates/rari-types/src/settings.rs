@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use config::{Config, ConfigError, Environment, File};
 use semver::VersionReq;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::locale::Locale;
 
@@ -65,6 +65,8 @@ pub struct Settings {
     pub live_samples_base_url: String,
     pub interactive_examples_base_url: String,
     pub additional_locales_for_generics_and_spas: Vec<Locale>,
+    #[serde(deserialize_with = "deserialize_optional_translated_locales")]
+    pub optional_translated_locales: Vec<Locale>,
     pub reader_ignores_gitignore: bool,
     pub data_issues: bool,
     pub json_issues: bool,
@@ -80,7 +82,29 @@ pub struct TranslatedContentSource {
     pub repository: String,
 }
 
+fn deserialize_optional_translated_locales<'de, D>(deserializer: D) -> Result<Vec<Locale>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Vec::<String>::deserialize(deserializer)?
+        .into_iter()
+        .map(|locale| locale.trim().parse().map_err(serde::de::Error::custom))
+        .collect()
+}
+
 impl Settings {
+    fn validate_optional_translated_locales(&mut self) -> Result<(), ConfigError> {
+        if self.optional_translated_locales.contains(&Locale::EnUs) {
+            return Err(ConfigError::Message(
+                "optional_translated_locales cannot contain en-US".into(),
+            ));
+        }
+        let mut seen = std::collections::HashSet::new();
+        self.optional_translated_locales
+            .retain(|locale| seen.insert(*locale));
+        Ok(())
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
     fn validate(mut self) -> Self {
         self.content_root =
@@ -97,19 +121,40 @@ impl Settings {
                 !source.repository.is_empty(),
                 "repository must not be empty"
             );
-            source.root = std::fs::canonicalize(&source.root).unwrap_or_else(|_| {
-                panic!("translated content root for {locale} is not a valid path")
-            });
+            source.root = match std::fs::canonicalize(&source.root) {
+                Ok(root) => root,
+                Err(error)
+                    if error.kind() == std::io::ErrorKind::NotFound
+                        && self.optional_translated_locales.contains(locale) =>
+                {
+                    if source.root.is_absolute() {
+                        source.root.clone()
+                    } else {
+                        std::env::current_dir()
+                            .expect("unable to resolve optional translated-content source")
+                            .join(&source.root)
+                    }
+                }
+                Err(error) => panic!("translated content root for {locale} is not valid: {error}"),
+            };
             if self.content_translated_root.as_ref() == Some(&source.root) {
                 assert_eq!(
                     source.repository, "translated-content",
                     "repository for {locale} conflicts with CONTENT_TRANSLATED_ROOT"
                 );
             }
-            assert!(
-                source.root.join(locale.as_folder_str()).is_dir(),
-                "translated content root for {locale} has no locale directory"
-            );
+            match std::fs::metadata(source.root.join(locale.as_folder_str())) {
+                Ok(metadata) => assert!(
+                    metadata.is_dir(),
+                    "translated content root for {locale} has no locale directory"
+                ),
+                Err(error)
+                    if error.kind() == std::io::ErrorKind::NotFound
+                        && self.optional_translated_locales.contains(locale) => {}
+                Err(error) => {
+                    panic!("translated content root for {locale} has no locale directory: {error}")
+                }
+            }
         }
         for (locale, source) in &self.translated_content_sources {
             for (other_locale, other_source) in &self.translated_content_sources {
@@ -169,11 +214,14 @@ impl Settings {
                 Environment::default()
                     .list_separator(",")
                     .with_list_parse_key("additional_locales_for_generics_and_spas")
+                    .with_list_parse_key("optional_translated_locales")
                     .try_parsing(true),
             )
             .build()?;
 
-        let mut settings: Self = s.try_deserialize::<Self>()?.validate();
+        let mut settings: Self = s.try_deserialize::<Self>()?;
+        settings.validate_optional_translated_locales()?;
+        let mut settings = settings.validate();
         settings.blog_root = settings
             .blog_root
             .and_then(|br| br.parent().map(|p| p.to_path_buf()));
@@ -233,5 +281,155 @@ mod test {
         let de = &settings.translated_content_sources[&Locale::De];
         assert_eq!(de.root, PathBuf::from("/translated-content-de/files"));
         assert_eq!(de.repository, "translated-content-de");
+    }
+
+    #[test]
+    fn optional_translated_locales_parse_and_validate() {
+        struct Case {
+            name: &'static str,
+            values: &'static [&'static str],
+            expected: Option<Vec<Locale>>,
+        }
+        let cases = [
+            Case {
+                name: "default",
+                values: &[],
+                expected: Some(vec![]),
+            },
+            Case {
+                name: "configured",
+                values: &["de", " fr "],
+                expected: Some(vec![Locale::De, Locale::Fr]),
+            },
+            Case {
+                name: "duplicate",
+                values: &["de", "de"],
+                expected: Some(vec![Locale::De]),
+            },
+            Case {
+                name: "english",
+                values: &["en-US"],
+                expected: None,
+            },
+            Case {
+                name: "unsupported",
+                values: &["xx"],
+                expected: None,
+            },
+            Case {
+                name: "empty",
+                values: &[""],
+                expected: None,
+            },
+        ];
+        for case in cases {
+            let value = serde_json::json!({ "optional_translated_locales": case.values });
+            let actual = serde_json::from_value::<Settings>(value).and_then(|mut settings| {
+                settings
+                    .validate_optional_translated_locales()
+                    .map_err(serde::de::Error::custom)?;
+                Ok(settings.optional_translated_locales)
+            });
+            match case.expected {
+                Some(expected) => assert_eq!(actual.unwrap(), expected, "{}", case.name),
+                None => assert!(actual.is_err(), "{}", case.name),
+            }
+        }
+    }
+
+    #[test]
+    fn optional_translated_locales_parse_from_environment() {
+        const KEY: &str = "RARI_OPTIONAL_LOCALES_TEST_OPTIONAL_TRANSLATED_LOCALES";
+        unsafe { std::env::set_var(KEY, "de, fr") };
+        let config = Config::builder()
+            .add_source(
+                Environment::with_prefix("RARI_OPTIONAL_LOCALES_TEST")
+                    .prefix_separator("_")
+                    .list_separator(",")
+                    .with_list_parse_key("optional_translated_locales")
+                    .try_parsing(true),
+            )
+            .build()
+            .unwrap();
+        unsafe { std::env::remove_var(KEY) };
+        let settings: Settings = config.try_deserialize().unwrap();
+        assert_eq!(
+            settings.optional_translated_locales,
+            [Locale::De, Locale::Fr]
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn optional_mapped_source_may_be_absent() {
+        struct Case {
+            name: &'static str,
+            root_exists: bool,
+            optional: bool,
+            expected_ok: bool,
+        }
+        let fixture = std::env::temp_dir().join(format!(
+            "rari-optional-settings-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(fixture.join("content")).unwrap();
+        let cases = [
+            Case {
+                name: "missing optional root",
+                root_exists: false,
+                optional: true,
+                expected_ok: true,
+            },
+            Case {
+                name: "missing required root",
+                root_exists: false,
+                optional: false,
+                expected_ok: false,
+            },
+            Case {
+                name: "missing optional directory",
+                root_exists: true,
+                optional: true,
+                expected_ok: true,
+            },
+            Case {
+                name: "missing required directory",
+                root_exists: true,
+                optional: false,
+                expected_ok: false,
+            },
+        ];
+        for (index, case) in cases.into_iter().enumerate() {
+            let root = fixture.join(format!("source-{index}"));
+            if case.root_exists {
+                std::fs::create_dir_all(&root).unwrap();
+            }
+            let mut settings = Settings {
+                content_root: fixture.join("content"),
+                optional_translated_locales: if case.optional {
+                    vec![Locale::De]
+                } else {
+                    vec![]
+                },
+                ..Settings::default()
+            };
+            settings.translated_content_sources.insert(
+                Locale::De,
+                TranslatedContentSource {
+                    root,
+                    repository: "translated-content-de".into(),
+                },
+            );
+            assert_eq!(
+                std::panic::catch_unwind(|| settings.validate()).is_ok(),
+                case.expected_ok,
+                "{}",
+                case.name
+            );
+        }
+        std::fs::remove_dir_all(fixture).unwrap();
     }
 }
