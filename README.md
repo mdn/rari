@@ -61,6 +61,17 @@ invalid content still fails. Existing translated locales remain selected by
 default, and `additional_locales_for_generics_and_spas` retains its current
 behavior.
 
+For Italian, use this complete configuration with its dedicated checkout:
+
+```toml
+content_translated_root = "/<ABSOLUTE-PATH-TO-mdn/translated-content>/files"
+optional_translated_locales = ["it"]
+
+[translated_content_sources.it]
+root = "/<ABSOLUTE-PATH-TO-mdn/translated-content-it>/files"
+repository = "translated-content-it"
+```
+
 ## Contributing
 
 For now we're aiming for a parity rewrite of [yari's](https://github.com/mdn/yari) `yarn build -n`. Which generates the `index.json`

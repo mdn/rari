@@ -23,6 +23,10 @@ impl NoteCard {
             (Self::Callout, Locale::Fr) => "Remarque :",
             (Self::Warning, Locale::Fr) => "Attention :",
             (Self::Note, Locale::Fr) => "Note :",
+            // Use English labels until Italian translations are available.
+            (Self::Callout, Locale::It) => "Callout:",
+            (Self::Warning, Locale::It) => "Warning:",
+            (Self::Note, Locale::It) => "Note:",
             (Self::Callout, Locale::Ja) => "注目:",
             (Self::Warning, Locale::Ja) => "警告:",
             (Self::Note, Locale::Ja) => "メモ:",
@@ -103,6 +107,45 @@ fn remove_leading_space_if_zh_locale(node: &AstNode, locale: Locale) {
         && matches!(next_sibling.data.borrow().value, NodeValue::SoftBreak)
     {
         next_sibling.detach();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn italian_note_cards_use_english_labels() {
+        struct Case {
+            name: &'static str,
+            card: NoteCard,
+            expected: &'static str,
+        }
+        let cases = [
+            Case {
+                name: "callout",
+                card: NoteCard::Callout,
+                expected: "Callout:",
+            },
+            Case {
+                name: "warning",
+                card: NoteCard::Warning,
+                expected: "Warning:",
+            },
+            Case {
+                name: "note",
+                card: NoteCard::Note,
+                expected: "Note:",
+            },
+        ];
+        for case in cases {
+            assert_eq!(
+                case.card.prefix_for_locale(Locale::It),
+                case.expected,
+                "{}",
+                case.name
+            );
+        }
     }
 }
 
