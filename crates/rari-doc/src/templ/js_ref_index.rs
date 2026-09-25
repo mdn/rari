@@ -172,7 +172,7 @@ fn normalize(name: &str) -> String {
 
 /// Normalize (see [`normalize`]) and look up a JS reference name in the index.
 ///
-/// Resolution proceeds in two passes:
+/// Resolution proceeds in three passes:
 ///
 /// 1. **Case-sensitive** match. When a bucket holds multiple candidates
 ///    (e.g. `function` → `Operators/function` *and* `Statements/function`),
@@ -184,11 +184,38 @@ fn normalize(name: &str) -> String {
 ///    `templ-ill-cased-arg` event so the author can fix the casing.
 ///    Multiple case-folded matches re-trigger the `templ-invalid-arg`
 ///    branch.
+/// 3. **Constructor redirect.** If the name ended in `()` and the resolved
+///    class has a `<Class>/<Class>` constructor page (e.g. `Int8Array()` →
+///    `Global_Objects/Int8Array/Int8Array`), that page is returned instead.
 ///
 /// The returned `&'static str` borrows from `JS_REF_INDEX`, which is a
 /// `LazyLock` that lives for the rest of the process.
 pub fn resolve_js_ref(name: &str) -> Option<&'static str> {
-    resolve_from_index(&JS_REF_INDEX, &normalize(name))
+    resolve_from_name(&JS_REF_INDEX, name)
+}
+
+fn resolve_from_name<'a>(idx: &'a JsRefIndex, name: &str) -> Option<&'a str> {
+    let stripped = name.strip_suffix("()");
+    let resolved = resolve_from_index(idx, &normalize(stripped.unwrap_or(name)))?;
+    Some(
+        stripped
+            .and_then(|_| constructor_page(idx, resolved))
+            .unwrap_or(resolved),
+    )
+}
+
+/// Find a constructor page named after its parent class page.
+fn constructor_page<'a>(idx: &'a JsRefIndex, class_page: &str) -> Option<&'a str> {
+    if !class_page.starts_with(GLOBAL_OBJECTS_PREFIX) {
+        return None;
+    }
+    let leaf = class_page.rsplit('/').next()?;
+    // Full `Global_Objects/*` sub-path keys never collide with aliases, so the
+    // bucket holds exactly one entry.
+    idx.primary
+        .get(&format!("{class_page}/{leaf}"))?
+        .first()
+        .map(Arc::as_ref)
 }
 
 fn resolve_from_index<'a>(idx: &'a JsRefIndex, normalized: &str) -> Option<&'a str> {
@@ -262,6 +289,8 @@ mod tests {
             "Global_Objects/undefined",
             "Global_Objects/Set",
             "Global_Objects/Function",
+            "Global_Objects/Int8Array",
+            "Global_Objects/Int8Array/Int8Array",
             "Functions/set",
             // Class-style namespace (in NAMESPACE_PREFIXES)
             "Global_Objects/Intl",
@@ -287,7 +316,7 @@ mod tests {
     /// Normalize a raw name and resolve it, mirroring [`resolve_js_ref`]
     /// against the fixture instead of the real index.
     fn resolve<'a>(idx: &'a JsRefIndex, name: &str) -> Option<&'a str> {
-        resolve_from_index(idx, &normalize(name))
+        resolve_from_name(idx, name)
     }
 
     #[test]
@@ -329,11 +358,77 @@ mod tests {
             resolve(&idx, "Array.prototype.map"),
             Some("Global_Objects/Array/map")
         );
-        // A trailing `()` is stripped before lookup.
-        assert_eq!(
-            resolve(&idx, "Array.prototype.map()"),
-            Some("Global_Objects/Array/map")
-        );
+    }
+
+    #[test]
+    fn call_syntax_resolves_constructor_pages_when_present() {
+        let idx = fixture();
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            expected: Option<&'static str>,
+        }
+        let cases = [
+            Case {
+                name: "bare class name",
+                input: "Int8Array",
+                expected: Some("Global_Objects/Int8Array"),
+            },
+            Case {
+                name: "constructor call",
+                input: "Int8Array()",
+                expected: Some("Global_Objects/Int8Array/Int8Array"),
+            },
+            Case {
+                name: "ill-cased constructor call",
+                input: "int8array()",
+                expected: Some("Global_Objects/Int8Array/Int8Array"),
+            },
+            Case {
+                name: "explicit constructor path",
+                input: "Int8Array.Int8Array",
+                expected: Some("Global_Objects/Int8Array/Int8Array"),
+            },
+            Case {
+                name: "explicit slash constructor path",
+                input: "Int8Array/Int8Array",
+                expected: Some("Global_Objects/Int8Array/Int8Array"),
+            },
+            Case {
+                name: "namespace constructor call",
+                input: "Intl.Collator()",
+                expected: Some("Global_Objects/Intl/Collator/Collator"),
+            },
+            Case {
+                name: "namespace-stripped constructor call",
+                input: "Collator()",
+                expected: Some("Global_Objects/Intl/Collator/Collator"),
+            },
+            Case {
+                name: "method call",
+                input: "Array.from()",
+                expected: Some("Global_Objects/Array/from"),
+            },
+            Case {
+                name: "prototype method call",
+                input: "Array.prototype.map()",
+                expected: Some("Global_Objects/Array/map"),
+            },
+            Case {
+                name: "class without constructor page",
+                input: "Instant()",
+                expected: Some("Global_Objects/Temporal/Instant"),
+            },
+            Case {
+                name: "ambiguous bare call",
+                input: "function()",
+                expected: None,
+            },
+        ];
+
+        for case in cases {
+            assert_eq!(resolve(&idx, case.input), case.expected, "[{}]", case.name);
+        }
     }
 
     #[test]

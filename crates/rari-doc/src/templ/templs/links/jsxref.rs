@@ -43,6 +43,8 @@ use crate::templ::js_ref_index::resolve_js_ref;
 ///   the namespace omitted: `{{JSxRef("Collator")}}` resolves to
 ///   `Intl/Collator`, `{{JSxRef("Collator/compare")}}` to
 ///   `Intl/Collator/compare`.
+/// - A class name with a trailing `()` (e.g. `{{JSxRef("Int8Array()")}}`)
+///   links to the constructor page when one exists (`Int8Array/Int8Array`).
 ///
 /// A fragment may be embedded directly in `api_name`
 /// (e.g. `{{JSxRef("Array.prototype.map#examples")}}`) instead of passing the
