@@ -23,6 +23,8 @@ pub enum Native {
     Es,
     #[serde(rename = r#"Français"#)]
     Fr,
+    #[serde(rename = "Italiano")]
+    It,
     #[serde(rename = r#"日本語"#)]
     Ja,
     #[serde(rename = r#"한국어"#)]
@@ -44,6 +46,7 @@ impl From<Locale> for Native {
             Locale::De => Self::De,
             Locale::Es => Self::Es,
             Locale::Fr => Self::Fr,
+            Locale::It => Self::It,
             Locale::Ja => Self::Ja,
             Locale::Ko => Self::Ko,
             Locale::PtBr => Self::PtBr,
@@ -88,6 +91,8 @@ pub enum Locale {
     Es,
     #[serde(rename = "fr")]
     Fr,
+    #[serde(rename = "it")]
+    It,
     #[serde(rename = "ja")]
     Ja,
     #[serde(rename = "ko")]
@@ -173,6 +178,7 @@ impl Locale {
             Self::De => "de",
             Self::Es => "es",
             Self::Fr => "fr",
+            Self::It => "it",
             Self::Ja => "ja",
             Self::Ko => "ko",
             Self::PtBr => "pt-BR",
@@ -213,6 +219,7 @@ impl FromStr for Locale {
             "de" => Ok(Self::De),
             "es" => Ok(Self::Es),
             "fr" => Ok(Self::Fr),
+            "it" => Ok(Self::It),
             "ja" => Ok(Self::Ja),
             "ko" => Ok(Self::Ko),
             "pt-br" | "pt-BR" => Ok(Self::PtBr),
@@ -229,6 +236,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn italian_locale_identity() {
+        assert_eq!("it".parse::<Locale>().unwrap(), Locale::It);
+        assert_eq!(Locale::It.as_url_str(), "it");
+        assert_eq!(Locale::It.as_folder_str(), "it");
+        assert_eq!(
+            serde_json::to_string(&Native::from(Locale::It)).unwrap(),
+            "\"Italiano\""
+        );
+    }
+
+    #[test]
     fn locale_parser_rejects_whitespace_and_unknown_names() {
         struct Case {
             name: &'static str,
@@ -236,6 +254,11 @@ mod tests {
             expected: Result<Locale, &'static str>,
         }
         let cases = [
+            Case {
+                name: "italian",
+                input: "it",
+                expected: Ok(Locale::It),
+            },
             Case {
                 name: "german",
                 input: "de",
@@ -306,10 +329,22 @@ mod tests {
                 extras: &[Locale::De],
             },
             Case {
+                name: "optional Italian",
+                additional: &[],
+                optional: &[Locale::It],
+                extras: &[Locale::It],
+            },
+            Case {
                 name: "no duplicate",
                 additional: &[Locale::De],
                 optional: &[Locale::De],
                 extras: &[Locale::De],
+            },
+            Case {
+                name: "multiple optional locales",
+                additional: &[],
+                optional: &[Locale::De, Locale::It],
+                extras: &[Locale::De, Locale::It],
             },
         ];
         for case in cases {
