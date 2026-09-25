@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/mdn/rari/compare/v1.0.0...v1.1.0) (2026-09-25)
+
+
+### Features
+
+* **diff-test:** add `--stats-out` flag + surface stats in CI ([#906](https://github.com/mdn/rari/issues/906)) ([e4325ad](https://github.com/mdn/rari/commit/e4325add4926ed33ae83c903093903a631ec43b7))
+
+
+### Bug Fixes
+
+* **compat:** report unknown BCD keys ([#938](https://github.com/mdn/rari/issues/938)) ([44786e8](https://github.com/mdn/rari/commit/44786e8ab5ab65a901d0c958d3008ca83f7aeb8c))
+* **csssyntax:** suppress redundant scope warnings ([#952](https://github.com/mdn/rari/issues/952)) ([997658c](https://github.com/mdn/rari/commit/997658c615ce0cccaec35dbc0796830537a3e2ba))
+* **deps:** repair incomplete BCD cache ([#949](https://github.com/mdn/rari/issues/949)) ([3c64e3c](https://github.com/mdn/rari/commit/3c64e3c60e89628221e49a815fbde855fff324c6))
+
+
+### Miscellaneous
+
+* **cli:** print rari version ([#951](https://github.com/mdn/rari/issues/951)) ([4e0600b](https://github.com/mdn/rari/commit/4e0600bc5ee2b0fc3a653fa90227e788b88baadf))
+* **deps:** bump clap from 4.6.6 to 4.6.7 ([#940](https://github.com/mdn/rari/issues/940)) ([805b7fd](https://github.com/mdn/rari/commit/805b7fd25acc22d01608118753096ddeba806fd2))
+* **deps:** bump config from 0.15.25 to 0.15.26 ([#954](https://github.com/mdn/rari/issues/954)) ([22e9ff7](https://github.com/mdn/rari/commit/22e9ff793e7c2259da82b63525d234d3076d545c))
+* **deps:** bump rand from 0.10.2 to 0.10.3 ([#956](https://github.com/mdn/rari/issues/956)) ([7daf5f5](https://github.com/mdn/rari/commit/7daf5f54b9b491f3eaeab250c3204b8c1b003377))
+* **deps:** bump syn from 3.0.5 to 3.0.6 ([#942](https://github.com/mdn/rari/issues/942)) ([f0f7621](https://github.com/mdn/rari/commit/f0f762146f384b101adb33bb8c198c51cacaef8d))
+* **deps:** bump thiserror from 2.0.20 to 2.0.21 ([#955](https://github.com/mdn/rari/issues/955)) ([298cfb0](https://github.com/mdn/rari/commit/298cfb0d281c519cc43e2857db7678b7ba0cb588))
+
 ## [1.0.0](https://github.com/mdn/rari/compare/v0.2.35...v1.0.0) (2026-09-16)
 
 
