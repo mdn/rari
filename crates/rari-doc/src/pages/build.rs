@@ -275,10 +275,10 @@ fn build_doc(doc: &Doc) -> Result<BuiltPage, DocError> {
         .map(String::from)
         .unwrap_or(transform_title(doc.title()).to_string());
 
-    let repo = match doc.locale() {
-        Locale::EnUs => "content",
-        Locale::De => "translated-content-de",
-        _ => "translated-content",
+    let repo = if doc.locale() == Locale::EnUs {
+        "content"
+    } else {
+        rari_types::globals::translated_content_repository(doc.locale())
     };
 
     let github_url = format!(

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use thiserror::Error;
 
-use crate::globals::{content_translated_root, settings};
+use crate::globals::{settings, translated_content_roots};
 
 #[derive(
     PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Default, PartialOrd, Eq, Ord, JsonSchema,
@@ -183,7 +183,7 @@ impl Locale {
     }
 
     pub fn for_generic_and_spas() -> &'static [Self] {
-        if content_translated_root().is_none() {
+        if translated_content_roots().is_empty() {
             [Locale::EnUs].as_slice()
         } else {
             &LOCALES_FOR_GENERICS_AND_SPAS

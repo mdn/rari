@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::{LazyLock, OnceLock};
 use std::{env, fs};
 
@@ -37,6 +38,153 @@ pub fn contributor_spotlight_root() -> Option<&'static Path> {
 #[inline(always)]
 pub fn content_translated_root() -> Option<&'static Path> {
     settings().content_translated_root.as_deref()
+}
+
+pub fn translated_content_root_for_locale(locale: Locale) -> Option<&'static Path> {
+    translated_content_root_for_locale_in(settings(), locale)
+}
+
+fn translated_content_root_for_locale_in(settings: &Settings, locale: Locale) -> Option<&Path> {
+    settings
+        .translated_content_sources
+        .get(&locale)
+        .map(|source| source.root.as_path())
+        .or(settings.content_translated_root.as_deref())
+}
+
+pub fn translated_content_repository(locale: Locale) -> &'static str {
+    translated_content_repository_in(settings(), locale)
+}
+
+fn translated_content_repository_in(settings: &Settings, locale: Locale) -> &str {
+    settings
+        .translated_content_sources
+        .get(&locale)
+        .map(|source| source.repository.as_str())
+        .unwrap_or(if locale == Locale::De {
+            "translated-content-de"
+        } else {
+            "translated-content"
+        })
+}
+
+#[cfg(test)]
+mod translated_content_tests {
+    use super::*;
+    use crate::settings::TranslatedContentSource;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn separate_locale_root_overrides_primary_for_discovery_and_selection() {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let fixture = std::env::temp_dir().join(format!("rari-translated-sources-{suffix}"));
+        let primary = fixture.join("primary");
+        let dedicated = fixture.join("dedicated");
+        for path in [primary.join("fr"), primary.join("de"), dedicated.join("de")] {
+            fs::create_dir_all(path).unwrap();
+        }
+        let mut settings = Settings {
+            content_translated_root: Some(primary.clone()),
+            ..Settings::default()
+        };
+        settings.translated_content_sources.insert(
+            Locale::De,
+            TranslatedContentSource {
+                root: dedicated.clone(),
+                repository: "translated-content-de".into(),
+            },
+        );
+        let all = translated_content_locale_paths_in(&settings, None);
+        assert_eq!(all, vec![dedicated.join("de"), primary.join("fr")]);
+        assert_eq!(
+            translated_content_locale_paths_in(&settings, Some(&[Locale::De])),
+            vec![dedicated.join("de")]
+        );
+        assert_eq!(
+            translated_content_root_for_locale_in(&settings, Locale::Fr),
+            Some(primary.as_path())
+        );
+        assert_eq!(
+            translated_content_repository_in(&settings, Locale::De),
+            "translated-content-de"
+        );
+        fs::remove_dir_all(fixture).unwrap();
+    }
+}
+
+pub fn translated_content_repository_for_root(root: &Path) -> &'static str {
+    if content_translated_root() == Some(root) {
+        return "translated-content";
+    }
+    settings()
+        .translated_content_sources
+        .values()
+        .find(|source| source.root == root)
+        .map(|source| source.repository.as_str())
+        .unwrap_or("translated-content")
+}
+
+pub fn translated_content_roots() -> Vec<&'static Path> {
+    let mut roots = Vec::new();
+    if let Some(root) = content_translated_root() {
+        roots.push(root);
+    }
+    for source in settings().translated_content_sources.values() {
+        if !roots.contains(&source.root.as_path()) {
+            roots.push(&source.root);
+        }
+    }
+    roots
+}
+
+pub fn translated_content_locale_paths(locales: Option<&[Locale]>) -> Vec<PathBuf> {
+    translated_content_locale_paths_in(settings(), locales)
+}
+
+fn translated_content_locale_paths_in(
+    settings: &Settings,
+    locales: Option<&[Locale]>,
+) -> Vec<PathBuf> {
+    let mut selected = Vec::new();
+    let mut other_paths = Vec::new();
+    if let Some(locales) = locales {
+        selected.extend(
+            locales
+                .iter()
+                .copied()
+                .filter(|locale| *locale != Locale::EnUs),
+        );
+    } else {
+        if let Some(root) = settings.content_translated_root.as_deref()
+            && let Ok(entries) = root.read_dir()
+        {
+            for entry in entries
+                .filter_map(Result::ok)
+                .filter(|entry| entry.path().is_dir())
+            {
+                match entry
+                    .file_name()
+                    .to_str()
+                    .and_then(|name| Locale::from_str(name).ok())
+                {
+                    Some(locale) if locale != Locale::EnUs => selected.push(locale),
+                    Some(_) => {}
+                    None => other_paths.push(entry.path()),
+                }
+            }
+        }
+        selected.extend(settings.translated_content_sources.keys().copied());
+    }
+    selected.sort_unstable();
+    selected.dedup();
+    other_paths.extend(selected.into_iter().filter_map(|locale| {
+        translated_content_root_for_locale_in(settings, locale)
+            .map(|root| root.join(locale.as_folder_str()))
+    }));
+    other_paths
 }
 
 #[inline(always)]
@@ -149,11 +297,21 @@ pub static GIT_HISTORY: LazyLock<HashMap<PathBuf, HistoryEntry>> = LazyLock::new
     } else {
         HashMap::new()
     };
-    if let Some(translated_root) = content_translated_root() {
+    for translated_root in translated_content_roots() {
         let f = translated_root.join("_git_history.json");
         if let Ok(json_str) = fs::read_to_string(f) {
-            let translated: HashMap<PathBuf, HistoryEntry> =
+            let mut translated: HashMap<PathBuf, HistoryEntry> =
                 serde_json::from_str(&json_str).expect("unable to parse l10n json");
+            translated.retain(|path, _| {
+                path.components()
+                    .next()
+                    .and_then(|part| part.as_os_str().to_str())
+                    .and_then(|name| Locale::from_str(name).ok())
+                    .is_some_and(|locale| {
+                        locale != Locale::EnUs
+                            && translated_content_root_for_locale(locale) == Some(translated_root)
+                    })
+            });
             map.extend(translated);
         };
     }

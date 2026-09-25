@@ -9,7 +9,7 @@ use std::str::FromStr;
 use rari_doc::pages::page::{Page, PageLike};
 use rari_doc::resolve::{UrlMeta, url_meta_from};
 use rari_doc::utils::root_for_locale;
-use rari_types::globals::deny_warnings;
+use rari_types::globals::{deny_warnings, translated_content_locale_paths};
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use rari_utils::error::RariIoError;
@@ -354,10 +354,10 @@ fn validate_redirects_format(path: &Path) -> Result<Vec<ToolError>, ToolError> {
 ///     - The `short_cuts` optimization encounters errors
 ///     - Validation of the optimized redirects fails
 pub fn fix_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolError> {
-    let locales = Locale::for_generic_and_spas();
+    let locales = redirect_locales(locale_filter)?;
     let mut pairs = HashMap::new();
     for locale in locales {
-        let redirects = get_redirects_map(*locale);
+        let redirects = get_redirects_map(locale);
         pairs.extend(redirects);
     }
 
@@ -440,6 +440,29 @@ fn fix_redirects_internal(
     Ok(locale_pairs)
 }
 
+fn redirect_locales(locale_filter: Option<&[Locale]>) -> Result<Vec<Locale>, ToolError> {
+    let mut locales = vec![Locale::EnUs];
+    locales.extend(
+        translated_content_locale_paths(None)
+            .into_iter()
+            .filter(|path| path.join("_redirects.txt").is_file())
+            .filter_map(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .and_then(|name| Locale::from_str(name).ok())
+            }),
+    );
+    if let Some(selected) = locale_filter {
+        for locale in selected {
+            root_for_locale(*locale)?;
+        }
+        locales.extend(selected.iter().copied());
+    }
+    locales.sort_unstable();
+    locales.dedup();
+    Ok(locales)
+}
+
 /// Validates all redirects for supported locales.
 ///
 /// This function checks the validity and optimal structure of redirect files:
@@ -468,15 +491,15 @@ fn fix_redirects_internal(
 /// - `ToolError::InvalidLocale` if invalid locale found in redirect path
 /// - `ToolError::RedirectError` if cycles detected in redirect graph_redirects
 pub fn validate_redirects(locale_filter: Option<&[Locale]>) -> Result<(), ToolError> {
-    let locales = Locale::for_generic_and_spas();
-    let locales_to_validate = locale_filter.unwrap_or(locales);
+    let locales = redirect_locales(locale_filter)?;
+    let locales_to_validate = locale_filter.unwrap_or(&locales);
 
     // Accumulate all validation errors so the whole file set is reported in one pass.
     let mut errors: Vec<ToolError> = Vec::new();
 
     let mut pairs = HashMap::new();
     let mut per_locale_pairs: HashMap<Locale, HashMap<_, _>> = HashMap::new();
-    for locale in locales {
+    for locale in &locales {
         let path = redirects_path(*locale)?;
         // Validate file format (must use tabs, not spaces)
         if locales_to_validate.contains(locale) {

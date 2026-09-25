@@ -7,10 +7,9 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::str::FromStr;
 use std::sync::LazyLock;
 
-use rari_types::globals::{content_root, content_translated_root};
+use rari_types::globals::{content_root, translated_content_locale_paths};
 use rari_types::locale::Locale;
 use rari_utils::error::RariIoError;
 use tracing::error;
@@ -21,36 +20,9 @@ use crate::resolve::url_meta_from;
 
 static REDIRECTS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     let mut map = HashMap::new();
-    if let Some(ctr) = content_translated_root() {
-        for locale in ctr
-            .read_dir()
-            .expect("unable to read translated content root")
-            .filter_map(|dir| {
-                dir.map_err(|e| {
-                    error!("Error: reading translated content root: {e}");
-                })
-                .ok()
-                .filter(|dir| dir.path().is_dir())
-                .and_then(|dir| {
-                    Locale::from_str(
-                        dir.file_name()
-                            .as_os_str()
-                            .to_str()
-                            .expect("invalid folder"),
-                    )
-                    .map_err(|e| error!("Invalid folder {:?}: {e}", dir.file_name()))
-                    .ok()
-                })
-            })
-        {
-            if let Err(e) = read_redirects(
-                &ctr.to_path_buf()
-                    .join(locale.as_folder_str())
-                    .join("_redirects.txt"),
-                &mut map,
-            ) {
-                error!("Error reading redirects: {e}");
-            }
+    for path in translated_content_locale_paths(None) {
+        if let Err(e) = read_redirects(&path.join("_redirects.txt"), &mut map) {
+            error!("Error reading redirects: {e}");
         }
     }
     if let Err(e) = read_redirects(

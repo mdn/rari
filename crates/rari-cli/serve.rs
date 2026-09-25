@@ -21,7 +21,7 @@ use rari_doc::resolve::{UrlMeta, url_meta_from};
 use rari_tools::error::ToolError;
 use rari_tools::fix::issues::fix_page;
 use rari_types::Popularities;
-use rari_types::globals::{self, blog_root, content_root, content_translated_root};
+use rari_types::globals::{self, blog_root};
 use rari_types::locale::Locale;
 use rari_utils::io::read_to_string;
 use serde::Serialize;
@@ -224,15 +224,8 @@ fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
         .join("popularities.json");
     let json_str = read_to_string(in_file)?;
     let popularities: Popularities = serde_json::from_str(&json_str)?;
-    let docs = read_docs_parallel::<Page, Doc>(
-        &[&if locale == Locale::EnUs {
-            content_root()
-        } else {
-            content_translated_root().expect("no TRANSLATED_CONTENT_ROOT set")
-        }
-        .join(locale.as_folder_str())],
-        None,
-    )?;
+    let locale_path = rari_doc::utils::root_for_locale(locale)?.join(locale.as_folder_str());
+    let docs = read_docs_parallel::<Page, Doc>(&[locale_path], None)?;
 
     let mut index = docs
         .iter()

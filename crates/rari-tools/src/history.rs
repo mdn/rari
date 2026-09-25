@@ -2,23 +2,17 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
-use std::thread::spawn;
 
 use rari_types::HistoryEntry;
-use rari_types::globals::{content_root, content_translated_root};
+use rari_types::globals::{content_root, translated_content_roots};
 use rari_utils::git::exec_git;
 
 use crate::error::ToolError;
 
 pub fn gather_history() -> Result<(), ToolError> {
-    let handle = content_translated_root().map(|translated_root| {
-        spawn(|| {
-            modification_times(translated_root).unwrap();
-        })
-    });
     modification_times(content_root())?;
-    if let Some(handle) = handle {
-        handle.join().expect("Unable to join history thread.");
+    for root in translated_content_roots() {
+        modification_times(root)?;
     }
     Ok(())
 }
