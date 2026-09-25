@@ -76,7 +76,7 @@ updates:
       interval: daily
     open-pull-requests-limit: 10
     cooldown:
-      default-days: 3
+      default-days: 0
       exclude:
         - "@mdn/*"
     ignore:
