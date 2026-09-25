@@ -587,14 +587,14 @@ dependencies = [
 
 [[package]]
 name = "css-definition-syntax"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "css-syntax"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "css-definition-syntax",
  "css-syntax-types",
@@ -609,7 +609,7 @@ dependencies = [
 
 [[package]]
 name = "css-syntax-types"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "regress",
  "serde",
@@ -879,7 +879,7 @@ dependencies = [
 
 [[package]]
 name = "diff-test"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "ansi-to-html",
  "anyhow",
@@ -2616,7 +2616,7 @@ dependencies = [
 
 [[package]]
 name = "rari"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -2646,7 +2646,7 @@ dependencies = [
 
 [[package]]
 name = "rari-data"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "indexmap",
  "rari-utils",
@@ -2661,7 +2661,7 @@ dependencies = [
 
 [[package]]
 name = "rari-deps"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "css-syntax-types",
@@ -2683,7 +2683,7 @@ dependencies = [
 
 [[package]]
 name = "rari-doc"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "base16ct",
  "chrono",
@@ -2739,11 +2739,11 @@ dependencies = [
 
 [[package]]
 name = "rari-linter"
-version = "1.0.0"
+version = "1.1.0"
 
 [[package]]
 name = "rari-lsp"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -2762,7 +2762,7 @@ dependencies = [
 
 [[package]]
 name = "rari-md"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -2775,7 +2775,7 @@ dependencies = [
 
 [[package]]
 name = "rari-sitemap"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "flate2",
@@ -2789,7 +2789,7 @@ dependencies = [
 
 [[package]]
 name = "rari-templ-func"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "darling 0.24.1",
@@ -2800,7 +2800,7 @@ dependencies = [
 
 [[package]]
 name = "rari-tools"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "assert-json-diff",
  "base16ct",
@@ -2830,7 +2830,7 @@ dependencies = [
 
 [[package]]
 name = "rari-types"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "config",
@@ -2851,7 +2851,7 @@ dependencies = [
 
 [[package]]
 name = "rari-utils"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "thiserror 2.0.21",
 ]
