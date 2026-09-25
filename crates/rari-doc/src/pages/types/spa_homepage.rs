@@ -2,7 +2,9 @@ use std::path::Path;
 use std::sync::LazyLock;
 
 use chrono::{DateTime, Utc};
-use rari_types::globals::{content_root, content_translated_root};
+use rari_types::globals::{
+    content_root, translated_content_repository_for_root, translated_content_roots,
+};
 use rari_types::locale::Locale;
 use rari_utils::{concat_strs, git::exec_git};
 use regex::Regex;
@@ -78,12 +80,15 @@ pub fn featured_articles(
 
 pub fn recent_contributions() -> Result<Vec<HomePageRecentContribution>, DocError> {
     let mut content = recent_contributions_from_git(content_root(), "mdn/content")?;
-    if let Some(translated_root) = content_translated_root() {
+    for translated_root in translated_content_roots() {
         content.extend(recent_contributions_from_git(
             translated_root,
-            "mdn/translated-content",
+            &format!(
+                "mdn/{}",
+                translated_content_repository_for_root(translated_root)
+            ),
         )?);
-    };
+    }
     content.sort_by_key(|a| a.updated_at);
     Ok(content)
 }

@@ -23,6 +23,11 @@ pub fn try_exec_git(
     let output = Command::new(command)
         .args(args)
         .current_dir(root)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_COMMON_DIR")
+        .env_remove("GIT_PREFIX")
         .output()?;
 
     if !output.status.success() {

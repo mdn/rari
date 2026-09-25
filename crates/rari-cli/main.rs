@@ -21,7 +21,7 @@ use rari_doc::build::{
 };
 use rari_doc::cached_readers::{
     CACHED_DOC_PAGE_FILES, blog_files, contributor_spotlight_files, curriculum_files,
-    generic_content_files, read_and_cache_doc_pages, translated_locale_paths,
+    generic_content_files, read_and_cache_doc_pages,
 };
 use rari_doc::issues::IN_MEMORY;
 use rari_doc::pages::json::BuiltPage;
@@ -42,8 +42,9 @@ use rari_tools::remove::remove;
 use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
 use rari_types::globals::{
-    SETTINGS, blog_root, build_out_root, content_root, content_translated_root,
-    contributor_spotlight_root, curriculum_root, generic_content_root,
+    SETTINGS, blog_root, build_out_root, content_root, contributor_spotlight_root, curriculum_root,
+    generic_content_root, translated_content_locale_paths, translated_content_root_for_locale,
+    translated_content_roots,
 };
 use rari_types::locale::{Locale, LocaleFilter};
 use rari_types::settings::Settings;
@@ -284,7 +285,7 @@ struct BuildArgs {
     #[arg(
         long,
         value_delimiter = ',',
-        help = "Only build the given locale(s). Repeatable or comma-separated. en-US is always included. Other locales require `content_translated_root`."
+        help = "Only build the given locale(s). Repeatable or comma-separated. en-US is always included. Other locales require a translated-content root."
     )]
     locale: Option<Vec<Locale>>,
 }
@@ -397,12 +398,16 @@ fn finalize_requested_locales(input: &[Locale]) -> Vec<Locale> {
 }
 
 /// Validate a `--locale` argument list: reject locales not in `Locale::translated()` and
-/// require `content_translated_root` for any non-en-US locale.
+/// require a translated-content root for any non-en-US locale.
 fn validate_locale_arg(locales: &[Locale]) -> Result<(), Error> {
     let needs_translated = locales.iter().any(|l| *l != Locale::EnUs);
-    if needs_translated && content_translated_root().is_none() {
+    if needs_translated
+        && locales.iter().any(|locale| {
+            *locale != Locale::EnUs && translated_content_root_for_locale(*locale).is_none()
+        })
+    {
         return Err(anyhow!(
-            "--locale requires content_translated_root to be configured for non en-US locales"
+            "--locale requires a translated-content root for non en-US locales"
         ));
     }
     let active = Locale::translated();
@@ -568,7 +573,7 @@ fn main() -> Result<(), Error> {
 
             let full_build = arg_files.is_empty()
                 && (args.all || args.all_available || !args.no_basic || args.content);
-            let multi_locale = full_build && content_translated_root().is_some();
+            let multi_locale = full_build && !translated_content_roots().is_empty();
 
             let templ_stats = if args.templ_stats {
                 let (tx, rx) = channel::<TemplStatEvent>();
@@ -685,9 +690,10 @@ fn main() -> Result<(), Error> {
                     read_docs_parallel::<Page, Doc>(&arg_files, None)?
                 } else if args.no_cache {
                     let mut files: Vec<PathBuf> = vec![content_root().to_path_buf()];
-                    if let Some(translated_root) = content_translated_root() {
-                        files.extend(translated_locale_paths(translated_root, locale_filter));
-                    }
+                    files.extend(translated_content_locale_paths(match locale_filter {
+                        LocaleFilter::All => None,
+                        LocaleFilter::Only(locales) => Some(locales),
+                    }));
                     read_docs_parallel::<Page, Doc>(&files, None)?
                 } else {
                     read_and_cache_doc_pages(locale_filter)?
