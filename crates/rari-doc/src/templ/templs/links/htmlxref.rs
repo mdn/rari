@@ -2,7 +2,7 @@ use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
 use crate::error::DocError;
-use crate::templ::api::RariApi;
+use crate::templ::element_xref::{ElementFamily, link_element};
 
 /// Creates a link to an HTML element reference page on MDN.
 ///
@@ -38,24 +38,13 @@ pub fn htmlelement(
         code = true;
         format!("&lt;{element_name}&gt;")
     });
-    let mut url = format!(
-        "/{}/docs/Web/HTML/Reference/Elements/{}",
-        env.locale.as_url_str(),
-        element_name,
-    );
-    if let Some(anchor) = anchor {
-        if !anchor.starts_with('#') {
-            url.push('#');
-        }
-        url.push_str(&anchor);
-    }
-
-    RariApi::link(
-        &url,
-        Some(env.locale),
-        Some(display.as_ref()),
+    link_element(
+        ElementFamily::Html,
+        &element_name,
+        &display,
         code,
         None,
-        false,
+        anchor.as_deref(),
+        env.locale,
     )
 }
