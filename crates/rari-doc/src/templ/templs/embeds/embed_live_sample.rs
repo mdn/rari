@@ -21,19 +21,20 @@ use crate::utils::dedup_whitespace;
 /// * `_deprecated_3` - Deprecated parameter (no longer used)
 /// * `_deprecated_4` - Deprecated parameter (no longer used)
 /// * `_deprecated_5` - Deprecated parameter (no longer used)
-/// * `allowed_features` - Optional iframe `allow` attribute for feature policy
+/// * `allowed_features` - Optional additional iframe `allow` directives
 /// * `sandbox` - Optional additional sandbox restrictions ("allow-modals", "allow-forms", "allow-popups")
 ///
 /// # Examples
 /// * `{{EmbedLiveSample("Basic_example")}}` -> embeds code under "Basic example" heading
 /// * `{{EmbedLiveSample("Demo", "100%", "300")}}` -> with custom width and height
-/// * `{{EmbedLiveSample("Interactive", "", "400", "", "", "", "camera; microphone")}}` -> with feature policy
+/// * `{{EmbedLiveSample("Interactive", "", "400", "", "", "", "fullscreen")}}` -> with an additional feature policy
 /// * `{{EmbedLiveSample("Form_demo", "", "", "", "", "", "", "allow-forms")}}` -> with sandbox permissions
 ///
 /// # Special handling
 /// - Converts heading ID to anchor format for iframe targeting
 /// - Enforces minimum height of 60px for usability
 /// - Applies secure sandbox by default with "allow-same-origin allow-scripts"
+/// - Allows camera and microphone access for interactive examples
 /// - Validates sandbox attributes for security (only allows safe options)
 /// - Uses lazy loading for performance optimization
 /// - Generates accessible title from the heading ID
@@ -79,10 +80,12 @@ pub fn embedlivesample(
         &id,
         r#"" "#,
     ]);
-    if let Some(allowed_features) = allowed_features {
-        write!(&mut out, r#"allow="{allowed_features}" "#)?;
+    out.push_str(r#"allow="camera; microphone"#);
+    if let Some(allowed_features) = allowed_features.filter(|features| !features.is_empty()) {
+        write!(&mut out, "; {allowed_features}")?;
     }
-    out.push_str(r#"sandbox=""#);
+    out.push('"');
+    out.push_str(r#" sandbox=""#);
     if let Some(sandbox) = sandbox {
         let is_sane = sandbox.split_ascii_whitespace().all(|attr| {
             if matches!(attr, "allow-modals" | "allow-forms" | "allow-popups") {
