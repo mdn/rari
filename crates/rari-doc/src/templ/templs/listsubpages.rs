@@ -2,7 +2,7 @@ use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
 use crate::error::DocError;
-use crate::helpers::subpages::{self, ListSubPagesContext, SubPagesSorter};
+use crate::helpers::subpages::{self, ListItemContext, ListSubPagesContext, SubPagesSorter};
 
 /// List sub pages
 #[rari_f(register = "crate::Templ")]
@@ -43,6 +43,7 @@ pub fn listsubpages(
                 page_types: &[],
                 code: false,
                 include_parent: false,
+                item_context: ListItemContext::Content,
             },
         )?;
     }
