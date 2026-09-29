@@ -59,19 +59,27 @@ impl SubPagesSorter {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ListItemContext {
+    #[default]
+    Content,
+    Sidebar,
+}
+
 pub fn write_li_with_badges(
     out: &mut String,
     page: &Page,
     locale: Locale,
     code: bool,
     closed: bool,
+    context: ListItemContext,
 ) -> Result<(), DocError> {
     let locale_page = if locale != Default::default() {
         &Page::from_url_with_locale_and_fallback(page.url(), locale)?
     } else {
         page
     };
-    out.push_str("<li>");
+    write_li_start(out, page, context);
     render_internal_link(
         out,
         locale_page.url(),
@@ -99,13 +107,15 @@ pub fn write_li_with_details(
     locale: Locale,
     code: bool,
     inner: &str,
+    context: ListItemContext,
 ) -> Result<(), DocError> {
     let locale_page = if locale != Default::default() {
         &Page::from_url_with_locale_and_fallback(page.url(), locale)?
     } else {
         page
     };
-    out.push_str("<li><details><summary>");
+    write_li_start(out, page, context);
+    out.push_str("<details><summary>");
     render_internal_link(
         out,
         locale_page.url(),
@@ -127,9 +137,14 @@ pub fn write_li_with_details(
     Ok(())
 }
 
-pub fn write_parent_li(out: &mut String, page: &Page, locale: Locale) -> Result<(), DocError> {
+pub fn write_parent_li(
+    out: &mut String,
+    page: &Page,
+    locale: Locale,
+    context: ListItemContext,
+) -> Result<(), DocError> {
     let content = l10n_json_data("Template", "overview", locale)?;
-    out.push_str("<li>");
+    write_li_start(out, page, context);
     render_internal_link(
         out,
         page.url(),
@@ -149,6 +164,14 @@ pub fn write_parent_li(out: &mut String, page: &Page, locale: Locale) -> Result<
     Ok(())
 }
 
+pub(crate) fn write_li_start(out: &mut String, page: &Page, context: ListItemContext) {
+    out.push_str("<li");
+    if context == ListItemContext::Sidebar && page.page_type() == PageType::LearnModuleAssessment {
+        out.push_str(" data-page-type=\"learn-module-assessment\"");
+    }
+    out.push('>');
+}
+
 pub fn list_sub_pages_reverse_internal(
     out: &mut String,
     url: &str,
@@ -163,7 +186,7 @@ pub fn list_sub_pages_reverse_internal(
         if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
             continue;
         }
-        write_li_with_badges(out, sub_page, locale, code, true)?;
+        write_li_with_badges(out, sub_page, locale, code, true, ListItemContext::Content)?;
     }
     Ok(())
 }
@@ -173,6 +196,7 @@ pub struct ListSubPagesContext<'a> {
     pub page_types: &'a [PageType],
     pub code: bool,
     pub include_parent: bool,
+    pub item_context: ListItemContext,
 }
 
 pub fn list_sub_pages_flattened_internal(
@@ -185,18 +209,19 @@ pub fn list_sub_pages_flattened_internal(
         page_types,
         code,
         include_parent,
+        item_context,
     }: ListSubPagesContext<'_>,
 ) -> Result<(), DocError> {
     let sub_pages = get_sub_pages(url, depth, sorter.unwrap_or_default())?;
     if include_parent {
         let page = Page::from_url_with_locale_and_fallback(url, locale)?;
-        write_parent_li(out, &page, locale)?;
+        write_parent_li(out, &page, locale, item_context)?;
     }
     for sub_page in sub_pages {
         if !page_types.is_empty() && !page_types.contains(&sub_page.page_type()) {
             continue;
         }
-        write_li_with_badges(out, &sub_page, locale, code, true)?;
+        write_li_with_badges(out, &sub_page, locale, code, true, item_context)?;
     }
     Ok(())
 }
@@ -210,6 +235,7 @@ pub fn list_sub_pages_nested_internal(
         page_types,
         code,
         include_parent,
+        item_context,
     }: ListSubPagesContext<'_>,
 ) -> Result<(), DocError> {
     if depth == Some(0) {
@@ -219,14 +245,14 @@ pub fn list_sub_pages_nested_internal(
     let depth = depth.map(|i| i.saturating_sub(1));
     if include_parent {
         let page = Page::from_url_with_locale_and_fallback(url, locale)?;
-        write_parent_li(out, &page, locale)?;
+        write_parent_li(out, &page, locale, item_context)?;
     }
     for sub_page in sub_pages {
         let page_type_match = page_types.is_empty() || page_types.contains(&sub_page.page_type());
         let sub_sub_pages = get_sub_pages(sub_page.url(), depth, sorter.unwrap_or_default())?;
         if sub_sub_pages.is_empty() {
             if page_type_match {
-                write_li_with_badges(out, &sub_page, locale, code, true)?;
+                write_li_with_badges(out, &sub_page, locale, code, true, item_context)?;
             }
         } else {
             let mut sub_pages_out = String::new();
@@ -240,13 +266,21 @@ pub fn list_sub_pages_nested_internal(
                     page_types,
                     code,
                     include_parent,
+                    item_context,
                 },
             )?;
             if page_type_match {
                 if sub_pages_out.is_empty() {
-                    write_li_with_badges(out, &sub_page, locale, code, true)?;
+                    write_li_with_badges(out, &sub_page, locale, code, true, item_context)?;
                 } else {
-                    write_li_with_details(out, &sub_page, locale, code, &sub_pages_out)?;
+                    write_li_with_details(
+                        out,
+                        &sub_page,
+                        locale,
+                        code,
+                        &sub_pages_out,
+                        item_context,
+                    )?;
                 }
             }
         }
@@ -264,6 +298,7 @@ pub fn list_sub_pages_flattened_grouped_internal(
         page_types,
         code,
         include_parent,
+        item_context,
     }: ListSubPagesContext<'_>,
 ) -> Result<(), DocError> {
     let sub_pages = get_sub_pages(url, depth, sorter.unwrap_or_default())?;
@@ -295,7 +330,7 @@ pub fn list_sub_pages_flattened_grouped_internal(
     }
     if include_parent {
         let page = Page::from_url_with_locale_and_fallback(url, locale)?;
-        write_parent_li(out, &page, locale)?;
+        write_parent_li(out, &page, locale, item_context)?;
     }
     for (prefix, group) in grouped {
         let keep_group = group.len() > 2;
@@ -307,7 +342,7 @@ pub fn list_sub_pages_flattened_grouped_internal(
             ]);
         }
         for sub_page in group {
-            write_li_with_badges(out, sub_page, locale, code, true)?;
+            write_li_with_badges(out, sub_page, locale, code, true, item_context)?;
         }
         if keep_group {
             out.push_str("</ol></details></li>");
