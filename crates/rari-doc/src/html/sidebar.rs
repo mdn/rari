@@ -749,7 +749,7 @@ impl SidebarMetaEntry {
                     page_types: tags,
                     code: *code,
                     include_parent: *include_parent,
-                    item_context: helpers::subpages::ListItemContext::Content,
+                    item_context: helpers::subpages::ListItemContext::Sidebar,
                 };
                 if *nested {
                     list_sub_pages_nested_internal(out, &url, locale, *depth, ctx)?
@@ -785,7 +785,7 @@ impl SidebarMetaEntry {
                         page_types: tags,
                         code: *code,
                         include_parent: *include_parent,
-                        item_context: helpers::subpages::ListItemContext::Content,
+                        item_context: helpers::subpages::ListItemContext::Sidebar,
                     },
                 )?
             }
