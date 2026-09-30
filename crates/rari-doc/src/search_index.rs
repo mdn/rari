@@ -18,7 +18,7 @@ use crate::html::modifier::add_missing_ids;
 use crate::pages::page::{Page, PageLike};
 use crate::popularity::popularity_for;
 
-const MAX_SECTION_TITLE_PAGES: usize = 5;
+const MAX_SECTION_TITLE_PAGES: usize = 3;
 
 #[derive(Debug, Serialize)]
 pub struct SearchItem {
@@ -65,7 +65,7 @@ pub fn build_search_index(docs: &[Page]) -> Result<(), DocError> {
     Ok(())
 }
 
-/// Builds search items for one locale. Section titles occurring on more than five distinct pages
+/// Builds search items for one locale. Section titles occurring on more than three distinct pages
 /// are omitted to keep repeated boilerplate out of the index.
 pub fn build_search_items(docs: &[Page], locale: Locale) -> Result<Vec<SearchItem>, DocError> {
     let mut index = docs
@@ -131,7 +131,7 @@ fn section_titles(page: &Page) -> Result<Vec<SectionTitle>, DocError> {
     let mut sections = Vec::new();
     for heading in html.select(&selector) {
         let title = heading.text().collect::<String>().trim().to_string();
-        if title.is_empty() || title.contains("{{") {
+        if title.is_empty() || title.chars().count() == 1 || title.contains("{{") {
             continue;
         }
         let Some(id) = heading.attr("id") else {
