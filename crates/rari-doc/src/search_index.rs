@@ -102,13 +102,15 @@ pub fn build_search_items(
         }
     });
 
-    let mut out = Vec::new();
-    for (doc, _, sections) in index {
-        out.push(SearchItem {
+    let mut out = index
+        .iter()
+        .map(|(doc, _, _)| SearchItem {
             title: doc.title().to_string(),
             url: doc.url().to_string(),
-        });
+        })
+        .collect::<Vec<_>>();
 
+    for (doc, _, sections) in index {
         for section in sections {
             if section_pages[&section_key(&section.title)].len() <= MAX_SECTION_TITLE_PAGES
                 && !section.title.eq_ignore_ascii_case(doc.title())
