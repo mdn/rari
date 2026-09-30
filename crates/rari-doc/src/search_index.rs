@@ -127,10 +127,27 @@ pub fn build_search_items(
 }
 
 fn section_titles(page: &Page) -> Result<Vec<SectionTitle>, DocError> {
-    if !matches!(page, Page::Doc(_)) {
+    let Page::Doc(doc) = page else {
         return Ok(Vec::new());
+    };
+
+    if let Some(headings) = rari_md::extract_headings(doc.content()) {
+        return Ok(headings
+            .into_iter()
+            .filter(|(title, _)| {
+                !title.trim().is_empty() && title.chars().count() > 1 && !title.contains("{{")
+            })
+            .map(|(title, id)| SectionTitle {
+                title: title.trim().to_string(),
+                url: format!("{}#{id}", page.url()),
+            })
+            .collect());
     }
 
+    section_titles_from_rendered_html(page)
+}
+
+fn section_titles_from_rendered_html(page: &Page) -> Result<Vec<SectionTitle>, DocError> {
     let rendered = page.render()?;
     let mut html = Html::parse_fragment(&rendered);
     add_missing_ids(&mut html)?;
