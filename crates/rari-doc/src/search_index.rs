@@ -12,6 +12,7 @@ use rari_types::locale::Locale;
 use rari_utils::error::RariIoError;
 use scraper::{Html, Selector};
 use serde::Serialize;
+use tracing::warn;
 
 use crate::error::DocError;
 use crate::html::modifier::add_missing_ids;
@@ -34,9 +35,9 @@ struct SectionTitle {
 
 /// Builds the search index for the provided pages.
 ///
-/// Sorts pages by aggregated popularity (own page views plus the page views of
-/// every URL that redirects to the page) and writes a per-locale
-/// `search-index.json`.
+/// Writes a per-locale `search-index.json` via [`build_search_items`]: page entries sorted by
+/// aggregated popularity (own page views plus the page views of every URL that redirects to the
+/// page), each followed by its section entries.
 ///
 /// # Errors
 ///
@@ -72,11 +73,10 @@ pub fn build_search_items(docs: &[Page], locale: Locale) -> Result<Vec<SearchIte
         .iter()
         .filter(|doc| doc.locale() == locale)
         .map(|doc| {
-            let sections = section_titles(doc)?;
             let popularity = popularity_for(doc.url()).unwrap_or_default();
-            Ok((doc, popularity, sections))
+            (doc, popularity, section_titles(doc))
         })
-        .collect::<Result<Vec<_>, DocError>>()?;
+        .collect::<Vec<_>>();
 
     let mut section_pages = HashMap::<String, HashSet<String>>::new();
     for (doc, _, sections) in &index {
@@ -119,27 +119,56 @@ pub fn build_search_items(docs: &[Page], locale: Locale) -> Result<Vec<SearchIte
     Ok(out)
 }
 
-fn section_titles(page: &Page) -> Result<Vec<SectionTitle>, DocError> {
-    if !matches!(page, Page::Doc(_)) {
-        return Ok(Vec::new());
-    }
+/// Returns the H2 and H3 titles of a page with their anchor URLs, skipping repeated IDs.
+fn section_titles(page: &Page) -> Vec<SectionTitle> {
+    let Page::Doc(doc) = page else {
+        return Vec::new();
+    };
 
+    let sections = match rari_md::extract_headings(doc.content()) {
+        Some(headings) => headings
+            .into_iter()
+            .filter(|(title, _)| is_indexable_title(title))
+            .map(|(title, id)| SectionTitle {
+                title: title.trim().to_string(),
+                url: format!("{}#{id}", page.url()),
+            })
+            .collect(),
+        None => section_titles_from_rendered_html(page).unwrap_or_else(|e| {
+            warn!("no section titles for {}: {e}", page.url());
+            Vec::new()
+        }),
+    };
+
+    let mut seen = HashSet::new();
+    sections
+        .into_iter()
+        .filter(|section| seen.insert(section.url.clone()))
+        .collect()
+}
+
+fn is_indexable_title(title: &str) -> bool {
+    let title = title.trim();
+    title.chars().count() > 1 && !title.contains("{{")
+}
+
+fn section_titles_from_rendered_html(page: &Page) -> Result<Vec<SectionTitle>, DocError> {
     let rendered = page.render()?;
     let mut html = Html::parse_fragment(&rendered);
     add_missing_ids(&mut html)?;
     let selector = Selector::parse("h2[id], h3[id]").unwrap();
     let mut sections = Vec::new();
     for heading in html.select(&selector) {
-        let title = heading.text().collect::<String>().trim().to_string();
-        if title.is_empty() || title.chars().count() == 1 || title.contains("{{") {
+        let title = heading.text().collect::<String>();
+        if !is_indexable_title(&title) {
             continue;
         }
         let Some(id) = heading.attr("id") else {
             continue;
         };
         sections.push(SectionTitle {
-            title,
-            url: format!("{}#{id}", page.url()),
+            title: title.trim().to_string(),
+            url: format!("{}#{}", page.url(), id.to_lowercase()),
         });
     }
     Ok(sections)
