@@ -39,6 +39,7 @@ pub fn listsubpagesforsidebar(
         let title = locale_page.short_title().unwrap_or(locale_page.title());
         let title = trim_before(title, title_only_after.as_deref());
         let title = trim_after(title, title_only_before.as_deref());
+        out.push_str("<li>");
         render_internal_link(
             &mut out,
             locale_page.url(),
