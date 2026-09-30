@@ -1,11 +1,9 @@
 //! # Search Index Module
 //!
-//! The `search_index` module provides functionality for building and managing the search index
-//! for documentation pages. It takes popularity datainto account when generating the search index
-//! files for different locales.
+//! Builds a locale-specific search index from page and section titles.
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufWriter;
 
@@ -14,38 +12,28 @@ use rari_types::globals::{self, build_out_root};
 use rari_types::locale::Locale;
 use rari_utils::error::RariIoError;
 use rari_utils::io::read_to_string;
+use scraper::{Html, Selector};
 use serde::Serialize;
 
 use crate::error::DocError;
+use crate::html::modifier::add_missing_ids;
 use crate::pages::page::{Page, PageLike};
 
+const MAX_SECTION_TITLE_PAGES: usize = 5;
+
 #[derive(Debug, Serialize)]
-struct SearchItem<'a> {
-    title: &'a str,
-    url: &'a str,
+pub struct SearchItem {
+    pub title: String,
+    pub url: String,
+}
+
+#[derive(Debug)]
+struct SectionTitle {
+    title: String,
+    url: String,
 }
 
 /// Builds the search index for the provided pages.
-///
-/// This function reads popularity data from a JSON file, sorts the documentation pages based on their popularity,
-/// and generates search index files for different locales. The search index files are written to the output directory
-/// and contain the title and URL of each documentation page.
-///
-/// # Arguments
-///
-/// * `docs` - A slice of `Page` objects representing the documentation pages to be indexed.
-///
-/// # Returns
-///
-/// * `Result<(), DocError>` - Returns `Ok(())` if the search index is built successfully,
-///   or a `DocError` if an error occurs during the process.
-///
-/// # Errors
-///
-/// This function will return an error if:
-/// - The popularity data file cannot be read.
-/// - The popularity data cannot be parsed.
-/// - An error occurs while creating or writing to the search index files.
 pub fn build_search_index(docs: &[Page]) -> Result<(), DocError> {
     let in_file = globals::data_dir()
         .join("popularities")
@@ -53,44 +41,119 @@ pub fn build_search_index(docs: &[Page]) -> Result<(), DocError> {
     let json_str = read_to_string(in_file)?;
     let popularities: Popularities = serde_json::from_str(&json_str)?;
 
-    let mut all_indices: HashMap<Locale, Vec<(&Page, f64)>> = HashMap::new();
-
+    let mut locales = HashSet::new();
     for doc in docs {
-        let entry = all_indices.entry(doc.locale()).or_default();
-        entry.push((
-            doc,
-            popularities
+        locales.insert(doc.locale());
+    }
+
+    for locale in locales {
+        let out = build_search_items(docs, &popularities, locale)?;
+        if out.is_empty() {
+            continue;
+        }
+
+        let out_file = build_out_root()?
+            .join(locale.as_folder_str())
+            .join("search-index.json");
+        let file = File::create(&out_file).map_err(|e| RariIoError {
+            source: e,
+            path: out_file,
+        })?;
+        serde_json::to_writer(BufWriter::new(file), &out)?;
+    }
+    Ok(())
+}
+
+/// Builds search items for one locale. Section titles occurring on more than five distinct pages
+/// are omitted to keep repeated boilerplate out of the index.
+pub fn build_search_items(
+    docs: &[Page],
+    popularities: &Popularities,
+    locale: Locale,
+) -> Result<Vec<SearchItem>, DocError> {
+    let mut index = docs
+        .iter()
+        .filter(|doc| doc.locale() == locale)
+        .map(|doc| {
+            let sections = section_titles(doc)?;
+            let popularity = popularities
                 .popularities
                 .get(doc.url())
                 .cloned()
-                .unwrap_or_default(),
-        ));
-    }
+                .unwrap_or_default();
+            Ok((doc, popularity, sections))
+        })
+        .collect::<Result<Vec<_>, DocError>>()?;
 
-    for (locale, mut index) in all_indices.into_iter() {
-        if !index.is_empty() {
-            index.sort_by(|(da, a), (db, b)| match b.partial_cmp(a) {
-                None | Some(Ordering::Equal) => da.title().cmp(db.title()),
-                Some(ord) => ord,
-            });
-            let out = index
-                .into_iter()
-                .map(|(doc, _)| SearchItem {
-                    title: doc.title(),
-                    url: doc.url(),
-                })
-                .collect::<Vec<_>>();
-            let out_file = build_out_root()?
-                .join(locale.as_folder_str())
-                .join("search-index.json");
-            let file = File::create(&out_file).map_err(|e| RariIoError {
-                source: e,
-                path: out_file,
-            })?;
-            let buffed = BufWriter::new(file);
-
-            serde_json::to_writer(buffed, &out)?;
+    let mut section_pages = HashMap::<String, HashSet<String>>::new();
+    for (doc, _, sections) in &index {
+        for section in sections {
+            section_pages
+                .entry(section_key(&section.title))
+                .or_default()
+                .insert(doc.url().to_string());
         }
     }
-    Ok(())
+
+    index.sort_by(|(a, a_popularity, _), (b, b_popularity, _)| {
+        match b_popularity.partial_cmp(a_popularity) {
+            None | Some(Ordering::Equal) => a.title().cmp(b.title()),
+            Some(ordering) => ordering,
+        }
+    });
+
+    let mut out = Vec::new();
+    for (doc, _, sections) in index {
+        out.push(SearchItem {
+            title: doc.title().to_string(),
+            url: doc.url().to_string(),
+        });
+
+        for section in sections {
+            if section_pages[&section_key(&section.title)].len() <= MAX_SECTION_TITLE_PAGES
+                && !section.title.eq_ignore_ascii_case(doc.title())
+            {
+                out.push(SearchItem {
+                    title: section.title,
+                    url: section.url,
+                });
+            }
+        }
+    }
+
+    Ok(out)
+}
+
+fn section_titles(page: &Page) -> Result<Vec<SectionTitle>, DocError> {
+    if !matches!(page, Page::Doc(_)) {
+        return Ok(Vec::new());
+    }
+
+    let rendered = page.render()?;
+    let mut html = Html::parse_fragment(&rendered);
+    add_missing_ids(&mut html)?;
+    let selector = Selector::parse("h2[id], h3[id]").unwrap();
+    let mut sections = Vec::new();
+    for heading in html.select(&selector) {
+        let title = heading.text().collect::<String>().trim().to_string();
+        if title.is_empty() || title.contains("{{") {
+            continue;
+        }
+        let Some(id) = heading.attr("id") else {
+            continue;
+        };
+        sections.push(SectionTitle {
+            title,
+            url: format!("{}#{id}", page.url()),
+        });
+    }
+    Ok(sections)
+}
+
+fn section_key(title: &str) -> String {
+    title
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
 }
