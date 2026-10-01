@@ -85,22 +85,29 @@ fn html(body: &str) -> String {
     )
 }
 
-pub(crate) fn walk_builder(path: &Path) -> Result<WalkBuilder, Error> {
+pub(crate) fn walk_builder(path: &Path, search_index: bool) -> Result<WalkBuilder, Error> {
     let mut types = TypesBuilder::new();
     types.add_def("json:index.json")?;
+    if search_index {
+        types.add_def("json:search-index.json")?;
+    }
     types.select("json");
     let mut builder = ignore::WalkBuilder::new(path);
     builder.types(types.build()?);
     Ok(builder)
 }
 
-pub fn gather(path: &Path, selector: Option<&str>) -> Result<BTreeMap<String, Value>, Error> {
+pub fn gather(
+    path: &Path,
+    selector: Option<&str>,
+    search_index: bool,
+) -> Result<BTreeMap<String, Value>, Error> {
     let template = if let Some(selector) = selector {
         Some(Compiled::compile(selector).map_err(|e| anyhow!("{e}"))?)
     } else {
         None
     };
-    walk_builder(path)?
+    walk_builder(path, search_index)?
         .build()
         .filter_map(Result::ok)
         .filter(|f| f.file_type().map(|ft| ft.is_file()).unwrap_or(false))
@@ -162,6 +169,8 @@ struct BuildArgs {
     sidebars: bool,
     #[arg(long)]
     flaws: bool,
+    #[arg(long, help = "Include locale-wide search index files in the diff")]
+    search_index: bool,
     /// Write diff stats as JSON to this path (requires exactly one of --html or --csv).
     #[arg(long)]
     stats_out: Option<PathBuf>,
@@ -418,8 +427,8 @@ fn main() -> Result<(), anyhow::Error> {
             arg.validate()?;
             println!("Gathering everything 🧺");
             let start = std::time::Instant::now();
-            let a = gather(&arg.root_a, arg.query.as_deref())?;
-            let b = gather(&arg.root_b, arg.query.as_deref())?;
+            let a = gather(&arg.root_a, arg.query.as_deref(), arg.search_index)?;
+            let b = gather(&arg.root_b, arg.query.as_deref(), arg.search_index)?;
 
             let hits = max(a.len(), b.len());
             let same = AtomicUsize::new(0);
