@@ -62,9 +62,14 @@ jobs:
 
           # Fork PRs control the artifact, so trust only the event payload and the API.
           # Query the head repo: for fork PRs, the base repo returns no PRs for the commit.
-          # Filter on head.sha: the endpoint also lists PRs that merely contain the commit.
+          # Filter on head repo and SHA: the endpoint also lists PRs that merely contain the commit.
           PR_NUMBER=$(gh api "repos/$HEAD_REPO/commits/$HEAD_SHA/pulls" \
-            --jq 'first(.[] | select(.base.repo.full_name == env.BASE_REPO and .head.sha == env.HEAD_SHA and .state == "open") | .number)')
+            --jq 'first(.[] | select(
+              .base.repo.full_name == env.BASE_REPO and
+              .head.repo.full_name == env.HEAD_REPO and
+              .head.sha == env.HEAD_SHA and
+              .state == "open"
+            ) | .number)')
           if [[ -z "$PR_NUMBER" ]]; then
             echo "::notice::No open PR with head $HEAD_SHA; nothing to do."
           fi
