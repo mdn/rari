@@ -19,7 +19,9 @@ use icu_collator::preferences::CollationNumericOrdering;
 use icu_collator::{Collator, CollatorBorrowed, CollatorPreferences};
 use icu_locale_core::locale;
 use rari_types::error::EnvError;
-use rari_types::globals::{blog_root, content_root, content_translated_root, settings};
+use rari_types::globals::{
+    blog_root, content_root, settings, translated_content_root_for_locale, translated_content_roots,
+};
 use rari_types::locale::{Locale, LocaleError};
 use serde::de::{self, SeqAccess, Visitor, value};
 use serde::ser::SerializeSeq;
@@ -162,7 +164,7 @@ where
 pub fn root_for_locale(locale: Locale) -> Result<&'static Path, EnvError> {
     match locale {
         Locale::EnUs => Ok(content_root()),
-        _ => content_translated_root().ok_or(EnvError::NoTranslatedContent),
+        _ => translated_content_root_for_locale(locale).ok_or(EnvError::NoTranslatedContent),
     }
 }
 
@@ -197,25 +199,30 @@ pub fn is_unrooted_url(url: &str) -> bool {
 /// This function will return an error if:
 /// - The path does not contain a recognizable locale.
 pub fn locale_and_typ_from_path(path: &Path) -> Result<(Locale, PageCategory), DocError> {
-    if path.starts_with(content_root()) {
-        return Ok((Locale::EnUs, PageCategory::Doc));
-    }
-
     if let Some(root) = blog_root()
         && path.starts_with(root)
     {
         return Ok((Locale::EnUs, PageCategory::BlogPost));
     }
-    if let Some(root) = content_translated_root()
-        && let Ok(relative) = path.strip_prefix(root)
-        && let Some(locale_str) = relative.components().next()
-    {
+    for root in translated_content_roots() {
+        let Ok(relative) = path.strip_prefix(root) else {
+            continue;
+        };
+        let Some(locale_str) = relative.components().next() else {
+            continue;
+        };
         let locale_str = locale_str
             .as_os_str()
             .to_str()
             .ok_or(LocaleError::NoLocaleInPath)?;
-        let locale = Locale::from_str(locale_str)?;
-        return Ok((locale, PageCategory::Doc));
+        if let Ok(locale) = Locale::from_str(locale_str)
+            && translated_content_root_for_locale(locale) == Some(root)
+        {
+            return Ok((locale, PageCategory::Doc));
+        }
+    }
+    if path.starts_with(content_root()) {
+        return Ok((Locale::EnUs, PageCategory::Doc));
     }
     Err(DocError::LocaleError(LocaleError::NoLocaleInPath))
 }
@@ -388,7 +395,8 @@ mod text {
 
     #[test]
     fn test_locale_and_typ_from_path_translated() {
-        let translated = content_translated_root().expect("translated root configured");
+        let translated =
+            rari_types::globals::content_translated_root().expect("translated root configured");
 
         let path = translated.to_path_buf().join("fr/web/html/index.md");
         assert_eq!(

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use config::{Config, ConfigError, Environment, File};
@@ -52,6 +53,7 @@ impl Default for Deps {
 pub struct Settings {
     pub content_root: PathBuf,
     pub content_translated_root: Option<PathBuf>,
+    pub translated_content_sources: BTreeMap<Locale, TranslatedContentSource>,
     pub build_out_root: Option<PathBuf>,
     pub blog_root: Option<PathBuf>,
     pub generic_content_root: Option<PathBuf>,
@@ -71,6 +73,13 @@ pub struct Settings {
     pub blog_pagination: bool,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct TranslatedContentSource {
+    pub root: PathBuf,
+    pub repository: String,
+}
+
 impl Settings {
     #[cfg(not(target_arch = "wasm32"))]
     fn validate(mut self) -> Self {
@@ -82,6 +91,36 @@ impl Settings {
                 std::fs::canonicalize(translated_content_root)
                     .expect("CONTENT_TRANSLATED_ROOT is not a valid path")
             });
+        for (locale, source) in &mut self.translated_content_sources {
+            assert_ne!(*locale, Locale::EnUs, "en-US uses CONTENT_ROOT");
+            assert!(
+                !source.repository.is_empty(),
+                "repository must not be empty"
+            );
+            source.root = std::fs::canonicalize(&source.root).unwrap_or_else(|_| {
+                panic!("translated content root for {locale} is not a valid path")
+            });
+            if self.content_translated_root.as_ref() == Some(&source.root) {
+                assert_eq!(
+                    source.repository, "translated-content",
+                    "repository for {locale} conflicts with CONTENT_TRANSLATED_ROOT"
+                );
+            }
+            assert!(
+                source.root.join(locale.as_folder_str()).is_dir(),
+                "translated content root for {locale} has no locale directory"
+            );
+        }
+        for (locale, source) in &self.translated_content_sources {
+            for (other_locale, other_source) in &self.translated_content_sources {
+                if locale != other_locale && source.root == other_source.root {
+                    assert_eq!(
+                        source.repository, other_source.repository,
+                        "locales sharing a translated-content root must use the same repository"
+                    );
+                }
+            }
+        }
         self
     }
 
@@ -147,6 +186,7 @@ impl Settings {
 
 #[cfg(test)]
 mod test {
+    use config::FileFormat;
     use serde_json::Value;
 
     use super::*;
@@ -174,5 +214,24 @@ mod test {
         let mut json = embedded_package_json();
         json["dependencies"]["not-a-real-dependency"] = Value::from("^1.0.0");
         assert!(serde_json::from_value::<DepsPackageJson>(json).is_err());
+    }
+
+    #[test]
+    fn parses_locale_source_mapping() {
+        let source = r#"
+            content_root = "/content/files"
+            content_translated_root = "/translated-content/files"
+            [translated_content_sources.de]
+            root = "/translated-content-de/files"
+            repository = "translated-content-de"
+        "#;
+        let config = Config::builder()
+            .add_source(File::from_str(source, FileFormat::Toml))
+            .build()
+            .unwrap();
+        let settings: Settings = config.try_deserialize().unwrap();
+        let de = &settings.translated_content_sources[&Locale::De];
+        assert_eq!(de.root, PathBuf::from("/translated-content-de/files"));
+        assert_eq!(de.repository, "translated-content-de");
     }
 }

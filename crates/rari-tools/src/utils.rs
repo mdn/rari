@@ -5,7 +5,7 @@ use rari_doc::error::DocError;
 use rari_doc::pages::page::{Page, PageLike};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
-use rari_types::globals::{content_root, content_translated_root};
+use rari_types::globals::{content_root, translated_content_locale_paths};
 use rari_types::locale::Locale;
 use tracing::warn;
 
@@ -31,8 +31,9 @@ pub(crate) fn read_all_doc_pages() -> Result<HashMap<(Locale, Cow<'static, str>)
         .map(|doc| ((doc.locale(), Cow::Owned(doc.slug().to_string())), doc))
         .collect();
 
-    if let Some(translated_root) = content_translated_root() {
-        let translated_docs = read_docs_parallel::<Page, Doc>(&[translated_root], None)?;
+    let translated_paths = translated_content_locale_paths(None);
+    if !translated_paths.is_empty() {
+        let translated_docs = read_docs_parallel::<Page, Doc>(&translated_paths, None)?;
         docs_hash.extend(
             translated_docs
                 .iter()

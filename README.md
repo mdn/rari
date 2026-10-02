@@ -26,6 +26,20 @@ content_root = "/<ABSOLUTE-PATH-TO-mdn/content>/files"
 build_out_root = "/tmp/rari"
 ```
 
+To read a locale from a separate translated-content checkout, map it to that
+checkout's `files` directory and GitHub repository name:
+
+```toml
+content_translated_root = "/<ABSOLUTE-PATH-TO-mdn/translated-content>/files"
+
+[translated_content_sources.de]
+root = "/<ABSOLUTE-PATH-TO-mdn/translated-content-de>/files"
+repository = "translated-content-de"
+```
+
+The mapped root takes precedence for that locale. Other translated locales use
+`content_translated_root`. A mapped checkout must contain its locale directory.
+
 ## Contributing
 
 For now we're aiming for a parity rewrite of [yari's](https://github.com/mdn/yari) `yarn build -n`. Which generates the `index.json`

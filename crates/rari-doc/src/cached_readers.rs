@@ -30,15 +30,15 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use chrono::Utc;
 use dashmap::DashMap;
 use rari_types::globals::{
-    blog_root, cache_content, content_root, content_translated_root, contributor_spotlight_root,
-    curriculum_root, generic_content_root,
+    blog_root, cache_content, content_root, contributor_spotlight_root, curriculum_root,
+    generic_content_root, translated_content_locale_paths,
 };
 use rari_types::locale::{Locale, LocaleFilter};
 use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tracing::{error, warn};
+use tracing::warn;
 
 use crate::contributors::{WikiHistories, WikiHistory};
 use crate::error::DocError;
@@ -464,22 +464,6 @@ pub fn blog_author_by_name(name: &str) -> Option<Arc<Author>> {
     blog_files().authors.get(name).cloned()
 }
 
-/// Returns the per-locale subdirectories to read under `translated_root`.
-///
-/// For `LocaleFilter::All`, the translated root itself is returned so all
-/// available locales are read. For `LocaleFilter::Only`, returns one path per
-/// non-en-US locale; en-US is read from `content_root` separately.
-pub fn translated_locale_paths(translated_root: &Path, filter: LocaleFilter<'_>) -> Vec<PathBuf> {
-    match filter {
-        LocaleFilter::All => vec![translated_root.to_path_buf()],
-        LocaleFilter::Only(set) => set
-            .iter()
-            .filter(|l| **l != Locale::EnUs)
-            .map(|l| translated_root.join(l.as_folder_str()))
-            .collect(),
-    }
-}
-
 /// Reads all documentation pages from the content root and translated content root directories, fills the
 /// internal cache structures and returns a vector of `Page` objects.
 ///
@@ -514,8 +498,11 @@ pub fn read_and_cache_doc_pages(filter: LocaleFilter<'_>) -> Result<Vec<Page>, D
                 .collect(),
         )
         .unwrap();
-    if let Some(translated_root) = content_translated_root() {
-        let translated_paths = translated_locale_paths(translated_root, filter);
+    {
+        let translated_paths = translated_content_locale_paths(match filter {
+            LocaleFilter::All => None,
+            LocaleFilter::Only(locales) => Some(locales),
+        });
         let translated_docs = if translated_paths.is_empty() {
             Vec::new()
         } else {
@@ -752,30 +739,13 @@ pub fn contributor_spotlight_files() -> Cow<'static, UrlToPageMap> {
 pub fn wiki_histories() -> Cow<'static, WikiHistories> {
     fn gather() -> Result<WikiHistories, DocError> {
         let mut map = HashMap::new();
-        if let Some(ctr) = content_translated_root() {
-            for locale in ctr
-                .read_dir()
-                .expect("unable to read translated content root")
-                .filter_map(|dir| {
-                    dir.map_err(|e| {
-                        error!("Error: reading translated content root: {e}");
-                    })
-                    .ok()
-                    .filter(|dir| dir.path().is_dir())
-                    .and_then(|dir| {
-                        Locale::from_str(
-                            dir.file_name()
-                                .as_os_str()
-                                .to_str()
-                                .expect("invalid folder"),
-                        )
-                        .map_err(|e| error!("Invalid folder {:?}: {e}", dir.file_name()))
-                        .ok()
-                    })
-                })
+        for path in translated_content_locale_paths(None) {
+            if let Some(locale) = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .and_then(|name| Locale::from_str(name).ok())
             {
-                let json_str =
-                    read_to_string(ctr.join(locale.as_folder_str()).join("_wikihistory.json"))?;
+                let json_str = read_to_string(path.join("_wikihistory.json"))?;
                 let history: WikiHistory = serde_json::from_str(&json_str)?;
                 map.insert(locale, history);
             }

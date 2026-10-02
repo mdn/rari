@@ -2,10 +2,9 @@ use std::path::{Path, PathBuf};
 
 use ignore::WalkBuilder;
 use ignore::types::TypesBuilder;
-use rari_types::globals::{content_root, content_translated_root, settings};
+use rari_types::globals::{content_root, settings, translated_content_locale_paths};
 use rari_types::locale::{Locale, LocaleFilter};
 
-use crate::cached_readers::translated_locale_paths;
 use crate::error::DocError;
 
 /// Creates a `WalkBuilder` for walking through the specified paths globbing "index.md" files. The glob can be overridden.
@@ -46,8 +45,8 @@ pub(crate) fn walk_builder(
         builder
     } else {
         let mut builder = ignore::WalkBuilder::new(content_root());
-        if let Some(root) = content_translated_root() {
-            builder.add(root);
+        for path in translated_content_locale_paths(None) {
+            builder.add(path);
         }
         builder
     };
@@ -80,9 +79,7 @@ pub fn grep_doc_files(needle: &str, filter: LocaleFilter<'_>) -> Result<Vec<Path
             if locales.contains(&Locale::EnUs) {
                 paths.push(content_root().to_path_buf());
             }
-            if let Some(translated_root) = content_translated_root() {
-                paths.extend(translated_locale_paths(translated_root, filter));
-            }
+            paths.extend(translated_content_locale_paths(Some(locales)));
             grep_doc_files_in(&paths, needle)
         }
     }

@@ -7,7 +7,7 @@ use std::sync::{Arc, LazyLock};
 use constcat::concat;
 use rari_types::RariEnv;
 use rari_types::fm_types::{FeatureStatus, PageType};
-use rari_types::globals::{content_translated_root, settings};
+use rari_types::globals::{settings, translated_content_roots};
 use rari_types::locale::{Locale, LocaleFilter};
 use rari_utils::concat_strs;
 
@@ -97,7 +97,7 @@ impl SPA {
             .iter()
             .flat_map(|(slug, build_spa)| {
                 let candidates: Vec<Locale> =
-                    if build_spa.en_us_only || content_translated_root().is_none() {
+                    if build_spa.en_us_only || translated_content_roots().is_empty() {
                         vec![Locale::EnUs]
                     } else {
                         Locale::for_generic_and_spas().to_vec()
