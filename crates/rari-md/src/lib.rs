@@ -159,9 +159,9 @@ fn annotate_raw_html_links(node: &AstNode<'_>) {
     }
 }
 
-fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &F)
+fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &mut F)
 where
-    F: Fn(&'a AstNode<'a>),
+    F: FnMut(&'a AstNode<'a>),
 {
     f(node);
     for c in node.children() {
@@ -179,6 +179,44 @@ impl Default for M2HOptions {
     }
 }
 
+fn markdown_options(sourcepos: bool) -> Options<'static> {
+    let mut options = Options::default();
+    options.render.sourcepos = sourcepos;
+    options.render.r#unsafe = true;
+    options.extension.table = true;
+    options.extension.autolink = true;
+    options.extension.header_id_prefix = Some(Default::default());
+    options
+}
+
+/// Extracts the heading text and IDs that the Markdown renderer would assign.
+/// Returns `None` when raw HTML or template headings require rendered-HTML handling.
+pub fn extract_headings(input: &str) -> Option<Vec<(String, String)>> {
+    let arena = Arena::new();
+    let options = markdown_options(false);
+    let root = parse_document(&arena, input, &options);
+
+    let mut headings = Vec::new();
+    let mut unsupported = false;
+    iter_nodes(root, &mut |node| {
+        let data = node.data.borrow();
+        match &data.value {
+            NodeValue::Heading(heading) if matches!(heading.level, 2 | 3) => {
+                let title = node.collect_text();
+                if title.contains(crate::ext::DELIM_START) {
+                    unsupported = true;
+                } else {
+                    headings.push((title.clone(), anchor::anchorize(&title).into_owned()));
+                }
+            }
+            NodeValue::HtmlBlock(_) | NodeValue::HtmlInline(_) => unsupported = true,
+            _ => {}
+        }
+    });
+
+    (!unsupported).then_some(headings)
+}
+
 /// rari's custom markdown parser. This implements the MDN markdown extensions.
 /// See [MDN Markdown](https://developer.mozilla.org/en-US/docs/MDN/Writing_guidelines/Howto/Markdown_in_MDN)
 pub fn m2h(input: &str, locale: Locale) -> Result<String, MarkdownError> {
@@ -191,15 +229,10 @@ pub fn m2h_internal(
     m2h_options: M2HOptions,
 ) -> Result<String, MarkdownError> {
     let arena = Arena::new();
-    let mut options = Options::default();
-    options.render.sourcepos = m2h_options.sourcepos;
-    options.render.r#unsafe = true;
-    options.extension.table = true;
-    options.extension.autolink = true;
-    options.extension.header_id_prefix = Some(Default::default());
+    let options = markdown_options(m2h_options.sourcepos);
     let root = parse_document(&arena, input, &options);
 
-    iter_nodes(root, &|node| {
+    iter_nodes(root, &mut |node| {
         let (dl, templs_p, empty_p) = match node.data.borrow().value {
             NodeValue::List(_) => (is_dl(node), false, false),
             NodeValue::Paragraph => (false, is_escaped_templ_p(node), is_empty_p(node)),
