@@ -43,8 +43,8 @@ use rari_tools::sidebars::{fmt_sidebars, sync_sidebars};
 use rari_tools::sync_translated_content::sync_translated_content;
 use rari_types::globals::{
     SETTINGS, blog_root, build_out_root, content_root, contributor_spotlight_root, curriculum_root,
-    generic_content_root, translated_content_locale_paths, translated_content_root_for_locale,
-    translated_content_roots,
+    generic_content_root, settings, translated_content_locale_paths,
+    translated_content_root_for_locale, translated_content_roots,
 };
 use rari_types::locale::{Locale, LocaleFilter};
 use rari_types::settings::Settings;
@@ -397,20 +397,24 @@ fn finalize_requested_locales(input: &[Locale]) -> Vec<Locale> {
     set
 }
 
-/// Validate a `--locale` argument list: reject locales not in `Locale::translated()` and
-/// require a translated-content root for any non-en-US locale.
+/// Validate a `--locale` argument list against active or mapped translated locales.
 fn validate_locale_arg(locales: &[Locale]) -> Result<(), Error> {
     let needs_translated = locales.iter().any(|l| *l != Locale::EnUs);
     if needs_translated
         && locales.iter().any(|locale| {
-            *locale != Locale::EnUs && translated_content_root_for_locale(*locale).is_none()
+            *locale != Locale::EnUs
+                && translated_content_root_for_locale(*locale).is_none()
+                && !settings().optional_translated_locales.contains(locale)
         })
     {
         return Err(anyhow!(
             "--locale requires a translated-content root for non en-US locales"
         ));
     }
-    let active = Locale::translated();
+    let mut active = Locale::translated().to_vec();
+    active.extend(settings().translated_content_sources.keys().copied());
+    active.sort_unstable();
+    active.dedup();
     let invalid: Vec<&str> = locales
         .iter()
         .filter(|l| **l != Locale::EnUs && !active.contains(l))
@@ -428,6 +432,36 @@ fn validate_locale_arg(locales: &[Locale]) -> Result<(), Error> {
         ));
     }
     Ok(())
+}
+
+fn fix_locale_available(locale: Locale) -> Result<bool, Error> {
+    if locale == Locale::EnUs {
+        return Ok(true);
+    }
+    let optional = settings().optional_translated_locales.contains(&locale);
+    let Some(root) = translated_content_root_for_locale(locale) else {
+        if optional {
+            tracing::warn!("Skipping optional locale {locale}: no translated-content source");
+            return Ok(false);
+        }
+        return Err(anyhow!("{locale} has no translated-content source"));
+    };
+    let path = root.join(locale.as_folder_str());
+    match fs::metadata(&path) {
+        Ok(metadata) if metadata.is_dir() => Ok(true),
+        Ok(_) => Err(anyhow!(
+            "{locale} source is not a directory: {}",
+            path.display()
+        )),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound && optional => {
+            tracing::warn!(
+                "Skipping optional locale {locale}: {} is absent",
+                path.display()
+            );
+            Ok(false)
+        }
+        Err(error) => Err(error.into()),
+    }
 }
 
 fn main() -> Result<(), Error> {
@@ -938,12 +972,20 @@ fn main() -> Result<(), Error> {
 
                 let mut all_pages = Vec::new();
 
-                if let Some(locale) = args.locale {
+                let content_locale_available = if let Some(locale) = args.locale {
                     validate_locale_arg(&[locale])?;
-                }
+                    fix_locale_available(locale)?
+                } else {
+                    if fix_content {
+                        for locale in &rari_types::globals::settings().optional_translated_locales {
+                            fix_locale_available(*locale)?;
+                        }
+                    }
+                    true
+                };
 
                 // Collect content pages
-                if fix_content {
+                if fix_content && content_locale_available {
                     let start = std::time::Instant::now();
                     let locale_filter =
                         LocaleFilter::from(args.locale.as_ref().map(std::slice::from_ref));

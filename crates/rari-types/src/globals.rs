@@ -113,6 +113,38 @@ mod translated_content_tests {
         );
         fs::remove_dir_all(fixture).unwrap();
     }
+
+    #[test]
+    fn absent_optional_locale_is_excluded_from_document_paths() {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("rari-absent-de-{suffix}"));
+        let mut settings = Settings {
+            optional_translated_locales: vec![Locale::De],
+            ..Settings::default()
+        };
+        settings.translated_content_sources.insert(
+            Locale::De,
+            TranslatedContentSource {
+                root: root.clone(),
+                repository: "translated-content-de".into(),
+            },
+        );
+        assert!(translated_content_roots_in(&settings).is_empty());
+        assert!(translated_content_locale_paths_in(&settings, None).is_empty());
+        assert!(translated_content_locale_paths_in(&settings, Some(&[Locale::De])).is_empty());
+        fs::create_dir_all(&root).unwrap();
+        assert!(translated_content_roots_in(&settings).is_empty());
+        fs::create_dir(root.join("de")).unwrap();
+        assert_eq!(translated_content_roots_in(&settings), vec![root.as_path()]);
+        assert_eq!(
+            translated_content_locale_paths_in(&settings, None),
+            vec![root.join("de")]
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
 }
 
 pub fn translated_content_repository_for_root(root: &Path) -> &'static str {
@@ -128,11 +160,21 @@ pub fn translated_content_repository_for_root(root: &Path) -> &'static str {
 }
 
 pub fn translated_content_roots() -> Vec<&'static Path> {
+    translated_content_roots_in(settings())
+}
+
+fn translated_content_roots_in(settings: &Settings) -> Vec<&Path> {
     let mut roots = Vec::new();
-    if let Some(root) = content_translated_root() {
+    if let Some(root) = settings.content_translated_root.as_deref() {
         roots.push(root);
     }
-    for source in settings().translated_content_sources.values() {
+    for (locale, source) in &settings.translated_content_sources {
+        if settings.optional_translated_locales.contains(locale)
+            && fs::metadata(source.root.join(locale.as_folder_str()))
+                .is_err_and(|error| error.kind() == std::io::ErrorKind::NotFound)
+        {
+            continue;
+        }
         if !roots.contains(&source.root.as_path()) {
             roots.push(&source.root);
         }
@@ -181,8 +223,16 @@ fn translated_content_locale_paths_in(
     selected.sort_unstable();
     selected.dedup();
     other_paths.extend(selected.into_iter().filter_map(|locale| {
-        translated_content_root_for_locale_in(settings, locale)
-            .map(|root| root.join(locale.as_folder_str()))
+        let path =
+            translated_content_root_for_locale_in(settings, locale)?.join(locale.as_folder_str());
+        if settings.optional_translated_locales.contains(&locale)
+            && std::fs::metadata(&path)
+                .is_err_and(|error| error.kind() == std::io::ErrorKind::NotFound)
+        {
+            None
+        } else {
+            Some(path)
+        }
     }));
     other_paths
 }

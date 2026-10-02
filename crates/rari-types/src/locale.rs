@@ -150,12 +150,21 @@ static LOCALES_FOR_GENERICS_AND_SPAS: LazyLock<Vec<Locale>> = LazyLock::new(|| {
 });
 
 static TRANSLATED_LOCALES: LazyLock<Vec<Locale>> = LazyLock::new(|| {
-    ACTIVE_TRANSLATED_LOCALES
-        .iter()
-        .chain(settings().additional_locales_for_generics_and_spas.iter())
-        .map(ToOwned::to_owned)
-        .collect::<Vec<_>>()
+    translated_locales_with(
+        &settings().additional_locales_for_generics_and_spas,
+        &settings().optional_translated_locales,
+    )
 });
+
+fn translated_locales_with(additional: &[Locale], optional: &[Locale]) -> Vec<Locale> {
+    let mut locales = ACTIVE_TRANSLATED_LOCALES.to_vec();
+    for locale in additional.iter().chain(optional) {
+        if !locales.contains(locale) {
+            locales.push(*locale);
+        }
+    }
+    locales
+}
 
 impl Locale {
     pub const fn as_url_str(&self) -> &str {
@@ -211,6 +220,107 @@ impl FromStr for Locale {
             "zh-cn" | "zh-CN" => Ok(Self::ZhCn),
             "zh-tw" | "zh-TW" => Ok(Self::ZhTw),
             _ => Err(LocaleError::InvalidLocale(s.into())),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn locale_parser_rejects_whitespace_and_unknown_names() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            expected: Result<Locale, &'static str>,
+        }
+        let cases = [
+            Case {
+                name: "german",
+                input: "de",
+                expected: Ok(Locale::De),
+            },
+            Case {
+                name: "whitespace",
+                input: " de ",
+                expected: Err("invalid locale:  de "),
+            },
+            Case {
+                name: "unknown",
+                input: " xx ",
+                expected: Err("invalid locale:  xx "),
+            },
+            Case {
+                name: "empty",
+                input: " ",
+                expected: Err("invalid locale:  "),
+            },
+        ];
+        for case in cases {
+            let actual = case.input.parse::<Locale>();
+            match case.expected {
+                Ok(expected) => assert_eq!(actual.unwrap(), expected, "{}", case.name),
+                Err(expected) => {
+                    assert_eq!(actual.unwrap_err().to_string(), expected, "{}", case.name)
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn translated_locale_selection_retains_defaults_and_legacy_setting() {
+        let defaults = [
+            Locale::Es,
+            Locale::Fr,
+            Locale::Ja,
+            Locale::Ko,
+            Locale::PtBr,
+            Locale::Ru,
+            Locale::ZhCn,
+            Locale::ZhTw,
+        ];
+        struct Case {
+            name: &'static str,
+            additional: &'static [Locale],
+            optional: &'static [Locale],
+            extras: &'static [Locale],
+        }
+        let cases = [
+            Case {
+                name: "default",
+                additional: &[],
+                optional: &[],
+                extras: &[],
+            },
+            Case {
+                name: "legacy German",
+                additional: &[Locale::De],
+                optional: &[],
+                extras: &[Locale::De],
+            },
+            Case {
+                name: "optional German",
+                additional: &[],
+                optional: &[Locale::De],
+                extras: &[Locale::De],
+            },
+            Case {
+                name: "no duplicate",
+                additional: &[Locale::De],
+                optional: &[Locale::De],
+                extras: &[Locale::De],
+            },
+        ];
+        for case in cases {
+            let mut expected = defaults.to_vec();
+            expected.extend_from_slice(case.extras);
+            assert_eq!(
+                translated_locales_with(case.additional, case.optional),
+                expected,
+                "{}",
+                case.name
+            );
         }
     }
 }

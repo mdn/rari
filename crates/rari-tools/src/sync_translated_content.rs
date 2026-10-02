@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::path::Path;
 
 use rari_doc::pages::page::{Page, PageCategory, PageLike, PageWriter};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::resolve::{build_url, url_to_folder_path};
 use rari_doc::utils::root_for_locale;
+use rari_types::globals::{settings, translated_content_root_for_locale};
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use sha2::{Digest, Sha256};
@@ -21,6 +23,12 @@ pub fn sync_translated_content(
     verbose: bool,
 ) -> Result<HashMap<Locale, SyncTranslatedContentResult>, ToolError> {
     validate_locales(locales)?;
+    let selected = available_locales(locales)?;
+    let locales = selected.as_slice();
+    if locales.is_empty() {
+        return Ok(HashMap::new());
+    }
+    validate_sync_files(locales)?;
 
     if verbose {
         tracing::info!("Syncing translated content for locales: {locales:?}.");
@@ -351,6 +359,74 @@ fn validate_locales(locales: &[Locale]) -> Result<(), ToolError> {
     Ok(())
 }
 
+fn available_locales(locales: &[Locale]) -> Result<Vec<Locale>, ToolError> {
+    let mut available = Vec::new();
+    for locale in locales {
+        let optional = settings().optional_translated_locales.contains(locale);
+        if locale_dir_available(
+            *locale,
+            translated_content_root_for_locale(*locale),
+            optional,
+        )? {
+            available.push(*locale);
+        }
+    }
+    Ok(available)
+}
+
+fn validate_sync_files(locales: &[Locale]) -> Result<(), ToolError> {
+    for locale in locales {
+        let root = translated_content_root_for_locale(*locale).ok_or_else(|| {
+            ToolError::InvalidLocale(Cow::Owned(format!(
+                "{locale} has no translated-content source"
+            )))
+        })?;
+        let locale_dir = root.join(locale.as_folder_str());
+        for name in ["_redirects.txt", "_wikihistory.json"] {
+            let path = locale_dir.join(name);
+            if !std::fs::metadata(&path)?.is_file() {
+                return Err(ToolError::InvalidLocale(Cow::Owned(format!(
+                    "{locale} source file is not a file: {}",
+                    path.display()
+                ))));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn locale_dir_available(
+    locale: Locale,
+    root: Option<&Path>,
+    optional: bool,
+) -> Result<bool, ToolError> {
+    let Some(root) = root else {
+        if optional {
+            tracing::warn!("Skipping optional locale {locale}: no translated-content source");
+            return Ok(false);
+        }
+        return Err(ToolError::InvalidLocale(Cow::Owned(format!(
+            "{locale} has no translated-content source"
+        ))));
+    };
+    let path = root.join(locale.as_folder_str());
+    match std::fs::metadata(&path) {
+        Ok(metadata) if metadata.is_dir() => Ok(true),
+        Ok(_) => Err(ToolError::InvalidLocale(Cow::Owned(format!(
+            "{locale} source is not a directory: {}",
+            path.display()
+        )))),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound && optional => {
+            tracing::warn!(
+                "Skipping optional locale {locale}: {} is absent",
+                path.display()
+            );
+            Ok(false)
+        }
+        Err(error) => Err(ToolError::IoError(error)),
+    }
+}
+
 #[cfg(test)]
 use serial_test::file_serial;
 #[cfg(test)]
@@ -365,6 +441,72 @@ mod test {
     use crate::tests::fixtures::redirects::RedirectFixtures;
     use crate::tests::fixtures::sidebars::SidebarFixtures;
     use crate::tests::fixtures::wikihistory::WikihistoryFixtures;
+
+    #[test]
+    fn optional_locale_directory_availability() {
+        struct Case {
+            name: &'static str,
+            root: Option<&'static str>,
+            optional: bool,
+            expected: Option<bool>,
+        }
+        let fixture = std::env::temp_dir().join(format!(
+            "rari-optional-locale-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(fixture.join("present/de")).unwrap();
+        std::fs::create_dir_all(fixture.join("empty")).unwrap();
+        let cases = [
+            Case {
+                name: "no source optional",
+                root: None,
+                optional: true,
+                expected: Some(false),
+            },
+            Case {
+                name: "no source required",
+                root: None,
+                optional: false,
+                expected: None,
+            },
+            Case {
+                name: "missing root optional",
+                root: Some("missing"),
+                optional: true,
+                expected: Some(false),
+            },
+            Case {
+                name: "missing directory optional",
+                root: Some("empty"),
+                optional: true,
+                expected: Some(false),
+            },
+            Case {
+                name: "missing directory required",
+                root: Some("empty"),
+                optional: false,
+                expected: None,
+            },
+            Case {
+                name: "present optional",
+                root: Some("present"),
+                optional: true,
+                expected: Some(true),
+            },
+        ];
+        for case in cases {
+            let root = case.root.map(|root| fixture.join(root));
+            let actual = locale_dir_available(Locale::De, root.as_deref(), case.optional);
+            match case.expected {
+                Some(expected) => assert_eq!(actual.unwrap(), expected, "{}", case.name),
+                None => assert!(actual.is_err(), "{}", case.name),
+            }
+        }
+        std::fs::remove_dir_all(fixture).unwrap();
+    }
     use crate::wikihistory::read_wiki_history;
 
     #[test]
