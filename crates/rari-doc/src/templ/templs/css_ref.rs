@@ -11,12 +11,16 @@ use crate::helpers::subpages::get_sub_pages;
 use crate::helpers::title::{TitleFormat, render_title};
 use crate::pages::page::{Page, PageLike};
 use crate::templ::api::RariApi;
+use crate::templ::index::{index_letter, index_letter_label_and_id, render_index_navigation};
 
 /// Private-use placeholders to smuggle `<code>` tags through `RariApi::link`,
 /// which re-encodes provided content as `&lt;code&gt;` on its page-not-found
 /// fallback path.
 const CODE_OPEN_PLACEHOLDER: &str = "\u{E000}";
 const CODE_CLOSE_PLACEHOLDER: &str = "\u{E001}";
+
+/// Fragment ID prefix, shared by the navigation and the letter headings.
+const INDEX_ID_PREFIX: &str = "index";
 
 #[rari_f(register = "crate::Templ")]
 pub fn css_ref() -> Result<String, DocError> {
@@ -37,15 +41,11 @@ pub fn css_ref() -> Result<String, DocError> {
 
     let mut out = String::new();
 
-    out.push_str(r#"<div class="index"><nav class="index-nav"><ul>"#);
-    for &letter in index.keys() {
-        let (label, id) = letter_label_and_id(letter);
-        out.extend([r##"<li><a href="#"##, &id, r#"">"#, &label, "</a></li>"]);
-    }
-    out.push_str("</ul></nav>");
+    out.push_str(r#"<div class="index">"#);
+    render_index_navigation(&mut out, index.keys().copied(), INDEX_ID_PREFIX);
 
     for (letter, items) in index {
-        let (label, id) = letter_label_and_id(letter);
+        let (label, id) = index_letter_label_and_id(letter, INDEX_ID_PREFIX);
         out.extend([r#"<h3 id=""#, &id, r#"">"#, &label, "</h3><ul>"]);
         for (url, (html_label, _)) in items
             .into_iter()
@@ -75,13 +75,6 @@ pub fn css_ref() -> Result<String, DocError> {
     out.push_str(r#"</div>"#);
 
     Ok(out)
-}
-
-fn letter_label_and_id(letter: char) -> (String, String) {
-    (
-        letter.to_string(),
-        format!("index-{}", letter.to_ascii_lowercase()),
-    )
 }
 
 fn is_indexed_css_ref_page(page: &Page) -> bool {
@@ -127,11 +120,12 @@ fn strip_vendor_prefix(s: &str) -> &str {
 }
 
 fn initial_letter(s: &str) -> char {
-    strip_vendor_prefix(s)
-        .chars()
-        .find(|&c| c.is_ascii_alphabetic() || c == '-')
-        .unwrap_or('?')
-        .to_ascii_uppercase()
+    index_letter(
+        strip_vendor_prefix(s)
+            .chars()
+            .find(|&c| c.is_ascii_alphabetic() || c == '-')
+            .unwrap_or('?'),
+    )
 }
 
 /// Returns the (HTML, plain) labels for a CSS reference page.
