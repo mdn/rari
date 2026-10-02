@@ -168,13 +168,10 @@ jobs:
             | jq -r 'first(.[][] | select(.user.login == "github-actions[bot]" and (.body | contains(env.MARKER))) | .id) // empty')
 
           if (( CHANGED > 0 )); then
-            if [[ -n "$REVIEW_URL" ]]; then
-              printf -v BODY '%s\n**Build diff:** %s changes in %s of %s pages (%s%%)\n\n[View report](%sdiff.html) | [Download report](%s)' \
-                "$MARKER" "$CHANGES" "$CHANGED" "$TOTAL" "$PERCENTAGE" "$REVIEW_URL" "$REPORT_URL"
-            else
-              printf -v BODY '%s\n**Build diff:** %s changes in %s of %s pages (%s%%)\n\n[Download report](%s)' \
-                "$MARKER" "$CHANGES" "$CHANGED" "$TOTAL" "$PERCENTAGE" "$REPORT_URL"
-            fi
+            LINKS="[Download report]($REPORT_URL)"
+            [[ -n "$REVIEW_URL" ]] && LINKS="[View report](${REVIEW_URL}diff.html) | $LINKS"
+            printf -v BODY '%s\n**Build diff:** %s changes in %s of %s pages (%s%%)\n\n%s' \
+              "$MARKER" "$CHANGES" "$CHANGED" "$TOTAL" "$PERCENTAGE" "$LINKS"
             if [[ -n "$COMMENT_ID" ]]; then
               gh api -X PATCH "/repos/$GH_REPO/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
             else
