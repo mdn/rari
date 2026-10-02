@@ -134,11 +134,8 @@ jobs:
 
   comment:
     needs: [identify-pr, label, deploy-diff]
-    if: >-
-      always() &&
-      needs.identify-pr.outputs.number != '' &&
-      needs.label.result == 'success' &&
-      (needs.deploy-diff.result == 'success' || needs.deploy-diff.result == 'skipped')
+    # Without a deployment, the comment falls back to the download link.
+    if: "!cancelled() && needs.label.result == 'success'"
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
