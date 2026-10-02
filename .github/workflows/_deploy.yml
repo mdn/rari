@@ -16,9 +16,9 @@ on:
         required: true
         type: string
       build-workflow-run-id:
-        description: "ID of the workflow run that created the artifact (defaults to the current run)"
+        description: "ID of the workflow run that created the artifact (0 for the current run)"
         type: number
-        required: false
+        default: 0
     outputs:
       url:
         description: "Deployment URL"
