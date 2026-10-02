@@ -302,6 +302,11 @@ mod test {
                 expected: Some(vec![Locale::De, Locale::Fr]),
             },
             Case {
+                name: "Italian",
+                values: &["it"],
+                expected: Some(vec![Locale::It]),
+            },
+            Case {
                 name: "duplicate",
                 values: &["de", "de"],
                 expected: Some(vec![Locale::De]),
