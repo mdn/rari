@@ -53,6 +53,7 @@ jobs:
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           # Upload is the review build's last step, so this ignores failures in other Test jobs.
+          # Must match the artifact name in _build.yml.
           ARTIFACTS=$(gh api "repos/$BASE_REPO/actions/runs/$RUN_ID/artifacts?name=build-output" \
             --jq '[.artifacts[] | select(.expired | not)] | length')
           if (( ARTIFACTS == 0 )); then
