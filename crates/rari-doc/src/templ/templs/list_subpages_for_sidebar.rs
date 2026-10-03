@@ -3,7 +3,7 @@ use rari_types::AnyArg;
 
 use crate::baseline::get_baseline_status;
 use crate::error::DocError;
-use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
+use crate::helpers::subpages::{ListItemContext, SubPagesSorter, get_sub_pages, write_li_start};
 use crate::html::links::{LinkModifier, render_internal_link};
 use crate::pages::page::{Page, PageLike};
 use crate::utils::{trim_after, trim_before};
@@ -39,6 +39,7 @@ pub fn listsubpagesforsidebar(
         let title = locale_page.short_title().unwrap_or(locale_page.title());
         let title = trim_before(title, title_only_after.as_deref());
         let title = trim_after(title, title_only_before.as_deref());
+        write_li_start(&mut out, page.page_type(), ListItemContext::Sidebar);
         render_internal_link(
             &mut out,
             locale_page.url(),
