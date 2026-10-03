@@ -79,7 +79,7 @@ pub fn write_li_with_badges(
     } else {
         page
     };
-    write_li_start(out, page, context);
+    write_li_start(out, page.page_type(), context);
     render_internal_link(
         out,
         locale_page.url(),
@@ -114,7 +114,7 @@ pub fn write_li_with_details(
     } else {
         page
     };
-    write_li_start(out, page, context);
+    write_li_start(out, page.page_type(), context);
     out.push_str("<details><summary>");
     render_internal_link(
         out,
@@ -144,7 +144,7 @@ pub fn write_parent_li(
     context: ListItemContext,
 ) -> Result<(), DocError> {
     let content = l10n_json_data("Template", "overview", locale)?;
-    write_li_start(out, page, context);
+    write_li_start(out, page.page_type(), context);
     render_internal_link(
         out,
         page.url(),
@@ -164,9 +164,9 @@ pub fn write_parent_li(
     Ok(())
 }
 
-pub(crate) fn write_li_start(out: &mut String, page: &Page, context: ListItemContext) {
+pub(crate) fn write_li_start(out: &mut String, page_type: PageType, context: ListItemContext) {
     out.push_str("<li");
-    if context == ListItemContext::Sidebar && page.page_type() == PageType::LearnModuleAssessment {
+    if context == ListItemContext::Sidebar && page_type == PageType::LearnModuleAssessment {
         out.push_str(" data-page-type=\"learn-module-assessment\"");
     }
     out.push('>');
@@ -404,4 +404,44 @@ fn read_sub_folders_internal(
         .filter(|f| f.file_type().map(|ft| ft.is_file()).unwrap_or(false))
         .map(|f| f.into_path())
         .collect())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_write_li_start() {
+        struct Case {
+            name: &'static str,
+            page_type: PageType,
+            context: ListItemContext,
+            expected: &'static str,
+        }
+        let cases = vec![
+            Case {
+                name: "assessment in sidebar",
+                page_type: PageType::LearnModuleAssessment,
+                context: ListItemContext::Sidebar,
+                expected: r#"<li data-page-type="learn-module-assessment">"#,
+            },
+            Case {
+                name: "assessment in content",
+                page_type: PageType::LearnModuleAssessment,
+                context: ListItemContext::Content,
+                expected: "<li>",
+            },
+            Case {
+                name: "other page type in sidebar",
+                page_type: PageType::Guide,
+                context: ListItemContext::Sidebar,
+                expected: "<li>",
+            },
+        ];
+        for case in cases {
+            let mut out = String::new();
+            write_li_start(&mut out, case.page_type, case.context);
+            assert_eq!(out, case.expected, "{}", case.name);
+        }
+    }
 }
