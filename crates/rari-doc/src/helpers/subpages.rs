@@ -54,9 +54,8 @@ impl SubPagesSorter {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ListItemContext {
-    #[default]
     Content,
     Sidebar,
 }
