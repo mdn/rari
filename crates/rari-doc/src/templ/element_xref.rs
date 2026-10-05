@@ -1,4 +1,16 @@
-//! Shared page lookup and linking for HTML, SVG, and MathML elements.
+//! Lazy index of en-US HTML, SVG, and MathML element page slugs.
+//!
+//! Used by the `htmlelement`, `svgelement`, and `mathmlelement` templates to
+//! resolve an element name to its canonical slug instead of hard-coding the
+//! `Web/<Family>/Reference/Element(s)/<name>` path, so links follow content
+//! reorganizations. Slugs are locale-invariant, so walking the en-US tree is
+//! enough and the result is reused for every locale.
+//!
+//! Each element page is indexed under its path relative to the family root
+//! and, for pages nested below the root, also under its leaf segment, so a
+//! future grouping such as `Elements/forms/select` stays reachable as
+//! `{{HTMLElement("select")}}`. A leaf shared by several pages is marked
+//! ambiguous and only resolves via its full path.
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
@@ -46,7 +58,9 @@ impl ElementFamily {
 
 #[derive(Default)]
 struct FamilyIndex {
+    /// Sub path below the family root to canonical slug.
     paths: HashMap<String, String>,
+    /// Leaf segment to canonical slug, or `None` when the leaf is ambiguous.
     leaves: HashMap<String, Option<String>>,
 }
 
