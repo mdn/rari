@@ -86,7 +86,7 @@ jobs:
       - name: Generate diff
         working-directory: rari-pr
         run: |
-          cargo run --locked --quiet -p diff-test diff --fast --flaws --html --value \
+          cargo run --locked --quiet -p diff-test diff --fast --flaws --html --value --search-index \
             --out "$DIFF" --stats-out "$STATS" "$BUILD_BASE" "$BUILD_PR"
 
       - name: Summarize diff
