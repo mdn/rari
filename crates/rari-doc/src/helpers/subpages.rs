@@ -23,12 +23,7 @@ fn title_sorter(a: &Page, b: &Page) -> Ordering {
 }
 
 fn short_title_sorter(a: &Page, b: &Page) -> Ordering {
-    COLLATOR.with(|c| {
-        c.compare(
-            a.short_title().unwrap_or(a.title()),
-            b.short_title().unwrap_or(b.title()),
-        )
-    })
+    COLLATOR.with(|c| c.compare(a.short_title_or_title(), b.short_title_or_title()))
 }
 
 fn title_api_sorter(a: &Page, b: &Page) -> Ordering {
@@ -76,7 +71,7 @@ pub fn write_li_with_badges(
         out,
         locale_page.url(),
         None,
-        &html_escape::encode_safe(locale_page.short_title().unwrap_or(locale_page.title())),
+        &html_escape::encode_safe(locale_page.short_title_or_title()),
         None,
         &LinkModifier {
             badges: page.status(),
@@ -110,7 +105,7 @@ pub fn write_li_with_details(
         out,
         locale_page.url(),
         None,
-        &html_escape::encode_safe(locale_page.short_title().unwrap_or(locale_page.title())),
+        &html_escape::encode_safe(locale_page.short_title_or_title()),
         None,
         &LinkModifier {
             badges: page.status(),

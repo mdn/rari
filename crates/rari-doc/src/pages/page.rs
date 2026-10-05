@@ -270,6 +270,9 @@ pub trait PageLike {
     fn slug(&self) -> &str;
     fn title(&self) -> &str;
     fn short_title(&self) -> Option<&str>;
+    fn short_title_or_title(&self) -> &str {
+        self.short_title().unwrap_or(self.title())
+    }
     fn locale(&self) -> Locale;
     fn content(&self) -> &str;
     fn rari_env(&self) -> Option<RariEnv<'_>>;
