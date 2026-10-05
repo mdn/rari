@@ -96,18 +96,20 @@ fn build_family_index(family: ElementFamily) -> FamilyIndex {
         let Some(sub_slug) = page.slug().strip_prefix(family.slug_prefix()) else {
             continue;
         };
-        if sub_slug.is_empty() {
-            continue;
-        }
-
-        let canonical_slug = page.slug().to_string();
-        index
-            .paths
-            .insert(sub_slug.to_string(), canonical_slug.clone());
-        let leaf = sub_slug.rsplit('/').next().unwrap_or(sub_slug);
-        insert_leaf(&mut index, leaf, &canonical_slug);
+        index_one(&mut index, sub_slug, page.slug());
     }
     index
+}
+
+fn index_one(index: &mut FamilyIndex, sub_slug: &str, canonical_slug: &str) {
+    if sub_slug.is_empty() {
+        return;
+    }
+    index
+        .paths
+        .insert(sub_slug.to_string(), canonical_slug.to_string());
+    let leaf = sub_slug.rsplit('/').next().unwrap_or(sub_slug);
+    insert_leaf(index, leaf, canonical_slug);
 }
 
 fn insert_leaf(index: &mut FamilyIndex, name: &str, slug: &str) {
@@ -121,7 +123,10 @@ fn insert_leaf(index: &mut FamilyIndex, name: &str, slug: &str) {
 }
 
 fn resolve_element_slug(family: ElementFamily, name: &str) -> Option<&'static str> {
-    let index = ELEMENT_INDEX.family(family);
+    resolve_from_index(ELEMENT_INDEX.family(family), name)
+}
+
+fn resolve_from_index<'a>(index: &'a FamilyIndex, name: &str) -> Option<&'a str> {
     index
         .paths
         .get(name)
@@ -149,4 +154,91 @@ pub(crate) fn link_element(
     }
 
     RariApi::link(&url, Some(locale), Some(display), code, title, false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const PREFIX: &str = "Web/HTML/Reference/Elements/";
+
+    fn fixture() -> FamilyIndex {
+        let mut index = FamilyIndex::default();
+        for sub_slug in [
+            "a",
+            "Heading_Elements",
+            "input",
+            "forms/input",
+            "forms/select",
+            "media/track",
+            "table/track",
+        ] {
+            index_one(&mut index, sub_slug, &format!("{PREFIX}{sub_slug}"));
+        }
+        index
+    }
+
+    #[test]
+    fn resolve_cases() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            expected: Option<&'static str>,
+        }
+        let cases = vec![
+            Case {
+                name: "flat page resolves by sub slug",
+                input: "a",
+                expected: Some("Web/HTML/Reference/Elements/a"),
+            },
+            Case {
+                name: "nested page resolves by full sub path",
+                input: "forms/select",
+                expected: Some("Web/HTML/Reference/Elements/forms/select"),
+            },
+            Case {
+                name: "nested page resolves by unique leaf",
+                input: "select",
+                expected: Some("Web/HTML/Reference/Elements/forms/select"),
+            },
+            Case {
+                name: "ambiguous leaf does not resolve",
+                input: "track",
+                expected: None,
+            },
+            Case {
+                name: "exact path beats ambiguous leaf",
+                input: "input",
+                expected: Some("Web/HTML/Reference/Elements/input"),
+            },
+            Case {
+                name: "lookup is case sensitive",
+                input: "heading_elements",
+                expected: None,
+            },
+            Case {
+                name: "unknown name does not resolve",
+                input: "blink",
+                expected: None,
+            },
+        ];
+
+        let index = fixture();
+        for case in cases {
+            assert_eq!(
+                resolve_from_index(&index, case.input),
+                case.expected,
+                "{}",
+                case.name
+            );
+        }
+    }
+
+    #[test]
+    fn empty_sub_slug_is_skipped() {
+        let mut index = FamilyIndex::default();
+        index_one(&mut index, "", "Web/HTML/Reference/Elements");
+        assert!(index.paths.is_empty());
+        assert!(index.leaves.is_empty());
+    }
 }
