@@ -11,7 +11,7 @@ use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum ElementFamily {
     Html,
     Svg,
@@ -45,48 +45,66 @@ impl ElementFamily {
 }
 
 #[derive(Default)]
+struct FamilyIndex {
+    paths: HashMap<String, String>,
+    leaves: HashMap<String, Option<String>>,
+}
+
 struct ElementIndex {
-    paths: HashMap<(ElementFamily, String), String>,
-    leaves: HashMap<(ElementFamily, String), Option<String>>,
+    html: FamilyIndex,
+    svg: FamilyIndex,
+    mathml: FamilyIndex,
+}
+
+impl ElementIndex {
+    fn family(&self, family: ElementFamily) -> &FamilyIndex {
+        match family {
+            ElementFamily::Html => &self.html,
+            ElementFamily::Svg => &self.svg,
+            ElementFamily::Mathml => &self.mathml,
+        }
+    }
 }
 
 static ELEMENT_INDEX: LazyLock<ElementIndex> = LazyLock::new(build_index);
 
 fn build_index() -> ElementIndex {
-    let mut index = ElementIndex::default();
-    for family in [
-        ElementFamily::Html,
-        ElementFamily::Svg,
-        ElementFamily::Mathml,
-    ] {
-        let pages = get_sub_pages(family.root(), None, SubPagesSorter::Slug)
-            .unwrap_or_else(|error| panic!("failed to build {family:?} element index: {error}"));
-        for page in pages {
-            if page.page_type() != family.page_type() {
-                continue;
-            }
-            let Some(sub_slug) = page.slug().strip_prefix(family.slug_prefix()) else {
-                continue;
-            };
-            if sub_slug.is_empty() {
-                continue;
-            }
+    ElementIndex {
+        html: build_family_index(ElementFamily::Html),
+        svg: build_family_index(ElementFamily::Svg),
+        mathml: build_family_index(ElementFamily::Mathml),
+    }
+}
 
-            let canonical_slug = page.slug().to_string();
-            index
-                .paths
-                .insert((family, sub_slug.to_string()), canonical_slug.clone());
-            let leaf = sub_slug.rsplit('/').next().unwrap_or(sub_slug);
-            insert_leaf(&mut index, family, leaf, &canonical_slug);
+fn build_family_index(family: ElementFamily) -> FamilyIndex {
+    let pages = get_sub_pages(family.root(), None, SubPagesSorter::Slug)
+        .unwrap_or_else(|error| panic!("failed to build {family:?} element index: {error}"));
+    let mut index = FamilyIndex::default();
+    for page in pages {
+        if page.page_type() != family.page_type() {
+            continue;
         }
+        let Some(sub_slug) = page.slug().strip_prefix(family.slug_prefix()) else {
+            continue;
+        };
+        if sub_slug.is_empty() {
+            continue;
+        }
+
+        let canonical_slug = page.slug().to_string();
+        index
+            .paths
+            .insert(sub_slug.to_string(), canonical_slug.clone());
+        let leaf = sub_slug.rsplit('/').next().unwrap_or(sub_slug);
+        insert_leaf(&mut index, leaf, &canonical_slug);
     }
     index
 }
 
-fn insert_leaf(index: &mut ElementIndex, family: ElementFamily, name: &str, slug: &str) {
+fn insert_leaf(index: &mut FamilyIndex, name: &str, slug: &str) {
     let entry = index
         .leaves
-        .entry((family, name.to_string()))
+        .entry(name.to_string())
         .or_insert_with(|| Some(slug.to_string()));
     if entry.as_deref().is_some_and(|existing| existing != slug) {
         *entry = None;
@@ -94,15 +112,11 @@ fn insert_leaf(index: &mut ElementIndex, family: ElementFamily, name: &str, slug
 }
 
 fn resolve_element_slug(family: ElementFamily, name: &str) -> Option<&'static str> {
-    ELEMENT_INDEX
+    let index = ELEMENT_INDEX.family(family);
+    index
         .paths
-        .get(&(family, name.to_string()))
-        .or_else(|| {
-            ELEMENT_INDEX
-                .leaves
-                .get(&(family, name.to_string()))
-                .and_then(Option::as_ref)
-        })
+        .get(name)
+        .or_else(|| index.leaves.get(name).and_then(Option::as_ref))
         .map(String::as_str)
 }
 
