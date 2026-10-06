@@ -16,14 +16,13 @@ use rari_doc::issues::{IN_MEMORY, ISSUE_COUNTER_F, to_display_issues};
 use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::{Page, PageBuilder, PageCategory, PageLike};
 use rari_doc::pages::types::doc::Doc;
+use rari_doc::popularity::popularity_for;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::resolve::{UrlMeta, url_meta_from};
 use rari_tools::error::ToolError;
 use rari_tools::fix::issues::fix_page;
-use rari_types::Popularities;
-use rari_types::globals::{self, blog_root, content_root, content_translated_root};
+use rari_types::globals::{blog_root, content_root, content_translated_root};
 use rari_types::locale::Locale;
-use rari_utils::io::read_to_string;
 use serde::Serialize;
 use tower::ServiceExt;
 use tower_http::services::ServeFile;
@@ -219,11 +218,6 @@ async fn get_search_index_handler(
 }
 
 fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
-    let in_file = globals::data_dir()
-        .join("popularities")
-        .join("popularities.json");
-    let json_str = read_to_string(in_file)?;
-    let popularities: Popularities = serde_json::from_str(&json_str)?;
     let docs = read_docs_parallel::<Page, Doc>(
         &[&if locale == Locale::EnUs {
             content_root()
@@ -236,16 +230,7 @@ fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
 
     let mut index = docs
         .iter()
-        .map(|doc| {
-            (
-                doc,
-                popularities
-                    .popularities
-                    .get(doc.url())
-                    .cloned()
-                    .unwrap_or_default(),
-            )
-        })
+        .map(|doc| (doc, popularity_for(doc.url()).unwrap_or_default()))
         .collect::<Vec<(&Page, f64)>>();
     index.sort_by(|(da, a), (db, b)| match b.partial_cmp(a) {
         None | Some(Ordering::Equal) => da.title().cmp(db.title()),
