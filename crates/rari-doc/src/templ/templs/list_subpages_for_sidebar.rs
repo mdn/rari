@@ -36,7 +36,7 @@ pub fn listsubpagesforsidebar(
         } else {
             &page
         };
-        let title = locale_page.short_title().unwrap_or(locale_page.title());
+        let title = locale_page.short_title_or_title();
         let title = trim_before(title, title_only_after.as_deref());
         let title = trim_after(title, title_only_before.as_deref());
         render_internal_link(

@@ -40,7 +40,7 @@ pub fn apilistalpha() -> Result<String, DocError> {
                 Some(env.locale),
                 None,
                 true,
-                Some(page.short_title().unwrap_or(page.title())),
+                Some(page.short_title_or_title()),
                 true,
             )?,
             "</li>",

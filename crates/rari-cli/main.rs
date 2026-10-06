@@ -435,6 +435,9 @@ fn main() -> Result<(), Error> {
         info!("Using env_file: {}", env_file.display())
     }
     let cli = Cli::parse();
+    if !cli.verbose.is_silent() {
+        eprintln!("rari {}", cargo_crate_version!());
+    }
     let fmt_filter =
         filter::Targets::new().with_target("rari_doc", cli.verbose.tracing_level_filter());
 

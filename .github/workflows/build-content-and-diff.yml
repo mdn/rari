@@ -46,7 +46,7 @@ jobs:
       - name: Checkout (rari @ base)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.base_ref }}
+          ref: ${{ github.event.pull_request.base.sha }}
           path: rari-base
           persist-credentials: false
 
@@ -86,7 +86,7 @@ jobs:
       - name: Generate diff
         working-directory: rari-pr
         run: |
-          cargo run --locked --quiet -p diff-test diff --fast --flaws --html --value \
+          cargo run --locked --quiet -p diff-test diff --fast --flaws --html --value --search-index \
             --out "$DIFF" --stats-out "$STATS" "$BUILD_BASE" "$BUILD_PR"
 
       - name: Summarize diff

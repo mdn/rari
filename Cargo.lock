@@ -418,9 +418,9 @@ dependencies = [
 
 [[package]]
 name = "config"
-version = "0.15.26"
+version = "0.15.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "790374c727a4cb20877dd2cc99ce7011cbe03b0b8df083acccd37df0d161304d"
+checksum = "38e9fbc53afcec54441422f1c596cd054655b32e70e1cbac956651b7b175a404"
 dependencies = [
  "pathdiff",
  "serde_core",
@@ -587,14 +587,14 @@ dependencies = [
 
 [[package]]
 name = "css-definition-syntax"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "css-syntax"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "css-definition-syntax",
  "css-syntax-types",
@@ -609,7 +609,7 @@ dependencies = [
 
 [[package]]
 name = "css-syntax-types"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "regress",
  "serde",
@@ -879,7 +879,7 @@ dependencies = [
 
 [[package]]
 name = "diff-test"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "ansi-to-html",
  "anyhow",
@@ -2616,7 +2616,7 @@ dependencies = [
 
 [[package]]
 name = "rari"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -2646,7 +2646,7 @@ dependencies = [
 
 [[package]]
 name = "rari-data"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "indexmap",
  "rari-utils",
@@ -2661,7 +2661,7 @@ dependencies = [
 
 [[package]]
 name = "rari-deps"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "css-syntax-types",
@@ -2683,7 +2683,7 @@ dependencies = [
 
 [[package]]
 name = "rari-doc"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "base16ct",
  "chrono",
@@ -2739,11 +2739,11 @@ dependencies = [
 
 [[package]]
 name = "rari-linter"
-version = "1.0.0"
+version = "1.1.0"
 
 [[package]]
 name = "rari-lsp"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -2762,7 +2762,7 @@ dependencies = [
 
 [[package]]
 name = "rari-md"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -2775,7 +2775,7 @@ dependencies = [
 
 [[package]]
 name = "rari-sitemap"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "flate2",
@@ -2789,7 +2789,7 @@ dependencies = [
 
 [[package]]
 name = "rari-templ-func"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "darling 0.24.1",
@@ -2800,7 +2800,7 @@ dependencies = [
 
 [[package]]
 name = "rari-tools"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "assert-json-diff",
  "base16ct",
@@ -2830,7 +2830,7 @@ dependencies = [
 
 [[package]]
 name = "rari-types"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "config",
@@ -2851,7 +2851,7 @@ dependencies = [
 
 [[package]]
 name = "rari-utils"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "thiserror 2.0.21",
 ]
@@ -3883,10 +3883,12 @@ version = "1.1.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8195ca05e4eb728f4ba94f3e3291661320af739c4e43779cbdfae82ab239fcc"
 dependencies = [
+ "indexmap",
  "serde_core",
  "serde_spanned",
  "toml_datetime",
  "toml_parser",
+ "toml_writer",
  "winnow 1.0.0",
 ]
 
@@ -3907,6 +3909,12 @@ checksum = "2334f11ee363607eb04df9b8fc8a13ca1715a72ba8662a26ac285c98aabb4011"
 dependencies = [
  "winnow 1.0.0",
 ]
+
+[[package]]
+name = "toml_writer"
+version = "1.1.2+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
 
 [[package]]
 name = "tower"

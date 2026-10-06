@@ -90,7 +90,7 @@ pub fn render_link_from_page(
     page: &Page,
     modifier: &LinkModifier,
 ) -> Result<(), DocError> {
-    let content = page.short_title().unwrap_or(page.title());
+    let content = page.short_title_or_title();
     let decoded_content = html_escape::decode_html_entities(content);
     let encoded_content = html_escape::encode_safe(&decoded_content);
     let content = if content != encoded_content {
@@ -135,7 +135,7 @@ pub fn render_link_via_page(
             let content = if let Some(content) = content {
                 Cow::Borrowed(content)
             } else {
-                let content = page.short_title().unwrap_or(page.title());
+                let content = page.short_title_or_title();
                 let decoded_content = html_escape::decode_html_entities(content);
                 let encoded_content = html_escape::encode_safe(&decoded_content);
                 if content != encoded_content {

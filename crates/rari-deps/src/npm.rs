@@ -62,7 +62,7 @@ pub fn get_package(
     let package_path = out_path.join(package);
     let last_check_path = package_path.join("last_check.json");
     let now = Utc::now();
-    let current = read_to_string(last_check_path)
+    let current = read_to_string(&last_check_path)
         .ok()
         .and_then(|current| serde_json::from_str::<Current>(&current).ok())
         .unwrap_or_default();
@@ -81,6 +81,10 @@ pub fn get_package(
         if download_update {
             tracing::info!("Updating {package} to {}", version_entry.version);
             if package_path.exists() {
+                // Keeps an interrupted removal from leaving a fresh check stamp without package files.
+                if last_check_path.exists() {
+                    fs::remove_file(&last_check_path)?;
+                }
                 fs::remove_dir_all(&package_path)?;
             }
             fs::create_dir_all(&package_path)?;
@@ -92,7 +96,7 @@ pub fn get_package(
         }
 
         fs::write(
-            package_path.join("last_check.json"),
+            &last_check_path,
             serde_json::to_string_pretty(&Current {
                 current_version: Some(version_entry.version),
                 latest_last_check: Some(now),
