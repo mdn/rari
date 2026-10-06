@@ -1,12 +1,31 @@
 //! Aggregates page popularity across redirects.
 
 use std::collections::HashMap;
+use std::fs;
 use std::sync::LazyLock;
 
 use indexmap::IndexMap;
-use rari_types::globals::popularities;
+use rari_types::Popularities;
+use rari_types::globals;
 
 use crate::redirects::REDIRECTS;
+
+static POPULARITIES: LazyLock<Popularities> = LazyLock::new(|| {
+    let f = globals::data_dir()
+        .join("popularities")
+        .join("popularities.json");
+    let Ok(json_str) = fs::read_to_string(f) else {
+        return Popularities::default();
+    };
+    let mut p: Popularities =
+        serde_json::from_str(&json_str).expect("unable to parse popularities json");
+    p.popularities = p
+        .popularities
+        .into_iter()
+        .map(|(k, v)| (k.to_lowercase(), v))
+        .collect();
+    p
+});
 
 /// Inverted redirect map: lowercase target URL to lowercase source URLs.
 ///
@@ -25,7 +44,7 @@ static REDIRECTS_REVERSED: LazyLock<HashMap<String, Vec<String>>> = LazyLock::ne
 /// Returns the page's own page views plus the page views of every URL that
 /// redirects to it, or `None` if none of those URLs appear in `popularities.json`.
 pub fn popularity_for(url: &str) -> Option<f64> {
-    aggregate_popularity(url, &popularities().popularities, &REDIRECTS_REVERSED)
+    aggregate_popularity(url, &POPULARITIES.popularities, &REDIRECTS_REVERSED)
 }
 
 fn aggregate_popularity(
