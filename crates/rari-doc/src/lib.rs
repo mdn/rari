@@ -37,6 +37,7 @@
 //! handling tasks such as reading from source files, applying templates, managing translations,
 //! and generating the final output.
 pub mod baseline;
+pub mod broken_link_exceptions;
 pub mod build;
 pub mod cached_readers;
 pub mod contributors;
