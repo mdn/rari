@@ -301,7 +301,6 @@ pub enum IssueType {
     TemplArgError,
     TemplSyntaxError,
     TemplUnknown,
-    TemplMdnDataMissing,
     TemplBcdMissing,
     RedirectedLink,
     BrokenLink,
@@ -323,7 +322,6 @@ impl FromStr for IssueType {
             "templ-arg-error" => Self::TemplArgError,
             "templ-syntax-error" => Self::TemplSyntaxError,
             "templ-unknown" => Self::TemplUnknown,
-            "templ-mdn-data-missing" => Self::TemplMdnDataMissing,
             "templ-bcd-missing" => Self::TemplBcdMissing,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
@@ -652,21 +650,6 @@ impl DIssue {
                     di.explanation = Some(format!(
                         "Unknown browser-compat entry: {}",
                         additional.get("query").map(String::as_str).unwrap_or("?")
-                    ));
-                    DIssue::Macros {
-                        display_issue: di,
-                        macro_name: source.name,
-                        href: None,
-                    }
-                }
-                IssueType::TemplMdnDataMissing => {
-                    let source = issue_source(&mut additional);
-                    di.fixed = false;
-                    di.fixable = Some(false);
-                    di.explanation = Some(format!(
-                        "{} references {} which was not found in mdn/data; it may not have been published to the mdn-data npm package yet",
-                        source.label,
-                        additional.get("name").map(|s| s.as_str()).unwrap_or("?")
                     ));
                     DIssue::Macros {
                         display_issue: di,
