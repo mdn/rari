@@ -10,6 +10,7 @@ use rari_types::globals;
 
 use crate::redirects::REDIRECTS;
 
+/// Raw page views keyed by lowercase URL. Empty if `popularities.json` is missing.
 static POPULARITIES: LazyLock<Popularities> = LazyLock::new(|| {
     let f = globals::data_dir()
         .join("popularities")
