@@ -47,6 +47,7 @@ pub mod html;
 pub mod issues;
 pub mod pages;
 pub mod percent;
+pub mod popularity;
 pub mod position_utils;
 pub mod reader;
 pub mod redirects;
