@@ -5,8 +5,7 @@ use std::fs;
 use std::sync::LazyLock;
 
 use indexmap::IndexMap;
-use rari_types::Popularities;
-use rari_types::globals;
+use rari_types::{Popularities, globals};
 
 use crate::redirects::REDIRECTS;
 
