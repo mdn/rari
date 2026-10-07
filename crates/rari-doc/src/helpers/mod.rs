@@ -3,6 +3,7 @@ pub mod css_info;
 pub mod json_data;
 pub mod l10n;
 pub mod parents;
+pub mod sourcepos;
 pub mod subpages;
 pub mod summary_hack;
 pub mod title;
