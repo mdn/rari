@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicI64, AtomicU64};
@@ -18,13 +17,13 @@ use rari_doc::pages::page::{Page, PageBuilder, PageCategory, PageLike};
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
 use rari_doc::resolve::{UrlMeta, url_meta_from};
+use rari_doc::search_index::{SearchItem, build_search_items};
 use rari_tools::error::ToolError;
 use rari_tools::fix::issues::fix_page;
 use rari_types::Popularities;
 use rari_types::globals::{self, blog_root, content_root, content_translated_root};
 use rari_types::locale::Locale;
 use rari_utils::io::read_to_string;
-use serde::Serialize;
 use tower::ServiceExt;
 use tower_http::services::ServeFile;
 use tracing::{Level, error, info, span};
@@ -43,12 +42,6 @@ pub(crate) fn get_issue_counter_f() -> i64 {
     SERVER_ISSUE_COUNTER
         .try_with(|sic| sic.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
         .unwrap_or(-1)
-}
-
-#[derive(Debug, Serialize)]
-struct SearchItem {
-    title: String,
-    url: String,
 }
 
 async fn handler(req: Request) -> Response<Body> {
@@ -234,32 +227,7 @@ fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
         None,
     )?;
 
-    let mut index = docs
-        .iter()
-        .map(|doc| {
-            (
-                doc,
-                popularities
-                    .popularities
-                    .get(doc.url())
-                    .cloned()
-                    .unwrap_or_default(),
-            )
-        })
-        .collect::<Vec<(&Page, f64)>>();
-    index.sort_by(|(da, a), (db, b)| match b.partial_cmp(a) {
-        None | Some(Ordering::Equal) => da.title().cmp(db.title()),
-        Some(ord) => ord,
-    });
-    let out = index
-        .into_iter()
-        .map(|(doc, _)| SearchItem {
-            title: doc.title().to_string(),
-            url: doc.url().to_string(),
-        })
-        .collect::<Vec<_>>();
-
-    Ok(out)
+    build_search_items(&docs, &popularities, locale)
 }
 
 #[derive(Debug)]
