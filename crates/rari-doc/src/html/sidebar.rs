@@ -25,11 +25,13 @@ use crate::error::DocError;
 use crate::helpers;
 use crate::helpers::subpages::{
     ListSubPagesContext, list_sub_pages_flattened_grouped_internal,
-    list_sub_pages_flattened_internal, list_sub_pages_nested_internal,
+    list_sub_pages_flattened_internal, list_sub_pages_nested_internal, write_sidebar_item_attrs,
 };
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
 use crate::pages::types::utils::FmTempl;
+use crate::resolve::locale_from_url;
+use crate::templ::api::RariApi;
 use crate::templ::templs::{exists, invoke};
 use crate::utils::{is_default, is_unrooted, serialize_t_or_vec, t_or_vec};
 
@@ -453,6 +455,28 @@ impl SidebarMetaEntryContent {
             (link, title, _) => Self::Link { link, title },
         }
     }
+
+    /// Resolves the linked page without warnings, as rendering the link already reports issues.
+    fn page_type(&self, locale: Locale) -> Option<PageType> {
+        match self {
+            Self::Link {
+                link: Some(link), ..
+            } => {
+                let path = link.strip_prefix('/')?;
+                let url = if locale_from_url(link).is_none() {
+                    Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", path))
+                } else {
+                    Cow::Borrowed(link.as_str())
+                };
+                let (url, _) = url.split_once('#').unwrap_or((&url, ""));
+                RariApi::get_page_nowarn(url)
+                    .ok()
+                    .map(|page| page.page_type())
+            }
+            Self::Page(page) => Some(page.page_type()),
+            Self::Link { link: None, .. } | Self::LinkWithHash { .. } => None,
+        }
+    }
 }
 
 impl Default for SidebarMetaEntryContent {
@@ -638,6 +662,9 @@ impl SidebarMetaEntry {
         out.push_str("<li");
         if self.section {
             out.push_str(" class=\"section\"");
+        }
+        if let Some(page_type) = self.content.page_type(locale) {
+            write_sidebar_item_attrs(out, page_type);
         }
         if self.details.is_set() {
             out.push_str("><details");
