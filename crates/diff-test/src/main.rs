@@ -17,6 +17,7 @@ use ignore::types::TypesBuilder;
 use itertools::Itertools;
 use jsonpath_lib::Compiled;
 use lol_html::{ElementContentHandlers, RewriteStrSettings, Selector, element, rewrite_str};
+use natural::NaturalKey;
 use prettydiff::{diff_lines, diff_words};
 use rayon::prelude::*;
 use regex::Regex;
@@ -24,6 +25,7 @@ use serde::Serialize;
 use serde_json::Value;
 use xml::fmt_html;
 
+mod natural;
 mod xml;
 
 fn html(body: &str) -> String {
@@ -270,7 +272,7 @@ fn full_diff(
     rhs: &Value,
     file: &str,
     path: &[PathIndex],
-    diff: &mut BTreeMap<String, String>,
+    diff: &mut BTreeMap<NaturalKey, String>,
     args: &BuildArgs,
 ) {
     if path.len() == 1
@@ -395,7 +397,7 @@ fn full_diff(
                 }
                 if lhs != rhs {
                     diff.insert(
-                        key,
+                        NaturalKey(key),
                         ansi_to_html::convert(&if args.fast {
                             diff_lines(&lhs, &rhs).to_string()
                         } else {
@@ -410,7 +412,7 @@ fn full_diff(
                 let rhs = rhs.to_string();
                 if lhs != rhs {
                     diff.insert(
-                        key,
+                        NaturalKey(key),
                         ansi_to_html::convert(&diff_words(&lhs, &rhs).to_string()).unwrap(),
                     );
                 }
@@ -542,7 +544,7 @@ fn main() -> Result<(), anyhow::Error> {
                                 return Some(format!(
                                     "{}\n",
                                     diff.into_keys()
-                                        .map(|jsonpath| format!("{k};{jsonpath}"))
+                                        .map(|NaturalKey(jsonpath)| format!("{k};{jsonpath}"))
                                         .collect::<Vec<_>>()
                                         .join("\n")
                                 ));
