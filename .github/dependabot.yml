@@ -6,8 +6,14 @@ updates:
       interval: weekly
     open-pull-requests-limit: 20
     cooldown:
+      default-days: 3
       exclude:
         - tree-sitter-mdn
+    groups:
+      cargo:
+        update-types:
+          - minor
+          - patch
     commit-message:
       prefix: chore
       include: scope
@@ -16,6 +22,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: ci
       include: scope
@@ -47,6 +56,7 @@ updates:
     directory: /rari-npm/tooling
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
     cooldown:
       default-days: 3
     groups:
