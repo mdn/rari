@@ -5,10 +5,10 @@ use std::{env, fs};
 
 use serde::Deserialize;
 
+use crate::HistoryEntry;
 use crate::error::EnvError;
 use crate::locale::Locale;
 use crate::settings::{Deps, Settings};
-use crate::{HistoryEntry, Popularities, globals};
 
 #[inline(always)]
 pub fn content_root() -> &'static Path {
@@ -161,26 +161,6 @@ pub static GIT_HISTORY: LazyLock<HashMap<PathBuf, HistoryEntry>> = LazyLock::new
 });
 pub fn git_history() -> &'static HashMap<PathBuf, HistoryEntry> {
     &GIT_HISTORY
-}
-
-pub static POPULARITIES: LazyLock<Popularities> = LazyLock::new(|| {
-    let f = globals::data_dir()
-        .join("popularities")
-        .join("popularities.json");
-    let Ok(json_str) = fs::read_to_string(f) else {
-        return Popularities::default();
-    };
-    let mut p: Popularities =
-        serde_json::from_str(&json_str).expect("unable to parse popularities json");
-    p.popularities = p
-        .popularities
-        .into_iter()
-        .map(|(k, v)| (k.to_lowercase(), v))
-        .collect();
-    p
-});
-pub fn popularities() -> &'static Popularities {
-    &POPULARITIES
 }
 
 pub static CONTENT_BRANCH: OnceLock<String> = OnceLock::new();
