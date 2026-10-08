@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/mdn/rari/compare/v1.1.0...v1.2.0) (2026-10-08)
+
+
+### Features
+
+* **diff-test:** include search indexes in build diffs ([#975](https://github.com/mdn/rari/issues/975)) ([0bc43ab](https://github.com/mdn/rari/commit/0bc43abe65fd8e31d17914d486b61e2632cb26d5))
+* **popularity:** aggregate page views from redirected URLs ([#696](https://github.com/mdn/rari/issues/696)) ([de0a034](https://github.com/mdn/rari/commit/de0a034930248f5c052489e187645d108fbe0328))
+
+
+### Miscellaneous
+
+* **deps:** bump inventory from 0.3.24 to 0.3.25 ([#991](https://github.com/mdn/rari/issues/991)) ([ca76219](https://github.com/mdn/rari/commit/ca7621915388eda287aaa222d1f852a17f66272c))
+* **deps:** bump rustls from 0.23.28 to 0.23.45 ([#993](https://github.com/mdn/rari/issues/993)) ([c22c1ff](https://github.com/mdn/rari/commit/c22c1ffece305e9bc87536dd7caa4ebe79204af1))
+* **deps:** bump tokio from 1.53.1 to 1.53.2 ([#992](https://github.com/mdn/rari/issues/992)) ([963bd64](https://github.com/mdn/rari/commit/963bd6496ad51431a19dafedf504d32f9578c2dc))
+* **github:** use `.md` extension for PR template ([#974](https://github.com/mdn/rari/issues/974)) ([5752fe9](https://github.com/mdn/rari/commit/5752fe931883032470b5c0403ca98afcfa7d197d))
+
 ## [1.1.0](https://github.com/mdn/rari/compare/v1.0.0...v1.1.0) (2026-10-01)
 
 
