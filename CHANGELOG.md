@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/mdn/rari/compare/v1.2.0...v1.2.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **diff-test:** sort diff keys naturally ([#981](https://github.com/mdn/rari/issues/981)) ([147f9b0](https://github.com/mdn/rari/commit/147f9b0c2702b88551ad35d449de81dd134650e5))
+* **jsxref:** resolve constructor call links ([#961](https://github.com/mdn/rari/issues/961)) ([f1d58e8](https://github.com/mdn/rari/commit/f1d58e8a79ca96bffda361e9fda4c2dacc96cbeb))
+
+
+### Miscellaneous
+
+* **deps:** bump comrak from 0.55.0 to 0.56.0 ([#990](https://github.com/mdn/rari/issues/990)) ([996404c](https://github.com/mdn/rari/commit/996404c08d371e39a5f6e9719c4ef611b5186974))
+
 ## [1.2.0](https://github.com/mdn/rari/compare/v1.1.0...v1.2.0) (2026-10-08)
 
 
