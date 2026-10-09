@@ -455,6 +455,13 @@ mod tests {
                 None,
             ),
             case(
+                "translated page, absolute non-doc path skips the en-US fallback",
+                Locale::Fr,
+                "/fr/blog/missing.gif",
+                "/fr/blog/missing.gif",
+                None,
+            ),
+            case(
                 "missing file leaves dimensions unset",
                 Locale::EnUs,
                 "/en-US/docs/Web/{s}/Other/missing.gif",
