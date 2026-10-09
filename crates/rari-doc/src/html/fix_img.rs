@@ -330,18 +330,25 @@ mod tests {
         let slug = format!("FixImgTest{}", std::process::id());
         let folder = slug.to_lowercase();
         let en_dir = content_root().join("en-us/web").join(&folder);
-        let fr_dir = content_translated_root()
-            .expect("translated root configured")
-            .join("fr/web")
-            .join(&folder);
-        assert!(!en_dir.exists() && !fr_dir.exists(), "stale fixtures");
-        let _cleanup = Fixtures(vec![en_dir.clone(), fr_dir.clone()]);
+        // Translated cases are skipped when no translated root is configured.
+        let fr_dir = content_translated_root().map(|root| root.join("fr/web").join(&folder));
+        if fr_dir.is_none() {
+            tracing::warn!("CONTENT_TRANSLATED_ROOT not set, skipping translated cases");
+        }
+        let mut fixture_dirs = vec![en_dir.clone()];
+        fixture_dirs.extend(fr_dir.clone());
+        assert!(!fixture_dirs.iter().any(|d| d.exists()), "stale fixtures");
+        let _cleanup = Fixtures(fixture_dirs);
 
         let en_page_dir = en_dir.join("api/child");
         let en_other_dir = en_dir.join("other");
-        let fr_page_dir = fr_dir.join("api/child");
-        let fr_other_dir = fr_dir.join("other");
-        for dir in [&en_page_dir, &en_other_dir, &fr_page_dir, &fr_other_dir] {
+        let fr_page_dir = fr_dir.as_ref().map(|d| d.join("api/child"));
+        let fr_other_dir = fr_dir.as_ref().map(|d| d.join("other"));
+        for dir in [&en_page_dir, &en_other_dir]
+            .into_iter()
+            .chain(fr_page_dir.iter())
+            .chain(fr_other_dir.iter())
+        {
             std::fs::create_dir_all(dir).unwrap();
         }
         // The en-US page is needed for the relative-src fallback of translated pages.
@@ -354,7 +361,9 @@ mod tests {
         std::fs::write(en_other_dir.join("tree.svg"), TINY_SVG).unwrap();
         std::fs::write(en_other_dir.join("mixed.gif"), TINY_GIF).unwrap();
         std::fs::write(en_other_dir.join("bézier.gif"), TINY_GIF).unwrap();
-        std::fs::write(fr_other_dir.join("own.gif"), TINY_GIF).unwrap();
+        if let Some(fr_other_dir) = &fr_other_dir {
+            std::fs::write(fr_other_dir.join("own.gif"), TINY_GIF).unwrap();
+        }
 
         let case = |name, locale, src: &str, expected_src: &str, expected_size| Case {
             name,
@@ -479,9 +488,10 @@ mod tests {
         ];
 
         for case in cases {
-            let (dir, url) = match case.locale {
-                Locale::EnUs => (&en_page_dir, format!("/en-US/docs/Web/{slug}/Api/Child")),
-                _ => (&fr_page_dir, format!("/fr/docs/Web/{slug}/Api/Child")),
+            let (dir, url) = match (case.locale, &fr_page_dir) {
+                (Locale::EnUs, _) => (&en_page_dir, format!("/en-US/docs/Web/{slug}/Api/Child")),
+                (_, Some(fr_page_dir)) => (fr_page_dir, format!("/fr/docs/Web/{slug}/Api/Child")),
+                (_, None) => continue,
             };
             let page = TestPage {
                 path: dir.join("index.md"),
