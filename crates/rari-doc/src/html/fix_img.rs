@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use lol_html::HandlerResult;
 use lol_html::html_content::Element;
@@ -18,16 +18,25 @@ type ImgSize = (Option<String>, Option<String>);
 /// Maps an absolute `/<locale>/docs/<slug>/<file>` src to its file under the
 /// locale's content root, optionally overriding the locale.
 ///
-/// Returns `None` for paths without a locale or outside `/docs/`.
+/// Returns `None` if the tail would leave the root (e.g. `..` or empty segments).
 fn absolute_src_path(src: &str, locale_override: Option<Locale>) -> Option<PathBuf> {
     let (locale, rest) = strip_locale_from_url(src);
     let tail = rest.strip_prefix("/docs/")?;
     let locale = locale_override.unwrap_or(locale?);
+    // Only the slug is mapped; the filename is kept raw like in relative srcs.
+    let (dir, file) = tail.rsplit_once('/').unwrap_or(("", tail));
+    let relative = url_to_folder_path(dir).join(file);
+    if !relative
+        .components()
+        .all(|c| matches!(c, Component::Normal(_)))
+    {
+        return None;
+    }
     Some(
         root_for_locale(locale)
             .ok()?
             .join(locale.as_folder_str())
-            .join(url_to_folder_path(tail)),
+            .join(relative),
     )
 }
 
@@ -55,8 +64,8 @@ pub fn handle_img(
             let decoded_src = percent_decode_str(&src).decode_utf8()?;
             // Absolute srcs are resolved from the normalised URL path (no query,
             // fragment or dot segments), matching the emitted `src`.
-            let absolute_path = src
-                .starts_with('/')
+            let trimmed = src.trim();
+            let absolute_path = (trimmed.starts_with(['/', '\\']) || Url::parse(trimmed).is_ok())
                 .then(|| {
                     percent_decode_str(url.path())
                         .decode_utf8()
@@ -117,7 +126,7 @@ pub fn handle_img(
             if el.get_attribute("width").is_some() {
                 return Ok(());
             }
-            let (width, height) = img_size(el, &src, &file, data_issues)?;
+            let (width, height) = img_size(el, &final_url_path, &file, data_issues)?;
             if let Some(width) = width {
                 el.set_attribute("width", &width)?;
             }
@@ -215,7 +224,7 @@ mod tests {
     use rari_types::locale::Locale;
     use url::Url;
 
-    use super::handle_img;
+    use super::{absolute_src_path, handle_img};
     use crate::test_utils::TestPage;
 
     // Minimal GIF recognised by imagesize: the format detector reads a 12-byte
@@ -361,6 +370,27 @@ mod tests {
                 Some(("1", "1")),
             ),
             case(
+                "absolute src with query string",
+                Locale::EnUs,
+                "/en-US/docs/Web/{s}/Other/tree.svg?v=2",
+                "/en-us/docs/web/{f}/other/tree.svg",
+                Some(("20", "10")),
+            ),
+            case(
+                "absolute src with backslashes and leading space",
+                Locale::EnUs,
+                " \\en-US\\docs\\Web\\{s}\\Other\\tree.svg",
+                "/en-us/docs/web/{f}/other/tree.svg",
+                Some(("20", "10")),
+            ),
+            case(
+                "absolute src with encoded parent segments",
+                Locale::EnUs,
+                "/en-US/docs/Web/{s}/..%2f..%2f..%2f..%2f..%2f..%2fetc/x.png",
+                "/en-us/docs/web/{f}/..%2f..%2f..%2f..%2f..%2f..%2fetc/x.png",
+                None,
+            ),
+            case(
                 "absolute src with dot segments",
                 Locale::EnUs,
                 "/en-US/docs/Web/{s}/Api/../Other/tree.svg",
@@ -448,6 +478,49 @@ mod tests {
                     case.name
                 ),
             }
+        }
+    }
+
+    #[test]
+    fn test_absolute_src_path_stays_in_root() {
+        struct Case {
+            name: &'static str,
+            src: &'static str,
+            expected: Option<&'static str>,
+        }
+
+        let cases = vec![
+            Case {
+                name: "plain doc asset",
+                src: "/en-us/docs/web/api/x.png",
+                expected: Some("en-us/web/api/x.png"),
+            },
+            Case {
+                name: "decoded parent segments",
+                src: "/en-us/docs/web/../../../etc/x.png",
+                expected: None,
+            },
+            Case {
+                name: "empty segment",
+                src: "/en-us/docs//etc/x.png",
+                expected: None,
+            },
+            Case {
+                name: "missing locale",
+                src: "/docs/web/x.png",
+                expected: None,
+            },
+            Case {
+                name: "filename is not mapped",
+                src: "/en-us/docs/web/a:b.png",
+                expected: Some("en-us/web/a:b.png"),
+            },
+        ];
+
+        for case in cases {
+            let actual = absolute_src_path(case.src, None);
+            let expected = case.expected.map(|p| content_root().join(p));
+            assert_eq!(actual, expected, "{}", case.name);
         }
     }
 }
