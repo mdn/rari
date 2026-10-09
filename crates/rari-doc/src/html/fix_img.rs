@@ -1,17 +1,35 @@
 use std::error::Error;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use lol_html::HandlerResult;
 use lol_html::html_content::Element;
 use percent_encoding::percent_decode_str;
-use rari_types::locale::default_locale;
+use rari_types::locale::{Locale, default_locale};
 use tracing::warn;
 use url::{ParseOptions, Url};
 
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
+use crate::resolve::{strip_locale_from_url, url_to_folder_path};
+use crate::utils::root_for_locale;
 
 type ImgSize = (Option<String>, Option<String>);
+
+/// Maps an absolute `/<locale>/docs/<slug>/<file>` src to its file under the
+/// locale's content root, optionally overriding the locale.
+///
+/// Returns `None` for paths without a locale or outside `/docs/`.
+fn absolute_src_path(src: &str, locale_override: Option<Locale>) -> Option<PathBuf> {
+    let (locale, rest) = strip_locale_from_url(src);
+    let tail = rest.strip_prefix("/docs/")?;
+    let locale = locale_override.unwrap_or(locale?);
+    Some(
+        root_for_locale(locale)
+            .ok()?
+            .join(locale.as_folder_str())
+            .join(url_to_folder_path(tail)),
+    )
+}
 
 pub fn handle_img(
     el: &mut Element,
@@ -35,34 +53,61 @@ pub fn handle_img(
             // The src may be percent-encoded (comrak encodes non-ASCII characters
             // in URLs), so decode it before constructing the filesystem path.
             let decoded_src = percent_decode_str(&src).decode_utf8()?;
-            let mut file = page
-                .full_path()
-                .parent()
-                .unwrap()
-                .join(decoded_src.as_ref());
+            // Absolute srcs are resolved from the normalised URL path (no query,
+            // fragment or dot segments), matching the emitted `src`.
+            let absolute_path = src
+                .starts_with('/')
+                .then(|| {
+                    percent_decode_str(url.path())
+                        .decode_utf8()
+                        .map(|p| p.into_owned())
+                })
+                .transpose()?;
+            let mut file = absolute_path
+                .as_deref()
+                .and_then(|p| absolute_src_path(p, None))
+                .unwrap_or_else(|| {
+                    page.full_path()
+                        .parent()
+                        .unwrap()
+                        .join(decoded_src.as_ref())
+                });
             let mut final_url_path = url.path().to_string();
 
             // If file doesn't exist in translated locale, try en-US fallback
-            if !file.try_exists().unwrap_or_default()
-                && page.locale() != default_locale()
-                && let Ok(en_us_page) =
+            if !file.try_exists().unwrap_or_default() && page.locale() != default_locale() {
+                if let Some(en_us_file) = absolute_path
+                    .as_deref()
+                    .and_then(|p| absolute_src_path(p, Some(default_locale())))
+                {
+                    if en_us_file.try_exists().unwrap_or_default() {
+                        // Rewrite URL to point to en-US asset
+                        final_url_path = format!(
+                            "/{}{}",
+                            default_locale().as_url_str(),
+                            strip_locale_from_url(url.path()).1
+                        );
+                        file = en_us_file;
+                    }
+                } else if let Ok(en_us_page) =
                     Page::from_url_with_locale_and_fallback(page.url(), default_locale())
-            {
-                let en_us_file = en_us_page
-                    .full_path()
-                    .parent()
-                    .unwrap()
-                    .join(decoded_src.as_ref());
-                if en_us_file.try_exists().unwrap_or_default() {
-                    // Rewrite URL to point to en-US asset
-                    let en_us_url = en_us_page.url();
-                    final_url_path = format!(
-                        "{}{}{}",
-                        en_us_url,
-                        if en_us_url.ends_with('/') { "" } else { "/" },
-                        src
-                    );
-                    file = en_us_file;
+                {
+                    let en_us_file = en_us_page
+                        .full_path()
+                        .parent()
+                        .unwrap()
+                        .join(decoded_src.as_ref());
+                    if en_us_file.try_exists().unwrap_or_default() {
+                        // Rewrite URL to point to en-US asset
+                        let en_us_url = en_us_page.url();
+                        final_url_path = format!(
+                            "{}{}{}",
+                            en_us_url,
+                            if en_us_url.ends_with('/') { "" } else { "/" },
+                            src
+                        );
+                        file = en_us_file;
+                    }
                 }
             }
 
@@ -163,7 +208,11 @@ pub fn img_size(
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use lol_html::{RewriteStrSettings, element, rewrite_str};
+    use rari_types::globals::{content_root, content_translated_root};
+    use rari_types::locale::Locale;
     use url::Url;
 
     use super::handle_img;
@@ -219,5 +268,186 @@ mod tests {
             output.contains("height=\"1\""),
             "expected height attribute; got: {output}"
         );
+    }
+
+    // 20x10 viewBox-only SVG.
+    const TINY_SVG: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10"></svg>"#;
+
+    /// Removes the fixture folders from the shared test content roots on drop.
+    struct Fixtures(Vec<PathBuf>);
+
+    impl Drop for Fixtures {
+        fn drop(&mut self) {
+            for dir in &self.0 {
+                let _ = std::fs::remove_dir_all(dir);
+            }
+        }
+    }
+
+    #[test]
+    fn test_src_resolution() {
+        struct Case {
+            name: &'static str,
+            locale: Locale,
+            src: String,
+            expected_src: String,
+            expected_size: Option<(&'static str, &'static str)>,
+        }
+
+        // Unique per run, so stale fixtures from an aborted run can't interfere.
+        let slug = format!("FixImgTest{}", std::process::id());
+        let folder = slug.to_lowercase();
+        let en_dir = content_root().join("en-us/web").join(&folder);
+        let fr_dir = content_translated_root()
+            .expect("translated root configured")
+            .join("fr/web")
+            .join(&folder);
+        assert!(!en_dir.exists() && !fr_dir.exists(), "stale fixtures");
+        let _cleanup = Fixtures(vec![en_dir.clone(), fr_dir.clone()]);
+
+        let en_page_dir = en_dir.join("api/child");
+        let en_other_dir = en_dir.join("other");
+        let fr_page_dir = fr_dir.join("api/child");
+        let fr_other_dir = fr_dir.join("other");
+        for dir in [&en_page_dir, &en_other_dir, &fr_page_dir, &fr_other_dir] {
+            std::fs::create_dir_all(dir).unwrap();
+        }
+        // The en-US page is needed for the relative-src fallback of translated pages.
+        std::fs::write(
+            en_page_dir.join("index.md"),
+            format!("---\ntitle: Child\nslug: Web/{slug}/Api/Child\n---\n"),
+        )
+        .unwrap();
+        std::fs::write(en_page_dir.join("local.gif"), TINY_GIF).unwrap();
+        std::fs::write(en_other_dir.join("tree.svg"), TINY_SVG).unwrap();
+        std::fs::write(en_other_dir.join("mixed.gif"), TINY_GIF).unwrap();
+        std::fs::write(en_other_dir.join("bézier.gif"), TINY_GIF).unwrap();
+        std::fs::write(fr_other_dir.join("own.gif"), TINY_GIF).unwrap();
+
+        let case = |name, locale, src: &str, expected_src: &str, expected_size| Case {
+            name,
+            locale,
+            src: src.replace("{s}", &slug),
+            expected_src: expected_src.replace("{s}", &slug).replace("{f}", &folder),
+            expected_size,
+        };
+        let cases = vec![
+            case(
+                "relative src",
+                Locale::EnUs,
+                "local.gif",
+                "/en-US/docs/Web/{s}/Api/Child/local.gif",
+                Some(("1", "1")),
+            ),
+            case(
+                "absolute src to asset outside the page folder",
+                Locale::EnUs,
+                "/en-US/docs/Web/{s}/Other/tree.svg",
+                "/en-us/docs/web/{f}/other/tree.svg",
+                Some(("20", "10")),
+            ),
+            case(
+                "absolute src with mixed-case URL",
+                Locale::EnUs,
+                "/en-US/docs/Web/{s}/Other/Mixed.GIF",
+                "/en-us/docs/web/{f}/other/mixed.gif",
+                Some(("1", "1")),
+            ),
+            case(
+                "percent-encoded absolute src",
+                Locale::EnUs,
+                "/en-US/docs/Web/{s}/Other/b%C3%A9zier.gif",
+                "/en-us/docs/web/{f}/other/b%c3%a9zier.gif",
+                Some(("1", "1")),
+            ),
+            case(
+                "absolute src with dot segments",
+                Locale::EnUs,
+                "/en-US/docs/Web/{s}/Api/../Other/tree.svg",
+                "/en-us/docs/web/{f}/other/tree.svg",
+                Some(("20", "10")),
+            ),
+            case(
+                "translated page, absolute src found in translation",
+                Locale::Fr,
+                "/fr/docs/Web/{s}/Other/own.gif",
+                "/fr/docs/web/{f}/other/own.gif",
+                Some(("1", "1")),
+            ),
+            case(
+                "translated page, explicit en-US absolute src",
+                Locale::Fr,
+                "/en-US/docs/Web/{s}/Other/tree.svg",
+                "/en-us/docs/web/{f}/other/tree.svg",
+                Some(("20", "10")),
+            ),
+            case(
+                "translated page, absolute src falls back to en-US",
+                Locale::Fr,
+                "/fr/docs/Web/{s}/Other/tree.svg",
+                "/en-US/docs/web/{f}/other/tree.svg",
+                Some(("20", "10")),
+            ),
+            case(
+                "translated page, relative src falls back to en-US",
+                Locale::Fr,
+                "local.gif",
+                "/en-US/docs/Web/{s}/Api/Child/local.gif",
+                Some(("1", "1")),
+            ),
+            case(
+                "translated page, absolute src missing in both locales",
+                Locale::Fr,
+                "/fr/docs/Web/{s}/Other/missing.gif",
+                "/fr/docs/web/{f}/other/missing.gif",
+                None,
+            ),
+            case(
+                "missing file leaves dimensions unset",
+                Locale::EnUs,
+                "/en-US/docs/Web/{s}/Other/missing.gif",
+                "/en-us/docs/web/{f}/other/missing.gif",
+                None,
+            ),
+            case(
+                "absolute non-doc path leaves dimensions unset",
+                Locale::EnUs,
+                "/en-US/blog/missing.gif",
+                "/en-us/blog/missing.gif",
+                None,
+            ),
+        ];
+
+        for case in cases {
+            let (dir, url) = match case.locale {
+                Locale::EnUs => (&en_page_dir, format!("/en-US/docs/Web/{slug}/Api/Child")),
+                _ => (&fr_page_dir, format!("/fr/docs/Web/{slug}/Api/Child")),
+            };
+            let page = TestPage {
+                path: dir.join("index.md"),
+                url,
+                locale: case.locale,
+            };
+            let output = rewrite_img(&format!(r#"<img src="{}">"#, case.src), &page);
+            let src_attr = format!("src=\"{}\"", case.expected_src);
+            assert!(
+                output.contains(&src_attr),
+                "{}: expected {src_attr}; got: {output}",
+                case.name
+            );
+            match case.expected_size {
+                Some((w, h)) => assert!(
+                    output.contains(&format!("width=\"{w}\""))
+                        && output.contains(&format!("height=\"{h}\"")),
+                    "{}: expected {w}x{h}; got: {output}",
+                    case.name
+                ),
+                None => assert!(
+                    !output.contains("width=") && !output.contains("height="),
+                    "{}: expected no dimensions; got: {output}",
+                    case.name
+                ),
+            }
+        }
     }
 }
