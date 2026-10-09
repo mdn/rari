@@ -19,7 +19,8 @@ type ImgSize = (Option<String>, Option<String>);
 /// locale's content root, optionally overriding the locale.
 ///
 /// Returns `None` for non-doc URLs, if the locale's content root is not
-/// configured, or if the tail would leave the root (e.g. `..` or empty segments).
+/// configured, or if the tail is not a plain relative path (`..`, `.` or a
+/// leading `/`, which would leave the root).
 fn absolute_src_path(src: &str, locale_override: Option<Locale>) -> Option<PathBuf> {
     let (locale, rest) = strip_locale_from_url(src);
     let tail = rest.strip_prefix("/docs/")?;
