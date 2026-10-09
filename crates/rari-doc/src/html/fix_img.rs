@@ -72,50 +72,58 @@ pub fn handle_img(
                         .map(|p| p.into_owned())
                 })
                 .transpose()?;
-            let mut file = absolute_path
-                .as_deref()
-                .and_then(|p| absolute_src_path(p, None))
-                .unwrap_or_else(|| {
+            // Absolute srcs never fall back to the page folder: `Path::join`
+            // would discard the base and probe the literal filesystem path.
+            let mut file = match absolute_path.as_deref() {
+                Some(p) => absolute_src_path(p, None),
+                None => Some(
                     page.full_path()
                         .parent()
                         .unwrap()
-                        .join(decoded_src.as_ref())
-                });
+                        .join(decoded_src.as_ref()),
+                ),
+            };
             let mut final_url_path = url.path().to_string();
 
+            let exists = |file: &Path| file.try_exists().unwrap_or_default();
+
             // If file doesn't exist in translated locale, try en-US fallback
-            if !file.try_exists().unwrap_or_default() && page.locale() != default_locale() {
-                if let Some(en_us_file) = absolute_path
-                    .as_deref()
-                    .and_then(|p| absolute_src_path(p, Some(default_locale())))
-                {
-                    if en_us_file.try_exists().unwrap_or_default() {
-                        // Rewrite URL to point to en-US asset
-                        final_url_path = format!(
-                            "/{}{}",
-                            default_locale().as_url_str(),
-                            strip_locale_from_url(url.path()).1
-                        );
-                        file = en_us_file;
+            if !file.as_deref().is_some_and(exists) && page.locale() != default_locale() {
+                match absolute_path.as_deref() {
+                    Some(p) => {
+                        if let Some(en_us_file) = absolute_src_path(p, Some(default_locale()))
+                            && exists(&en_us_file)
+                        {
+                            // Rewrite URL to point to en-US asset
+                            final_url_path = format!(
+                                "/{}{}",
+                                default_locale().as_url_str(),
+                                strip_locale_from_url(url.path()).1
+                            );
+                            file = Some(en_us_file);
+                        }
                     }
-                } else if let Ok(en_us_page) =
-                    Page::from_url_with_locale_and_fallback(page.url(), default_locale())
-                {
-                    let en_us_file = en_us_page
-                        .full_path()
-                        .parent()
-                        .unwrap()
-                        .join(decoded_src.as_ref());
-                    if en_us_file.try_exists().unwrap_or_default() {
-                        // Rewrite URL to point to en-US asset
-                        let en_us_url = en_us_page.url();
-                        final_url_path = format!(
-                            "{}{}{}",
-                            en_us_url,
-                            if en_us_url.ends_with('/') { "" } else { "/" },
-                            src
-                        );
-                        file = en_us_file;
+                    None => {
+                        if let Ok(en_us_page) =
+                            Page::from_url_with_locale_and_fallback(page.url(), default_locale())
+                        {
+                            let en_us_file = en_us_page
+                                .full_path()
+                                .parent()
+                                .unwrap()
+                                .join(decoded_src.as_ref());
+                            if exists(&en_us_file) {
+                                // Rewrite URL to point to en-US asset
+                                let en_us_url = en_us_page.url();
+                                final_url_path = format!(
+                                    "{}{}{}",
+                                    en_us_url,
+                                    if en_us_url.ends_with('/') { "" } else { "/" },
+                                    src
+                                );
+                                file = Some(en_us_file);
+                            }
+                        }
                     }
                 }
             }
@@ -126,6 +134,18 @@ pub fn handle_img(
             if el.get_attribute("width").is_some() {
                 return Ok(());
             }
+            let Some(file) = file else {
+                let ic = get_issue_counter();
+                warn!(
+                    source = "image-check",
+                    ic = ic,
+                    "Cannot resolve {final_url_path}"
+                );
+                if data_issues {
+                    el.set_attribute("data-flaw", &ic.to_string())?;
+                }
+                return Ok(());
+            };
             let (width, height) = img_size(el, &final_url_path, &file, data_issues)?;
             if let Some(width) = width {
                 el.set_attribute("width", &width)?;
@@ -244,7 +264,7 @@ mod tests {
         rewrite_str(
             html,
             RewriteStrSettings::new().append_element_content_handler(element!("img[src]", |el| {
-                handle_img(el, page, false, &base, &base_url)
+                handle_img(el, page, true, &base, &base_url)
             })),
         )
         .unwrap()
@@ -468,13 +488,16 @@ mod tests {
             match case.expected_size {
                 Some((w, h)) => assert!(
                     output.contains(&format!("width=\"{w}\""))
-                        && output.contains(&format!("height=\"{h}\"")),
-                    "{}: expected {w}x{h}; got: {output}",
+                        && output.contains(&format!("height=\"{h}\""))
+                        && !output.contains("data-flaw="),
+                    "{}: expected {w}x{h} without flaw; got: {output}",
                     case.name
                 ),
                 None => assert!(
-                    !output.contains("width=") && !output.contains("height="),
-                    "{}: expected no dimensions; got: {output}",
+                    !output.contains("width=")
+                        && !output.contains("height=")
+                        && output.contains("data-flaw="),
+                    "{}: expected no dimensions and a flaw; got: {output}",
                     case.name
                 ),
             }
