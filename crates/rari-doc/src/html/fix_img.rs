@@ -22,6 +22,7 @@ type ImgSize = (Option<String>, Option<String>);
 fn absolute_src_path(src: &str, locale_override: Option<Locale>) -> Option<PathBuf> {
     let (locale, rest) = strip_locale_from_url(src);
     let tail = rest.strip_prefix("/docs/")?;
+    // A src without a locale is not a doc URL, even with an override.
     let locale = locale_override.unwrap_or(locale?);
     // Only the slug is mapped; the filename is kept raw like in relative srcs.
     let (dir, file) = tail.rsplit_once('/').unwrap_or(("", tail));
@@ -545,5 +546,11 @@ mod tests {
             let expected = case.expected.map(|p| content_root().join(p));
             assert_eq!(actual, expected, "{}", case.name);
         }
+
+        assert_eq!(
+            absolute_src_path("/docs/web/x.png", Some(Locale::EnUs)),
+            None,
+            "locale override does not apply to non-doc URLs"
+        );
     }
 }
