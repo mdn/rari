@@ -67,7 +67,8 @@ pub fn handle_img(
             let decoded_src = percent_decode_str(&src).decode_utf8()?;
             // Absolute srcs are resolved from the normalised URL path (no query,
             // fragment or dot segments), matching the emitted `src`.
-            let trimmed = src.trim();
+            // Mirror the URL parser: `\` counts as `/` and leading whitespace is ignored.
+            let trimmed = src.trim_start();
             let absolute_path = (trimmed.starts_with(['/', '\\']) || Url::parse(trimmed).is_ok())
                 .then(|| {
                     percent_decode_str(url.path())
