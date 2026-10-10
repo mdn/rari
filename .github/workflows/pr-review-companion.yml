@@ -1,89 +1,118 @@
 name: PR Review Companion
 
 on:
+  # Builds the review site for every PR, and deploys it for same-repo PRs.
   workflow_call:
     inputs:
       rari-binary-artifact-id:
-        description: "ID of rari binary artifact (optional)"
+        description: "ID of rari binary artifact"
         type: string
-        default: ""
+        required: true
+  # Deploys the review site for fork and Dependabot PRs, whose Test runs lack secrets.
+  workflow_run:
+    workflows: ["Test"]
+    types: [completed]
 
-permissions:
-  contents: read
-  # Authenticate with GCP (same as _deploy.yml).
-  id-token: write
-  # Post comment in pull request.
-  pull-requests: write
+permissions: {}
 
 jobs:
-  build-binary:
-    if: |
-      inputs.rari-binary-artifact-id == '' &&
-      github.repository_owner == 'mdn' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.secret_source == 'Actions'
-    runs-on: ubuntu-latest
-
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
-
-    outputs:
-      artifact-id: ${{ steps.upload.outputs.artifact-id }}
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: dtolnay/rust-toolchain@1a3a6d54512beeaffd394f8d516ca16f2c506a20 # 1.97
-
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-
-      - name: Build rari
-        run: cargo build --locked --release
-
-      - name: Upload binary
-        id: upload
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: rari-binary-pr${{ github.event.pull_request.number }}
-          path: target/release/rari
-          retention-days: 1
-
   build:
-    if: |
-      always() &&
-      (needs.build-binary.result == 'success' || needs.build-binary.result == 'skipped') &&
-      github.repository_owner == 'mdn' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.secret_source == 'Actions'
-    needs: build-binary
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
     uses: ./.github/workflows/_build.yml
     secrets: inherit
     with:
       partial: true
-      rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id || needs.build-binary.outputs.artifact-id }}
+      rari-binary-artifact-id: ${{ inputs.rari-binary-artifact-id }}
+
+  identify-pr:
+    # Fork and Dependabot PRs only; same-repo PRs deploy inline from Test (see deploy).
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.repository_owner == 'mdn' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      (
+        github.event.workflow_run.head_repository.full_name != github.repository ||
+        github.event.workflow_run.actor.login == 'dependabot[bot]'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pull-requests: read
+    outputs:
+      number: ${{ steps.identify-pr.outputs.number }}
+    steps:
+      - name: Identify PR
+        id: identify-pr
+        env:
+          BASE_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          # Upload is the review build's last step, so this ignores failures in other Test jobs.
+          # Must match the artifact name in _build.yml.
+          ARTIFACTS=$(gh api "repos/$BASE_REPO/actions/runs/$RUN_ID/artifacts?name=build-output" \
+            --jq '[.artifacts[] | select(.expired | not)] | length')
+          if (( ARTIFACTS == 0 )); then
+            echo "::notice::Run $RUN_ID has no build-output artifact; nothing to do."
+            exit 0
+          fi
+
+          # Fork PRs control the artifact, so trust only the event payload and the API.
+          # Query the head repo: for fork PRs, the base repo returns no PRs for the commit.
+          # Filter on head repo and SHA: the endpoint also lists PRs that merely contain the commit.
+          PR_NUMBER=$(gh api "repos/$HEAD_REPO/commits/$HEAD_SHA/pulls" \
+            --jq 'first(.[] | select(
+              .base.repo.full_name == env.BASE_REPO and
+              .head.repo.full_name == env.HEAD_REPO and
+              .head.sha == env.HEAD_SHA and
+              .state == "open"
+            ) | .number)')
+          if [[ -z "$PR_NUMBER" ]]; then
+            echo "::notice::No open PR with head $HEAD_SHA; nothing to do."
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
   deploy:
-    if: always() && needs.build.result == 'success'
-    needs: build
+    needs: [build, identify-pr]
+    # Same-repo PRs deploy inline; the complementary predicate in identify-pr routes the rest via workflow_run.
+    if: |
+      !cancelled() &&
+      (
+        (
+          github.event_name == 'pull_request' &&
+          github.repository_owner == 'mdn' &&
+          github.secret_source == 'Actions' &&
+          needs.build.result == 'success' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        ) ||
+        needs.identify-pr.outputs.number != ''
+      )
+    permissions:
+      contents: read
+      id-token: write
+      actions: read
     uses: ./.github/workflows/_deploy.yml
     secrets: inherit
     with:
       cancel-in-progress: true
-      prefix: rari-pr${{ github.event.pull_request.number }}
-      build-artifact-name: ${{ needs.build.outputs.artifact-name }}
+      prefix: rari-pr${{ github.event.pull_request.number || needs.identify-pr.outputs.number }}
+      build-artifact-name: build-output
+      build-workflow-run-id: ${{ github.event.workflow_run.id || 0 }}
 
   comment:
-    if: always() && needs.deploy.result == 'success'
-    needs: deploy
+    needs: [identify-pr, deploy]
+    if: "!cancelled() && needs.deploy.outputs.url != ''"
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - name: Comment in PR
         run: |
-          COMMENT_ID=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json comments \
+          COMMENT_ID=$(gh pr view "$PR_NUMBER" --repo "$GH_REPO" --json comments \
             --jq ".comments | sort_by(.createdAt) | map(select(.author.login == \"github-actions\" and (.body | contains(\"<!-- rari-build-diff -->\") | not))) | .[0].id")
           if [ -n "$COMMENT_ID" ]; then
             gh api graphql -f query='
@@ -95,9 +124,10 @@ jobs:
                   }
                 }' -f id="$COMMENT_ID" -f body="$BODY"
           else
-            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$BODY"
+            gh pr comment "$PR_NUMBER" --repo "$GH_REPO" --body "$BODY"
           fi
         env:
-          BODY: "${{ github.sha }} was deployed to: ${{ needs.deploy.outputs.url }}"
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BODY: "${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }} was deployed to: ${{ needs.deploy.outputs.url }}"
+          PR_NUMBER: ${{ github.event.pull_request.number || needs.identify-pr.outputs.number }}
+          GH_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
