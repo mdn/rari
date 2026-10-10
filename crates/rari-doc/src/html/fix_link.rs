@@ -6,6 +6,7 @@ use rari_types::fm_types::PageType;
 use rari_types::locale::{Locale, default_locale};
 use rari_utils::concat_strs;
 
+use crate::broken_link_exceptions::is_exception;
 use crate::helpers::l10n::l10n_json_data;
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
@@ -111,27 +112,29 @@ pub fn handle_internal_link(
         false
     };
 
-    let remove_href =
-        if !Page::exists_with_fallback(resolved_href_no_hash) && !Page::ignore_link_check(href) {
-            tracing::debug!("{resolved_href_no_hash} {href}");
-            let class = el.get_attribute("class").unwrap_or_default();
-            el.set_attribute(
-                "class",
-                &concat_strs!(
-                    &class,
-                    if class.is_empty() { "" } else { " " },
-                    "page-not-created"
-                ),
-            )?;
-            if let Some(href) = el.get_attribute("href") {
-                el.set_attribute("data-href", &href)?;
-            }
-            el.remove_attribute("href");
-            el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
-            true
-        } else {
-            false
-        };
+    let remove_href = if !Page::exists_with_fallback(resolved_href_no_hash)
+        && !Page::ignore_link_check(href)
+        && !is_exception(resolved_href_no_hash)
+    {
+        tracing::debug!("{resolved_href_no_hash} {href}");
+        let class = el.get_attribute("class").unwrap_or_default();
+        el.set_attribute(
+            "class",
+            &concat_strs!(
+                &class,
+                if class.is_empty() { "" } else { " " },
+                "page-not-created"
+            ),
+        )?;
+        if let Some(href) = el.get_attribute("href") {
+            el.set_attribute("data-href", &href)?;
+        }
+        el.remove_attribute("href");
+        el.set_attribute("title", l10n_json_data("Common", "summary", page.locale())?)?;
+        true
+    } else {
+        false
+    };
 
     if !remove_href && en_us_fallback {
         let class = el.get_attribute("class").unwrap_or_default();
