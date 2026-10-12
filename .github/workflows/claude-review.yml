@@ -105,10 +105,11 @@ jobs:
             --name-only \
             > review-input/files.txt
 
-      # Review the collected files. The prompt and the restricted tool list
-      # below keep Claude read-only - it inspects the data and posts comments,
-      # but does not apply the diff or execute any repository code.
+      # Review the collected files. The restricted tool list keeps Claude
+      # read-only: it posts inline comments and returns an overall review body
+      # (submitted by the next step), but never applies the diff or runs code.
       - name: Claude code review
+        id: review
         uses: anthropics/claude-code-action@8ce9314fa9a404564fa7e954cd84f25bcba2b829 # v1.0.236
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -148,8 +149,8 @@ jobs:
             Use the local base-branch checkout only to inspect surrounding trusted context when needed.
 
             Use `mcp__github_inline_comment__create_inline_comment` with `confirmed: true` for specific changed-line issues.
-            Use `gh pr comment` only when the issue is not tied to a specific changed line.
-            Only post GitHub comments - don't submit review text as messages.
+            Always finish by returning the structured output object. Put non-inline findings in its `review_body` field, and return an empty `review_body` when there are no general findings.
+            Only post inline GitHub comments and return the structured output; don't submit review text as messages.
 
             When creating inline comments:
             - Comment only on lines present in review-input/diff.patch.
@@ -187,7 +188,7 @@ jobs:
 
             ## Attribution
 
-            End every comment you post with this exact footer on its own line:
+            End every inline comment and nonempty `review_body` with this exact footer on its own line:
             `> AI-generated review by [Claude](https://claude.ai)`
 
             ## What NOT to Include
@@ -200,5 +201,18 @@ jobs:
             - Suggest problems based on assumptions without verifying the context
             - Flag style preferences without clear coding standard violations
 
-          # Restrict tools to commenting and read-only inspection - no code execution.
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Read,Grep,Glob"'
+          # Restrict tools to inline commenting and read-only inspection - no code execution.
+          claude_args: >-
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Read,Grep,Glob"
+            --json-schema '{"type":"object","properties":{"review_body":{"type":"string","description":"Non-inline review feedback; empty when there are no general findings"}},"required":["review_body"],"additionalProperties":false}'
+
+      - name: Submit overall review
+        if: fromJSON(steps.review.outputs.structured_output).review_body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEW_OUTPUT: ${{ steps.review.outputs.structured_output }}
+        run: |
+          jq -r '.review_body' <<< "$REVIEW_OUTPUT" \
+            | gh pr review "$PR_NUMBER" --repo "$REPO" --comment --body-file -
