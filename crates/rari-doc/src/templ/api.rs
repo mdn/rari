@@ -83,8 +83,7 @@ impl RariApi {
                 && !matches!(warn, LinkWarn::No)
                 && Page::is_category_available(*category)
             {
-                let ic = get_issue_counter();
-                tracing::warn!(source = "templ-broken-link", ic = ic, url = url);
+                super::broken_links::report_broken_link(url);
             }
         })
     }

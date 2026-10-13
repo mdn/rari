@@ -20,6 +20,7 @@ pub struct MacroToken {
     pub end_pos: (usize, usize),
     pub args: Vec<Option<Arg>>,
     pub malformed: bool,
+    pub allow_broken_links: bool,
 }
 
 fn from_node<'a>(
@@ -56,6 +57,7 @@ fn from_node<'a>(
         ident,
         args,
         malformed: value.has_error(),
+        allow_broken_links: content.as_bytes().get(ident_node.end_byte()) == Some(&b'!'),
     })
 }
 
@@ -140,7 +142,21 @@ pub fn parse(input: &str) -> Result<Vec<Token>, DocError> {
     parser
         .set_language(&language.into())
         .expect("Error loading MDN parser");
-    let tree = parser.parse(input, None).unwrap();
+    let mut tree = parser.parse(input, None).unwrap();
+    let mut normalized = None;
+    for node in tree.root_node().children(&mut tree.walk()) {
+        if node.kind() == "macro_tag"
+            && let Some(ident) = node.named_child(0)
+            && ident.kind() == "ident"
+            && input.as_bytes().get(ident.end_byte()) == Some(&b'!')
+        {
+            // Let the existing grammar parse markers without changing source offsets.
+            normalized.get_or_insert_with(|| input.as_bytes().to_vec())[ident.end_byte()] = b' ';
+        }
+    }
+    if let Some(normalized) = normalized {
+        tree = parser.parse(&normalized, None).unwrap();
+    }
     let mut cursor = tree.walk();
     Ok(tree
         .root_node()
@@ -306,6 +322,80 @@ mod test {
             };
             assert_eq!(m.malformed, malformed, "{name}: malformed");
             assert_eq!(m.args, expected_args, "{name}: args");
+        }
+    }
+}
+
+#[cfg(test)]
+mod marker_tests {
+    use super::*;
+
+    #[test]
+    fn parses_marked_macro_names() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            marked: bool,
+            malformed: bool,
+        }
+        let cases = [
+            Case {
+                name: "marked arguments",
+                input: r#"{{domxref!("BrandNewInterface")}}"#,
+                marked: true,
+                malformed: false,
+            },
+            Case {
+                name: "marked no arguments",
+                input: "{{foo!}}",
+                marked: true,
+                malformed: false,
+            },
+            Case {
+                name: "whitespace",
+                input: r#"{{ DOMxref! ("BrandNewInterface") }}"#,
+                marked: true,
+                malformed: false,
+            },
+            Case {
+                name: "multiline",
+                input: "{{domxref!(\n  \"BrandNewInterface\")}}",
+                marked: true,
+                malformed: false,
+            },
+            Case {
+                name: "literal exclamation",
+                input: r#"{{echo("!")}}"#,
+                marked: false,
+                malformed: false,
+            },
+            Case {
+                name: "literal macro",
+                input: r#"{{echo("{{foo!(x)}}")}}"#,
+                marked: false,
+                malformed: false,
+            },
+            Case {
+                name: "double marker",
+                input: r#"{{domxref!!("Foo")}}"#,
+                marked: true,
+                malformed: true,
+            },
+            Case {
+                name: "invalid arguments",
+                input: r#"{{domxref!(("Foo")}}"#,
+                marked: true,
+                malformed: true,
+            },
+        ];
+        for case in cases {
+            let tokens = parse(case.input).unwrap();
+            let Token::Macro(mac) = &tokens[0] else {
+                panic!("{}: expected macro", case.name)
+            };
+            assert_eq!(mac.allow_broken_links, case.marked, "{}", case.name);
+            assert_eq!(mac.malformed, case.malformed, "{}", case.name);
+            assert_eq!(mac.end, case.input.len(), "{}: end", case.name);
         }
     }
 }

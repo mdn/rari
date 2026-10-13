@@ -22,18 +22,26 @@ pub fn check_and_fix_link(
         el.remove_attribute("data-templ-link");
     }
     let original_href = el.get_attribute("href").expect("href was required");
+    let href = original_href.strip_prefix('!').unwrap_or(&original_href);
+    if href != original_href {
+        el.set_attribute("href", href)?;
+    }
 
     let auto_link = el.has_attribute("data-autolink");
     if auto_link {
         el.remove_attribute("data-autolink");
     }
-    if original_href.starts_with('/') || original_href.starts_with("https://developer.mozilla.org")
-    {
+    if href.starts_with('/') || href.starts_with("https://developer.mozilla.org") {
         handle_internal_link(&original_href, el, page, data_issues, templ_link, auto_link)
-    } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
-        handle_external_link(el, page.locale())
     } else {
-        Ok(())
+        if href != original_href && !templ_link {
+            report_unnecessary_marker(el, page, &original_href, href, data_issues)?;
+        }
+        if href.starts_with("http:") || href.starts_with("https:") {
+            handle_external_link(el, page.locale())
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -65,6 +73,9 @@ pub fn handle_internal_link(
     templ_link: bool,
     auto_link: bool,
 ) -> HandlerResult {
+    let marked_href = original_href;
+    let allow_broken = original_href.starts_with('!');
+    let original_href = original_href.strip_prefix('!').unwrap_or(original_href);
     // Strip prefix for curriculum links.
     let original_href = if page.page_type() == PageType::Curriculum || auto_link {
         original_href
@@ -83,6 +94,9 @@ pub fn handle_internal_link(
     let (href_locale, _) = strip_locale_from_url(href);
     let no_locale = href_locale.is_none();
     if no_locale && Page::ignore_link_check(href_no_hash) {
+        if allow_broken && !templ_link {
+            report_unnecessary_marker(el, page, marked_href, original_href, data_issues)?;
+        }
         return Ok(());
     }
     let maybe_prefixed_href = if no_locale {
@@ -153,7 +167,10 @@ pub fn handle_internal_link(
         } else {
             resolved_href.as_ref()
         };
-        if (original_href != resolved_href || remove_href) && !en_us_fallback {
+        if allow_broken && !remove_href {
+            report_unnecessary_marker(el, page, marked_href, resolved_href, data_issues)?;
+        }
+        if !allow_broken && (original_href != resolved_href || remove_href) && !en_us_fallback {
             if let Some(pos) = el.get_attribute("data-sourcepos") {
                 if let Some((start, end)) = pos.split_once('-')
                     && let Some((line, col)) = start.split_once(':')
@@ -238,4 +255,297 @@ pub fn handle_internal_link(
         }
     }
     Ok(())
+}
+
+fn report_unnecessary_marker(
+    el: &mut Element,
+    page: &impl PageLike,
+    original_href: &str,
+    href: &str,
+    data_issues: bool,
+) -> HandlerResult {
+    let pos = el.get_attribute("data-sourcepos");
+    let mut positions = pos.as_deref().unwrap_or("").split([':', '-']);
+    let line = positions
+        .next()
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(0);
+    let col = positions
+        .next()
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(0);
+    let end_line = positions
+        .next()
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(0);
+    let end_col = positions
+        .next()
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(0);
+    let (line, col, end_line, end_col) = if let Some(destination) =
+        rari_md::link_destination_offset(page.content(), line as usize, col as usize, original_href)
+    {
+        let prefix = &page.content()[..destination];
+        let line = prefix.bytes().filter(|byte| *byte == b'\n').count() as i64 + 1;
+        let col = (prefix.len() - prefix.rfind('\n').map_or(0, |pos| pos + 1)) as i64 + 1;
+        (line, col, line, col + original_href.len() as i64 - 1)
+    } else {
+        (line, col, end_line, end_col)
+    };
+    let offset = i64::try_from(page.fm_offset()).unwrap_or(0);
+    let ic = get_issue_counter();
+    tracing::warn!(
+        source = "unnecessary-broken-link-marker",
+        ic = ic,
+        line = if line == 0 { 0 } else { line + offset },
+        col = col,
+        end_line = if end_line == 0 { 0 } else { end_line + offset },
+        end_col = end_col,
+        url = original_href,
+        redirect = href,
+    );
+    if data_issues {
+        el.set_attribute("data-flaw", &ic.to_string())?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod marker_tests {
+    use super::*;
+    use crate::issues::{DIssue, InMemoryLayer};
+    use crate::pages::types::doc::doc_from_raw;
+    use lol_html::{RewriteStrSettings, element, rewrite_str};
+    use tracing_subscriber::layer::SubscriberExt;
+
+    #[test]
+    fn validates_marked_html_and_markdown_links() {
+        crate::templ::broken_links::create_test_target();
+        let doc = doc_from_raw(
+            "---\ntitle: Test\nslug: Test\n---\n".into(),
+            rari_types::globals::content_root().join("en-us/test/index.md"),
+        )
+        .unwrap();
+        let page = Page::Doc(std::sync::Arc::new(doc));
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            source: Option<&'static str>,
+            suggestion: Option<&'static str>,
+            broken: bool,
+        }
+        let cases = [
+            Case {
+                name: "marked missing markdown",
+                input: "[new](!/en-US/docs/BrandNew)",
+                source: None,
+                suggestion: None,
+                broken: true,
+            },
+            Case {
+                name: "marked missing HTML",
+                input: r#"<a href="!/en-US/docs/BrandNew">new</a>"#,
+                source: None,
+                suggestion: None,
+                broken: true,
+            },
+            Case {
+                name: "unmarked missing",
+                input: "[new](/en-US/docs/BrandNew)",
+                source: Some("broken-link"),
+                suggestion: None,
+                broken: true,
+            },
+            Case {
+                name: "resolved",
+                input: "[target](!/en-US/docs/Glossary/Marker_test_target)",
+                source: Some("unnecessary-broken-link-marker"),
+                suggestion: Some("/en-US/docs/Glossary/Marker_test_target"),
+                broken: false,
+            },
+            Case {
+                name: "resolved raw HTML",
+                input: r#"<a href="!/en-US/docs/Glossary/Marker_test_target">target</a>"#,
+                source: Some("unnecessary-broken-link-marker"),
+                suggestion: Some("/en-US/docs/Glossary/Marker_test_target"),
+                broken: false,
+            },
+            Case {
+                name: "fragment",
+                input: "[target](!/en-US/docs/Glossary/Marker_test_target#test)",
+                source: Some("unnecessary-broken-link-marker"),
+                suggestion: Some("/en-US/docs/Glossary/Marker_test_target#test"),
+                broken: false,
+            },
+            Case {
+                name: "locale fallback",
+                input: "[target](!/fr/docs/Glossary/Marker_test_target)",
+                source: Some("unnecessary-broken-link-marker"),
+                suggestion: Some("/en-US/docs/Glossary/Marker_test_target"),
+                broken: false,
+            },
+            Case {
+                name: "unchecked route",
+                input: "[chat](!/discord)",
+                source: Some("unnecessary-broken-link-marker"),
+                suggestion: Some("/discord"),
+                broken: false,
+            },
+            Case {
+                name: "external",
+                input: "[spec](!https://example.com)",
+                source: Some("unnecessary-broken-link-marker"),
+                suggestion: Some("https://example.com"),
+                broken: false,
+            },
+            Case {
+                name: "anchor",
+                input: "[section](!#section)",
+                source: Some("unnecessary-broken-link-marker"),
+                suggestion: Some("#section"),
+                broken: false,
+            },
+        ];
+        for case in cases {
+            let layer = InMemoryLayer::default();
+            let subscriber = tracing_subscriber::registry().with(layer.clone());
+            let _guard = tracing::subscriber::set_default(subscriber);
+            let html = rari_md::m2h(case.input, Locale::EnUs).unwrap();
+            let output = rewrite_str(
+                &html,
+                RewriteStrSettings::new()
+                    .append_element_content_handler(element!("a[href]", |el| check_and_fix_link(
+                        el, &page, true
+                    ))),
+            )
+            .unwrap();
+            assert!(!output.contains("href=\"!"), "{}: {output}", case.name);
+            assert_eq!(
+                output.contains("page-not-created"),
+                case.broken,
+                "{}: {output}",
+                case.name
+            );
+            let events = layer.get_events();
+            let issues = events.get("");
+            let sources: Vec<_> = issues
+                .iter()
+                .flat_map(|issues| issues.iter())
+                .flat_map(|issue| issue.fields.iter())
+                .filter(|(key, _)| *key == "source")
+                .map(|(_, value)| value.as_str())
+                .collect();
+            assert_eq!(
+                sources,
+                case.source.into_iter().collect::<Vec<_>>(),
+                "{}",
+                case.name
+            );
+            if let Some(suggestion) = case.suggestion {
+                let issue = DIssue::from_issue(
+                    issues
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .find(|issue| {
+                            issue.fields.iter().any(|(key, value)| {
+                                *key == "source" && Some(value.as_str()) == case.source
+                            })
+                        })
+                        .unwrap()
+                        .clone(),
+                    &page,
+                )
+                .unwrap();
+                assert_eq!(
+                    issue.display_issue().suggestion.as_deref(),
+                    Some(suggestion),
+                    "{}",
+                    case.name
+                );
+                assert_eq!(issue.display_issue().fixable, Some(true), "{}", case.name);
+            }
+        }
+    }
+    #[test]
+    fn marker_flaws_point_to_reference_destinations() {
+        crate::templ::broken_links::create_test_target();
+        struct Case {
+            name: &'static str,
+            content: String,
+            definition_line: i64,
+            issues: usize,
+        }
+        let href = "!/en-US/docs/Glossary/Marker_test_target";
+        let cases = [
+            Case {
+                name: "before use",
+                content: format!("[target]: {href}\n\n[go][target]"),
+                definition_line: 1,
+                issues: 1,
+            },
+            Case {
+                name: "after use",
+                content: format!("[go][target]\n\n[target]: {href}"),
+                definition_line: 3,
+                issues: 1,
+            },
+            Case {
+                name: "multiple uses",
+                content: format!("[target]: {href}\n\n[go][target] and [again][target]"),
+                definition_line: 1,
+                issues: 2,
+            },
+        ];
+        for case in cases {
+            let doc = doc_from_raw(
+                format!("---\ntitle: Test\nslug: Test\n---\n{}", case.content),
+                rari_types::globals::content_root().join("en-us/test/index.md"),
+            )
+            .unwrap();
+            let page = Page::Doc(std::sync::Arc::new(doc));
+            let layer = InMemoryLayer::default();
+            let subscriber = tracing_subscriber::registry().with(layer.clone());
+            let _guard = tracing::subscriber::set_default(subscriber);
+            let html = rari_md::m2h(page.content(), Locale::EnUs).unwrap();
+            rewrite_str(
+                &html,
+                RewriteStrSettings::new()
+                    .append_element_content_handler(element!("a[href]", |el| check_and_fix_link(
+                        el, &page, true
+                    ))),
+            )
+            .unwrap();
+            let events = layer.get_events();
+            let issues: Vec<_> = events
+                .get("")
+                .unwrap()
+                .iter()
+                .filter(|issue| {
+                    issue.fields.iter().any(|(key, value)| {
+                        *key == "source" && value == "unnecessary-broken-link-marker"
+                    })
+                })
+                .cloned()
+                .collect();
+            assert_eq!(issues.len(), case.issues, "{}", case.name);
+            for issue in issues {
+                let issue = DIssue::from_issue(issue, &page).unwrap();
+                let display = issue.display_issue();
+                assert_eq!(
+                    display.line,
+                    Some(case.definition_line + page.fm_offset() as i64),
+                    "{}",
+                    case.name
+                );
+                assert_eq!(display.column, Some(11), "{}", case.name);
+                assert_eq!(
+                    display.end_column,
+                    Some(10 + href.len() as i64),
+                    "{}",
+                    case.name
+                );
+            }
+        }
+    }
 }
