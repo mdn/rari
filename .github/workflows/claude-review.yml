@@ -56,7 +56,8 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    # Keep subprocess secret scrubbing enabled for Claude Code.
+    # Defense in depth only: Claude has no execution tools here, and unlike the
+    # full action, base-action installs no bubblewrap sandbox for this flag.
     env:
       CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
 
