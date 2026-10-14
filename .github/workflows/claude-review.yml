@@ -100,17 +100,22 @@ jobs:
             --json number,title,body,headRefName,headRepository,baseRefName,author,headRefOid,baseRefOid \
             > review-input/pr.json
 
+          require_sha() {
+            if [ "$2" != "$3" ]; then
+              echo "::error::$1 is $2, expected $3 from the event payload"
+              exit 1
+            fi
+          }
+
           # Fetch immutable commit objects only. Use the pull ref for forks and
           # stop if the PR moved since the event was created.
-          test "$(jq -r .baseRefOid review-input/pr.json)" = "$PR_BASE_SHA"
-          test "$(jq -r .headRefOid review-input/pr.json)" = "$PR_HEAD_SHA"
+          require_sha "PR base" "$(jq -r .baseRefOid review-input/pr.json)" "$PR_BASE_SHA"
+          require_sha "PR head" "$(jq -r .headRefOid review-input/pr.json)" "$PR_HEAD_SHA"
           git fetch --no-tags --no-recurse-submodules --unshallow origin \
             "refs/heads/$PR_BASE_REF:refs/remotes/origin/claude-review-base" \
             "refs/pull/$PR_NUMBER/head:refs/remotes/origin/claude-review-head"
-          FETCHED_BASE=$(git rev-parse refs/remotes/origin/claude-review-base)
-          FETCHED_HEAD=$(git rev-parse refs/remotes/origin/claude-review-head)
-          test "$FETCHED_BASE" = "$PR_BASE_SHA"
-          test "$FETCHED_HEAD" = "$PR_HEAD_SHA"
+          require_sha "fetched base" "$(git rev-parse refs/remotes/origin/claude-review-base)" "$PR_BASE_SHA"
+          require_sha "fetched head" "$(git rev-parse refs/remotes/origin/claude-review-head)" "$PR_HEAD_SHA"
           MERGE_BASE=$(git merge-base "$PR_BASE_SHA" "$PR_HEAD_SHA")
           MAIN_SHA=$(git rev-parse HEAD)
           MAIN_MERGE_BASE=$(git merge-base "$MAIN_SHA" "$PR_BASE_SHA")
