@@ -158,7 +158,9 @@ jobs:
             End every comment and nonempty review_body with this exact footer on its own line:
             `> AI-generated review by [Claude](https://claude.ai)`
 
-            Only report issues verified by tracing the changed code. Prioritize security, functional bugs, performance, accessibility, then clear standards violations. Keep comments direct and constructive. Do not ask for confirmation, praise the change, or report testing concerns.
+            Only report issues verified by tracing the changed code, and only when you are at least 80% confident the issue is valid. Prioritize security, functional bugs, performance, accessibility, then clear standards violations.
+            State each problem definitively and name the fix with directive language such as "Fix", "Remove", "Change" or "Add". Never write "maybe", "might want to", "consider", "possibly", "could be" or "you may want to".
+            Do not ask for confirmation, praise the change, restate obvious facts, report testing concerns, flag style preferences, or point out issues the visible code already handles.
           claude_args: >-
             --allowedTools "Read,Grep,Glob"
             --json-schema '{"type":"object","properties":{"review_body":{"type":"string"},"comments":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"},"line":{"type":"integer"},"body":{"type":"string"}},"required":["path","line","body"],"additionalProperties":false}}},"required":["review_body","comments"],"additionalProperties":false}'
