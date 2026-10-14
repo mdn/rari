@@ -195,6 +195,22 @@ jobs:
             }]
           }' > review-input/review.json
 
+          if gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --method POST \
+            --input review-input/review.json; then
+            exit 0
+          fi
+
+          # GitHub rejects the whole review when any inline line is outside the
+          # diff. Keep the findings by folding the comments into the body.
+          echo "::warning::Inline comments rejected; resubmitting them in the review body."
+          jq '{
+            commit_id,
+            event,
+            body: ([.body] + [.comments[] | "**\(.path):\(.line)**\n\n\(.body)"] | map(select(. != "")) | join("\n\n---\n\n")),
+            comments: []
+          }' review-input/review.json > review-input/review-fallback.json
+
           gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
             --method POST \
-            --input review-input/review.json
+            --input review-input/review-fallback.json
