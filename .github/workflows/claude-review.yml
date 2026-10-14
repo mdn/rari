@@ -104,20 +104,20 @@ jobs:
           # stop if the PR moved since the event was created.
           test "$(jq -r .baseRefOid review-input/pr.json)" = "$PR_BASE_SHA"
           test "$(jq -r .headRefOid review-input/pr.json)" = "$PR_HEAD_SHA"
-          git fetch --no-tags --no-recurse-submodules --depth=1 origin "refs/heads/$PR_BASE_REF"
-          FETCHED_BASE=$(git rev-parse FETCH_HEAD)
+          git fetch --no-tags --no-recurse-submodules --unshallow origin \
+            "refs/heads/$PR_BASE_REF:refs/remotes/origin/claude-review-base" \
+            "refs/pull/$PR_NUMBER/head:refs/remotes/origin/claude-review-head"
+          FETCHED_BASE=$(git rev-parse refs/remotes/origin/claude-review-base)
+          FETCHED_HEAD=$(git rev-parse refs/remotes/origin/claude-review-head)
           test "$FETCHED_BASE" = "$PR_BASE_SHA"
-          git update-ref refs/remotes/origin/claude-review-base "$FETCHED_BASE"
-          git fetch --no-tags --no-recurse-submodules --depth=1 origin "refs/pull/$PR_NUMBER/head"
-          FETCHED_HEAD=$(git rev-parse FETCH_HEAD)
           test "$FETCHED_HEAD" = "$PR_HEAD_SHA"
-          git update-ref refs/remotes/origin/claude-review-head "$FETCHED_HEAD"
+          MERGE_BASE=$(git merge-base "$PR_BASE_SHA" "$PR_HEAD_SHA")
           MAIN_SHA=$(git rev-parse HEAD)
 
-          # Changes from the PR target to its head, then from target to main.
-          git diff --binary "$PR_BASE_SHA" "$PR_HEAD_SHA" > review-input/pr.diff
-          git diff --binary "$PR_BASE_SHA" "$MAIN_SHA" > review-input/target-to-main.diff
-          git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA" > review-input/files.txt
+          # Compare the PR to its merge base, then show target-to-main context.
+          git diff --no-ext-diff --no-textconv --binary "$MERGE_BASE" "$PR_HEAD_SHA" > review-input/pr.diff
+          git diff --no-ext-diff --no-textconv --binary "$PR_BASE_SHA" "$MAIN_SHA" > review-input/target-to-main.diff
+          git diff --no-ext-diff --no-textconv --name-only "$MERGE_BASE" "$PR_HEAD_SHA" > review-input/files.txt
 
       # Run the lower-level action so the PR target branch cannot replace
       # trusted config or the main checkout. Findings are returned as data.
@@ -162,9 +162,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           REVIEW_OUTPUT: ${{ steps.review.outputs.structured_output }}
         run: |
-          jq --argjson output "$REVIEW_OUTPUT" '{
+          CURRENT_REFS=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json baseRefOid,headRefOid)
+          if [ "$(jq -r .baseRefOid <<< "$CURRENT_REFS")" != "$PR_BASE_SHA" ] || \
+             [ "$(jq -r .headRefOid <<< "$CURRENT_REFS")" != "$PR_HEAD_SHA" ]; then
+            echo "PR refs changed during review; skipping stale findings."
+            exit 0
+          fi
+
+          jq -n --argjson output "$REVIEW_OUTPUT" --arg commit "$PR_HEAD_SHA" '{
+            commit_id: $commit,
             event: "COMMENT",
             body: $output.review_body,
             comments: [$output.comments[] | {
