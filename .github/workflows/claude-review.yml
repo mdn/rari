@@ -117,8 +117,8 @@ jobs:
 
           # Compare the PR to its merge base, then show what the target branch
           # adds on top of main (empty when the target is main).
-          git diff --no-ext-diff --no-textconv --binary "$MERGE_BASE" "$PR_HEAD_SHA" > review-input/pr.diff
-          git diff --no-ext-diff --no-textconv --binary "$MAIN_MERGE_BASE" "$PR_BASE_SHA" > review-input/target-branch.diff
+          git diff --no-ext-diff --no-textconv "$MERGE_BASE" "$PR_HEAD_SHA" > review-input/pr.diff
+          git diff --no-ext-diff --no-textconv "$MAIN_MERGE_BASE" "$PR_BASE_SHA" > review-input/target-branch.diff
           git diff --no-ext-diff --no-textconv --name-only "$MERGE_BASE" "$PR_HEAD_SHA" > review-input/files.txt
 
       # Run the lower-level action so the PR target branch cannot replace
