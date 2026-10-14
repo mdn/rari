@@ -142,7 +142,7 @@ jobs:
             PR HEAD SHA: ${{ github.event.pull_request.head.sha }}
             PR TARGET SHA: ${{ github.event.pull_request.base.sha }}
 
-            The working tree is trusted main. Review only these supplied patch files:
+            The working tree is trusted main. It does not contain the PR's changes; use it only to inspect surrounding context for the patches. Review these supplied patch files:
             - review-input/pr.diff: changes from the PR target to the PR head
             - review-input/target-branch.diff: changes the PR target branch adds on top of main (empty when the target is main)
             - review-input/files.txt: files changed by the PR
