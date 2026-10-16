@@ -10,3 +10,4 @@ pub mod js_ref_index;
 pub mod parser;
 pub mod render;
 pub mod templs;
+pub mod xref_index;

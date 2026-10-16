@@ -118,6 +118,23 @@ pub enum DocError {
     DocsReadError,
     #[error("No RariEnv for Page")]
     NoRariEnv,
+    #[error(transparent)]
+    XrefError(#[from] XrefError),
+}
+
+/// Represents errors that can occur while resolving `xref` names.
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum XrefError {
+    #[error("no xref page found for `{0}`")]
+    NotFound(String),
+    #[error(
+        "ambiguous xref `{name}`: matches {}; qualify with a parent slug segment",
+        candidates.join(", ")
+    )]
+    Ambiguous {
+        name: String,
+        candidates: Vec<String>,
+    },
 }
 
 /// Represents various errors that can occur while processing URLs.

@@ -9,3 +9,4 @@ pub mod rfc;
 pub mod svgattr;
 pub mod svgxref;
 pub mod webextapixref;
+pub mod xref;
