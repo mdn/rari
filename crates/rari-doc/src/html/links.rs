@@ -229,10 +229,13 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
         let Some(href) = el.get_attribute("href") else {
             return Ok(());
         };
-        if href.starts_with('/') {
-            let hash_idx = href.find('#').unwrap_or(href.len());
-            let href_no_hash = &href[..hash_idx];
-            let fragment = &href[hash_idx..];
+        let internal_href = href
+            .strip_prefix("https://developer.mozilla.org")
+            .unwrap_or(&href);
+        if internal_href.starts_with('/') {
+            let hash_idx = internal_href.find('#').unwrap_or(internal_href.len());
+            let href_no_hash = &internal_href[..hash_idx];
+            let fragment = &internal_href[hash_idx..];
             let resolved = resolve_redirect(href_no_hash);
             match resolved.as_deref() {
                 Some(redirect) if href_no_hash.eq_ignore_ascii_case(redirect) => {
@@ -257,8 +260,7 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
             }
             let target = resolved.as_deref().unwrap_or(href_no_hash);
             if !Page::ignore_link_check(target) && !Page::exists_with_fallback(target) {
-                let ic = get_issue_counter();
-                tracing::warn!(source = "templ-broken-link", ic = ic, url = href.as_str());
+                crate::templ::broken_links::report_broken_link(&href);
             }
             // Tagging with `data-templ-link` below opts this link out of
             // `fix_link`'s redirect rewrite, so do it here instead — otherwise

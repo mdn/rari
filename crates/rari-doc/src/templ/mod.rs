@@ -5,6 +5,7 @@
 
 pub mod api;
 pub mod api_name_index;
+pub(crate) mod broken_links;
 pub mod css_feature_index;
 pub mod js_ref_index;
 pub mod parser;

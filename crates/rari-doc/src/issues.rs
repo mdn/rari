@@ -295,6 +295,7 @@ pub struct DisplayIssue {
 pub enum IssueType {
     TemplRedirectedLink,
     TemplBrokenLink,
+    TemplUnnecessaryBrokenLinkMarker,
     TemplIllCasedLink,
     TemplIllCasedArg,
     TemplInvalidArg,
@@ -305,6 +306,7 @@ pub enum IssueType {
     TemplBcdMissing,
     RedirectedLink,
     BrokenLink,
+    UnnecessaryBrokenLinkMarker,
     IllCasedLink,
     #[default]
     Unknown,
@@ -317,6 +319,7 @@ impl FromStr for IssueType {
         Ok(match s {
             "templ-redirected-link" => Self::TemplRedirectedLink,
             "templ-broken-link" => Self::TemplBrokenLink,
+            "templ-unnecessary-broken-link-marker" => Self::TemplUnnecessaryBrokenLinkMarker,
             "templ-ill-cased-link" => Self::TemplIllCasedLink,
             "templ-ill-cased-arg" => Self::TemplIllCasedArg,
             "templ-invalid-arg" => Self::TemplInvalidArg,
@@ -327,6 +330,7 @@ impl FromStr for IssueType {
             "templ-bcd-missing" => Self::TemplBcdMissing,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
+            "unnecessary-broken-link-marker" => Self::UnnecessaryBrokenLinkMarker,
             "ill-cased-link" => Self::IllCasedLink,
             _ => Self::Unknown,
         })
@@ -525,6 +529,27 @@ impl DIssue {
                     ));
                     DIssue::BrokenLink {
                         display_issue: di,
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::UnnecessaryBrokenLinkMarker => {
+                    di.fixable = Some(true);
+                    di.explanation = Some("Link does not need a broken-link marker".into());
+                    DIssue::BrokenLink {
+                        display_issue: di,
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::TemplUnnecessaryBrokenLinkMarker => {
+                    let source = issue_source(&mut additional);
+                    di.fixable = Some(true);
+                    di.explanation = Some(format!(
+                        "{} does not need a broken-link marker",
+                        source.label
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: source.name,
                         href: additional.remove("url"),
                     }
                 }

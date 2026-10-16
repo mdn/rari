@@ -26,6 +26,27 @@ content_root = "/<ABSOLUTE-PATH-TO-mdn/content>/files"
 build_out_root = "/tmp/rari"
 ```
 
+## Intentional broken links
+
+Mark an intentionally missing macro target by appending `!` to the macro name:
+
+```md
+{{domxref!("BrandNewInterface")}}
+```
+
+For Markdown or HTML links, prefix the URL with `!`:
+
+```md
+[brand new](!/en-US/docs/Web/API/BrandNew)
+<a href="!/en-US/docs/Web/API/BrandNew">brand new</a>
+```
+
+Markers suppress missing-target flaws for that invocation or link. They are removed from rendered URLs, and missing targets retain the usual "page not created" presentation. Redirect and casing flaws remain active for macros. Once a marker is unnecessary, Rari reports a fixable flaw. Remove these markers automatically with:
+
+```sh
+rari content fix-flaws
+```
+
 ## Contributing
 
 For now we're aiming for a parity rewrite of [yari's](https://github.com/mdn/yari) `yarn build -n`. Which generates the `index.json`

@@ -98,7 +98,24 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                         "Macro {name} has syntax error"
                     );
                 }
-                match invoke(env, &name, mac.args) {
+                let broken_links = super::broken_links::BrokenLinks::new(mac.allow_broken_links);
+                let result = invoke(env, &name, mac.args).and_then(|(html, typ)| {
+                    if mac.allow_broken_links {
+                        crate::html::links::post_process_templ_links(&html).map(|html| (html, typ))
+                    } else {
+                        Ok((html, typ))
+                    }
+                });
+                if result.is_ok() && !mac.malformed && broken_links.unnecessary() {
+                    let ic = crate::issues::get_issue_counter();
+                    warn!(
+                        source = "templ-unnecessary-broken-link-marker",
+                        ic = ic,
+                        url = format!("{ident}!"),
+                        redirect = ident.as_str(),
+                    );
+                }
+                match result {
                     Ok((rendered, TemplType::Sidebar)) => {
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
                         templs.push(String::default());
@@ -356,5 +373,88 @@ mod test {
             fields.contains(&("templ", "domxreg".to_string())),
             "expected the macro name on the event, got {fields:?}"
         );
+    }
+}
+
+#[cfg(test)]
+mod marker_tests {
+    use super::*;
+    use crate::issues::InMemoryLayer;
+    use tracing_subscriber::layer::SubscriberExt;
+
+    #[test]
+    fn validates_marked_invocations() {
+        crate::templ::broken_links::create_test_target();
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            sources: &'static [&'static str],
+        }
+        let cases = [
+            Case {
+                name: "missing macro link",
+                input: r#"{{glossary!("BrandNewInterface")}}"#,
+                sources: &[],
+            },
+            Case {
+                name: "unmarked missing",
+                input: r#"{{glossary("BrandNewInterface")}}"#,
+                sources: &["templ-broken-link"],
+            },
+            Case {
+                name: "resolved macro",
+                input: r#"{{glossary!("Marker_test_target")}}"#,
+                sources: &["templ-unnecessary-broken-link-marker"],
+            },
+            Case {
+                name: "no links",
+                input: r#"{{echo!("hello")}}"#,
+                sources: &["templ-unnecessary-broken-link-marker"],
+            },
+            Case {
+                name: "raw HTML",
+                input: r#"{{echo!('<a href="/en-US/docs/Web/API/BrandNewInterface">new</a>')}}"#,
+                sources: &[],
+            },
+            Case {
+                name: "absolute raw HTML",
+                input: r#"{{echo!('<a href="https://developer.mozilla.org/en-US/docs/Web/API/BrandNewInterface">new</a>')}}"#,
+                sources: &[],
+            },
+            Case {
+                name: "scoped",
+                input: r#"{{glossary!("BrandNewInterface")}} {{glossary("BrandNewInterface")}}"#,
+                sources: &["templ-broken-link"],
+            },
+            Case {
+                name: "syntax flaw remains",
+                input: r#"{{glossary!(("BrandNewInterface")}}"#,
+                sources: &["templ-syntax-error"],
+            },
+        ];
+        for case in cases {
+            let layer = InMemoryLayer::default();
+            let subscriber = tracing_subscriber::registry().with(layer.clone());
+            let _guard = tracing::subscriber::set_default(subscriber);
+            let rendered = render(&RariEnv::default(), case.input, 0).unwrap();
+            assert!(
+                !rendered
+                    .templs
+                    .iter()
+                    .any(|s| s.contains("unsupported templ")),
+                "{}",
+                case.name
+            );
+            let events = layer.get_events();
+            let issues = events.get("");
+            let sources: Vec<_> = issues
+                .iter()
+                .flat_map(|issues| issues.iter())
+                .flat_map(|issue| issue.fields.iter())
+                .filter(|(key, _)| *key == "source")
+                .map(|(_, value)| value.as_str())
+                .collect();
+            assert_eq!(sources, case.sources, "{}", case.name);
+        }
     }
 }

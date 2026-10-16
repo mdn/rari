@@ -99,6 +99,27 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
             };
 
             let suggestion = display_issue.suggestion.as_deref()?;
+            if matches!(
+                display_issue.name,
+                rari_doc::issues::IssueType::TemplUnnecessaryBrokenLinkMarker
+            ) {
+                let line = display_issue.line? as usize;
+                let column = display_issue.column? as usize;
+                let line_start = calculate_line_start_offset(raw, line.saturating_sub(1));
+                let line_content = raw[line_start..].lines().next()?;
+                let byte_column = line_content.char_indices().nth(column.saturating_sub(1))?.0;
+                let start = line_start + byte_column;
+                let name = raw.get(start..)?.strip_prefix("{{")?.trim_start();
+                if !name.starts_with(href) {
+                    return None;
+                }
+                let offset = raw.len() - name.len();
+                return Some(SearchReplaceWithOffset {
+                    offset,
+                    search: href.clone(),
+                    replace: suggestion.to_string(),
+                });
+            }
 
             // The href and suggestion from HTML may contain HTML entities (&#x27; for ', &lt; for <, etc.)
             // Decode them to match the raw markdown content.
@@ -107,7 +128,27 @@ pub fn collect_suggestions(raw: &str, issues: &[DIssue]) -> Vec<SearchReplaceWit
 
             let line_num = display_issue.line.unwrap_or(0);
             let key = (line_num, decoded_href.to_string());
-            let min_byte_offset = next_search_from.get(&key).copied().unwrap_or(0);
+            let min_byte_offset = if matches!(
+                display_issue.name,
+                rari_doc::issues::IssueType::UnnecessaryBrokenLinkMarker
+            ) {
+                display_issue
+                    .column
+                    .and_then(|column| {
+                        let start =
+                            calculate_line_start_offset(raw, (line_num as usize).saturating_sub(1));
+                        raw[start..]
+                            .lines()
+                            .next()?
+                            .char_indices()
+                            .nth((column as usize).saturating_sub(1))
+                            .map(|(offset, _)| start + offset)
+                    })
+                    .filter(|offset| raw[*offset..].starts_with(&*decoded_href))
+                    .unwrap_or_else(|| next_search_from.get(&key).copied().unwrap_or(0))
+            } else {
+                next_search_from.get(&key).copied().unwrap_or(0)
+            };
 
             let result = issue_to_suggestion(
                 raw,
@@ -1339,6 +1380,124 @@ Some content here.
                 .map(|(search, replace)| (search.to_string(), replace.to_string()))
                 .collect::<Vec<_>>();
             assert_eq!(actual, expected, "{}", case.name);
+        }
+    }
+}
+
+#[cfg(test)]
+mod marker_tests {
+    use super::*;
+    use rari_doc::issues::{DisplayIssue, IssueType};
+
+    #[test]
+    fn removes_only_marked_invocations() {
+        let raw = "{{Echo(\"unmarked\")}} é {{ Echo! (\n  \"marked\") }} {{Echo!(\"second\")}}";
+        let issues = [
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    line: Some(1),
+                    column: Some(24),
+                    name: IssueType::TemplUnnecessaryBrokenLinkMarker,
+                    suggestion: Some("Echo".into()),
+                    fixable: Some(true),
+                    ..Default::default()
+                },
+                macro_name: Some("echo".into()),
+                href: Some("Echo!".into()),
+            },
+            DIssue::Macros {
+                display_issue: DisplayIssue {
+                    line: Some(2),
+                    column: Some(16),
+                    name: IssueType::TemplUnnecessaryBrokenLinkMarker,
+                    suggestion: Some("Echo".into()),
+                    fixable: Some(true),
+                    ..Default::default()
+                },
+                macro_name: Some("echo".into()),
+                href: Some("Echo!".into()),
+            },
+        ];
+        let suggestions = collect_suggestions(raw, &issues);
+        assert_eq!(suggestions.len(), 2);
+        assert_eq!(
+            apply_suggestions(raw, &suggestions).unwrap(),
+            raw.replace("Echo!", "Echo")
+        );
+    }
+
+    #[test]
+    fn removes_url_markers() {
+        let raw = "[new](!/en-US/docs/Glossary/Marker_test_target) <a href=\"!/en-US/docs/Glossary/Marker_test_target\">target</a>";
+        let issues: Vec<_> = (0..2)
+            .map(|_| DIssue::BrokenLink {
+                display_issue: DisplayIssue {
+                    line: Some(1),
+                    name: IssueType::UnnecessaryBrokenLinkMarker,
+                    suggestion: Some("/en-US/docs/Glossary/Marker_test_target".into()),
+                    fixable: Some(true),
+                    ..Default::default()
+                },
+                href: Some("!/en-US/docs/Glossary/Marker_test_target".into()),
+            })
+            .collect();
+        let suggestions = collect_suggestions(raw, &issues);
+        assert_eq!(suggestions.len(), 2);
+        assert_eq!(
+            apply_suggestions(raw, &suggestions).unwrap(),
+            raw.replace('!', "")
+        );
+    }
+    #[test]
+    fn fixes_reference_definitions_once() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            definition_line: i64,
+            uses: usize,
+        }
+        let cases = [
+            Case {
+                name: "definition before use",
+                input: "[target]: !/target\n\n[go][target]",
+                definition_line: 1,
+                uses: 1,
+            },
+            Case {
+                name: "definition after use",
+                input: "[go][target]\n\n[target]: !/target",
+                definition_line: 3,
+                uses: 1,
+            },
+            Case {
+                name: "multiple uses",
+                input: "[target]: !/target\n\n[go][target] [again][target]",
+                definition_line: 1,
+                uses: 2,
+            },
+        ];
+        for case in cases {
+            let issues: Vec<_> = (0..case.uses)
+                .map(|_| DIssue::BrokenLink {
+                    display_issue: DisplayIssue {
+                        line: Some(case.definition_line),
+                        column: Some(11),
+                        name: IssueType::UnnecessaryBrokenLinkMarker,
+                        suggestion: Some("/target".into()),
+                        fixable: Some(true),
+                        ..Default::default()
+                    },
+                    href: Some("!/target".into()),
+                })
+                .collect();
+            let suggestions = collect_suggestions(case.input, &issues);
+            assert_eq!(suggestions.len(), 1, "{}", case.name);
+            assert_eq!(
+                apply_suggestions(case.input, &suggestions).unwrap(),
+                case.input.replace("!/target", "/target"),
+                "{}",
+                case.name
+            );
         }
     }
 }

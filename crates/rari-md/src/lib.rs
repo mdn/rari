@@ -185,6 +185,45 @@ pub fn m2h(input: &str, locale: Locale) -> Result<String, MarkdownError> {
     m2h_internal(input, locale, Default::default())
 }
 
+/// Find the source destination of a Markdown link, including reference definitions.
+/// `line` and `column` are 1-based byte positions of the link's start.
+pub fn link_destination_offset(
+    input: &str,
+    line: usize,
+    column: usize,
+    url: &str,
+) -> Option<usize> {
+    if url.is_empty() {
+        return None;
+    }
+    let mut options = Options::default();
+    options.extension.table = true;
+    options.extension.autolink = true;
+    let resolves = |source: &str, destination: &str| {
+        let arena = Arena::new();
+        let root = parse_document(&arena, source, &options);
+        root.descendants().any(|node| {
+            let ast = node.data.borrow();
+            ast.sourcepos.start.line == line
+                && ast.sourcepos.start.column == column
+                && matches!(&ast.value, NodeValue::Link(link) if link.url == destination)
+        })
+    };
+    if !resolves(input, url) {
+        return None;
+    }
+    let probe_url = "x".repeat(url.len());
+    for (offset, _) in input.match_indices(url) {
+        let mut probe = input.to_owned();
+        // Equal byte lengths preserve source positions; parsing rejects code examples and unused definitions.
+        probe.replace_range(offset..offset + url.len(), &probe_url);
+        if resolves(&probe, &probe_url) {
+            return Some(offset);
+        }
+    }
+    None
+}
+
 pub fn m2h_internal(
     input: &str,
     locale: Locale,
@@ -601,5 +640,73 @@ mod test {
             "No data-sourcepos expected when sourcepos is disabled, got: {out}"
         );
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod link_destination_tests {
+    use super::link_destination_offset;
+
+    #[test]
+    fn locates_link_destinations() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            line: usize,
+            column: usize,
+            destination: usize,
+        }
+        let cases = [
+            Case {
+                name: "definition before use",
+                input: "[target]: !/target\n\n[go][target]",
+                line: 3,
+                column: 1,
+                destination: 10,
+            },
+            Case {
+                name: "definition after use",
+                input: "[go][target]\n\n[target]: !/target",
+                line: 1,
+                column: 1,
+                destination: 24,
+            },
+            Case {
+                name: "ignore fenced definition",
+                input: "```\n[target]: !/target\n```\n\n[target]: !/target\n\n[go][target]",
+                line: 7,
+                column: 1,
+                destination: 38,
+            },
+            Case {
+                name: "ignore unused definition",
+                input: "[other]: !/target\n[target]: !/target\n\n[go][target]",
+                line: 4,
+                column: 1,
+                destination: 28,
+            },
+            Case {
+                name: "ignore displayed URL",
+                input: "[!/target](!/target)",
+                line: 1,
+                column: 1,
+                destination: 11,
+            },
+            Case {
+                name: "Unicode prefix",
+                input: "é [go](!/target)",
+                line: 1,
+                column: 4,
+                destination: 8,
+            },
+        ];
+        for case in cases {
+            assert_eq!(
+                link_destination_offset(case.input, case.line, case.column, "!/target"),
+                Some(case.destination),
+                "{}",
+                case.name
+            );
+        }
     }
 }
