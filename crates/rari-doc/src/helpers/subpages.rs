@@ -160,10 +160,16 @@ pub fn write_parent_li(
 
 pub(crate) fn write_li_start(out: &mut String, page_type: PageType, context: ListItemContext) {
     out.push_str("<li");
-    if context == ListItemContext::Sidebar && page_type == PageType::LearnModuleAssessment {
-        out.push_str(" data-page-type=\"learn-module-assessment\"");
+    if context == ListItemContext::Sidebar {
+        write_sidebar_item_attrs(out, page_type);
     }
     out.push('>');
+}
+
+pub(crate) fn write_sidebar_item_attrs(out: &mut String, page_type: PageType) {
+    if page_type == PageType::LearnModuleAssessment {
+        out.push_str(" data-page-type=\"learn-module-assessment\"");
+    }
 }
 
 pub fn list_sub_pages_reverse_internal(
