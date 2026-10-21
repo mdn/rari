@@ -12,13 +12,14 @@ on:
   # not applying the patch and not executing code.
   pull_request_target:
     types:
-      # Auto-review once when a PR is opened, reopened, or marked ready.
+      # Auto-review when a PR is opened, reopened, marked ready, or retargeted.
       # Pushes (synchronize) deliberately do NOT re-review - apply the
       # claude-review label to request a fresh review.
       - opened
       - reopened
       - ready_for_review
       - labeled
+      - edited
 
 # Read-only access to the repo; write to pull-requests so review comments can be posted.
 # id-token for minting short-lived Anthropic credentials.
@@ -29,7 +30,7 @@ permissions:
 
 jobs:
   claude-code-review:
-    # Run when a non-draft PR is opened/reopened/marked ready, or when the
+    # Run when a non-draft PR is opened/reopened/marked ready/retargeted, or when the
     # claude-review label is applied to request a re-run. Never review a
     # closed PR (the labeled event still fires on closed PRs), and always
     # skip PRs opted out with the skip-claude-review label.
@@ -38,7 +39,14 @@ jobs:
       !contains(github.event.pull_request.labels.*.name, 'skip-claude-review') &&
       (
         (github.event.action == 'labeled' && github.event.label.name == 'claude-review') ||
-        (github.event.action != 'labeled' && github.event.pull_request.draft == false)
+        (
+          github.event.action != 'labeled' &&
+          github.event.pull_request.draft == false &&
+          (
+            github.event.action != 'edited' ||
+            github.event.changes.base.ref.from != null
+          )
+        )
       )
 
     # One review per PR at a time; a re-trigger cancels any in-flight review.
