@@ -56,9 +56,8 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    # The action auto-enables subprocess secret scrubbing when
-    # allowed_non_write_users is set. Pin it on explicitly so the protection
-    # survives if that input is ever changed, and never set this to 0.
+    # Defense in depth only: Claude has no execution tools here, and unlike the
+    # full action, base-action installs no bubblewrap sandbox for this flag.
     env:
       CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
 
@@ -89,10 +88,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           mkdir -p review-input
 
@@ -128,27 +127,17 @@ jobs:
           git diff --no-ext-diff --no-textconv "$MAIN_MERGE_BASE" "$PR_BASE_SHA" > review-input/target-branch.diff
           git diff --no-ext-diff --no-textconv --name-only "$MERGE_BASE" "$PR_HEAD_SHA" > review-input/files.txt
 
-      # Review the collected files. The restricted tool list keeps Claude
-      # read-only: it posts inline comments and returns an overall review body
-      # (submitted by the next step), but never applies the diff or runs code.
+      # Run the lower-level action so the PR target branch cannot replace
+      # trusted config or the main checkout. Findings are returned as data.
       - name: Claude code review
         id: review
-        uses: anthropics/claude-code-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1.0.248
+        uses: anthropics/claude-code-action/base-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1.0.248
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           anthropic_federation_rule_id: fdrl_01NjNUAm6hgd28kiXMTHpoja
           anthropic_organization_id: bc6e8deb-65ec-4bee-8ca0-b8ff93b3295f
           anthropic_service_account_id: svac_01FtDyBMqDtyf1zQgMYg98n2
           anthropic_workspace_id: wrkspc_01B9xUyyQJZ3v8ZnvEboCB2B
-          # By default the action refuses to run for actors without write
-          # access, which would skip every external-contributor PR - exactly the
-          # PRs we most want reviewed. "*" bypasses that gate so the review runs
-          # for any author. This is safe here because the workflow treats all PR
-          # content as untrusted: it never checks out or executes the PR head,
-          # and Claude is restricted to read-only inspection plus commenting.
-          allowed_non_write_users: "*"
           prompt: |
-            - review-input/target-branch.diff, what the target branch adds on top of main (empty when the target is main)
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
             PR HEAD SHA: ${{ github.event.pull_request.head.sha }}
@@ -158,6 +147,7 @@ jobs:
 
             Review the PR using only:
             - review-input/pr.diff, the final aggregate diff
+            - review-input/target-branch.diff, what the target branch adds on top of main (empty when the target is main)
             - review-input/files.txt
             - review-input/pr.json
 
@@ -174,14 +164,12 @@ jobs:
 
             Use the local main checkout only to inspect surrounding trusted context when needed.
 
-            Use `mcp__github_inline_comment__create_inline_comment` with `confirmed: true` for specific changed-line issues.
-            Always finish by returning the structured output object. Put non-inline findings in its `review_body` field, and return an empty `review_body` when there are no general findings.
-            Only post inline GitHub comments and return the structured output; don't submit review text as messages.
+            Always finish by returning the structured output object. Put specific changed-line issues in its `comments` field and non-inline findings in its `review_body` field. Return an empty `review_body` when there are no general findings and an empty `comments` array when there are no inline findings.
 
             When creating inline comments:
             - Comment only on lines present in review-input/pr.diff.
             - Use the exact file path from the diff.
-            - Use the PR head SHA above as the commit SHA if the tool asks for a commit.
+            - Use the absolute new-file line number of a changed line.
             - Do not comment on unchanged lines.
             - Do not comment on files or lines that are not in the diff.
 
@@ -227,18 +215,56 @@ jobs:
             - Suggest problems based on assumptions without verifying the context
             - Flag style preferences without clear coding standard violations
 
-          # Restrict tools to inline commenting and read-only inspection - no code execution.
+          # Restrict tools to read-only inspection - no code execution.
           claude_args: >-
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Read,Grep,Glob"
-            --json-schema '{"type":"object","properties":{"review_body":{"type":"string","description":"Non-inline review feedback; empty when there are no general findings"}},"required":["review_body"],"additionalProperties":false}'
+            --allowedTools "Read,Grep,Glob"
+            --json-schema '{"type":"object","properties":{"review_body":{"type":"string"},"comments":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"},"line":{"type":"integer"},"body":{"type":"string"}},"required":["path","line","body"],"additionalProperties":false}}},"required":["review_body","comments"],"additionalProperties":false}'
 
-      - name: Submit overall review
-        if: fromJSON(steps.review.outputs.structured_output).review_body
+      - name: Submit review comments
+        if: steps.review.outputs.structured_output != '' && (fromJSON(steps.review.outputs.structured_output).review_body != '' || fromJSON(steps.review.outputs.structured_output).comments[0] != null)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           REVIEW_OUTPUT: ${{ steps.review.outputs.structured_output }}
         run: |
-          jq -r '.review_body' <<< "$REVIEW_OUTPUT" \
-            | gh pr review "$PR_NUMBER" --repo "$REPO" --comment --body-file -
+          CURRENT_REFS=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json baseRefOid,headRefOid)
+          if [ "$(jq -r .baseRefOid <<< "$CURRENT_REFS")" != "$PR_BASE_SHA" ] || \
+             [ "$(jq -r .headRefOid <<< "$CURRENT_REFS")" != "$PR_HEAD_SHA" ]; then
+            echo "PR refs changed during review; skipping stale findings."
+            exit 0
+          fi
+
+          jq -n --argjson output "$REVIEW_OUTPUT" --arg commit "$PR_HEAD_SHA" '{
+            commit_id: $commit,
+            event: "COMMENT",
+            body: $output.review_body,
+            comments: [$output.comments[] | {
+              path,
+              line,
+              side: "RIGHT",
+              body
+            }]
+          }' > review-input/review.json
+
+          if gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --method POST \
+            --input review-input/review.json; then
+            exit 0
+          fi
+
+          # GitHub rejects the whole review when any inline line is outside the
+          # diff. Keep the findings by folding the comments into the body.
+          echo "::warning::Inline comments rejected; resubmitting them in the review body."
+          jq '{
+            commit_id,
+            event,
+            body: ([.body] + [.comments[] | "**\(.path):\(.line)**\n\n\(.body)"] | map(select(. != "")) | join("\n\n---\n\n")),
+            comments: []
+          }' review-input/review.json > review-input/review-fallback.json
+
+          gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --method POST \
+            --input review-input/review-fallback.json
