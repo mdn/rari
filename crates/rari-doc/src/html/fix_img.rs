@@ -8,6 +8,7 @@ use rari_types::locale::default_locale;
 use tracing::warn;
 use url::{ParseOptions, Url};
 
+use crate::helpers::sourcepos::parse_sourcepos;
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
 
@@ -72,7 +73,7 @@ pub fn handle_img(
             if el.get_attribute("width").is_some() {
                 return Ok(());
             }
-            let (width, height) = img_size(el, &src, &file, data_issues)?;
+            let (width, height) = img_size(el, page, &src, &file, data_issues)?;
             if let Some(width) = width {
                 el.set_attribute("width", &width)?;
             }
@@ -86,10 +87,16 @@ pub fn handle_img(
 
 pub fn img_size(
     el: &mut Element,
+    page: &impl PageLike,
     src: &str,
     file: &Path,
     data_issues: bool,
 ) -> Result<ImgSize, Box<dyn Error + Send + Sync>> {
+    let sp = parse_sourcepos(el, page);
+    let line = sp.as_ref().map(|s| s.line).unwrap_or(-1);
+    let col = sp.as_ref().map(|s| s.col).unwrap_or(0);
+    let end_line = sp.as_ref().map(|s| s.end_line).unwrap_or(-1);
+    let end_col = sp.as_ref().map(|s| s.end_col).unwrap_or(0);
     let (width, height) = if src.ends_with(".svg") {
         match svg_metadata::Metadata::parse_file(file) {
             // If only width and viewbox are given, use width and scale
@@ -130,6 +137,10 @@ pub fn img_size(
                 warn!(
                     source = "image-check",
                     ic = ic,
+                    line = line,
+                    col = col,
+                    end_line = end_line,
+                    end_col = end_col,
                     "Error parsing {}: {e}",
                     file.display()
                 );
@@ -147,6 +158,10 @@ pub fn img_size(
                 warn!(
                     source = "image-check",
                     ic = ic,
+                    line = line,
+                    col = col,
+                    end_line = end_line,
+                    end_col = end_col,
                     "Error opening {}: {e}",
                     file.display()
                 );
