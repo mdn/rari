@@ -3,7 +3,7 @@ use rari_types::AnyArg;
 use rari_types::locale::Locale;
 
 use crate::error::DocError;
-use crate::templ::api::RariApi;
+use crate::templ::element_xref::{ElementFamily, link_element};
 
 /// Creates a link to an SVG element reference page on MDN.
 ///
@@ -31,18 +31,13 @@ pub fn svgelement(element_name: String, _: Option<AnyArg>) -> Result<String, Doc
 
 pub fn svgxref_internal(element_name: &str, locale: Locale) -> Result<String, DocError> {
     let display = format!("&lt;{element_name}&gt;");
-    let url = format!(
-        "/{}/docs/Web/SVG/Reference/Element/{}",
-        locale.as_url_str(),
+    link_element(
+        ElementFamily::Svg,
         element_name,
-    );
-
-    RariApi::link(
-        &url,
-        Some(locale),
-        Some(display.as_ref()),
+        &display,
         true,
         None,
-        false,
+        None,
+        locale,
     )
 }
