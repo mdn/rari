@@ -462,14 +462,15 @@ impl SidebarMetaEntryContent {
         match self {
             Self::Link {
                 link: Some(link), ..
-            } => {
+            }
+            | Self::LinkWithHash { link, .. } => {
                 let (url, _) = expand_link(link, locale)?;
                 RariApi::get_page_nowarn(&url)
                     .ok()
                     .map(|page| page.page_type())
             }
             Self::Page(page) => Some(page.page_type()),
-            Self::Link { link: None, .. } | Self::LinkWithHash { .. } => None,
+            Self::Link { link: None, .. } => None,
         }
     }
 }
