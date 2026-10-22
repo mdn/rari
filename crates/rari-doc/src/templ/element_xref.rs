@@ -11,6 +11,10 @@
 //! future grouping such as `Elements/forms/select` stays reachable as
 //! `{{HTMLElement("select")}}`. A leaf shared by several pages is marked
 //! ambiguous and only resolves via its full path.
+//!
+//! Keys are lowercased: content writes names like `Form` or `textarea` for
+//! `textArea`, and element folders are lowercase on disk, so slugs within a
+//! family never differ by case alone.
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
@@ -50,9 +54,9 @@ impl ElementFamily {
 
 #[derive(Default)]
 struct FamilyIndex {
-    /// Sub path below the family root to canonical slug.
+    /// Lowercased sub path below the family root to canonical slug.
     paths: HashMap<String, String>,
-    /// Leaf segment to canonical slug, or `None` when the leaf is ambiguous.
+    /// Lowercased leaf segment to canonical slug, or `None` when ambiguous.
     leaves: HashMap<String, Option<String>>,
 }
 
@@ -103,12 +107,11 @@ fn index_one(index: &mut FamilyIndex, sub_slug: &str, canonical_slug: &str) {
     if sub_slug.is_empty() {
         return;
     }
-    index
-        .paths
-        .insert(sub_slug.to_string(), canonical_slug.to_string());
-    if let Some((_, leaf)) = sub_slug.rsplit_once('/') {
+    let key = sub_slug.to_lowercase();
+    if let Some((_, leaf)) = key.rsplit_once('/') {
         insert_leaf(index, leaf, canonical_slug);
     }
+    index.paths.insert(key, canonical_slug.to_string());
 }
 
 fn insert_leaf(index: &mut FamilyIndex, name: &str, slug: &str) {
@@ -126,10 +129,11 @@ fn resolve_element_slug(family: ElementFamily, name: &str) -> Option<&'static st
 }
 
 fn resolve_from_index<'a>(index: &'a FamilyIndex, name: &str) -> Option<&'a str> {
+    let key = name.to_lowercase();
     index
         .paths
-        .get(name)
-        .or_else(|| index.leaves.get(name).and_then(Option::as_ref))
+        .get(&key)
+        .or_else(|| index.leaves.get(&key).and_then(Option::as_ref))
         .map(String::as_str)
 }
 
@@ -211,9 +215,14 @@ mod tests {
                 expected: Some("Web/HTML/Reference/Elements/input"),
             },
             Case {
-                name: "lookup is case sensitive",
+                name: "lookup is case insensitive",
                 input: "heading_elements",
-                expected: None,
+                expected: Some("Web/HTML/Reference/Elements/Heading_Elements"),
+            },
+            Case {
+                name: "nested leaf alias is case insensitive",
+                input: "Select",
+                expected: Some("Web/HTML/Reference/Elements/forms/select"),
             },
             Case {
                 name: "unknown name does not resolve",
