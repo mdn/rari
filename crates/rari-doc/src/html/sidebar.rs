@@ -16,7 +16,9 @@ use scraper::{Html, Node, Selector};
 use serde::{Deserialize, Serialize, Serializer};
 use tracing::{Level, span};
 
-use super::links::{LinkFlags, LinkModifier, render_link_from_page, render_link_via_page};
+use super::links::{
+    LinkFlags, LinkModifier, expand_link, render_link_from_page, render_link_via_page,
+};
 use super::modifier::insert_attribute;
 use super::rewriter::post_process_html;
 use crate::baseline::get_baseline_status;
@@ -30,7 +32,6 @@ use crate::helpers::subpages::{
 use crate::pages::page::{Page, PageLike};
 use crate::pages::types::doc::Doc;
 use crate::pages::types::utils::FmTempl;
-use crate::resolve::locale_from_url;
 use crate::templ::api::RariApi;
 use crate::templ::templs::{exists, invoke};
 use crate::utils::{is_default, is_unrooted, serialize_t_or_vec, t_or_vec};
@@ -462,14 +463,8 @@ impl SidebarMetaEntryContent {
             Self::Link {
                 link: Some(link), ..
             } => {
-                let path = link.strip_prefix('/')?;
-                let url = if locale_from_url(link).is_none() {
-                    Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", path))
-                } else {
-                    Cow::Borrowed(link.as_str())
-                };
-                let (url, _) = url.split_once('#').unwrap_or((&url, ""));
-                RariApi::get_page_nowarn(url)
+                let (url, _) = expand_link(link, locale)?;
+                RariApi::get_page_nowarn(&url)
                     .ok()
                     .map(|page| page.page_type())
             }
