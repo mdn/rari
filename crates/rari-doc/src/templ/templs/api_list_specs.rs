@@ -5,7 +5,7 @@ use rari_templ_func::rari_f;
 
 use crate::error::DocError;
 use crate::helpers::json_data::json_data_group;
-use crate::helpers::subpages::write_li_with_badges;
+use crate::helpers::subpages::{ListItemContext, write_li_with_badges};
 use crate::pages::types::doc::Doc;
 
 #[rari_f(register = "crate::Templ")]
@@ -23,7 +23,14 @@ pub fn listgroups() -> Result<String, DocError> {
                 true,
             )?;
             let out = out_by_letter.entry(first_letter).or_default();
-            write_li_with_badges(out, &page, env.locale, false, true)?;
+            write_li_with_badges(
+                out,
+                &page,
+                env.locale,
+                false,
+                true,
+                ListItemContext::Content,
+            )?;
         }
     }
 

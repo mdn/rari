@@ -24,7 +24,7 @@ use crate::cached_readers::read_sidebar;
 use crate::error::DocError;
 use crate::helpers;
 use crate::helpers::subpages::{
-    ListSubPagesContext, list_sub_pages_flattened_grouped_internal,
+    ListItemContext, ListSubPagesContext, list_sub_pages_flattened_grouped_internal,
     list_sub_pages_flattened_internal, list_sub_pages_nested_internal,
 };
 use crate::pages::page::{Page, PageLike};
@@ -749,6 +749,7 @@ impl SidebarMetaEntry {
                     page_types: tags,
                     code: *code,
                     include_parent: *include_parent,
+                    item_context: ListItemContext::Sidebar,
                 };
                 if *nested {
                     list_sub_pages_nested_internal(out, &url, locale, *depth, ctx)?
@@ -784,6 +785,7 @@ impl SidebarMetaEntry {
                         page_types: tags,
                         code: *code,
                         include_parent: *include_parent,
+                        item_context: ListItemContext::Sidebar,
                     },
                 )?
             }
