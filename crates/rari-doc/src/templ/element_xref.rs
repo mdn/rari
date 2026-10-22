@@ -84,17 +84,8 @@ fn build_index() -> ElementIndex {
 
 fn build_family_index(family: ElementFamily) -> FamilyIndex {
     let root = format!("/en-US/docs/{}", family.slug_prefix().trim_end_matches('/'));
-    let pages = get_sub_pages(&root, None, SubPagesSorter::Slug).expect(match family {
-        ElementFamily::Html => {
-            "failed to build HTML element index from /en-US/docs/Web/HTML/Reference/Elements"
-        }
-        ElementFamily::Svg => {
-            "failed to build SVG element index from /en-US/docs/Web/SVG/Reference/Element"
-        }
-        ElementFamily::Mathml => {
-            "failed to build MathML element index from /en-US/docs/Web/MathML/Reference/Element"
-        }
-    });
+    let pages = get_sub_pages(&root, None, SubPagesSorter::Slug)
+        .unwrap_or_else(|e| panic!("failed to build {family:?} element index from {root}: {e}"));
     let mut index = FamilyIndex::default();
     for page in pages {
         if page.page_type() != family.page_type() {
