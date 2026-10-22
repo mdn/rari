@@ -17,7 +17,7 @@ serde_json.workspace = true
 
 jsonpath_lib = "0.3"
 prettydiff = "0.9"
-html-minifier = "5"
+html-minifier = "6"
 ansi-to-html = "0.2"
 quick-xml = "0.42"
 clap = { version = "4", features = ["derive"] }
