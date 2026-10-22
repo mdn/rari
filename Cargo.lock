@@ -598,7 +598,7 @@ version = "1.2.0"
 dependencies = [
  "css-definition-syntax",
  "css-syntax-types",
- "html-escape",
+ "html-escape 0.2.15",
  "rari-deps",
  "rari-types",
  "serde",
@@ -1031,9 +1031,9 @@ dependencies = [
 
 [[package]]
 name = "educe"
-version = "0.7.6"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e451fac8dd8dece16234604bf1efce6e90fddd8ab6ad4d66eec0eca5160959dd"
+checksum = "1ebdb1f8f8d2815bbe7b369a7da10343c82026a4503b68bd1279ba557611e96d"
 dependencies = [
  "enum-ordinalize",
  "proc-macro2",
@@ -1477,15 +1477,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c9356095b4b41197bba32173600e1582792cda618f65d12f68e2e77d273413c5"
 
 [[package]]
-name = "html-minifier"
-version = "5.0.2"
+name = "html-escape"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d11fe941a9b6647099d1ac823d85d1d668717cb7f408b4ce393c8db54b092e18"
+checksum = "491194d601b4fa9fac3c9571e014070a0ad1bc3392d1bc10419695196a8b3cc3"
+
+[[package]]
+name = "html-minifier"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3599124a7f0835758ff60711a632cf137f761465b9bf5b70a2e0fd5317f1c13e"
 dependencies = [
  "educe",
- "html-escape",
- "minifier",
- "str-utils",
+ "html-escape 0.3.0",
 ]
 
 [[package]]
@@ -2157,12 +2161,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "minifier"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14f1541610994bba178cb36757e102d06a52a2d9612aa6d34c64b3b377c5d943"
-
-[[package]]
 name = "miniz_oxide"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2725,7 +2723,7 @@ dependencies = [
  "dashmap",
  "ego-tree",
  "enum_dispatch",
- "html-escape",
+ "html-escape 0.2.15",
  "html5ever",
  "icu_collator",
  "icu_locale_core",
@@ -2839,7 +2837,7 @@ dependencies = [
  "const_format",
  "dialoguer",
  "fake",
- "html-escape",
+ "html-escape 0.2.15",
  "indoc",
  "pretty_yaml",
  "rand",
@@ -3569,16 +3567,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
-name = "str-utils"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8df9007f2abc44e2da9eafcc92fd789db4ba5a7ee443d67b3ea249ebf1de3010"
-dependencies = [
- "unicase",
- "utf8-width",
-]
-
-[[package]]
 name = "string_cache"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4249,12 +4237,6 @@ name = "utf16_iter"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8232dd3cdaed5356e0f716d285e4b40b932ac434100fe9b7e0e8e935b9e6246"
-
-[[package]]
-name = "utf8-width"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "159a7cadce548703edd50d24069bc294c5415ecab0a480e0cd1ca06d112dc94a"
 
 [[package]]
 name = "utf8_iter"
