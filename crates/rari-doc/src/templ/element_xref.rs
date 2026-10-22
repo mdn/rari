@@ -31,14 +31,6 @@ pub(crate) enum ElementFamily {
 }
 
 impl ElementFamily {
-    fn root(self) -> &'static str {
-        match self {
-            Self::Html => "/en-US/docs/Web/HTML/Reference/Elements",
-            Self::Svg => "/en-US/docs/Web/SVG/Reference/Element",
-            Self::Mathml => "/en-US/docs/Web/MathML/Reference/Element",
-        }
-    }
-
     fn page_type(self) -> PageType {
         match self {
             Self::Html => PageType::HtmlElement,
@@ -91,7 +83,8 @@ fn build_index() -> ElementIndex {
 }
 
 fn build_family_index(family: ElementFamily) -> FamilyIndex {
-    let pages = get_sub_pages(family.root(), None, SubPagesSorter::Slug).expect(match family {
+    let root = format!("/en-US/docs/{}", family.slug_prefix().trim_end_matches('/'));
+    let pages = get_sub_pages(&root, None, SubPagesSorter::Slug).expect(match family {
         ElementFamily::Html => {
             "failed to build HTML element index from /en-US/docs/Web/HTML/Reference/Elements"
         }
