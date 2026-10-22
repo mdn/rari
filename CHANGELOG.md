@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/mdn/rari/compare/v1.2.0...v1.2.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **diff-test:** sort diff keys naturally ([#981](https://github.com/mdn/rari/issues/981)) ([147f9b0](https://github.com/mdn/rari/commit/147f9b0c2702b88551ad35d449de81dd134650e5))
+* **jsxref:** resolve constructor call links ([#961](https://github.com/mdn/rari/issues/961)) ([f1d58e8](https://github.com/mdn/rari/commit/f1d58e8a79ca96bffda361e9fda4c2dacc96cbeb))
+
+
+### Miscellaneous
+
+* **deps:** bump comrak from 0.55.0 to 0.56.0 ([#990](https://github.com/mdn/rari/issues/990)) ([996404c](https://github.com/mdn/rari/commit/996404c08d371e39a5f6e9719c4ef611b5186974))
+* **deps:** bump html-escape from 0.2.15 to 0.3.0 ([#1008](https://github.com/mdn/rari/issues/1008)) ([d7fc684](https://github.com/mdn/rari/commit/d7fc68452dd349f4cce79a8f7be422efc07f71d7))
+* **deps:** bump html-minifier from 5.0.2 to 6.0.0 ([#1007](https://github.com/mdn/rari/issues/1007)) ([c830b82](https://github.com/mdn/rari/commit/c830b82110f45fd607ed5be9ee390493c417a1c2))
+* **deps:** bump the cargo group with 3 updates ([#1004](https://github.com/mdn/rari/issues/1004)) ([cec33f2](https://github.com/mdn/rari/commit/cec33f24d26863a50c58bc70da0590176207c86e))
+* **deps:** bump the cargo group with 4 updates ([#1006](https://github.com/mdn/rari/issues/1006)) ([312f802](https://github.com/mdn/rari/commit/312f80205267bb27fa5cbe58517338da00b46668))
+* **rust:** add rust-toolchain.toml for 1.97 ([#997](https://github.com/mdn/rari/issues/997)) ([85d9d16](https://github.com/mdn/rari/commit/85d9d1666d4b9b02f15f1b455d34c6da332a00a8))
+
 ## [1.2.0](https://github.com/mdn/rari/compare/v1.1.0...v1.2.0) (2026-10-08)
 
 
