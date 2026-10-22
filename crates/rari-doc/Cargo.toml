@@ -40,7 +40,7 @@ validator = { version = "0.21", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 scraper = { version = "0.27", features = ["deterministic"] }
 lol_html = "3"
-html-escape = "0.2"
+html-escape = "0.3"
 html5ever = "0.39"
 ego-tree = "0.11"
 rss = { version = "2", features = [], default-features = false }
