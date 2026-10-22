@@ -106,8 +106,9 @@ fn index_one(index: &mut FamilyIndex, sub_slug: &str, canonical_slug: &str) {
     index
         .paths
         .insert(sub_slug.to_string(), canonical_slug.to_string());
-    let leaf = sub_slug.rsplit('/').next().unwrap_or(sub_slug);
-    insert_leaf(index, leaf, canonical_slug);
+    if let Some((_, leaf)) = sub_slug.rsplit_once('/') {
+        insert_leaf(index, leaf, canonical_slug);
+    }
 }
 
 fn insert_leaf(index: &mut FamilyIndex, name: &str, slug: &str) {
@@ -205,7 +206,7 @@ mod tests {
                 expected: None,
             },
             Case {
-                name: "exact path beats ambiguous leaf",
+                name: "exact path beats nested leaf alias",
                 input: "input",
                 expected: Some("Web/HTML/Reference/Elements/input"),
             },
