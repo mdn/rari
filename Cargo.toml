@@ -78,7 +78,7 @@ constcat = "0.6"
 anyhow = "1"
 indexmap = { version = "2", features = ["serde"] }
 regress = "0.12"
-html-escape = "0.2"
+html-escape = "0.3"
 ignore = "0.4"
 rayon = "1"
 reqwest = { version = "0.12", default-features = false, features = [

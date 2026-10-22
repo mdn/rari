@@ -598,7 +598,7 @@ version = "1.2.0"
 dependencies = [
  "css-definition-syntax",
  "css-syntax-types",
- "html-escape 0.2.15",
+ "html-escape",
  "rari-deps",
  "rari-types",
  "serde",
@@ -1472,12 +1472,6 @@ checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
 
 [[package]]
 name = "html-escape"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9356095b4b41197bba32173600e1582792cda618f65d12f68e2e77d273413c5"
-
-[[package]]
-name = "html-escape"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "491194d601b4fa9fac3c9571e014070a0ad1bc3392d1bc10419695196a8b3cc3"
@@ -1489,7 +1483,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3599124a7f0835758ff60711a632cf137f761465b9bf5b70a2e0fd5317f1c13e"
 dependencies = [
  "educe",
- "html-escape 0.3.0",
+ "html-escape",
 ]
 
 [[package]]
@@ -2723,7 +2717,7 @@ dependencies = [
  "dashmap",
  "ego-tree",
  "enum_dispatch",
- "html-escape 0.2.15",
+ "html-escape",
  "html5ever",
  "icu_collator",
  "icu_locale_core",
@@ -2837,7 +2831,7 @@ dependencies = [
  "const_format",
  "dialoguer",
  "fake",
- "html-escape 0.2.15",
+ "html-escape",
  "indoc",
  "pretty_yaml",
  "rand",
