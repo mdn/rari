@@ -108,6 +108,18 @@ pub struct LinkFlags {
     pub report: bool,
 }
 
+/// Expands a rooted link (`/Slug` or `/{locale}/docs/Slug`) to a page URL and splits off its anchor.
+pub(crate) fn expand_link(link: &str, locale: Locale) -> Option<(Cow<'_, str>, &str)> {
+    let (link, anchor) = link.split_once('#').unwrap_or((link, ""));
+    let path = link.strip_prefix('/')?;
+    let url = if locale_from_url(link).is_none() {
+        Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", path))
+    } else {
+        Cow::Borrowed(link)
+    };
+    Some((url, anchor))
+}
+
 pub fn render_link_via_page(
     out: &mut String,
     link: &str,
@@ -121,15 +133,11 @@ pub fn render_link_via_page(
     }: LinkFlags,
 ) -> Result<(), DocError> {
     let mut url = Cow::Borrowed(link);
-    if let Some(link) = link.strip_prefix('/') {
-        if locale_from_url(&url).is_none() {
-            url = Cow::Owned(concat_strs!("/", locale.as_url_str(), "/docs/", link));
-        }
-        let (url, anchor) = url.split_once('#').unwrap_or((&url, ""));
+    if let Some((page_url, anchor)) = expand_link(link, locale) {
         if let Ok(page) = if report {
-            RariApi::get_page(url)
+            RariApi::get_page(&page_url)
         } else {
-            RariApi::get_page_ignore_case(url)
+            RariApi::get_page_ignore_case(&page_url)
         } {
             let url = page.url();
             let content = if let Some(content) = content {
@@ -168,6 +176,11 @@ pub fn render_link_via_page(
                 true,
             );
         }
+        url = if anchor.is_empty() {
+            page_url
+        } else {
+            Cow::Owned(concat_strs!(&page_url, "#", anchor))
+        };
     }
 
     out.push_str("<a data-templ-link href=\"");
