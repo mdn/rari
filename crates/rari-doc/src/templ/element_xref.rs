@@ -137,6 +137,15 @@ fn resolve_from_index<'a>(index: &'a FamilyIndex, name: &str) -> Option<&'a str>
         .map(String::as_str)
 }
 
+/// Split `button#formaction` into the element name and its fragment, so the
+/// name still resolves through the index.
+fn split_inline_anchor(element_name: &str) -> (&str, Option<&str>) {
+    match element_name.split_once('#') {
+        Some((name, fragment)) => (name, Some(fragment)),
+        None => (element_name, None),
+    }
+}
+
 pub(crate) fn link_element(
     family: ElementFamily,
     element_name: &str,
@@ -146,10 +155,11 @@ pub(crate) fn link_element(
     anchor: Option<&str>,
     locale: Locale,
 ) -> Result<String, DocError> {
+    let (element_name, inline_anchor) = split_inline_anchor(element_name);
     let fallback_slug = format!("{}{element_name}", family.slug_prefix());
     let slug = resolve_element_slug(family, element_name).unwrap_or(&fallback_slug);
     let mut url = format!("/{}/docs/{slug}", locale.as_url_str());
-    if let Some(anchor) = anchor {
+    if let Some(anchor) = anchor.or(inline_anchor) {
         if !anchor.starts_with('#') {
             url.push('#');
         }
@@ -235,6 +245,41 @@ mod tests {
         for case in cases {
             assert_eq!(
                 resolve_from_index(&index, case.input),
+                case.expected,
+                "{}",
+                case.name
+            );
+        }
+    }
+
+    #[test]
+    fn split_inline_anchor_cases() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            expected: (&'static str, Option<&'static str>),
+        }
+        let cases = vec![
+            Case {
+                name: "plain name has no anchor",
+                input: "button",
+                expected: ("button", None),
+            },
+            Case {
+                name: "fragment is split off",
+                input: "button#formaction",
+                expected: ("button", Some("formaction")),
+            },
+            Case {
+                name: "nested path keeps its fragment",
+                input: "forms/select#attributes",
+                expected: ("forms/select", Some("attributes")),
+            },
+        ];
+
+        for case in cases {
+            assert_eq!(
+                split_inline_anchor(case.input),
                 case.expected,
                 "{}",
                 case.name
