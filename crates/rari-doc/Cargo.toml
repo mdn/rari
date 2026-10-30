@@ -38,7 +38,7 @@ yaml-rust = "0.4"
 percent-encoding = "2"
 validator = { version = "0.21", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
-scraper = { version = "0.27", features = ["deterministic"] }
+scraper = { version = "0.29", features = ["deterministic"] }
 lol_html = "3"
 html-escape = "0.3"
 html5ever = "0.39"
