@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2](https://github.com/mdn/rari/compare/v1.2.1...v1.2.2) (2026-10-30)
+
+
+### Miscellaneous
+
+* **deps:** bump comrak from 0.56.0 to 0.59.0 ([#1012](https://github.com/mdn/rari/issues/1012)) ([d178972](https://github.com/mdn/rari/commit/d1789724d5b7170fe4f7198d8184751fe8418efb))
+* **deps:** bump rustls from 0.23.45 to 0.23.46 ([#1015](https://github.com/mdn/rari/issues/1015)) ([bdd1f9a](https://github.com/mdn/rari/commit/bdd1f9ad67a8c0b014a5870c8cf78dd0292ec268))
+* **deps:** bump the cargo group with 5 updates ([#1011](https://github.com/mdn/rari/issues/1011)) ([c63578f](https://github.com/mdn/rari/commit/c63578fd3b8c71171813eb09e87f818ceaf2e654))
+
 ## [1.2.1](https://github.com/mdn/rari/compare/v1.2.0...v1.2.1) (2026-10-22)
 
 
