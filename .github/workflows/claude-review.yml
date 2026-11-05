@@ -111,7 +111,7 @@ jobs:
       # (submitted by the next step), but never applies the diff or runs code.
       - name: Claude code review
         id: review
-        uses: anthropics/claude-code-action@8041f1d17e0e7d2f2cfe35002962e9f26237c0bb # v1.0.263
+        uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d # v1.0.266
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           anthropic_federation_rule_id: fdrl_01NjNUAm6hgd28kiXMTHpoja
