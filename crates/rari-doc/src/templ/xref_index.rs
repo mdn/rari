@@ -33,6 +33,39 @@ pub(crate) fn resolve_xref(name: &str) -> Result<&'static str, XrefError> {
     Ok(XREF_INDEX.slugs[index].as_str())
 }
 
+/// List all pages resolvable by `xref` as `(name, slug)` pairs, sorted by name,
+/// where `name` is the shortest argument that resolves to the page.
+pub fn xref_names() -> Vec<(String, &'static str)> {
+    let index = LazyLock::force(&XREF_INDEX);
+    let mut names = (0..index.slugs.len())
+        .map(|i| (shortest_name(index, i), index.slugs[i].as_str()))
+        .collect::<Vec<_>>();
+    names.sort();
+    names
+}
+
+fn shortest_name(index: &XrefIndex, entry: usize) -> String {
+    let slug = &index.slugs[entry];
+    let leaf = leaf(slug);
+    // Parent segments, nearest first, so ties prefer the closest qualifier.
+    let parents = slug.rsplit('/').skip(1).collect::<Vec<_>>();
+    let mut masks = (0..1u32 << parents.len()).collect::<Vec<_>>();
+    masks.sort_by_key(|mask| (mask.count_ones(), *mask));
+    masks
+        .into_iter()
+        .map(|mask| {
+            let mut segments = (0..parents.len())
+                .rev()
+                .filter(|bit| mask & (1 << bit) != 0)
+                .map(|bit| parents[bit])
+                .collect::<Vec<_>>();
+            segments.push(leaf);
+            segments.join("/")
+        })
+        .find(|name| resolve_xref_index(index, name).is_ok_and(|found| found == entry))
+        .unwrap_or_else(|| slug.clone())
+}
+
 fn resolve_xref_index(index: &XrefIndex, name: &str) -> Result<usize, XrefError> {
     let (qualifier, leaf) = match name.rsplit_once('/') {
         Some((qualifier, leaf)) => (Some(qualifier), leaf),
@@ -120,6 +153,26 @@ mod tests {
             "Web/Accessibility/ARIA/Reference/Attributes/aria-sort",
             "Web/Other/alert_role",
         ])
+    }
+
+    #[test]
+    fn shortest_names_resolve_uniquely() {
+        let index = fixture();
+        let cases = [
+            (
+                "Web/Accessibility/ARIA/Reference/Roles/alert_role",
+                "Roles/alert_role",
+            ),
+            ("Web/Other/alert_role", "Other/alert_role"),
+            (
+                "Web/Accessibility/ARIA/Reference/Attributes/aria-sort",
+                "aria-sort",
+            ),
+        ];
+        for (slug, expected) in cases {
+            let entry = index.slugs.iter().position(|s| s == slug).unwrap();
+            assert_eq!(shortest_name(&index, entry), expected, "[{slug}]");
+        }
     }
 
     #[test]
