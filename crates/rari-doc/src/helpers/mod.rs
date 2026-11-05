@@ -9,3 +9,4 @@ pub mod title;
 pub mod titles;
 pub mod web_ext_examples;
 pub mod webextapi;
+pub mod webref_events;
