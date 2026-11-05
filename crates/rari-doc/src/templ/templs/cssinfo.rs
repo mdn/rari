@@ -255,6 +255,8 @@ impl<'a> ValueNode<'a> {
         values.iter().all(|v| *v == first).then_some(first)
     }
 
+    /// Renders the value, listing longhands unless `merge_equal` is set and they agree.
+    /// Nested shorthands whose longhands agree are always collapsed.
     fn render(
         &self,
         merge_equal: bool,
@@ -271,7 +273,7 @@ impl<'a> ValueNode<'a> {
         out.push_str(&render_css_value(SEE_INDIVIDUAL, locale));
         out.push_str("<br><ul>");
         for longhand in &self.longhands {
-            let rendered = longhand.render(merge_equal, render_leaf, locale)?;
+            let rendered = longhand.render(true, render_leaf, locale)?;
             let name = longhand.name;
             write!(
                 out,
@@ -476,36 +478,54 @@ mod tests {
         )
     }
 
+    fn longhand_item(name: &str) -> String {
+        format!(
+            r#"<li><a href="/en-US/docs/Web/CSS/Reference/Properties/{name}"><code>{name}</code></a>: "#
+        )
+    }
+
     #[test]
     fn test_render_shorthand_lists_longhands_recursively() {
-        let html = render_field("border", |p| p.initial.as_deref(), false).unwrap();
-        let link = |name: &str| {
-            format!(
-                r#"<li><a href="/en-US/docs/Web/CSS/Reference/Properties/{name}"><code>{name}</code></a>: "#
-            )
-        };
+        let html = render_field("rule", |p| p.initial.as_deref(), false).unwrap();
         let nested = "see individual properties<br><ul>";
         for (name, needle) in [
-            ("top-level", format!("{nested}{}", link("border-width"))),
             (
                 "nested shorthand",
-                format!("{}{nested}", link("border-width")),
+                format!("{}{nested}", longhand_item("column-rule")),
             ),
             (
                 "longhand",
-                format!("{}medium</li>", link("border-top-width")),
-            ),
-            (
-                "sibling shorthand",
-                format!("{}{nested}", link("border-style")),
+                format!("{}medium</li>", longhand_item("column-rule-width")),
             ),
             (
                 "sibling longhand",
-                format!("{}none</li>", link("border-left-style")),
+                format!("{}none</li>", longhand_item("row-rule-style")),
             ),
         ] {
             assert!(html.contains(&needle), "{name}: {html}");
         }
+    }
+
+    #[test]
+    fn test_render_collapses_uniform_nested_shorthands() {
+        let html = render_field("border", |p| p.initial.as_deref(), false).unwrap();
+        for (name, needle) in [
+            (
+                "width",
+                format!("{}medium</li>", longhand_item("border-width")),
+            ),
+            (
+                "style",
+                format!("{}none</li>", longhand_item("border-style")),
+            ),
+            (
+                "color",
+                format!("{}currentcolor</li>", longhand_item("border-color")),
+            ),
+        ] {
+            assert!(html.contains(&needle), "{name}: {html}");
+        }
+        assert!(!html.contains("border-top-width"), "{html}");
     }
 
     #[test]
