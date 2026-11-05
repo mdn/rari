@@ -16,6 +16,9 @@ use crate::html::links::post_process_templ_links;
 
 const GLOBAL_SCOPE: &str = "__global_scope__";
 
+const SEE_INDIVIDUAL: &str = "see individual properties";
+const MAX_LONGHAND_DEPTH: usize = 4;
+
 const PROSE_INITIAL_VALUES: [&str; 6] = [
     "See individual properties",
     "depends on user agent",
@@ -81,7 +84,7 @@ pub fn cssinfo() -> Result<String, DocError> {
         }
         CssType::Property(property) => {
             let def = get_property_def(property, scope)?;
-            render_property_def(def, &mut out, env.locale)?;
+            render_property_def(def, scope, &mut out, env.locale)?;
         }
         _ => unreachable!(),
     }
@@ -194,56 +197,171 @@ fn render_at_rule_descriptor_def(
     Ok(())
 }
 
+/// A property's value for one formal definition field, expanded into the
+/// values of its longhands where the shorthand defers to them.
+struct ValueNode<'a> {
+    name: &'a str,
+    value: Option<&'a str>,
+    longhands: Vec<ValueNode<'a>>,
+}
+
+impl<'a> ValueNode<'a> {
+    fn new(
+        property: &'a Property,
+        field: fn(&Property) -> Option<&str>,
+        scope: Option<&str>,
+        depth: usize,
+    ) -> Self {
+        let value = field(property);
+        let defers_to_longhands = value.is_none_or(|v| v.eq_ignore_ascii_case(SEE_INDIVIDUAL));
+        let longhands = if defers_to_longhands && depth < MAX_LONGHAND_DEPTH {
+            property
+                .longhands
+                .iter()
+                .filter_map(|name| match get_property_def(name, scope) {
+                    Ok(longhand) => Some(Self::new(longhand, field, scope, depth + 1)),
+                    Err(e) => {
+                        tracing::warn!("Longhand of '{}' not found: {e}", property.name);
+                        None
+                    }
+                })
+                .filter(|node| node.value.is_some() || !node.longhands.is_empty())
+                .collect()
+        } else {
+            vec![]
+        };
+        Self {
+            name: &property.name,
+            value,
+            longhands,
+        }
+    }
+
+    fn leaf_values(&self, out: &mut Vec<&'a str>) {
+        if self.longhands.is_empty() {
+            out.extend(self.value);
+        } else {
+            for longhand in &self.longhands {
+                longhand.leaf_values(out);
+            }
+        }
+    }
+
+    /// The single value shared by this property and all its longhands, if any.
+    fn uniform_value(&self) -> Option<&'a str> {
+        let mut values = vec![];
+        self.leaf_values(&mut values);
+        let first = *values.first()?;
+        values.iter().all(|v| *v == first).then_some(first)
+    }
+
+    fn render(
+        &self,
+        merge_equal: bool,
+        render_leaf: &dyn Fn(&str) -> String,
+        locale: Locale,
+    ) -> Option<String> {
+        if self.longhands.is_empty() {
+            return self.value.map(render_leaf);
+        }
+        if merge_equal && let Some(value) = self.uniform_value() {
+            return Some(render_leaf(value));
+        }
+        let mut out = String::new();
+        out.push_str(&render_css_value(SEE_INDIVIDUAL, locale));
+        out.push_str("<br><ul>");
+        for longhand in &self.longhands {
+            let rendered = longhand.render(merge_equal, render_leaf, locale)?;
+            let name = longhand.name;
+            write!(
+                out,
+                r#"<li><a href="/{}/docs/Web/CSS/Reference/Properties/{name}"><code>{name}</code></a>: {rendered}</li>"#,
+                locale.as_url_str(),
+            )
+            .ok()?;
+        }
+        out.push_str("</ul>");
+        Some(out)
+    }
+}
+
 fn render_property_def(
     property: &Property,
+    scope: Option<&str>,
     out: &mut String,
     locale: Locale,
 ) -> Result<(), DocError> {
     out.push_str(r#"<table class="properties"><tbody>"#);
 
-    if let Some(value) = &property.initial {
-        write_table_row(
-            out,
-            &css_initial(locale)?,
-            &render_initial_value(value, locale),
-        )?;
+    let css_value = |value: &str| render_css_value(value, locale);
+    let initial = |value: &str| render_initial_value(value, locale);
+
+    // Initial value, computed value and animation type always list the longhands
+    // individually, the others only if the longhands differ.
+    struct Row<'a> {
+        label: String,
+        field: fn(&Property) -> Option<&str>,
+        merge_equal: bool,
+        omit_na: bool,
+        render_leaf: &'a dyn Fn(&str) -> String,
     }
-    if let Some(value) = &property.applies_to {
-        write_table_row(
-            out,
-            &css_applies_to(locale)?,
-            &render_css_value(value, locale),
-        )?;
-    }
-    if let Some(value) = &property.inherited {
-        write_table_row(
-            out,
-            &css_inherited(locale)?,
-            &render_css_value(value, locale),
-        )?;
-    }
-    if let Some(value) = &property.computed_value {
-        write_table_row(
-            out,
-            &css_computed(locale)?,
-            &render_css_value(value, locale),
-        )?;
-    }
-    if let Some(value) = &property.percentages
-        && !value.eq_ignore_ascii_case("n/a")
-    {
-        write_table_row(
-            out,
-            &css_percentages(locale)?,
-            &render_css_value(value, locale),
-        )?;
-    }
-    if let Some(value) = &property.animation_type {
-        write_table_row(
-            out,
-            &css_animation_type(locale)?,
-            &render_css_value(value, locale),
-        )?;
+    let rows = [
+        Row {
+            label: css_initial(locale)?,
+            field: |p| p.initial.as_deref(),
+            merge_equal: false,
+            omit_na: false,
+            render_leaf: &initial,
+        },
+        Row {
+            label: css_applies_to(locale)?,
+            field: |p| p.applies_to.as_deref(),
+            merge_equal: true,
+            omit_na: false,
+            render_leaf: &css_value,
+        },
+        Row {
+            label: css_inherited(locale)?,
+            field: |p| p.inherited.as_deref(),
+            merge_equal: true,
+            omit_na: false,
+            render_leaf: &css_value,
+        },
+        Row {
+            label: css_computed(locale)?,
+            field: |p| p.computed_value.as_deref(),
+            merge_equal: false,
+            omit_na: false,
+            render_leaf: &css_value,
+        },
+        Row {
+            label: css_percentages(locale)?,
+            field: |p| p.percentages.as_deref(),
+            merge_equal: true,
+            omit_na: true,
+            render_leaf: &css_value,
+        },
+        Row {
+            label: css_animation_type(locale)?,
+            field: |p| p.animation_type.as_deref(),
+            merge_equal: false,
+            omit_na: false,
+            render_leaf: &css_value,
+        },
+    ];
+
+    for row in rows {
+        let node = ValueNode::new(property, row.field, scope, 0);
+        if row.omit_na
+            && node
+                .uniform_value()
+                .is_some_and(|v| v.eq_ignore_ascii_case("n/a"))
+        {
+            continue;
+        }
+        if let Some(value) = node.render(row.merge_equal, row.render_leaf, locale) {
+            write_table_row(out, &row.label, &value)?;
+        }
     }
 
     out.push_str(r#"</tbody></table>"#);
@@ -340,6 +458,95 @@ mod tests {
                 get_at_rule_descriptor_def(at_rule, descriptor, scope).is_ok(),
                 found,
                 "{name}"
+            );
+        }
+    }
+
+    fn render_field(
+        property: &str,
+        field: fn(&Property) -> Option<&str>,
+        merge_equal: bool,
+    ) -> Option<String> {
+        let scope = Some(property);
+        let def = get_property_def(property, scope).unwrap();
+        ValueNode::new(def, field, scope, 0).render(
+            merge_equal,
+            &|value| render_css_value(value, Locale::EnUs),
+            Locale::EnUs,
+        )
+    }
+
+    #[test]
+    fn test_render_shorthand_lists_longhands_recursively() {
+        let html = render_field("border", |p| p.initial.as_deref(), false).unwrap();
+        let link = |name: &str| {
+            format!(
+                r#"<li><a href="/en-US/docs/Web/CSS/Reference/Properties/{name}"><code>{name}</code></a>: "#
+            )
+        };
+        let nested = "see individual properties<br><ul>";
+        for (name, needle) in [
+            ("top-level", format!("{nested}{}", link("border-width"))),
+            (
+                "nested shorthand",
+                format!("{}{nested}", link("border-width")),
+            ),
+            (
+                "longhand",
+                format!("{}medium</li>", link("border-top-width")),
+            ),
+            (
+                "sibling shorthand",
+                format!("{}{nested}", link("border-style")),
+            ),
+            (
+                "sibling longhand",
+                format!("{}none</li>", link("border-left-style")),
+            ),
+        ] {
+            assert!(html.contains(&needle), "{name}: {html}");
+        }
+    }
+
+    #[test]
+    fn test_render_shorthand_merges_equal_values() {
+        struct Case {
+            name: &'static str,
+            property: &'static str,
+            field: fn(&Property) -> Option<&str>,
+            merge_equal: bool,
+            expect_list: bool,
+        }
+        let cases = [
+            Case {
+                name: "equal values merge",
+                property: "border-width",
+                field: |p| p.inherited.as_deref(),
+                merge_equal: true,
+                expect_list: false,
+            },
+            Case {
+                name: "equal values listed when not merging",
+                property: "border-width",
+                field: |p| p.inherited.as_deref(),
+                merge_equal: false,
+                expect_list: true,
+            },
+            Case {
+                name: "differing values listed",
+                property: "border",
+                field: |p| p.computed_value.as_deref(),
+                merge_equal: true,
+                expect_list: true,
+            },
+        ];
+        for case in cases {
+            let html = render_field(case.property, case.field, case.merge_equal).unwrap();
+            assert_eq!(
+                html.contains("<ul>"),
+                case.expect_list,
+                "{}: {html}",
+                case.name
             );
         }
     }

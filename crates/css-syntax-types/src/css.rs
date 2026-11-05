@@ -120,6 +120,9 @@ pub struct Property {
         default
     )]
     pub extended_spec_links: Vec<SpecLink>,
+    /// The properties this shorthand sets, empty for longhands.
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub longhands: Vec<String>,
 
     // Formal definition values
     #[serde(skip_serializing_if = "Option::is_none", rename = "animationType")]
