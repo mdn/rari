@@ -9,10 +9,12 @@
 //! a `<type>` in a formal-syntax box is documented at all.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::LazyLock;
+use std::sync::OnceLock;
 
 use css_syntax::syntax::CssRefKind;
 
+use super::get_or_build_index;
+use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
 
@@ -53,14 +55,29 @@ impl CssRefCategory {
     }
 }
 
-static CSS_FEATURE_INDEX: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(build_index);
+pub(crate) struct CssFeatureIndex(HashMap<String, Vec<String>>);
 
-fn build_index() -> HashMap<String, Vec<String>> {
+impl CssFeatureIndex {
+    pub(crate) fn resolve(&self, category: CssRefCategory, slug: &str) -> Option<&str> {
+        resolve_from_map(&self.0, category, slug)
+    }
+
+    /// Resolve a formal-syntax `<type>` / `<'property'>` reference to the
+    /// `Web/CSS/Reference/` sub-path documenting it, or `None` when none does (many
+    /// webref productions are spec-internal). The lookup chain mirrors `cssxref`'s,
+    /// so both land on the same page for a given name.
+    pub(crate) fn resolve_formal_syntax_ref(&self, kind: CssRefKind, slug: &str) -> Option<&str> {
+        resolve_formal_syntax_ref_from_map(&self.0, kind, slug)
+    }
+}
+
+static CSS_FEATURE_INDEX: OnceLock<CssFeatureIndex> = OnceLock::new();
+
+fn build_index() -> Result<CssFeatureIndex, DocError> {
     // Slugs are locale-invariant in MDN content, so it's enough to walk the
     // en-US tree — the resulting paths are reused unchanged across locales
     // when constructing URLs.
-    let pages = get_sub_pages("/en-US/docs/Web/CSS/Reference", None, SubPagesSorter::Slug)
-        .expect("failed to build cssxref CSS feature index from /en-US/docs/Web/CSS/Reference");
+    let pages = get_sub_pages("/en-US/docs/Web/CSS/Reference", None, SubPagesSorter::Slug)?;
 
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
     let mut unknown_categories: HashSet<String> = HashSet::new();
@@ -84,7 +101,7 @@ fn build_index() -> HashMap<String, Vec<String>> {
         }
         index_one(&mut map, after_ref);
     }
-    map
+    Ok(CssFeatureIndex(map))
 }
 
 /// Add the index entries for a single `Web/CSS/Reference/<after_ref>` page.
@@ -147,29 +164,8 @@ fn add_suffix_aliases(
     }
 }
 
-/// Look up a CSS feature by `category` and `slug` (e.g. `color`, `color_value`,
-/// `:hover`, `@media`). The `slug` half of the key is compared case-insensitively.
-///
-/// When the bucket contains multiple candidates, they are ranked by:
-/// 1. Exact match wins over alias matches — `Values/color` (exact) beats a
-///    suffix-alias pointing into a different canonical slug.
-/// 2. `_value` beats `_function` when both alias to the same bare key — `<…>`
-///    and `…()` syntax already disambiguate type vs function, so the ambiguous
-///    cases are bare names like `{{cssxref("url")}}` which in practice refer
-///    to the data type, not the function.
-///
-/// The returned `&'static str` borrows from `CSS_FEATURE_INDEX`, which is a
-/// `LazyLock` that lives for the rest of the process.
-pub(crate) fn resolve_css_feature(category: CssRefCategory, slug: &str) -> Option<&'static str> {
-    resolve_from_map(&CSS_FEATURE_INDEX, category, slug)
-}
-
-/// Resolve a formal-syntax `<type>` / `<'property'>` reference to the
-/// `Web/CSS/Reference/` sub-path documenting it, or `None` when none does (many
-/// webref productions are spec-internal). The lookup chain mirrors `cssxref`'s,
-/// so both land on the same page for a given name.
-pub(crate) fn resolve_formal_syntax_ref(kind: CssRefKind, slug: &str) -> Option<&'static str> {
-    resolve_formal_syntax_ref_from_map(&CSS_FEATURE_INDEX, kind, slug)
+pub(crate) fn css_feature_index() -> Result<&'static CssFeatureIndex, DocError> {
+    get_or_build_index(&CSS_FEATURE_INDEX, build_index)
 }
 
 fn resolve_formal_syntax_ref_from_map<'a>(
@@ -194,6 +190,16 @@ fn resolve_formal_syntax_ref_from_map<'a>(
     }
 }
 
+/// Look up a CSS feature by `category` and `slug` (e.g. `color`, `color_value`,
+/// `:hover`, `@media`). The `slug` half of the key is compared case-insensitively.
+///
+/// When the bucket contains multiple candidates, they are ranked by:
+/// 1. Exact match wins over alias matches — `Values/color` (exact) beats a
+///    suffix-alias pointing into a different canonical slug.
+/// 2. `_value` beats `_function` when both alias to the same bare key — `<…>`
+///    and `…()` syntax already disambiguate type vs function, so the ambiguous
+///    cases are bare names like `{{cssxref("url")}}` which in practice refer
+///    to the data type, not the function.
 fn resolve_from_map<'a>(
     map: &'a HashMap<String, Vec<String>>,
     category: CssRefCategory,
