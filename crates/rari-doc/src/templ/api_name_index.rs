@@ -5,20 +5,21 @@
 //! (e.g. `Window/structuredClone`).
 
 use std::collections::HashMap;
-use std::sync::LazyLock;
+use std::sync::OnceLock;
 
 use indexmap::IndexSet;
 
+use super::get_or_build_index;
+use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
 
 const WEB_API_PREFIX: &str = "Web/API/";
 
-static API_NAME_INDEX: LazyLock<HashMap<String, IndexSet<String>>> = LazyLock::new(build_index);
+static API_NAME_INDEX: OnceLock<HashMap<String, IndexSet<String>>> = OnceLock::new();
 
-fn build_index() -> HashMap<String, IndexSet<String>> {
-    let pages = get_sub_pages("/en-US/docs/Web/API", None, SubPagesSorter::Slug)
-        .expect("failed to build domxref API name index");
+fn build_index() -> Result<HashMap<String, IndexSet<String>>, DocError> {
+    let pages = get_sub_pages("/en-US/docs/Web/API", None, SubPagesSorter::Slug)?;
 
     let mut map: HashMap<String, IndexSet<String>> = HashMap::new();
     for page in pages {
@@ -27,7 +28,7 @@ fn build_index() -> HashMap<String, IndexSet<String>> {
         };
         index_one(&mut map, sub_slug);
     }
-    map
+    Ok(map)
 }
 
 /// Add the index entries (full key, plus optional `_static` and `Window/*`
@@ -87,9 +88,12 @@ fn insert(map: &mut HashMap<String, IndexSet<String>>, key: &str, value: String)
 /// `DocumentPictureInPicture/window`).
 ///
 /// The returned `&'static str` borrows from `API_NAME_INDEX`, which is a
-/// `LazyLock` that lives for the rest of the process.
-pub fn resolve_api_name(normalized: &str) -> Option<&'static str> {
-    resolve_from_map(&API_NAME_INDEX, normalized)
+/// `OnceLock` that lives for the rest of the process.
+pub fn resolve_api_name(normalized: &str) -> Result<Option<&'static str>, DocError> {
+    Ok(resolve_from_map(
+        get_or_build_index(&API_NAME_INDEX, build_index)?,
+        normalized,
+    ))
 }
 
 fn segments(value: &str) -> usize {

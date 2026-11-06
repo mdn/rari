@@ -70,7 +70,7 @@ pub fn jsxref(
     }
 
     let base = format!("/{}/docs/Web/JavaScript/Reference/", env.locale);
-    let mut url = if let Some(resolved) = resolve_js_ref(parts.bare) {
+    let mut url = if let Some(resolved) = resolve_js_ref(parts.bare)? {
         format!("{base}{resolved}")
     } else {
         format!("{base}{}", RariApi::decode_uri_component(parts.bare))

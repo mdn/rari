@@ -114,6 +114,8 @@ pub enum DocError {
         "The document's slug ({0}) doesn't match its disk folder name ({1}): expected path ({2})"
     )]
     SlugFolderMismatch(String, String, String),
+    #[error("Cannot build reference index: {0}")]
+    ReferenceIndexError(#[source] Box<DocError>),
     #[error("Fatal error reading docs")]
     DocsReadError,
     #[error("No RariEnv for Page")]
