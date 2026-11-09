@@ -3,7 +3,7 @@ use std::fmt::Write;
 use rari_md::ext::{DELIM_END, DELIM_END_LEN, DELIM_START, DELIM_START_LEN};
 use rari_types::globals::deny_warnings;
 use rari_types::templ::TemplType;
-use rari_types::{AnyArg, RariEnv};
+use rari_types::{AnyArg, ArgError, RariEnv};
 use tracing::{Level, span, warn};
 
 use super::parser::{Token, parse};
@@ -100,13 +100,15 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                         "Macro {name} has syntax error"
                     );
                 }
-                if mac.positional_after_named {
-                    warn!(
-                        source = "templ-arg-error",
-                        "Macro {name} has a positional argument after a named one"
-                    );
-                }
-                match invoke(env, &name, mac.args) {
+                let result = if mac.positional_after_named {
+                    Err(ArgError::PositionalAfterNamed {
+                        templ: name.clone(),
+                    }
+                    .into())
+                } else {
+                    invoke(env, &name, mac.args)
+                };
+                match result {
                     Ok((rendered, TemplType::Sidebar)) => {
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
                         templs.push(String::default());
@@ -377,7 +379,7 @@ mod test {
             name: &'static str,
             input: &'static str,
             output: &'static str,
-            arg_error: bool,
+            arg_errors: usize,
         }
 
         let cases = vec![
@@ -385,19 +387,19 @@ mod test {
                 name: "named argument",
                 input: r#"{{echo(text="doom")}}"#,
                 output: "doom",
-                arg_error: false,
+                arg_errors: 0,
             },
             Case {
                 name: "unknown name",
                 input: r#"{{echo(t="doom")}}"#,
                 output: "echo has no argument named t",
-                arg_error: true,
+                arg_errors: 1,
             },
             Case {
                 name: "positional after named",
                 input: r#"{{echo(text="doom", "gloom")}}"#,
-                output: "echo argument 1 (text) is provided more than once",
-                arg_error: true,
+                output: "echo has a positional argument after a named one",
+                arg_errors: 1,
             },
         ];
 
@@ -416,14 +418,20 @@ mod test {
             assert_eq!(out, case.output, "{}", case.name);
 
             let events = layer.get_events();
-            let arg_error = events.iter().any(|entry| {
-                entry.value().iter().any(|issue| {
+            let arg_errors = events
+                .iter()
+                .flat_map(|entry| entry.value().clone())
+                .filter(|issue| {
                     issue
                         .fields
                         .contains(&("source", "templ-arg-error".to_string()))
                 })
-            });
-            assert_eq!(arg_error, case.arg_error, "{}: templ-arg-error", case.name);
+                .count();
+            assert_eq!(
+                arg_errors, case.arg_errors,
+                "{}: templ-arg-error",
+                case.name
+            );
         }
     }
 }

@@ -33,6 +33,8 @@ pub enum ArgError {
     Duplicate,
     #[error("{templ} has no argument named {name}")]
     UnknownName { templ: &'static str, name: String },
+    #[error("{templ} has a positional argument after a named one")]
+    PositionalAfterNamed { templ: String },
     #[error("{templ} argument {pos} ({name}) {source}")]
     At {
         templ: &'static str,
