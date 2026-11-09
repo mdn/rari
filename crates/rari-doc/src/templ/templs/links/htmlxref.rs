@@ -12,7 +12,7 @@ use crate::templ::api::RariApi;
 ///
 /// # Arguments
 /// * `element` - The HTML element name (without angle brackets)
-/// * `display` - Optional custom display text for the link
+/// * `label` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `_` - Unused parameter (kept for compatibility)
 ///
@@ -28,11 +28,11 @@ use crate::templ::api::RariApi;
 #[rari_f(register = "crate::Templ")]
 pub fn htmlelement(
     element: String,
-    display: Option<String>,
+    label: Option<String>,
     anchor: Option<String>,
     _: Option<AnyArg>,
 ) -> Result<String, DocError> {
-    let display = display.filter(|s| !s.is_empty());
+    let display = label.filter(|s| !s.is_empty());
     let mut code = false;
     let display = display.unwrap_or_else(|| {
         code = true;

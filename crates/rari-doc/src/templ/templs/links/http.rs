@@ -13,7 +13,7 @@ use crate::templ::api::RariApi;
 ///
 /// # Arguments
 /// * `status` - The HTTP status code (e.g., 200, 404, 500)
-/// * `display` - Optional custom display text for the link
+/// * `label` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `plain` - Optional flag to disable code formatting (default: false)
 ///
@@ -25,7 +25,7 @@ use crate::templ::api::RariApi;
 #[rari_f(register = "crate::Templ")]
 pub fn httpstatus(
     status: AnyArg,
-    display: Option<String>,
+    label: Option<String>,
     anchor: Option<String>,
     plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
@@ -34,7 +34,7 @@ pub fn httpstatus(
         env.locale.as_url_str(),
         status
     );
-    http(url, status, display, anchor, plain, env.locale)
+    http(url, status, label, anchor, plain, env.locale)
 }
 
 /// Creates a link to an HTTP header reference page on MDN.
@@ -45,7 +45,7 @@ pub fn httpstatus(
 ///
 /// # Arguments
 /// * `header` - The HTTP header name (e.g., "Content-Type", "Authorization")
-/// * `display` - Optional custom display text for the link
+/// * `label` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `plain` - Optional flag to disable code formatting (default: false)
 ///
@@ -57,7 +57,7 @@ pub fn httpstatus(
 #[rari_f(register = "crate::Templ")]
 pub fn httpheader(
     header: AnyArg,
-    display: Option<String>,
+    label: Option<String>,
     anchor: Option<String>,
     plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
@@ -66,7 +66,7 @@ pub fn httpheader(
         env.locale.as_url_str(),
         header
     );
-    http(url, header, display, anchor, plain, env.locale)
+    http(url, header, label, anchor, plain, env.locale)
 }
 
 /// Creates a link to an HTTP request method reference page on MDN.
@@ -77,7 +77,7 @@ pub fn httpheader(
 ///
 /// # Arguments
 /// * `method` - The HTTP method name (e.g., "GET", "POST", "PUT", "DELETE")
-/// * `display` - Optional custom display text for the link
+/// * `label` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `plain` - Optional flag to disable code formatting (default: false)
 ///
@@ -89,7 +89,7 @@ pub fn httpheader(
 #[rari_f(register = "crate::Templ")]
 pub fn httpmethod(
     method: AnyArg,
-    display: Option<String>,
+    label: Option<String>,
     anchor: Option<String>,
     plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
@@ -98,7 +98,7 @@ pub fn httpmethod(
         env.locale.as_url_str(),
         method
     );
-    http(url, method, display, anchor, plain, env.locale)
+    http(url, method, label, anchor, plain, env.locale)
 }
 
 /// Internal helper function for HTTP-related link generation.

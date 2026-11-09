@@ -12,7 +12,7 @@ use crate::templ::api::RariApi;
 ///
 /// # Arguments
 /// * `id` - ID of the heading that contains the live sample to link to
-/// * `display` - Display text for the link (e.g., "Open in fullscreen", "View full example")
+/// * `label` - Display text for the link (e.g., "Open in fullscreen", "View full example")
 ///
 /// # Examples
 /// * `{{LiveSampleLink("Basic_example", "View full example")}}` -> creates fullscreen link for "Basic example" sample
@@ -25,13 +25,13 @@ use crate::templ::api::RariApi;
 /// - Creates accessible links with descriptive text
 /// - Works in conjunction with EmbedLiveSample macro for complete functionality
 #[rari_f(register = "crate::Templ")]
-pub fn livesamplelink(id: String, display: String) -> Result<String, DocError> {
+pub fn livesamplelink(id: String, label: String) -> Result<String, DocError> {
     let id = RariApi::anchorize(&id);
     Ok(concat_strs!(
         r##"<a href="#livesample_fullscreen="##,
         &id,
         r#"">"#,
-        &display,
+        &label,
         "</a>"
     ))
 }

@@ -16,7 +16,7 @@ use crate::templ::api_name_index::resolve_api_name;
 ///
 /// # Arguments
 /// * `api` - The API name (interface, method, property, etc.)
-/// * `display` - Optional custom display text for the link
+/// * `label` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `plain` - Optional flag to disable code formatting (default: false)
 ///
@@ -43,13 +43,13 @@ use crate::templ::api_name_index::resolve_api_name;
 #[rari_f(register = "crate::Templ")]
 pub fn domxref(
     api: String,
-    display: Option<String>,
+    label: Option<String>,
     anchor: Option<String>,
     plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let span = span!(Level::ERROR, "domxref", basepath = "/docs/Web/API/");
     let _enter = span.enter();
-    let display = display.as_deref().filter(|s| !s.is_empty());
+    let display = label.as_deref().filter(|s| !s.is_empty());
     let mut display_with_fallback = Cow::Borrowed(display.unwrap_or(api.as_str()));
     let api = api
         .replace(' ', "_")

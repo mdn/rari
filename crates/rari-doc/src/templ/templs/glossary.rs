@@ -5,12 +5,12 @@ use crate::templ::api::RariApi;
 use crate::utils::dedup_whitespace;
 
 #[rari_f(register = "crate::Templ")]
-pub fn glossary(term: String, display_name: Option<String>) -> Result<String, DocError> {
+pub fn glossary(term: String, label: Option<String>) -> Result<String, DocError> {
     let url = format!("/Glossary/{}", dedup_whitespace(&term).replace(' ', "_"));
     RariApi::link(
         &url,
         Some(env.locale),
-        Some(&display_name.unwrap_or(term)),
+        Some(&label.unwrap_or(term)),
         false,
         None,
         false,

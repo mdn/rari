@@ -15,7 +15,7 @@ use crate::templ::js_ref_index::resolve_js_ref;
 ///
 /// # Arguments
 /// * `api` - The JavaScript feature name (object, method, property, etc.)
-/// * `display` - Optional custom display text for the link
+/// * `label` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `plain` - Optional flag to disable code formatting (default: false)
 ///
@@ -54,11 +54,11 @@ use crate::templ::js_ref_index::resolve_js_ref;
 #[rari_f(register = "crate::Templ")]
 pub fn jsxref(
     api: String,
-    display: Option<String>,
+    label: Option<String>,
     anchor: Option<String>,
     plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
-    let parts = jsxref_parts(&api, display.as_deref(), anchor.as_deref());
+    let parts = jsxref_parts(&api, label.as_deref(), anchor.as_deref());
     if parts.anchor_conflict {
         let ic = get_issue_counter();
         tracing::warn!(
