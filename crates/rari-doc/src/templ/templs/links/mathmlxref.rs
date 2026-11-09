@@ -12,7 +12,7 @@ use crate::templ::api::RariApi;
 /// is converted to lowercase for consistency.
 ///
 /// # Arguments
-/// * `element_name` - The MathML element name (will be converted to lowercase)
+/// * `element` - The MathML element name (will be converted to lowercase)
 ///
 /// # Examples
 /// * `{{MathMLElement("math")}}` -> links to `<math>` element with code formatting
@@ -25,17 +25,17 @@ use crate::templ::api::RariApi;
 /// - Automatically wraps element name in `&lt;` and `&gt;` for display
 /// - Sets title attribute with unescaped angle brackets for accessibility
 /// - Uses code formatting (`<code>` tags) by default
-/// - Links to `/Web/MathML/Reference/Element/{element_name}` path structure
+/// - Links to `/Web/MathML/Reference/Element/{element}` path structure
 #[rari_f(register = "crate::Templ")]
-pub fn mathmlelement(element_name: String) -> Result<String, DocError> {
-    let element_name = element_name.to_lowercase();
-    let display = concat_strs!("&lt;", element_name.as_str(), "&gt;");
-    let title = concat_strs!("<", element_name.as_str(), ">");
+pub fn mathmlelement(element: String) -> Result<String, DocError> {
+    let element = element.to_lowercase();
+    let display = concat_strs!("&lt;", element.as_str(), "&gt;");
+    let title = concat_strs!("<", element.as_str(), ">");
     let url = concat_strs!(
         "/",
         env.locale.as_url_str(),
         "/docs/Web/MathML/Reference/Element/",
-        element_name.as_str()
+        element.as_str()
     );
 
     RariApi::link(

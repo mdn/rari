@@ -11,7 +11,7 @@ use crate::templ::api::RariApi;
 /// display text is provided, and applies code formatting by default.
 ///
 /// # Arguments
-/// * `element_name` - The HTML element name (without angle brackets)
+/// * `element` - The HTML element name (without angle brackets)
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `_` - Unused parameter (kept for compatibility)
@@ -24,10 +24,10 @@ use crate::templ::api::RariApi;
 /// # Special handling
 /// - Automatically wraps element name in `&lt;` and `&gt;` for display
 /// - Uses code formatting (`<code>` tags) by default unless custom display text provided
-/// - Links to `/Web/HTML/Reference/Elements/{element_name}` path structure
+/// - Links to `/Web/HTML/Reference/Elements/{element}` path structure
 #[rari_f(register = "crate::Templ")]
 pub fn htmlelement(
-    element_name: String,
+    element: String,
     display: Option<String>,
     anchor: Option<String>,
     _: Option<AnyArg>,
@@ -36,12 +36,12 @@ pub fn htmlelement(
     let mut code = false;
     let display = display.unwrap_or_else(|| {
         code = true;
-        format!("&lt;{element_name}&gt;")
+        format!("&lt;{element}&gt;")
     });
     let mut url = format!(
         "/{}/docs/Web/HTML/Reference/Elements/{}",
         env.locale.as_url_str(),
-        element_name,
+        element,
     );
     if let Some(anchor) = anchor {
         if !anchor.starts_with('#') {
