@@ -31,7 +31,7 @@ use std::sync::LazyLock;
 
 use rari_types::globals::deny_warnings;
 use rari_types::templ::{RariFn, TemplType};
-use rari_types::{Arg, RariEnv};
+use rari_types::{Args, RariEnv};
 use tracing::error;
 
 use crate::error::DocError;
@@ -44,6 +44,7 @@ pub struct Templ {
     pub outline: &'static str,
     pub outline_snippet: &'static str,
     pub outline_plain: &'static str,
+    pub params: &'static [&'static str],
     pub doc: &'static str,
     pub function: RariFn<Result<String, DocError>>,
     pub typ: TemplType,
@@ -78,7 +79,7 @@ fn record_invocation(name: String, locale: rari_types::locale::Locale, known: bo
 pub fn invoke(
     env: &RariEnv,
     name: &str,
-    args: Vec<Option<Arg>>,
+    args: impl Into<Args>,
 ) -> Result<(String, TemplType), DocError> {
     let name = name.replace('-', "_");
     let (f, is_sidebar) = match TEMPL_MAPPING.get(name.as_str()) {
@@ -103,14 +104,14 @@ pub fn invoke(
     if matches!(is_sidebar, TemplType::Sidebar) && is_unrooted(env.slug) {
         return Ok((Default::default(), TemplType::Sidebar));
     }
-    f(env, args).map(|s| (s, is_sidebar))
+    f(env, args.into()).map(|s| (s, is_sidebar))
 }
 
 #[cfg(test)]
 mod test {
-    use rari_types::Quotes;
     use rari_types::fm_types::PageType;
     use rari_types::locale::Locale;
+    use rari_types::{Arg, Quotes};
 
     use super::*;
 

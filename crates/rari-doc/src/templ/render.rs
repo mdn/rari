@@ -39,13 +39,15 @@ pub(crate) fn render_for_summary(input: &str) -> Result<String, DocError> {
                     | "quicklinkswithsubpages" => None,
                     "glossary" => mac
                         .args
+                        .positional
                         .get(1)
-                        .or(mac.args.first())
+                        .or(mac.args.positional.first())
                         .and_then(|f| f.clone())
                         .filter(|arg| !arg.is_blank())
                         .map(|arg| AnyArg::try_from(arg).unwrap().to_string()),
                     _ => mac
                         .args
+                        .positional
                         .first()
                         .and_then(|f| f.clone())
                         .filter(|arg| !arg.is_blank())
@@ -96,6 +98,12 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                     warn!(
                         source = "templ-syntax-error",
                         "Macro {name} has syntax error"
+                    );
+                }
+                if mac.positional_after_named {
+                    warn!(
+                        source = "templ-arg-error",
+                        "Macro {name} has a positional argument after a named one"
                     );
                 }
                 match invoke(env, &name, mac.args) {
@@ -356,5 +364,66 @@ mod test {
             fields.contains(&("templ", "domxreg".to_string())),
             "expected the macro name on the event, got {fields:?}"
         );
+    }
+
+    #[test]
+    fn test_render_named_args() {
+        use tracing::subscriber::set_default;
+        use tracing_subscriber::layer::SubscriberExt;
+
+        use crate::issues::InMemoryLayer;
+
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            output: &'static str,
+            arg_error: bool,
+        }
+
+        let cases = vec![
+            Case {
+                name: "named argument",
+                input: r#"{{echo(text="doom")}}"#,
+                output: "doom",
+                arg_error: false,
+            },
+            Case {
+                name: "unknown name",
+                input: r#"{{echo(t="doom")}}"#,
+                output: "echo has no argument named t",
+                arg_error: true,
+            },
+            Case {
+                name: "positional after named",
+                input: r#"{{echo(text="doom", "gloom")}}"#,
+                output: "echo argument 1 (text) is provided more than once",
+                arg_error: true,
+            },
+        ];
+
+        let env = RariEnv {
+            ..Default::default()
+        };
+        for case in cases {
+            let layer = InMemoryLayer::default();
+            let subscriber = tracing_subscriber::registry().with(layer.clone());
+            let _guard = set_default(subscriber);
+
+            let Rendered {
+                content, templs, ..
+            } = render(&env, case.input, 0).expect("render should succeed");
+            let out = decode_ref(&content, &templs, None).expect("decode should succeed");
+            assert_eq!(out, case.output, "{}", case.name);
+
+            let events = layer.get_events();
+            let arg_error = events.iter().any(|entry| {
+                entry.value().iter().any(|issue| {
+                    issue
+                        .fields
+                        .contains(&("source", "templ-arg-error".to_string()))
+                })
+            });
+            assert_eq!(arg_error, case.arg_error, "{}: templ-arg-error", case.name);
+        }
     }
 }

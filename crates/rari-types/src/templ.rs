@@ -2,9 +2,9 @@ use darling::FromMeta;
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 
-use crate::{Arg, RariEnv};
+use crate::{Args, RariEnv};
 
-pub type RariFn<R> = fn(&RariEnv<'_>, Vec<Option<Arg>>) -> R;
+pub type RariFn<R> = fn(&RariEnv<'_>, Args) -> R;
 
 #[derive(Debug, Default, FromMeta, Clone, Copy, strum::Display)]
 pub enum TemplType {
