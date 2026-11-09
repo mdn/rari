@@ -4,6 +4,7 @@ use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
+use crate::templ::templs::links::anchor_fragment;
 
 /// Creates a link to an HTTP status code reference page on MDN.
 ///
@@ -34,7 +35,15 @@ pub fn httpstatus(
         env.locale.as_url_str(),
         status
     );
-    http(url, status, display, anchor, no_code, env.locale)
+    http(
+        "httpstatus",
+        url,
+        status,
+        display,
+        anchor.as_deref(),
+        no_code,
+        env.locale,
+    )
 }
 
 /// Creates a link to an HTTP header reference page on MDN.
@@ -66,7 +75,15 @@ pub fn httpheader(
         env.locale.as_url_str(),
         status
     );
-    http(url, status, display, anchor, no_code, env.locale)
+    http(
+        "httpheader",
+        url,
+        status,
+        display,
+        anchor.as_deref(),
+        no_code,
+        env.locale,
+    )
 }
 
 /// Creates a link to an HTTP request method reference page on MDN.
@@ -98,7 +115,15 @@ pub fn httpmethod(
         env.locale.as_url_str(),
         status
     );
-    http(url, status, display, anchor, no_code, env.locale)
+    http(
+        "httpmethod",
+        url,
+        status,
+        display,
+        anchor.as_deref(),
+        no_code,
+        env.locale,
+    )
 }
 
 /// Internal helper function for HTTP-related link generation.
@@ -108,25 +133,28 @@ pub fn httpmethod(
 /// display text formatting, and code styling.
 ///
 /// # Arguments
+/// * `templ` - The macro name, for argument error reporting
 /// * `url` - The base URL for the HTTP reference page
 /// * `status` - The HTTP feature identifier (status code, header name, method)
 /// * `display` - Optional custom display text
-/// * `anchor` - Optional anchor/fragment to append
+/// * `anchor` - Optional anchor argument (`#fragment`), see [`anchor_fragment`]
 /// * `no_code` - Optional flag to disable code formatting
 /// * `locale` - The locale for link generation
 fn http(
+    templ: &'static str,
     mut url: String,
     status: AnyArg,
     display: Option<String>,
-    anchor: Option<String>,
+    anchor: Option<&str>,
     no_code: Option<AnyArg>,
     locale: Locale,
 ) -> Result<String, DocError> {
     let mut display = display.unwrap_or(status.to_string());
-    if let Some(anchor) = anchor {
-        url.push_str(&anchor);
+    if let Some(anchor) = anchor_fragment(templ, anchor) {
+        url.push('#');
+        url.push_str(anchor);
         display.push('.');
-        display.push_str(&anchor);
+        display.push_str(anchor);
     }
     let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
     RariApi::link(

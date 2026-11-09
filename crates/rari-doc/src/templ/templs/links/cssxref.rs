@@ -7,6 +7,7 @@ use crate::issues::get_issue_counter;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 use crate::templ::css_feature_index::{CssRefCategory, resolve_css_feature};
+use crate::templ::templs::links::anchor_fragment;
 
 /// Creates a link to a CSS reference page on MDN.
 ///
@@ -77,6 +78,7 @@ pub fn cssxref_internal(
         Some((n, frag)) => (n, Some(frag)),
         None => (name, None),
     };
+    let anchor = anchor_fragment("cssxref", anchor);
     if embedded_anchor.is_some() && anchor.is_some() {
         let ic = get_issue_counter();
         tracing::warn!(
@@ -133,8 +135,8 @@ pub fn cssxref_internal(
     .map_or_else(|| slug.to_string(), |s| format!("Reference/{s}"));
 
     let fragment = embedded_anchor
+        .or(anchor)
         .map(|a| format!("#{a}"))
-        .or_else(|| anchor.map(str::to_string))
         .unwrap_or_default();
     let url = format!("{}{}{}", base_url, url_path, fragment);
 

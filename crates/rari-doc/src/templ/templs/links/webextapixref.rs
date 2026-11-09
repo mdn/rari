@@ -5,6 +5,7 @@ use rari_types::AnyArg;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
+use crate::templ::templs::links::anchor_fragment;
 
 /// Creates a link to a WebExtensions API reference page on MDN.
 ///
@@ -22,7 +23,7 @@ use crate::templ::api::RariApi;
 /// * `{{WebExtAPIRef("tabs")}}` -> links to tabs API namespace
 /// * `{{WebExtAPIRef("tabs.query")}}` -> links to tabs.query method
 /// * `{{WebExtAPIRef("runtime.onMessage", "onMessage event")}}` -> custom display text
-/// * `{{WebExtAPIRef("storage.local", "", "#get")}}` -> with anchor to specific method
+/// * `{{WebExtAPIRef("storage.local", "", "#get")}}` -> with anchor to specific method, displayed as `storage.local#get`
 /// * `{{WebExtAPIRef("alarms", "", "", true)}}` -> disables code formatting
 ///
 /// # Special handling
@@ -45,14 +46,12 @@ pub fn webextapiref(
         env.locale.as_url_str(),
         api.replace(' ', "_").replace("()", "").replace('.', "/"),
     );
-    if let Some(anchor) = anchor {
-        if !anchor.starts_with('#') {
-            url.push('#');
-        }
-        url.push_str(&anchor);
+    if let Some(anchor) = anchor_fragment("webextapiref", anchor.as_deref()) {
+        url.push('#');
+        url.push_str(anchor);
         display.to_mut().push('#');
-        display.to_mut().push_str(&anchor);
-    };
+        display.to_mut().push_str(anchor);
+    }
 
     RariApi::link(
         &url,

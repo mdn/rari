@@ -27,6 +27,8 @@ pub enum ArgError {
     MustBeProvided,
     #[error("must not be empty")]
     MustNotBeEmpty,
+    #[error("must start with a single `#`")]
+    MustStartWithSingleHash,
     #[error("could not be parsed")]
     MustBeParsable,
     #[error("{templ} argument {pos} ({name}) {source}")]

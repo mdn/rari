@@ -3,6 +3,7 @@ use rari_types::AnyArg;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
+use crate::templ::templs::links::anchor_fragment;
 
 /// Creates a link to an HTML element reference page on MDN.
 ///
@@ -43,11 +44,9 @@ pub fn htmlelement(
         env.locale.as_url_str(),
         element_name,
     );
-    if let Some(anchor) = anchor {
-        if !anchor.starts_with('#') {
-            url.push('#');
-        }
-        url.push_str(&anchor);
+    if let Some(anchor) = anchor_fragment("htmlelement", anchor.as_deref()) {
+        url.push('#');
+        url.push_str(anchor);
     }
 
     RariApi::link(
