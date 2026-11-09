@@ -16,7 +16,7 @@ use crate::templ::api::RariApi;
 /// * `api` - The WebExtensions API name (namespace, method, property, etc.)
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
-/// * `no_code` - Optional flag to disable code formatting (default: false)
+/// * `plain` - Optional flag to disable code formatting (default: false)
 ///
 /// # Examples
 /// * `{{WebExtAPIRef("tabs")}}` -> links to tabs API namespace
@@ -29,14 +29,14 @@ use crate::templ::api::RariApi;
 /// - Converts spaces to underscores and removes `()` from method names for URLs
 /// - Handles dot notation (`.`) by converting to `/` for URL paths
 /// - Appends anchor information to display text when anchors are used
-/// - Formats links with `<code>` tags unless `no_code` is true
+/// - Formats links with `<code>` tags unless `plain` is true
 /// - Links to `/Mozilla/Add-ons/WebExtensions/API/{api}` path structure
 #[rari_f(register = "crate::Templ")]
 pub fn webextapiref(
     api: String,
     display: Option<String>,
     anchor: Option<String>,
-    no_code: Option<AnyArg>,
+    plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let display = display.as_deref().filter(|s| !s.is_empty());
     let mut display = display.map(Cow::Borrowed).unwrap_or(Cow::Borrowed(&api));
@@ -58,7 +58,7 @@ pub fn webextapiref(
         &url,
         Some(env.locale),
         Some(display.as_ref()),
-        !no_code.map(|nc| nc.as_bool()).unwrap_or_default(),
+        !plain.map(|plain| plain.as_bool()).unwrap_or_default(),
         None,
         false,
     )

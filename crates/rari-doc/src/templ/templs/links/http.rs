@@ -15,7 +15,7 @@ use crate::templ::api::RariApi;
 /// * `status` - The HTTP status code (e.g., 200, 404, 500)
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
-/// * `no_code` - Optional flag to disable code formatting (default: false)
+/// * `plain` - Optional flag to disable code formatting (default: false)
 ///
 /// # Examples
 /// * `{{HTTPStatus("404")}}` -> links to 404 Not Found status
@@ -27,14 +27,14 @@ pub fn httpstatus(
     status: AnyArg,
     display: Option<String>,
     anchor: Option<String>,
-    no_code: Option<AnyArg>,
+    plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Status/{}",
         env.locale.as_url_str(),
         status
     );
-    http(url, status, display, anchor, no_code, env.locale)
+    http(url, status, display, anchor, plain, env.locale)
 }
 
 /// Creates a link to an HTTP header reference page on MDN.
@@ -47,7 +47,7 @@ pub fn httpstatus(
 /// * `header` - The HTTP header name (e.g., "Content-Type", "Authorization")
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
-/// * `no_code` - Optional flag to disable code formatting (default: false)
+/// * `plain` - Optional flag to disable code formatting (default: false)
 ///
 /// # Examples
 /// * `{{HTTPHeader("Content-Type")}}` -> links to Content-Type header
@@ -59,14 +59,14 @@ pub fn httpheader(
     header: AnyArg,
     display: Option<String>,
     anchor: Option<String>,
-    no_code: Option<AnyArg>,
+    plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Headers/{}",
         env.locale.as_url_str(),
         header
     );
-    http(url, header, display, anchor, no_code, env.locale)
+    http(url, header, display, anchor, plain, env.locale)
 }
 
 /// Creates a link to an HTTP request method reference page on MDN.
@@ -79,7 +79,7 @@ pub fn httpheader(
 /// * `method` - The HTTP method name (e.g., "GET", "POST", "PUT", "DELETE")
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
-/// * `no_code` - Optional flag to disable code formatting (default: false)
+/// * `plain` - Optional flag to disable code formatting (default: false)
 ///
 /// # Examples
 /// * `{{HTTPMethod("POST")}}` -> links to POST method
@@ -91,14 +91,14 @@ pub fn httpmethod(
     method: AnyArg,
     display: Option<String>,
     anchor: Option<String>,
-    no_code: Option<AnyArg>,
+    plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Methods/{}",
         env.locale.as_url_str(),
         method
     );
-    http(url, method, display, anchor, no_code, env.locale)
+    http(url, method, display, anchor, plain, env.locale)
 }
 
 /// Internal helper function for HTTP-related link generation.
@@ -112,14 +112,14 @@ pub fn httpmethod(
 /// * `name` - The HTTP feature identifier (status code, header name, method)
 /// * `display` - Optional custom display text
 /// * `anchor` - Optional anchor/fragment to append
-/// * `no_code` - Optional flag to disable code formatting
+/// * `plain` - Optional flag to disable code formatting
 /// * `locale` - The locale for link generation
 fn http(
     mut url: String,
     name: AnyArg,
     display: Option<String>,
     anchor: Option<String>,
-    no_code: Option<AnyArg>,
+    plain: Option<AnyArg>,
     locale: Locale,
 ) -> Result<String, DocError> {
     let mut display = display.unwrap_or(name.to_string());
@@ -128,7 +128,7 @@ fn http(
         display.push('.');
         display.push_str(&anchor);
     }
-    let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
+    let code = !plain.map(|plain| plain.as_bool()).unwrap_or_default();
     RariApi::link(
         &url,
         Some(locale),

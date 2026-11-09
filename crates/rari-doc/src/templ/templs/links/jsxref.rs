@@ -17,7 +17,7 @@ use crate::templ::js_ref_index::resolve_js_ref;
 /// * `api` - The JavaScript feature name (object, method, property, etc.)
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
-/// * `no_code` - Optional flag to disable code formatting (default: false)
+/// * `plain` - Optional flag to disable code formatting (default: false)
 ///
 /// # Examples
 /// * `{{JSxRef("Array")}}` -> links to Array global object
@@ -30,7 +30,7 @@ use crate::templ::js_ref_index::resolve_js_ref;
 /// - Normalizes the name before lookup (`()` stripped, `.prototype.` collapsed,
 ///   member `.` → `/`); see [`resolve_js_ref`]
 /// - Falls back to URI component decoding if no page found
-/// - Formats links with `<code>` tags unless `no_code` is true
+/// - Formats links with `<code>` tags unless `plain` is true
 ///
 /// # Name resolution
 /// The normalized `api` is resolved against an index of all
@@ -56,7 +56,7 @@ pub fn jsxref(
     api: String,
     display: Option<String>,
     anchor: Option<String>,
-    no_code: Option<AnyArg>,
+    plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let parts = jsxref_parts(&api, display.as_deref(), anchor.as_deref());
     if parts.anchor_conflict {
@@ -80,7 +80,7 @@ pub fn jsxref(
         push_anchor(&mut url, anchor);
     }
 
-    let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
+    let code = !plain.map(|plain| plain.as_bool()).unwrap_or_default();
     RariApi::link(
         &url,
         Some(env.locale),
