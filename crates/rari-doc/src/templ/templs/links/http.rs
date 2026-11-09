@@ -4,6 +4,7 @@ use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::templ::api::RariApi;
+use crate::templ::templs::links::anchor_fragment;
 
 /// Creates a link to an HTTP status code reference page on MDN.
 ///
@@ -29,6 +30,7 @@ pub fn httpstatus(
     anchor: Option<String>,
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
+    let anchor = anchor_fragment("httpstatus", anchor.as_deref()).map(String::from);
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Status/{}",
         env.locale.as_url_str(),
@@ -61,6 +63,7 @@ pub fn httpheader(
     anchor: Option<String>,
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
+    let anchor = anchor_fragment("httpheader", anchor.as_deref()).map(String::from);
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Headers/{}",
         env.locale.as_url_str(),
@@ -93,6 +96,7 @@ pub fn httpmethod(
     anchor: Option<String>,
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
+    let anchor = anchor_fragment("httpmethod", anchor.as_deref()).map(String::from);
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Methods/{}",
         env.locale.as_url_str(),
@@ -124,6 +128,7 @@ fn http(
 ) -> Result<String, DocError> {
     let mut display = display.unwrap_or(status.to_string());
     if let Some(anchor) = anchor {
+        url.push('#');
         url.push_str(&anchor);
         display.push('.');
         display.push_str(&anchor);

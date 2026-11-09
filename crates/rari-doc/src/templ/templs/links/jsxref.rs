@@ -5,6 +5,7 @@ use crate::error::DocError;
 use crate::issues::get_issue_counter;
 use crate::templ::api::RariApi;
 use crate::templ::js_ref_index::resolve_js_ref;
+use crate::templ::templs::links::anchor_fragment;
 
 /// Creates a link to a JavaScript reference page on MDN.
 ///
@@ -23,6 +24,7 @@ use crate::templ::js_ref_index::resolve_js_ref;
 /// * `{{JSxRef("Array")}}` -> links to Array global object
 /// * `{{JSxRef("Array.prototype.map")}}` -> links to Array map method
 /// * `{{JSxRef("Promise", "Promises")}}` -> custom display text
+/// * `{{JSxRef("Array.prototype.map", "", "#examples")}}` -> with anchor
 /// * `{{JSxRef("if...else")}}` -> links to if...else statement
 /// * `{{JSxRef("typeof", "", "", true)}}` -> disables code formatting
 ///
@@ -77,7 +79,8 @@ pub fn jsxref(
     };
 
     if let Some(anchor) = parts.anchor {
-        push_anchor(&mut url, anchor);
+        url.push('#');
+        url.push_str(anchor);
     }
 
     let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
@@ -122,7 +125,7 @@ fn jsxref_parts<'a>(
         Some((n, frag)) => (n, Some(frag)),
         None => (api_name, None),
     };
-    let anchor = anchor.filter(|s| !s.is_empty());
+    let anchor = anchor_fragment("jsxref", anchor);
     let anchor_conflict = embedded_anchor.is_some() && anchor.is_some();
 
     let display = display.filter(|s| !s.is_empty()).unwrap_or(bare);
@@ -133,14 +136,6 @@ fn jsxref_parts<'a>(
         anchor: embedded_anchor.or(anchor),
         anchor_conflict,
     }
-}
-
-/// Append `anchor` (with or without a leading `#`) to `url` as a fragment.
-fn push_anchor(url: &mut String, anchor: &str) {
-    if !anchor.starts_with('#') {
-        url.push('#');
-    }
-    url.push_str(anchor);
 }
 
 #[cfg(test)]
@@ -204,7 +199,7 @@ mod tests {
                 name: "explicit anchor",
                 api_name: "Array",
                 display: None,
-                anchor: Some("examples"),
+                anchor: Some("#examples"),
                 bare: "Array",
                 display_out: "Array",
                 anchor_out: Some("examples"),
@@ -224,7 +219,7 @@ mod tests {
                 name: "embedded fragment wins over explicit anchor",
                 api_name: "Array#embedded",
                 display: None,
-                anchor: Some("explicit"),
+                anchor: Some("#explicit"),
                 bare: "Array",
                 display_out: "Array",
                 anchor_out: Some("embedded"),
@@ -258,19 +253,5 @@ mod tests {
             assert_eq!(parts.anchor, c.anchor_out, "anchor [{}]", c.name);
             assert_eq!(parts.anchor_conflict, c.conflict, "conflict [{}]", c.name);
         }
-    }
-
-    #[test]
-    fn push_anchor_adds_missing_hash() {
-        let mut url = String::from("/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array");
-        push_anchor(&mut url, "examples");
-        assert!(url.ends_with("/Array#examples"));
-    }
-
-    #[test]
-    fn push_anchor_keeps_existing_hash() {
-        let mut url = String::from("/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array");
-        push_anchor(&mut url, "#examples");
-        assert!(url.ends_with("/Array#examples"));
     }
 }

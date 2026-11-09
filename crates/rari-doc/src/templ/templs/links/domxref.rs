@@ -7,6 +7,7 @@ use tracing::{Level, span};
 use crate::error::DocError;
 use crate::templ::api::RariApi;
 use crate::templ::api_name_index::resolve_api_name;
+use crate::templ::templs::links::anchor_fragment;
 
 /// Creates a link to a DOM/Web API reference page on MDN.
 ///
@@ -24,6 +25,7 @@ use crate::templ::api_name_index::resolve_api_name;
 /// * `{{DOMxRef("Document")}}` -> links to Document interface
 /// * `{{DOMxRef("document.getElementById()")}}` -> links to getElementById method
 /// * `{{DOMxRef("Element.innerHTML", "innerHTML property")}}` -> custom display text
+/// * `{{DOMxRef("RequestInit", "", "#mode")}}` -> with anchor, displayed as `RequestInit.mode`
 /// * `{{DOMxRef("Node", "", "", true)}}` -> disables code formatting
 ///
 /// # Special handling
@@ -70,15 +72,10 @@ pub fn domxref(
         env.locale.as_url_str(),
         resolved.unwrap_or(&api),
     );
-    if let Some(anchor) = anchor {
-        if !anchor.starts_with('#') {
-            url.push('#');
-            display_with_fallback = Cow::Owned(format!("{display_with_fallback}.{anchor}"));
-        }
-        url.push_str(&anchor);
-        if let Some(anchor) = anchor.strip_prefix('#') {
-            display_with_fallback = Cow::Owned(format!("{display_with_fallback}.{anchor}"));
-        }
+    if let Some(anchor) = anchor_fragment("domxref", anchor.as_deref()) {
+        url.push('#');
+        url.push_str(anchor);
+        display_with_fallback = Cow::Owned(format!("{display_with_fallback}.{anchor}"));
     }
 
     let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
