@@ -26,6 +26,28 @@ pub struct LinkModifier<'a> {
     pub baseline: Option<BaselineStatus>,
 }
 
+impl<'a> LinkModifier<'a> {
+    pub fn from_page(
+        page: &'a Page,
+        badge_locale: Locale,
+        code: bool,
+        only_en_us: bool,
+        with_badges: bool,
+    ) -> Self {
+        Self {
+            badges: if with_badges { page.status() } else { &[] },
+            badge_locale,
+            code,
+            only_en_us,
+            baseline: if with_badges {
+                get_baseline_status(page)
+            } else {
+                None
+            },
+        }
+    }
+}
+
 pub fn render_internal_link(
     out: &mut String,
     url: &str,
@@ -144,6 +166,13 @@ pub fn render_link_via_page(
                     Cow::Borrowed(content)
                 }
             };
+            let modifier = LinkModifier::from_page(
+                &page,
+                locale,
+                code,
+                page.locale() == Locale::EnUs && locale != Locale::EnUs,
+                with_badges,
+            );
             return render_internal_link(
                 out,
                 url,
@@ -154,17 +183,7 @@ pub fn render_link_via_page(
                 },
                 &content,
                 title,
-                &LinkModifier {
-                    badges: if with_badges { page.status() } else { &[] },
-                    badge_locale: locale,
-                    code,
-                    only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
-                    baseline: if with_badges {
-                        get_baseline_status(&page)
-                    } else {
-                        None
-                    },
-                },
+                &modifier,
                 true,
             );
         }
