@@ -44,7 +44,7 @@ pub fn httpstatus(
 /// unless disabled.
 ///
 /// # Arguments
-/// * `status` - The HTTP header name (e.g., "Content-Type", "Authorization")
+/// * `header` - The HTTP header name (e.g., "Content-Type", "Authorization")
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `no_code` - Optional flag to disable code formatting (default: false)
@@ -56,7 +56,7 @@ pub fn httpstatus(
 /// * `{{HTTPHeader("Accept", "", "", true)}}` -> disables code formatting
 #[rari_f(register = "crate::Templ")]
 pub fn httpheader(
-    status: AnyArg,
+    header: AnyArg,
     display: Option<String>,
     anchor: Option<String>,
     no_code: Option<AnyArg>,
@@ -64,9 +64,9 @@ pub fn httpheader(
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Headers/{}",
         env.locale.as_url_str(),
-        status
+        header
     );
-    http(url, status, display, anchor, no_code, env.locale)
+    http(url, header, display, anchor, no_code, env.locale)
 }
 
 /// Creates a link to an HTTP request method reference page on MDN.
@@ -76,7 +76,7 @@ pub fn httpheader(
 /// by default unless disabled.
 ///
 /// # Arguments
-/// * `status` - The HTTP method name (e.g., "GET", "POST", "PUT", "DELETE")
+/// * `method` - The HTTP method name (e.g., "GET", "POST", "PUT", "DELETE")
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `no_code` - Optional flag to disable code formatting (default: false)
@@ -88,7 +88,7 @@ pub fn httpheader(
 /// * `{{HTTPMethod("DELETE", "", "", true)}}` -> disables code formatting
 #[rari_f(register = "crate::Templ")]
 pub fn httpmethod(
-    status: AnyArg,
+    method: AnyArg,
     display: Option<String>,
     anchor: Option<String>,
     no_code: Option<AnyArg>,
@@ -96,9 +96,9 @@ pub fn httpmethod(
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Methods/{}",
         env.locale.as_url_str(),
-        status
+        method
     );
-    http(url, status, display, anchor, no_code, env.locale)
+    http(url, method, display, anchor, no_code, env.locale)
 }
 
 /// Internal helper function for HTTP-related link generation.
@@ -109,20 +109,20 @@ pub fn httpmethod(
 ///
 /// # Arguments
 /// * `url` - The base URL for the HTTP reference page
-/// * `status` - The HTTP feature identifier (status code, header name, method)
+/// * `name` - The HTTP feature identifier (status code, header name, method)
 /// * `display` - Optional custom display text
 /// * `anchor` - Optional anchor/fragment to append
 /// * `no_code` - Optional flag to disable code formatting
 /// * `locale` - The locale for link generation
 fn http(
     mut url: String,
-    status: AnyArg,
+    name: AnyArg,
     display: Option<String>,
     anchor: Option<String>,
     no_code: Option<AnyArg>,
     locale: Locale,
 ) -> Result<String, DocError> {
-    let mut display = display.unwrap_or(status.to_string());
+    let mut display = display.unwrap_or(name.to_string());
     if let Some(anchor) = anchor {
         url.push_str(&anchor);
         display.push('.');
