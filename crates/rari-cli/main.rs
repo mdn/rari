@@ -320,13 +320,16 @@ fn clear_dependencies_last_checked(base_path: &Path) {
     }
 }
 
-/// Applies one `TemplStatEvent` to the running `known`/`invalid` aggregates.
+/// Applies one `TemplStatEvent` to the running `known`/`invalid`/`params` aggregates.
+///
+/// `params` is keyed by `name(param)` and counts invocations that supplied a non-blank value.
 ///
 /// Returns `false` for `Stop`, signalling the receive loop to terminate.
 fn ingest_templ_event(
     event: TemplStatEvent,
     known: &mut HashMap<String, HashMap<Locale, usize>>,
     invalid: &mut HashMap<String, HashMap<Locale, usize>>,
+    params: &mut HashMap<String, HashMap<Locale, usize>>,
     ignored: &[&str],
 ) -> bool {
     match event {
@@ -335,9 +338,17 @@ fn ingest_templ_event(
             name,
             locale,
             known: is_known,
+            supplied,
         } => {
             let name = name.to_lowercase();
             if !ignored.contains(&name.as_str()) {
+                for param in supplied {
+                    *params
+                        .entry(format!("{name}({param})"))
+                        .or_default()
+                        .entry(locale)
+                        .or_insert(0) += 1;
+                }
                 let bucket = if is_known { known } else { invalid };
                 *bucket.entry(name).or_default().entry(locale).or_insert(0) += 1;
             }
@@ -581,8 +592,15 @@ fn main() -> Result<(), Error> {
                 let recorder_handler = spawn(move || {
                     let mut known: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
                     let mut invalid: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
+                    let mut params: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
                     while let Ok(event) = rx.recv() {
-                        if !ingest_templ_event(event, &mut known, &mut invalid, IGNORED) {
+                        if !ingest_templ_event(
+                            event,
+                            &mut known,
+                            &mut invalid,
+                            &mut params,
+                            IGNORED,
+                        ) {
                             break;
                         }
                     }
@@ -605,9 +623,10 @@ fn main() -> Result<(), Error> {
                             .map(|(name, count, per_locale)| (name.as_str(), *count, per_locale)),
                     );
 
+                    let seen: HashSet<&str> =
+                        known_sorted.iter().map(|(n, _, _)| n.as_str()).collect();
+
                     if full_build {
-                        let seen: HashSet<&str> =
-                            known_sorted.iter().map(|(n, _, _)| n.as_str()).collect();
                         let mut unused: Vec<String> = TEMPL_MAP
                             .iter()
                             .map(|t| t.name.replace('-', "_").to_lowercase())
@@ -624,7 +643,51 @@ fn main() -> Result<(), Error> {
                         info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
                     }
 
+                    let params_sorted = into_sorted_templ_stats(params);
+
+                    if full_build {
+                        // Parameters of unused templates are already covered by `templ unused`.
+                        let seen_params: HashSet<&str> =
+                            params_sorted.iter().map(|(n, _, _)| n.as_str()).collect();
+                        let mut unused_params: Vec<String> = TEMPL_MAP
+                            .iter()
+                            .map(|t| (t.name.replace('-', "_").to_lowercase(), t.params))
+                            .filter(|(n, _)| seen.contains(n.as_str()))
+                            .flat_map(|(n, params)| {
+                                params
+                                    .iter()
+                                    .filter(|p| !p.starts_with('_'))
+                                    .map(move |p| format!("{n}({p})"))
+                            })
+                            .filter(|key| !seen_params.contains(key.as_str()))
+                            .collect();
+                        unused_params.sort();
+                        info!("--- templ params unused ({}) ---", unused_params.len());
+                        let mut tw = TabWriter::new(vec![]);
+                        for (i, name) in unused_params.iter().enumerate() {
+                            writeln!(&mut tw, "{:2}\t{name}", i + 1).expect("unable to write");
+                        }
+                        info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                    }
+
                     if multi_locale {
+                        let translated_only_params: Vec<_> = params_sorted
+                            .iter()
+                            .filter(|(key, _, per_locale)| {
+                                // Params of translated-only macros are covered by `templ translated-only`.
+                                let templ = key.split('(').next().unwrap_or(key);
+                                !per_locale.contains_key(&Locale::EnUs)
+                                    && known_sorted.iter().any(|(n, _, l)| {
+                                        n == templ && l.contains_key(&Locale::EnUs)
+                                    })
+                            })
+                            .map(|(name, total, per_locale)| (name.as_str(), *total, per_locale))
+                            .collect();
+                        print_templ_locales_section(
+                            "templ params translated-only",
+                            translated_only_params.iter().copied(),
+                        );
+
                         let mut translated_only: Vec<(&str, usize, &HashMap<Locale, usize>)> =
                             known_sorted
                                 .iter()
@@ -1113,6 +1176,7 @@ mod tests {
             name: name.to_string(),
             locale,
             known,
+            supplied: vec![],
         }
     }
 
@@ -1120,16 +1184,19 @@ mod tests {
     fn ingest_templ_event_routes_known_and_invalid() {
         let mut known = HashMap::new();
         let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
         assert!(ingest_templ_event(
             record("Compat", Locale::EnUs, true),
             &mut known,
             &mut invalid,
+            &mut params,
             &[],
         ));
         assert!(ingest_templ_event(
             record("typo_macro", Locale::Fr, false),
             &mut known,
             &mut invalid,
+            &mut params,
             &[],
         ));
         assert_eq!(known["compat"][&Locale::EnUs], 1);
@@ -1142,12 +1209,13 @@ mod tests {
     fn ingest_templ_event_lowercases_and_accumulates_per_locale() {
         let mut known = HashMap::new();
         let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
         for event in [
             record("CSSxRef", Locale::EnUs, true),
             record("cssxref", Locale::EnUs, true),
             record("CSSXREF", Locale::Fr, true),
         ] {
-            ingest_templ_event(event, &mut known, &mut invalid, &[]);
+            ingest_templ_event(event, &mut known, &mut invalid, &mut params, &[]);
         }
         assert_eq!(known["cssxref"][&Locale::EnUs], 2);
         assert_eq!(known["cssxref"][&Locale::Fr], 1);
@@ -1158,26 +1226,60 @@ mod tests {
     fn ingest_templ_event_skips_ignored_names() {
         let mut known = HashMap::new();
         let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
         ingest_templ_event(
-            record("Echo", Locale::EnUs, true),
+            TemplStatEvent::Record {
+                name: "Echo".to_string(),
+                locale: Locale::EnUs,
+                known: true,
+                supplied: vec!["text"],
+            },
             &mut known,
             &mut invalid,
+            &mut params,
             &["echo"],
         );
         assert!(known.is_empty());
         assert!(invalid.is_empty());
+        assert!(params.is_empty());
     }
 
     #[test]
     fn ingest_templ_event_returns_false_on_stop() {
         let mut known = HashMap::new();
         let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
         assert!(!ingest_templ_event(
             TemplStatEvent::Stop,
             &mut known,
             &mut invalid,
+            &mut params,
             &[],
         ));
+    }
+
+    #[test]
+    fn ingest_templ_event_counts_supplied_params_per_locale() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
+        for (locale, supplied) in [
+            (Locale::EnUs, vec!["api", "label"]),
+            (Locale::Fr, vec!["api"]),
+        ] {
+            let event = TemplStatEvent::Record {
+                name: "DOMxRef".to_string(),
+                locale,
+                known: true,
+                supplied,
+            };
+            ingest_templ_event(event, &mut known, &mut invalid, &mut params, &[]);
+        }
+        assert_eq!(params["domxref(api)"][&Locale::EnUs], 1);
+        assert_eq!(params["domxref(api)"][&Locale::Fr], 1);
+        assert_eq!(params["domxref(label)"][&Locale::EnUs], 1);
+        assert!(!params["domxref(label)"].contains_key(&Locale::Fr));
+        assert!(!params.contains_key("domxref(anchor)"));
     }
 
     #[test]
