@@ -97,19 +97,19 @@ impl From<Vec<Option<Arg>>> for Args {
 
 impl Args {
     /// Names of the `params` that are given a non-blank value, whether positionally or by name.
-    /// Parameters starting with `_` are ignored, as they can't be named.
+    /// Parameters starting with `_` only count positionally, as they can't be named.
     pub fn supplied(&self, params: &[&'static str]) -> Vec<&'static str> {
         let given = |arg: &Option<Arg>| arg.as_ref().is_some_and(|a| !a.is_blank());
         params
             .iter()
             .enumerate()
-            .filter(|(_, param)| !param.starts_with('_'))
             .filter(|(i, param)| {
                 self.positional.get(*i).is_some_and(given)
-                    || self
-                        .named
-                        .iter()
-                        .any(|(name, value)| name == *param && given(value))
+                    || (!param.starts_with('_')
+                        && self
+                            .named
+                            .iter()
+                            .any(|(name, value)| name == *param && given(value)))
             })
             .map(|(_, param)| *param)
             .collect()
@@ -300,9 +300,14 @@ mod tests {
                 expected: vec![],
             },
             Case {
-                name: "underscore params are skipped",
+                name: "underscore param given positionally",
+                args: vec![None, None, None, None, s("x")].into(),
+                expected: vec!["_old"],
+            },
+            Case {
+                name: "underscore param given by name",
                 args: Args {
-                    positional: vec![None, None, None, None, s("x")],
+                    positional: vec![],
                     named: vec![("_old".into(), s("y"))],
                 },
                 expected: vec![],

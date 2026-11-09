@@ -653,12 +653,7 @@ fn main() -> Result<(), Error> {
                             .iter()
                             .map(|t| (t.name.replace('-', "_").to_lowercase(), t.params))
                             .filter(|(n, _)| seen.contains(n.as_str()))
-                            .flat_map(|(n, params)| {
-                                params
-                                    .iter()
-                                    .filter(|p| !p.starts_with('_'))
-                                    .map(move |p| format!("{n}({p})"))
-                            })
+                            .flat_map(|(n, params)| params.iter().map(move |p| format!("{n}({p})")))
                             .filter(|key| !seen_params.contains(key.as_str()))
                             .collect();
                         unused_params.sort();
