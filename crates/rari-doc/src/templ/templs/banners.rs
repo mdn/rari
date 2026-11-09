@@ -32,17 +32,15 @@ pub fn deprecated_header(version: Option<AnyArg>) -> Result<String, DocError> {
 }
 
 #[rari_f(register = "crate::Templ", typ = "TemplType::Banner")]
-pub fn availableinworkers(typ: Option<String>) -> Result<String, DocError> {
-    let default_typ = "available_in_worker__default";
-    let typ = typ
-        .map(|s| s.to_lowercase())
-        .map(|typ| format!("available_in_worker__{typ}"));
+pub fn availableinworkers(r#type: Option<String>) -> Result<String, DocError> {
+    let default_key = "available_in_worker__default";
+    let key = r#type.map(|typ| format!("available_in_worker__{}", typ.to_lowercase()));
     let copy = l10n_json_data(
         "Template",
-        typ.as_deref().unwrap_or(default_typ),
+        key.as_deref().unwrap_or(default_key),
         env.locale,
     )
-    .unwrap_or(l10n_json_data("Template", default_typ, env.locale)?);
+    .unwrap_or(l10n_json_data("Template", default_key, env.locale)?);
 
     Ok(concat_strs!(
         r#"<div class="notecard note" data-add-note><p> "#,
