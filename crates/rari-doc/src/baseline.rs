@@ -3,6 +3,7 @@
 //! The `baseline` module provides functionality for managing and accessing baseline support status
 //! for web features. It includes utilities for loading baseline data from files and retrieving
 //! support status for specific browser compatibility keys.
+use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use rari_data::baseline::{Baseline, BaselineStatus, WebFeatures};
@@ -12,8 +13,16 @@ use tracing::error;
 
 use crate::pages::page::Page;
 
+fn web_features_path() -> PathBuf {
+    if cfg!(any(test, feature = "testing")) {
+        PathBuf::from(std::env::var("TESTING_WEB_FEATURES").unwrap())
+    } else {
+        data_dir().join("web-features/package/data.json")
+    }
+}
+
 static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
-    let web_features = WebFeatures::from_file(&data_dir().join("web-features/package/data.json"));
+    let web_features = WebFeatures::from_file(&web_features_path());
     match web_features {
         Ok(mut web_features) => {
             if let Err(e) =
@@ -29,17 +38,6 @@ static WEB_FEATURES: LazyLock<Option<WebFeatures>> = LazyLock::new(|| {
         }
     }
 });
-
-/// Looks up baseline support status for the given browser compatibility keys in `WEB_FEATURES`.
-///
-/// Returns the baseline for the keys' shared web feature, or `None` if the keys belong to
-/// different features or none, or `WEB_FEATURES` is not initialized.
-pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>> {
-    if let Some(ref web_features) = *WEB_FEATURES {
-        return get_baseline_from(browser_compat, web_features);
-    }
-    None
-}
 
 pub(crate) fn is_mocked_banner_section(slug: &str) -> bool {
     // only mock banners under Web and WebAssembly, as those are the sections we have Baseline banners
@@ -73,10 +71,12 @@ pub(crate) fn get_baseline_status(page: &Page) -> Option<BaselineStatus> {
         .or_else(|| get_mocked_baseline_status(&doc.meta.status, &doc.meta.slug))
 }
 
-fn get_baseline_from<'a>(
-    browser_compat: &[String],
-    web_features: &'a WebFeatures,
-) -> Option<Baseline<'a>> {
+/// Looks up baseline support status for the given browser compatibility keys in `WEB_FEATURES`.
+///
+/// Returns the baseline for the keys' shared web feature, or `None` if the keys belong to
+/// different features or none, or `WEB_FEATURES` is not initialized.
+pub(crate) fn get_baseline<'a>(browser_compat: &[String]) -> Option<Baseline<'a>> {
+    let web_features = WEB_FEATURES.as_ref()?;
     let first = web_features.baseline_by_bcd_key(browser_compat.first()?.as_str())?;
     browser_compat[1..]
         .iter()
@@ -96,15 +96,9 @@ mod tests {
     use super::*;
     use crate::pages::types::spa::SPA;
 
-    static TEST_WEB_FEATURES: LazyLock<WebFeatures> = LazyLock::new(|| {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/web-features.json");
-        WebFeatures::from_file(&path).unwrap()
-    });
-
     fn get(keys: &[&str]) -> Option<Baseline<'static>> {
         let keys: Vec<String> = keys.iter().map(|s| s.to_string()).collect();
-        get_baseline_from(&keys, &TEST_WEB_FEATURES)
+        get_baseline(&keys)
     }
 
     #[test]
