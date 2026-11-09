@@ -14,7 +14,7 @@ use crate::templ::js_ref_index::resolve_js_ref;
 /// `Web/JavaScript/Reference/*` pages (see the "Name resolution" section below).
 ///
 /// # Arguments
-/// * `api_name` - The JavaScript feature name (object, method, property, etc.)
+/// * `api` - The JavaScript feature name (object, method, property, etc.)
 /// * `display` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 /// * `no_code` - Optional flag to disable code formatting (default: false)
@@ -33,7 +33,7 @@ use crate::templ::js_ref_index::resolve_js_ref;
 /// - Formats links with `<code>` tags unless `no_code` is true
 ///
 /// # Name resolution
-/// The normalized `api_name` is resolved against an index of all
+/// The normalized `api` is resolved against an index of all
 /// `Web/JavaScript/Reference/*` pages (see [`crate::templ::js_ref_index`]).
 /// Authors can use:
 /// - A full sub-path: `{{JSxRef("Statements/for...of")}}`
@@ -46,26 +46,26 @@ use crate::templ::js_ref_index::resolve_js_ref;
 /// - A class name with a trailing `()` (e.g. `{{JSxRef("Int8Array()")}}`)
 ///   links to the constructor page when one exists (`Int8Array/Int8Array`).
 ///
-/// A fragment may be embedded directly in `api_name`
+/// A fragment may be embedded directly in `api`
 /// (e.g. `{{JSxRef("Array.prototype.map#examples")}}`) instead of passing the
 /// separate `anchor` argument; it is split off before resolution and
 /// re-appended to the URL. If both are given, the embedded fragment wins and
 /// the `anchor` argument is ignored (with a `templ-invalid-arg` flaw).
 #[rari_f(register = "crate::Templ")]
 pub fn jsxref(
-    api_name: String,
+    api: String,
     display: Option<String>,
     anchor: Option<String>,
     no_code: Option<AnyArg>,
 ) -> Result<String, DocError> {
-    let parts = jsxref_parts(&api_name, display.as_deref(), anchor.as_deref());
+    let parts = jsxref_parts(&api, display.as_deref(), anchor.as_deref());
     if parts.anchor_conflict {
         let ic = get_issue_counter();
         tracing::warn!(
             source = "templ-invalid-arg",
             ic = ic,
             arg = "anchor",
-            "jsxref: `anchor` argument ignored because `api_name` already contains a fragment"
+            "jsxref: `anchor` argument ignored because `api` already contains a fragment"
         );
     }
 
@@ -109,18 +109,18 @@ struct JsxrefParts<'a> {
     anchor_conflict: bool,
 }
 
-/// Authors sometimes embed a fragment in `api_name` (e.g. `Array/map#examples`
+/// Authors sometimes embed a fragment in `api` (e.g. `Array/map#examples`
 /// or `Array.prototype.map#examples`) instead of passing the explicit `anchor`
 /// argument. Split it off up front so normalization and the index lookup
 /// operate on the bare name; the embedded fragment wins over `anchor`.
 fn jsxref_parts<'a>(
-    api_name: &'a str,
+    api: &'a str,
     display: Option<&'a str>,
     anchor: Option<&'a str>,
 ) -> JsxrefParts<'a> {
-    let (bare, embedded_anchor) = match api_name.split_once('#') {
+    let (bare, embedded_anchor) = match api.split_once('#') {
         Some((n, frag)) => (n, Some(frag)),
-        None => (api_name, None),
+        None => (api, None),
     };
     let anchor = anchor.filter(|s| !s.is_empty());
     let anchor_conflict = embedded_anchor.is_some() && anchor.is_some();
@@ -151,7 +151,7 @@ mod tests {
     fn jsxref_parts_cases() {
         struct Case {
             name: &'static str,
-            api_name: &'static str,
+            api: &'static str,
             display: Option<&'static str>,
             anchor: Option<&'static str>,
             bare: &'static str,
@@ -162,7 +162,7 @@ mod tests {
         let cases = vec![
             Case {
                 name: "plain name",
-                api_name: "Array",
+                api: "Array",
                 display: None,
                 anchor: None,
                 bare: "Array",
@@ -172,7 +172,7 @@ mod tests {
             },
             Case {
                 name: "member kept verbatim in bare",
-                api_name: "Array.prototype.map()",
+                api: "Array.prototype.map()",
                 display: None,
                 anchor: None,
                 bare: "Array.prototype.map()",
@@ -182,7 +182,7 @@ mod tests {
             },
             Case {
                 name: "sub-path kept as-is",
-                api_name: "Statements/for...of",
+                api: "Statements/for...of",
                 display: None,
                 anchor: None,
                 bare: "Statements/for...of",
@@ -192,7 +192,7 @@ mod tests {
             },
             Case {
                 name: "embedded fragment split off",
-                api_name: "Array.prototype.map#examples",
+                api: "Array.prototype.map#examples",
                 display: None,
                 anchor: None,
                 bare: "Array.prototype.map",
@@ -202,7 +202,7 @@ mod tests {
             },
             Case {
                 name: "explicit anchor",
-                api_name: "Array",
+                api: "Array",
                 display: None,
                 anchor: Some("examples"),
                 bare: "Array",
@@ -212,7 +212,7 @@ mod tests {
             },
             Case {
                 name: "empty anchor filtered out",
-                api_name: "Array",
+                api: "Array",
                 display: None,
                 anchor: Some(""),
                 bare: "Array",
@@ -222,7 +222,7 @@ mod tests {
             },
             Case {
                 name: "embedded fragment wins over explicit anchor",
-                api_name: "Array#embedded",
+                api: "Array#embedded",
                 display: None,
                 anchor: Some("explicit"),
                 bare: "Array",
@@ -232,7 +232,7 @@ mod tests {
             },
             Case {
                 name: "explicit display wins",
-                api_name: "Array",
+                api: "Array",
                 display: Some("the array"),
                 anchor: None,
                 bare: "Array",
@@ -242,7 +242,7 @@ mod tests {
             },
             Case {
                 name: "empty display falls back to bare name",
-                api_name: "Array.prototype.map#x",
+                api: "Array.prototype.map#x",
                 display: Some(""),
                 anchor: None,
                 bare: "Array.prototype.map",
@@ -252,7 +252,7 @@ mod tests {
             },
         ];
         for c in cases {
-            let parts = jsxref_parts(c.api_name, c.display, c.anchor);
+            let parts = jsxref_parts(c.api, c.display, c.anchor);
             assert_eq!(parts.bare, c.bare, "bare [{}]", c.name);
             assert_eq!(parts.display, c.display_out, "display [{}]", c.name);
             assert_eq!(parts.anchor, c.anchor_out, "anchor [{}]", c.name);
