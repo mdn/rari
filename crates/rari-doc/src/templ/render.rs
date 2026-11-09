@@ -7,7 +7,7 @@ use rari_types::{AnyArg, ArgError, RariEnv};
 use tracing::{Level, span, warn};
 
 use super::parser::{Token, parse};
-use super::templs::invoke;
+use super::templs::{TEMPL_MAPPING, invoke};
 use crate::error::DocError;
 
 pub struct Rendered {
@@ -26,7 +26,24 @@ pub(crate) fn render_for_summary(input: &str) -> Result<String, DocError> {
                 push_text(&mut out, slice);
             }
             Token::Macro(mac) => {
-                if let Some(s) = match mac.ident.to_ascii_lowercase().as_str() {
+                let ident = mac.ident.to_ascii_lowercase();
+                // Resolve named arguments like a real call would.
+                let slots = match TEMPL_MAPPING.get(ident.replace('-', "_").as_str()) {
+                    Some(t) => mac
+                        .args
+                        .bind(t.name, t.params)
+                        .map(|slots| slots.into_iter().map(Option::flatten).collect())
+                        .unwrap_or_default(),
+                    None => mac.args.positional,
+                };
+                let arg = |i: usize| {
+                    slots
+                        .get(i)
+                        .cloned()
+                        .flatten()
+                        .filter(|arg| !arg.is_blank())
+                };
+                if let Some(s) = match ident.as_str() {
                     "apiref"
                     | "jsref"
                     | "compat"
@@ -37,21 +54,12 @@ pub(crate) fn render_for_summary(input: &str) -> Result<String, DocError> {
                     | "previousnext"
                     | "previousmenunext"
                     | "quicklinkswithsubpages" => None,
-                    "glossary" => mac
-                        .args
-                        .positional
-                        .get(1)
-                        .or(mac.args.positional.first())
-                        .and_then(|f| f.clone())
-                        .filter(|arg| !arg.is_blank())
+                    "glossary" => arg(1)
+                        .or_else(|| arg(0))
                         .map(|arg| AnyArg::try_from(arg).unwrap().to_string()),
-                    _ => mac
-                        .args
-                        .positional
-                        .first()
-                        .and_then(|f| f.clone())
-                        .filter(|arg| !arg.is_blank())
-                        .map(|arg| format!("<code>{}</code>", AnyArg::try_from(arg).unwrap())),
+                    _ => {
+                        arg(0).map(|arg| format!("<code>{}</code>", AnyArg::try_from(arg).unwrap()))
+                    }
                 } {
                     out.push_str(&s)
                 }
@@ -232,6 +240,57 @@ mod test {
         let mut out = String::new();
         push_text(&mut out, "foo \\\\{ bar \\\\} \\} 2000");
         assert_eq!(out, "foo \\{ bar \\} } 2000")
+    }
+
+    #[test]
+    fn test_render_for_summary() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            expected: &'static str,
+        }
+
+        let cases = vec![
+            Case {
+                name: "positional",
+                input: r#"a {{cssxref("color")}} b"#,
+                expected: "a <code>color</code> b",
+            },
+            Case {
+                name: "named",
+                input: r#"a {{cssxref(name="color")}} b"#,
+                expected: "a <code>color</code> b",
+            },
+            Case {
+                name: "glossary label",
+                input: r#"{{glossary("CSS", "style sheets")}}"#,
+                expected: "style sheets",
+            },
+            Case {
+                name: "glossary named label",
+                input: r#"{{glossary("CSS", label="style sheets")}}"#,
+                expected: "style sheets",
+            },
+            Case {
+                name: "glossary without label",
+                input: r#"{{glossary("CSS")}}"#,
+                expected: "CSS",
+            },
+            Case {
+                name: "glossary blank label",
+                input: r#"{{glossary("CSS", "")}}"#,
+                expected: "CSS",
+            },
+            Case {
+                name: "unknown macro",
+                input: r#"{{nosuchmacro("x")}}"#,
+                expected: "<code>x</code>",
+            },
+        ];
+        for case in cases {
+            let actual = render_for_summary(case.input).expect("render should succeed");
+            assert_eq!(actual, case.expected, "{}", case.name);
+        }
     }
 
     #[test]
