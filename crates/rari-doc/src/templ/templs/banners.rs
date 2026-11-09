@@ -8,8 +8,8 @@ use crate::error::DocError;
 use crate::helpers::l10n::l10n_json_data;
 
 #[rari_f(register = "crate::Templ", typ = "TemplType::Banner")]
-pub fn deprecated_header(version: Option<AnyArg>) -> Result<String, DocError> {
-    if version.is_some() {
+pub fn deprecated_header(_version: Option<AnyArg>) -> Result<String, DocError> {
+    if _version.is_some() {
         warn!("Do not use deprecated header with parameter!")
     }
     if get_baseline(env.browser_compat)
