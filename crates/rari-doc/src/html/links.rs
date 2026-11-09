@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use lol_html::{RewriteStrSettings, element, rewrite_str};
 use rari_data::baseline::BaselineStatus;
 use rari_md::anchor::anchorize;
-use rari_types::fm_types::FeatureStatus;
+use rari_types::fm_types::{FeatureStatus, PageType};
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
@@ -23,6 +23,7 @@ pub struct LinkModifier<'a> {
     pub badge_locale: Locale,
     pub code: bool,
     pub only_en_us: bool,
+    pub page_type: Option<PageType>,
     pub baseline: Option<BaselineStatus>,
 }
 
@@ -39,6 +40,7 @@ impl<'a> LinkModifier<'a> {
             badge_locale,
             code,
             only_en_us,
+            page_type: Some(page.page_type()),
             baseline: if with_badges {
                 get_baseline_status(page)
             } else {
@@ -73,6 +75,9 @@ pub fn render_internal_link(
     }
     if modifier.only_en_us {
         out.push_str(" class=\"only-in-en-us\"");
+    }
+    if modifier.page_type == Some(PageType::LearnModuleAssessment) {
+        out.push_str(" data-page-type=\"learn-module-assessment\"");
     }
     if checked {
         out.push_str(" data-templ-link");
@@ -301,7 +306,7 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        BaselineStatus, FeatureStatus, LinkModifier, Locale, post_process_templ_links,
+        BaselineStatus, FeatureStatus, LinkModifier, Locale, PageType, post_process_templ_links,
         render_internal_link,
     };
 
@@ -354,6 +359,7 @@ mod tests {
                 badge_locale: Locale::EnUs,
                 code: false,
                 only_en_us: false,
+                page_type: None,
                 baseline,
             },
             true,
