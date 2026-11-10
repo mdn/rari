@@ -26,6 +26,28 @@ pub struct LinkModifier<'a> {
     pub baseline: Option<BaselineStatus>,
 }
 
+impl<'a> LinkModifier<'a> {
+    /// Takes status badges and baseline from `page`.
+    pub fn from_page(page: &'a Page, badge_locale: Locale) -> Self {
+        Self {
+            badges: page.status(),
+            baseline: get_baseline_status(page),
+            ..Self::plain(badge_locale)
+        }
+    }
+
+    /// Renders without status badges or baseline.
+    pub fn plain(badge_locale: Locale) -> Self {
+        Self {
+            badges: &[],
+            badge_locale,
+            code: false,
+            only_en_us: false,
+            baseline: None,
+        }
+    }
+}
+
 pub fn render_internal_link(
     out: &mut String,
     url: &str,
@@ -144,6 +166,15 @@ pub fn render_link_via_page(
                     Cow::Borrowed(content)
                 }
             };
+            let modifier = LinkModifier {
+                code,
+                only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
+                ..if with_badges {
+                    LinkModifier::from_page(&page, locale)
+                } else {
+                    LinkModifier::plain(locale)
+                }
+            };
             return render_internal_link(
                 out,
                 url,
@@ -154,17 +185,7 @@ pub fn render_link_via_page(
                 },
                 &content,
                 title,
-                &LinkModifier {
-                    badges: if with_badges { page.status() } else { &[] },
-                    badge_locale: locale,
-                    code,
-                    only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
-                    baseline: if with_badges {
-                        get_baseline_status(&page)
-                    } else {
-                        None
-                    },
-                },
+                &modifier,
                 true,
             );
         }
