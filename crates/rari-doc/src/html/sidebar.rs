@@ -163,6 +163,9 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
                 tracing::warn!("{typ} macro in sidebar frontmatter");
                 Default::default()
             }
+            Err(e @ (DocError::SlugFolderMismatch(..) | DocError::ReferenceIndexError(_))) => {
+                return Err(e);
+            }
             Err(e) => {
                 let span = span!(Level::ERROR, "sidebar", sidebar = name,);
                 let _enter = span.enter();
