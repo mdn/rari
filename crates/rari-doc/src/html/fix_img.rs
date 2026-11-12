@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use lol_html::HandlerResult;
 use lol_html::html_content::Element;
@@ -12,6 +12,24 @@ use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
 
 type ImgSize = (Option<String>, Option<String>);
+
+fn exists(file: &Path) -> bool {
+    file.try_exists().unwrap_or_default()
+}
+
+/// Returns the file and URL path of the en-US copy of an image, if it exists.
+fn en_us_fallback(page: &impl PageLike, src: &str, decoded_src: &str) -> Option<(PathBuf, String)> {
+    let en_us_page = Page::from_url_with_locale_and_fallback(page.url(), default_locale()).ok()?;
+    let file = en_us_page.full_path().parent().unwrap().join(decoded_src);
+    let en_us_url = en_us_page.url();
+    let url_path = format!(
+        "{}{}{}",
+        en_us_url,
+        if en_us_url.ends_with('/') { "" } else { "/" },
+        src
+    );
+    exists(&file).then_some((file, url_path))
+}
 
 pub fn handle_img(
     el: &mut Element,
@@ -43,27 +61,12 @@ pub fn handle_img(
             let mut final_url_path = url.path().to_string();
 
             // If file doesn't exist in translated locale, try en-US fallback
-            if !file.try_exists().unwrap_or_default()
+            if !exists(&file)
                 && page.locale() != default_locale()
-                && let Ok(en_us_page) =
-                    Page::from_url_with_locale_and_fallback(page.url(), default_locale())
+                && let Some((en_us_file, en_us_url_path)) = en_us_fallback(page, &src, &decoded_src)
             {
-                let en_us_file = en_us_page
-                    .full_path()
-                    .parent()
-                    .unwrap()
-                    .join(decoded_src.as_ref());
-                if en_us_file.try_exists().unwrap_or_default() {
-                    // Rewrite URL to point to en-US asset
-                    let en_us_url = en_us_page.url();
-                    final_url_path = format!(
-                        "{}{}{}",
-                        en_us_url,
-                        if en_us_url.ends_with('/') { "" } else { "/" },
-                        src
-                    );
-                    file = en_us_file;
-                }
+                file = en_us_file;
+                final_url_path = en_us_url_path;
             }
 
             el.set_attribute("src", &final_url_path)?;
