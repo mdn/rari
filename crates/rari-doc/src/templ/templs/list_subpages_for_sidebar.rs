@@ -12,7 +12,7 @@ use crate::utils::{trim_after, trim_before};
 #[rari_f(register = "crate::Templ")]
 pub fn listsubpagesforsidebar(
     url: String,
-    no_code: Option<AnyArg>,
+    plain: Option<AnyArg>,
     include_parent: Option<AnyArg>,
     title_only_after: Option<String>,
     title_only_before: Option<String>,
@@ -23,7 +23,7 @@ pub fn listsubpagesforsidebar(
     if sub_pages.is_empty() && !include_parent {
         return Ok(out);
     }
-    let code = !no_code.map(|b| b.as_bool()).unwrap_or_default();
+    let code = !plain.map(|b| b.as_bool()).unwrap_or_default();
     if include_parent {
         let parent = Page::from_url_with_fallback(&url)?;
         sub_pages.insert(0, parent);
