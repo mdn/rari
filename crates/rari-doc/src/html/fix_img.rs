@@ -72,7 +72,7 @@ pub fn handle_img(
             if el.get_attribute("width").is_some() {
                 return Ok(());
             }
-            let (width, height) = img_size(el, &src, &file, data_issues)?;
+            let (width, height) = img_size(el, &file, data_issues)?;
             if let Some(width) = width {
                 el.set_attribute("width", &width)?;
             }
@@ -86,11 +86,10 @@ pub fn handle_img(
 
 pub fn img_size(
     el: &mut Element,
-    src: &str,
     file: &Path,
     data_issues: bool,
 ) -> Result<ImgSize, Box<dyn Error + Send + Sync>> {
-    let (width, height) = if src.ends_with(".svg") {
+    let (width, height) = if file.extension().is_some_and(|ext| ext == "svg") {
         match svg_metadata::Metadata::parse_file(file) {
             // If only width and viewbox are given, use width and scale
             // the height according to the viewbox size ratio.
