@@ -62,13 +62,19 @@ pub fn exists(name: &str) -> bool {
     TEMPL_MAPPING.contains_key(name)
 }
 
-fn record_invocation(name: String, locale: rari_types::locale::Locale, known: bool) {
+fn record_invocation(
+    name: String,
+    locale: rari_types::locale::Locale,
+    known: bool,
+    supplied: impl FnOnce() -> Vec<&'static str>,
+) {
     TEMPL_RECORDER.with(|tx| {
         if let Some(tx) = tx
             && let Err(e) = tx.send(TemplStatEvent::Record {
                 name,
                 locale,
                 known,
+                supplied: supplied(),
             })
         {
             error!("templ recorder: {e}");
@@ -82,8 +88,8 @@ pub fn invoke(
     args: impl Into<Args>,
 ) -> Result<(String, TemplType), DocError> {
     let name = name.replace('-', "_");
-    let (f, is_sidebar) = match TEMPL_MAPPING.get(name.as_str()) {
-        Some(t) => (t.function, t.typ),
+    let (templ, f, is_sidebar) = match TEMPL_MAPPING.get(name.as_str()) {
+        Some(t) => (*t, t.function, t.typ),
         None if name == "xulelem" => return Ok((Default::default(), TemplType::None)),
         None if deny_warnings() => return Err(DocError::UnknownMacro(name.to_string())),
         None => {
@@ -96,15 +102,16 @@ pub fn invoke(
                 "Unknown macro {name}"
             );
             let rendered = format!("<s>unsupported templ: {name}</s>");
-            record_invocation(name, env.locale, false);
+            record_invocation(name, env.locale, false, Vec::new);
             return Ok((rendered, TemplType::None));
         } //
     };
-    record_invocation(name, env.locale, true);
+    let args = args.into();
+    record_invocation(name, env.locale, true, || args.supplied(templ.params));
     if matches!(is_sidebar, TemplType::Sidebar) && is_unrooted(env.slug) {
         return Ok((Default::default(), TemplType::Sidebar));
     }
-    f(env, args.into()).map(|s| (s, is_sidebar))
+    f(env, args).map(|s| (s, is_sidebar))
 }
 
 #[cfg(test)]
