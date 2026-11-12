@@ -148,9 +148,16 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
     dup.sig
         .inputs
         .push(parse_quote!(env: &::rari_types::RariEnv));
-    dup.sig
-        .inputs
-        .push(parse_quote!(args: Vec<Option<::rari_types::Arg>>));
+    dup.sig.inputs.push(parse_quote!(args: ::rari_types::Args));
+    let params: Vec<String> = args
+        .iter()
+        .filter_map(|arg| match arg {
+            syn::FnArg::Typed(ty) => {
+                Some(param_name(&ty.pat.to_token_stream().to_string()).to_string())
+            }
+            _ => None,
+        })
+        .collect();
     let mapping = args.iter().filter_map(|arg| match arg {
 		syn::FnArg::Typed(ty) => Some(ty),
 		_ => None,
@@ -166,7 +173,7 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
 	let pos = i + 1;
 	let arg_name = param_name(&ident.to_token_stream().to_string()).to_string();
 	if option {
-		quote! { let #ident: #ty = match args_iter.next().flatten() {
+		quote! { let #ident: #ty = match args_iter.next().flatten().flatten() {
             None => None,
 			Some(arg) if arg.is_blank() => None,
             Some(arg) => Some(
@@ -174,7 +181,7 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
             ),
 		}; }
 	} else {
-		quote! { let #ident: #ty = match args_iter.next() {
+		quote! { let #ident: #ty = match args_iter.next().flatten() {
             None => return Err(
                 ArgError::at(#templ, #pos, #arg_name, ArgError::MustBeProvided).into()
             ),
@@ -194,7 +201,7 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
         {
             use ::rari_types::ArgError;
             use std::convert::TryInto;
-            let mut args_iter = args.into_iter();
+            let mut args_iter = args.bind(#name, &[#(#params),*])?.into_iter();
             #(#mapping)*
             #block
         }
@@ -219,6 +226,7 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
                         outline: #outline,
                         outline_snippet: #outline_snippet,
                         outline_plain: #outline_plain,
+                        params: &[#(#params),*],
                         doc: #doc_string,
                         function: #dup_ident,
                         typ: rari_types::templ::#typ,
