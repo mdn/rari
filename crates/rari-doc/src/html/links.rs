@@ -8,6 +8,7 @@ use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 
 use crate::baseline::get_baseline_status;
+use crate::broken_link_exceptions::is_exception;
 use crate::error::DocError;
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
@@ -256,7 +257,10 @@ pub fn post_process_templ_links(html: &str) -> Result<String, DocError> {
                 None => {}
             }
             let target = resolved.as_deref().unwrap_or(href_no_hash);
-            if !Page::ignore_link_check(target) && !Page::exists_with_fallback(target) {
+            if !Page::ignore_link_check(target)
+                && !Page::exists_with_fallback(target)
+                && !is_exception(target)
+            {
                 let ic = get_issue_counter();
                 tracing::warn!(source = "templ-broken-link", ic = ic, url = href.as_str());
             }
