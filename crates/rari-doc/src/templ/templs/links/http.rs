@@ -14,27 +14,18 @@ use crate::templ::api::RariApi;
 /// # Arguments
 /// * `status` - The HTTP status code (e.g., 200, 404, 500)
 /// * `label` - Optional custom display text for the link
-/// * `anchor` - Optional anchor/fragment to append to the URL
-/// * `plain` - Optional flag to disable code formatting (default: false)
 ///
 /// # Examples
 /// * `{{HTTPStatus("404")}}` -> links to 404 Not Found status
 /// * `{{HTTPStatus("200", "OK")}}` -> custom display text
-/// * `{{HTTPStatus("500", "", "#syntax")}}` -> with anchor
-/// * `{{HTTPStatus("403", "", "", true)}}` -> disables code formatting
 #[rari_f(register = "crate::Templ")]
-pub fn httpstatus(
-    status: AnyArg,
-    label: Option<String>,
-    anchor: Option<String>,
-    plain: Option<AnyArg>,
-) -> Result<String, DocError> {
+pub fn httpstatus(status: AnyArg, label: Option<String>) -> Result<String, DocError> {
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Status/{}",
         env.locale.as_url_str(),
         status
     );
-    http(url, status, label, anchor, plain, env.locale)
+    http(url, status, label, false, env.locale)
 }
 
 /// Creates a link to an HTTP header reference page on MDN.
@@ -46,19 +37,18 @@ pub fn httpstatus(
 /// # Arguments
 /// * `header` - The HTTP header name (e.g., "Content-Type", "Authorization")
 /// * `label` - Optional custom display text for the link
-/// * `anchor` - Optional anchor/fragment to append to the URL
+/// * `_deprecated_3` - Deprecated parameter (no longer used)
 /// * `plain` - Optional flag to disable code formatting (default: false)
 ///
 /// # Examples
 /// * `{{HTTPHeader("Content-Type")}}` -> links to Content-Type header
 /// * `{{HTTPHeader("Authorization", "Auth header")}}` -> custom display text
-/// * `{{HTTPHeader("Cache-Control", "", "#syntax")}}` -> with anchor
 /// * `{{HTTPHeader("Accept", "", "", true)}}` -> disables code formatting
 #[rari_f(register = "crate::Templ")]
 pub fn httpheader(
     header: AnyArg,
     label: Option<String>,
-    anchor: Option<String>,
+    _deprecated_3: Option<String>,
     plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let url = format!(
@@ -66,7 +56,8 @@ pub fn httpheader(
         env.locale.as_url_str(),
         header
     );
-    http(url, header, label, anchor, plain, env.locale)
+    let plain = plain.is_some_and(|plain| plain.as_bool());
+    http(url, header, label, plain, env.locale)
 }
 
 /// Creates a link to an HTTP request method reference page on MDN.
@@ -77,63 +68,40 @@ pub fn httpheader(
 ///
 /// # Arguments
 /// * `method` - The HTTP method name (e.g., "GET", "POST", "PUT", "DELETE")
-/// * `label` - Optional custom display text for the link
-/// * `anchor` - Optional anchor/fragment to append to the URL
-/// * `plain` - Optional flag to disable code formatting (default: false)
 ///
 /// # Examples
 /// * `{{HTTPMethod("POST")}}` -> links to POST method
-/// * `{{HTTPMethod("GET", "GET request")}}` -> custom display text
-/// * `{{HTTPMethod("PUT", "", "#syntax")}}` -> with anchor
-/// * `{{HTTPMethod("DELETE", "", "", true)}}` -> disables code formatting
 #[rari_f(register = "crate::Templ")]
-pub fn httpmethod(
-    method: AnyArg,
-    label: Option<String>,
-    anchor: Option<String>,
-    plain: Option<AnyArg>,
-) -> Result<String, DocError> {
+pub fn httpmethod(method: AnyArg) -> Result<String, DocError> {
     let url = format!(
         "/{}/docs/Web/HTTP/Reference/Methods/{}",
         env.locale.as_url_str(),
         method
     );
-    http(url, method, label, anchor, plain, env.locale)
+    http(url, method, None, false, env.locale)
 }
 
 /// Internal helper function for HTTP-related link generation.
 ///
-/// This function handles the common logic for creating HTTP reference links
-/// including status codes, headers, and methods. It processes anchors,
-/// display text formatting, and code styling.
-///
 /// # Arguments
 /// * `url` - The base URL for the HTTP reference page
 /// * `name` - The HTTP feature identifier (status code, header name, method)
-/// * `display` - Optional custom display text
-/// * `anchor` - Optional anchor/fragment to append
-/// * `plain` - Optional flag to disable code formatting
+/// * `label` - Optional custom display text
+/// * `plain` - Whether to disable code formatting
 /// * `locale` - The locale for link generation
 fn http(
-    mut url: String,
+    url: String,
     name: AnyArg,
-    display: Option<String>,
-    anchor: Option<String>,
-    plain: Option<AnyArg>,
+    label: Option<String>,
+    plain: bool,
     locale: Locale,
 ) -> Result<String, DocError> {
-    let mut display = display.unwrap_or(name.to_string());
-    if let Some(anchor) = anchor {
-        url.push_str(&anchor);
-        display.push('.');
-        display.push_str(&anchor);
-    }
-    let code = !plain.map(|plain| plain.as_bool()).unwrap_or_default();
+    let display = label.unwrap_or_else(|| name.to_string());
     RariApi::link(
         &url,
         Some(locale),
         Some(display.as_ref()),
-        code,
+        !plain,
         None,
         false,
     )
