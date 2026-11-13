@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::iter::once;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use chrono::NaiveDateTime;
 use itertools::Itertools;
@@ -98,7 +98,32 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     Ok((built_page, hash))
 }
 
+fn write_contributors_txt(
+    page: &Page,
+    github_file_url: &str,
+    out_path: &Path,
+) -> Result<(), DocError> {
+    let wiki_histories = wiki_histories();
+    let wiki_history = wiki_histories
+        .get(&page.locale())
+        .and_then(|wh| wh.get(page.slug()));
+    let contributors_txt_str = contributors_txt(wiki_history, github_file_url);
+    let contributors_file = File::create(out_path.join("contributors.txt"))?;
+    let mut contributors_buffed = BufWriter::new(contributors_file);
+    contributors_buffed.write_all(contributors_txt_str.as_bytes())?;
+    Ok(())
+}
+
 pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
+    build_single_doc_with(page, settings().skip_contributors_txt)
+}
+
+/// Like [`build_single_doc`], with `skip_contributors_txt` passed explicitly.
+#[doc(hidden)]
+pub fn build_single_doc_with(
+    page: &Page,
+    skip_contributors_txt: bool,
+) -> Result<JsonDocMetadata, DocError> {
     let (built_doc, hash) = build_single_page(page)?;
     if let BuiltPage::Doc(json) = built_doc {
         let meta = JsonDocMetadata::from_json_doc(json.doc, hash);
@@ -110,16 +135,9 @@ pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
         let meta_file = File::create(meta_out_file).unwrap();
         let meta_buffed = BufWriter::new(meta_file);
         serde_json::to_writer(meta_buffed, &meta)?;
-        let wiki_histories = wiki_histories();
-        let wiki_history = wiki_histories
-            .get(&page.locale())
-            .and_then(|wh| wh.get(page.slug()));
-        let github_file_url = meta.source.github_url.as_str();
-        let contributors_txt_str = contributors_txt(wiki_history, github_file_url);
-        let contributors_out_file = out_path.join("contributors.txt");
-        let contributors_file = File::create(contributors_out_file).unwrap();
-        let mut contributors_buffed = BufWriter::new(contributors_file);
-        contributors_buffed.write_all(contributors_txt_str.as_bytes())?;
+        if !skip_contributors_txt {
+            write_contributors_txt(page, meta.source.github_url.as_str(), &out_path)?;
+        }
 
         Ok(meta)
     } else {
