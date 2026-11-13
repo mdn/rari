@@ -1,4 +1,4 @@
-use rari_types::{Arg, Quotes};
+use rari_types::{Arg, Args, Quotes};
 use tree_sitter::TreeCursor;
 
 use crate::error::DocError;
@@ -18,7 +18,9 @@ pub struct MacroToken {
     pub pos: (usize, usize),
     /// 0-based exclusive `(row, byte column)` of the macro end.
     pub end_pos: (usize, usize),
-    pub args: Vec<Option<Arg>>,
+    pub args: Args,
+    /// A positional argument follows a named one.
+    pub positional_after_named: bool,
     pub malformed: bool,
 }
 
@@ -31,17 +33,30 @@ fn from_node<'a>(
     let ident = content[ident_node.start_byte()..ident_node.end_byte()].to_string();
     // Look the arguments up by kind: a syntax error inserts an `ERROR` node,
     // which would otherwise be mistaken for them.
-    let args = if let Some(args_node) = value
+    let mut args = Args::default();
+    let mut positional_after_named = false;
+    if let Some(args_node) = value
         .named_children(&mut value.walk())
         .find(|child| child.kind() == "args")
     {
-        args_node
-            .named_children(cursor)
-            .map(|arg| ts_to_arg(arg, content))
-            .collect()
-    } else {
-        vec![]
-    };
+        for arg in args_node.named_children(cursor) {
+            if arg.kind() == "named_arg" {
+                let (Some(name), Some(value)) = (
+                    arg.child_by_field_name("name"),
+                    arg.child_by_field_name("value"),
+                ) else {
+                    continue;
+                };
+                args.named.push((
+                    content[name.start_byte()..name.end_byte()].to_string(),
+                    ts_to_arg(value, content),
+                ));
+            } else {
+                positional_after_named |= !args.named.is_empty();
+                args.positional.push(ts_to_arg(arg, content));
+            }
+        }
+    }
     let start = value.start_byte();
     let end = value.end_byte();
     let start_position = value.start_position();
@@ -55,6 +70,7 @@ fn from_node<'a>(
         end_pos,
         ident,
         args,
+        positional_after_named,
         malformed: value.has_error(),
     })
 }
@@ -261,7 +277,7 @@ mod test {
         for (name, input, expected) in cases {
             let tokens = parse(input).unwrap();
             let args = match tokens.first() {
-                Some(Token::Macro(m)) => m.args.clone(),
+                Some(Token::Macro(m)) => m.args.positional.clone(),
                 other => panic!("{name}: expected a macro token, got {other:?}"),
             };
             assert_eq!(args, expected, "{name}");
@@ -305,7 +321,82 @@ mod test {
                 other => panic!("{name}: expected a macro token, got {other:?}"),
             };
             assert_eq!(m.malformed, malformed, "{name}: malformed");
-            assert_eq!(m.args, expected_args, "{name}: args");
+            assert_eq!(m.args.positional, expected_args, "{name}: args");
+        }
+    }
+
+    #[test]
+    fn named_args() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            positional: Vec<Option<Arg>>,
+            named: Vec<(&'static str, Option<Arg>)>,
+            positional_after_named: bool,
+            malformed: bool,
+        }
+
+        let string = |s: &str, quotes| Some(Arg::String(s.into(), quotes));
+        let cases = vec![
+            Case {
+                name: "positional and named",
+                input: r#"{{foo("a", anchor='b', n=1)}}"#,
+                positional: vec![string("a", Quotes::Double)],
+                named: vec![
+                    ("anchor", string("b", Quotes::Single)),
+                    ("n", Some(Arg::Int(1))),
+                ],
+                positional_after_named: false,
+                malformed: false,
+            },
+            Case {
+                name: "blank named",
+                input: r#"{{foo(display="")}}"#,
+                positional: vec![],
+                named: vec![("display", string("", Quotes::Double))],
+                positional_after_named: false,
+                malformed: false,
+            },
+            Case {
+                name: "positional after named",
+                input: r#"{{foo(anchor="b", "a")}}"#,
+                positional: vec![string("a", Quotes::Double)],
+                named: vec![("anchor", string("b", Quotes::Double))],
+                positional_after_named: true,
+                malformed: false,
+            },
+            Case {
+                name: "named without value",
+                input: r#"{{foo(anchor=)}}"#,
+                positional: vec![],
+                named: vec![("anchor", string("", Quotes::Double))],
+                positional_after_named: false,
+                malformed: true,
+            },
+        ];
+        for case in cases {
+            let tokens = parse(case.input).unwrap();
+            let m = match tokens.first() {
+                Some(Token::Macro(m)) => m,
+                other => panic!("{}: expected a macro token, got {other:?}", case.name),
+            };
+            let named: Vec<(String, Option<Arg>)> = case
+                .named
+                .into_iter()
+                .map(|(name, value)| (name.to_string(), value))
+                .collect();
+            assert_eq!(
+                m.args.positional, case.positional,
+                "{}: positional",
+                case.name
+            );
+            assert_eq!(m.args.named, named, "{}: named", case.name);
+            assert_eq!(
+                m.positional_after_named, case.positional_after_named,
+                "{}: positional_after_named",
+                case.name
+            );
+            assert_eq!(m.malformed, case.malformed, "{}: malformed", case.name);
         }
     }
 }

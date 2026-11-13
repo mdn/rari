@@ -366,6 +366,32 @@ impl LanguageServer for Backend {
                     items,
                 })));
             }
+
+            if let Some(name) = crate::position::retrieve_macro_with_args_at_position(
+                doc,
+                &mut parser,
+                params.text_document_position.position.line as usize,
+                params.text_document_position.position.character as usize,
+            ) {
+                let name = name.to_ascii_lowercase().replace("-", "_");
+                let items = TEMPL_MAP
+                    .iter()
+                    .find(|t| t.name == name)
+                    .into_iter()
+                    .flat_map(|t| t.params.iter())
+                    .filter(|param| !param.starts_with('_'))
+                    .map(|param| CompletionItem {
+                        label: format!("{param}="),
+                        kind: Some(CompletionItemKind::FIELD),
+                        ..CompletionItem::default()
+                    })
+                    .collect();
+
+                return Ok(Some(CompletionResponse::List(CompletionList {
+                    is_incomplete: false,
+                    items,
+                })));
+            }
         }
 
         Ok(None)

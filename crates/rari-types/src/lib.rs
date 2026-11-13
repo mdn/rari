@@ -29,6 +29,12 @@ pub enum ArgError {
     MustNotBeEmpty,
     #[error("could not be parsed")]
     MustBeParsable,
+    #[error("is provided more than once")]
+    Duplicate,
+    #[error("{templ} has no argument named {name}")]
+    UnknownName { templ: &'static str, name: String },
+    #[error("{templ} has a positional argument after a named one")]
+    PositionalAfterNamed { templ: String },
     #[error("{templ} argument {pos} ({name}) {source}")]
     At {
         templ: &'static str,
@@ -68,6 +74,51 @@ pub enum Arg {
 impl Arg {
     pub fn is_blank(&self) -> bool {
         matches!(self, Arg::String(s, _) if s.is_empty())
+    }
+}
+
+/// Macro arguments: positional ones in order, followed by named (`key=value`) ones.
+///
+/// `None` marks an argument that could not be parsed.
+#[derive(PartialEq, Clone, Debug, Default)]
+pub struct Args {
+    pub positional: Vec<Option<Arg>>,
+    pub named: Vec<(String, Option<Arg>)>,
+}
+
+impl From<Vec<Option<Arg>>> for Args {
+    fn from(positional: Vec<Option<Arg>>) -> Self {
+        Args {
+            positional,
+            named: vec![],
+        }
+    }
+}
+
+impl Args {
+    /// Assigns the arguments to the macro's `params`, returning one slot per parameter
+    /// (`None` if not provided). Parameters starting with `_` can't be named.
+    pub fn bind(
+        self,
+        templ: &'static str,
+        params: &[&'static str],
+    ) -> Result<Vec<Option<Option<Arg>>>, ArgError> {
+        let mut slots: Vec<Option<Option<Arg>>> = self.positional.into_iter().map(Some).collect();
+        slots.resize(slots.len().max(params.len()), None);
+        for (name, value) in self.named {
+            let Some(i) = params
+                .iter()
+                .position(|param| !param.starts_with('_') && *param == name)
+            else {
+                return Err(ArgError::UnknownName { templ, name });
+            };
+            if slots[i].is_some() {
+                return Err(ArgError::at(templ, i + 1, params[i], ArgError::Duplicate));
+            }
+            slots[i] = Some(value);
+        }
+        slots.truncate(params.len());
+        Ok(slots)
     }
 }
 

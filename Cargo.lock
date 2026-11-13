@@ -4121,8 +4121,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-mdn"
 version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eafdae43e5941ee559d20927d55e687e1b7a5724c315065a1b2251c893a2af51"
+source = "git+https://github.com/mdn/tree-sitter-mdn?branch=named-macro-arguments#a3f9bec277febdd5511b880dfb8c0245747f0587"
 dependencies = [
  "cc",
  "tree-sitter-language",
