@@ -275,6 +275,8 @@ struct BuildArgs {
         help = "Add live_samples field to index.json docs docs and blog posts"
     )]
     json_live_samples: bool,
+    #[arg(long, help = "Skip writing contributors.txt for docs")]
+    skip_contributors_txt: bool,
     #[arg(
         short,
         long,
@@ -497,6 +499,7 @@ fn main() -> Result<(), Error> {
             settings.data_issues = args.data_issues;
             settings.json_issues = args.json_issues;
             settings.json_live_samples = args.json_live_samples;
+            settings.skip_contributors_txt = args.skip_contributors_txt;
             let _ = SETTINGS.set(settings);
 
             if !args.files_flag.is_empty() {

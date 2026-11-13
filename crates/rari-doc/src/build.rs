@@ -110,16 +110,18 @@ pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
         let meta_file = File::create(meta_out_file).unwrap();
         let meta_buffed = BufWriter::new(meta_file);
         serde_json::to_writer(meta_buffed, &meta)?;
-        let wiki_histories = wiki_histories();
-        let wiki_history = wiki_histories
-            .get(&page.locale())
-            .and_then(|wh| wh.get(page.slug()));
-        let github_file_url = meta.source.github_url.as_str();
-        let contributors_txt_str = contributors_txt(wiki_history, github_file_url);
-        let contributors_out_file = out_path.join("contributors.txt");
-        let contributors_file = File::create(contributors_out_file).unwrap();
-        let mut contributors_buffed = BufWriter::new(contributors_file);
-        contributors_buffed.write_all(contributors_txt_str.as_bytes())?;
+        if !settings().skip_contributors_txt {
+            let wiki_histories = wiki_histories();
+            let wiki_history = wiki_histories
+                .get(&page.locale())
+                .and_then(|wh| wh.get(page.slug()));
+            let github_file_url = meta.source.github_url.as_str();
+            let contributors_txt_str = contributors_txt(wiki_history, github_file_url);
+            let contributors_out_file = out_path.join("contributors.txt");
+            let contributors_file = File::create(contributors_out_file).unwrap();
+            let mut contributors_buffed = BufWriter::new(contributors_file);
+            contributors_buffed.write_all(contributors_txt_str.as_bytes())?;
+        }
 
         Ok(meta)
     } else {
