@@ -35,21 +35,27 @@ fn poor_ts_fn_outline_conversion(outline: &str, complete: Complete) -> Option<St
         }
         let arg = arg.trim();
         let colon = arg.find(" : ")?;
+        let name = param_name(&arg[..colon]);
         let typ = &arg[colon + 3..];
         match complete {
             Complete::None => {
                 if let Some(optional_type) = typ.strip_prefix("Option < ") {
-                    out.extend([&arg[..colon], "?: ", optional_type.strip_suffix(" >")?]);
+                    out.extend([name, "?: ", optional_type.strip_suffix(" >")?]);
                 } else {
-                    out.extend([&arg[..colon], ": ", &arg[colon + 3..]]);
+                    out.extend([name, ": ", typ]);
                 }
             }
-            Complete::Snippet => write!(&mut out, "${{{}:{}}}", i + 1, &arg[..colon]).unwrap(),
-            Complete::Plain => out.push_str(&arg[..colon]),
+            Complete::Snippet => write!(&mut out, "${{{}:{}}}", i + 1, name).unwrap(),
+            Complete::Plain => out.push_str(name),
         }
     }
     out.push(')');
     Some(out)
+}
+
+/// Strips the raw identifier prefix, so `r#type` is exposed as `type`.
+fn param_name(ident: &str) -> &str {
+    ident.strip_prefix("r#").unwrap_or(ident)
 }
 
 fn is_option(path: &syn::TypePath) -> bool {
@@ -158,7 +164,7 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
 	let ident = &arg.pat;
 	let templ = &name;
 	let pos = i + 1;
-	let arg_name = ident.to_token_stream().to_string();
+	let arg_name = param_name(&ident.to_token_stream().to_string()).to_string();
 	if option {
 		quote! { let #ident: #ty = match args_iter.next().flatten() {
             None => None,
@@ -250,5 +256,37 @@ mod test {
             "{:?}",
             poor_ts_fn_outline_conversion(outline, Complete::None)
         );
+    }
+
+    #[test]
+    fn outline_drops_raw_identifier_prefix() {
+        struct Case {
+            complete: Complete,
+            expected: &'static str,
+        }
+
+        let outline = "fn banner(r#type : Option < String >) -> Result < String, DocError >";
+        let cases = [
+            Case {
+                complete: Complete::None,
+                expected: "banner(type?: String)",
+            },
+            Case {
+                complete: Complete::Snippet,
+                expected: "banner(${1:type})",
+            },
+            Case {
+                complete: Complete::Plain,
+                expected: "banner(type)",
+            },
+        ];
+        for case in cases {
+            assert_eq!(
+                poor_ts_fn_outline_conversion(outline, case.complete).as_deref(),
+                Some(case.expected),
+                "{}",
+                case.expected
+            );
+        }
     }
 }
