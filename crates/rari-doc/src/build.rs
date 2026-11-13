@@ -115,6 +115,15 @@ fn write_contributors_txt(
 }
 
 pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
+    build_single_doc_with(page, settings().skip_contributors_txt)
+}
+
+/// Like [`build_single_doc`], with `skip_contributors_txt` passed explicitly.
+#[doc(hidden)]
+pub fn build_single_doc_with(
+    page: &Page,
+    skip_contributors_txt: bool,
+) -> Result<JsonDocMetadata, DocError> {
     let (built_doc, hash) = build_single_page(page)?;
     if let BuiltPage::Doc(json) = built_doc {
         let meta = JsonDocMetadata::from_json_doc(json.doc, hash);
@@ -126,7 +135,7 @@ pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
         let meta_file = File::create(meta_out_file).unwrap();
         let meta_buffed = BufWriter::new(meta_file);
         serde_json::to_writer(meta_buffed, &meta)?;
-        if !settings().skip_contributors_txt {
+        if !skip_contributors_txt {
             write_contributors_txt(page, meta.source.github_url.as_str(), &out_path)?;
         }
 
