@@ -1,7 +1,6 @@
 use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
-use crate::baseline::get_baseline_status;
 use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::html::links::{LinkModifier, render_internal_link};
@@ -47,11 +46,9 @@ pub fn listsubpagesforsidebar(
             &html_escape::encode_safe(title),
             None,
             &LinkModifier {
-                badges: page.status(),
-                badge_locale: env.locale,
                 code,
                 only_en_us: locale_page.locale() != env.locale,
-                baseline: get_baseline_status(&page),
+                ..LinkModifier::from_page(&page, env.locale)
             },
             true,
         )?;
