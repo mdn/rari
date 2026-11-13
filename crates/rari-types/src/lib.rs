@@ -96,6 +96,25 @@ impl From<Vec<Option<Arg>>> for Args {
 }
 
 impl Args {
+    /// Names of the `params` that are given a non-blank value, whether positionally or by name.
+    /// Parameters starting with `_` only count positionally, as they can't be named.
+    pub fn supplied(&self, params: &[&'static str]) -> Vec<&'static str> {
+        let given = |arg: &Option<Arg>| arg.as_ref().is_some_and(|a| !a.is_blank());
+        params
+            .iter()
+            .enumerate()
+            .filter(|(i, param)| {
+                self.positional.get(*i).is_some_and(given)
+                    || (!param.starts_with('_')
+                        && self
+                            .named
+                            .iter()
+                            .any(|(name, value)| name == *param && given(value)))
+            })
+            .map(|(_, param)| *param)
+            .collect()
+    }
+
     /// Assigns the arguments to the macro's `params`, returning one slot per parameter
     /// (`None` if not provided). Parameters starting with `_` can't be named.
     pub fn bind(
@@ -240,4 +259,70 @@ impl HistoryEntry {
 pub struct Popularities {
     pub popularities: IndexMap<String, f64>,
     pub date: NaiveDateTime,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn s(v: &str) -> Option<Arg> {
+        Some(Arg::String(v.into(), Quotes::Double))
+    }
+
+    #[test]
+    fn args_supplied_ignores_blank_and_unparsable() {
+        struct Case {
+            name: &'static str,
+            args: Args,
+            expected: Vec<&'static str>,
+        }
+        let params = ["api", "label", "anchor", "plain", "_old"];
+        let cases = vec![
+            Case {
+                name: "positional skips blank",
+                args: vec![s("Array"), s(""), s("#x")].into(),
+                expected: vec!["api", "anchor"],
+            },
+            Case {
+                name: "named",
+                args: Args {
+                    positional: vec![s("Array")],
+                    named: vec![("plain".into(), Some(Arg::Bool(true)))],
+                },
+                expected: vec!["api", "plain"],
+            },
+            Case {
+                name: "unparsable and blank named",
+                args: Args {
+                    positional: vec![None],
+                    named: vec![("label".into(), s(""))],
+                },
+                expected: vec![],
+            },
+            Case {
+                name: "underscore param given positionally",
+                args: vec![None, None, None, None, s("x")].into(),
+                expected: vec!["_old"],
+            },
+            Case {
+                name: "underscore param given by name",
+                args: Args {
+                    positional: vec![],
+                    named: vec![("_old".into(), s("y"))],
+                },
+                expected: vec![],
+            },
+            Case {
+                name: "given positionally and by name counts once",
+                args: Args {
+                    positional: vec![s("Array")],
+                    named: vec![("api".into(), s("Map"))],
+                },
+                expected: vec!["api"],
+            },
+        ];
+        for case in cases {
+            assert_eq!(case.args.supplied(&params), case.expected, "{}", case.name);
+        }
+    }
 }

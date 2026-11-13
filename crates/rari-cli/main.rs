@@ -322,13 +322,16 @@ fn clear_dependencies_last_checked(base_path: &Path) {
     }
 }
 
-/// Applies one `TemplStatEvent` to the running `known`/`invalid` aggregates.
+/// Applies one `TemplStatEvent` to the running `known`/`invalid`/`params` aggregates.
+///
+/// `params` is keyed by `name(param)` and counts invocations that supplied a non-blank value.
 ///
 /// Returns `false` for `Stop`, signalling the receive loop to terminate.
 fn ingest_templ_event(
     event: TemplStatEvent,
     known: &mut HashMap<String, HashMap<Locale, usize>>,
     invalid: &mut HashMap<String, HashMap<Locale, usize>>,
+    params: &mut HashMap<String, HashMap<Locale, usize>>,
     ignored: &[&str],
 ) -> bool {
     match event {
@@ -337,9 +340,17 @@ fn ingest_templ_event(
             name,
             locale,
             known: is_known,
+            supplied,
         } => {
             let name = name.to_lowercase();
             if !ignored.contains(&name.as_str()) {
+                for param in supplied {
+                    *params
+                        .entry(format!("{name}({param})"))
+                        .or_default()
+                        .entry(locale)
+                        .or_insert(0) += 1;
+                }
                 let bucket = if is_known { known } else { invalid };
                 *bucket.entry(name).or_default().entry(locale).or_insert(0) += 1;
             }
@@ -362,6 +373,47 @@ fn into_sorted_templ_stats(
         b_total.cmp(a_total).then_with(|| a_name.cmp(b_name))
     });
     out
+}
+
+/// `name(param)` keys of used templates' parameters that no invocation supplied.
+///
+/// Parameters of unused templates are left to `templ unused`.
+fn unused_params(
+    templs: impl IntoIterator<Item = (String, &'static [&'static str])>,
+    used: &HashSet<&str>,
+    params: &[(String, usize, HashMap<Locale, usize>)],
+) -> Vec<String> {
+    let supplied: HashSet<&str> = params.iter().map(|(key, _, _)| key.as_str()).collect();
+    let mut unused: Vec<String> = templs
+        .into_iter()
+        .filter(|(name, _)| used.contains(name.as_str()))
+        .flat_map(|(name, params)| params.iter().map(move |p| format!("{name}({p})")))
+        .filter(|key| !supplied.contains(key.as_str()))
+        .collect();
+    unused.sort();
+    unused
+}
+
+/// `params` rows supplied only in translated-content, for templates used in en-US.
+///
+/// Parameters of translated-only templates are left to `templ translated-only`.
+fn translated_only_params<'a>(
+    params: &'a [(String, usize, HashMap<Locale, usize>)],
+    known: &[(String, usize, HashMap<Locale, usize>)],
+) -> Vec<(&'a str, usize, &'a HashMap<Locale, usize>)> {
+    let used_in_en_us: HashSet<&str> = known
+        .iter()
+        .filter(|(_, _, per_locale)| per_locale.contains_key(&Locale::EnUs))
+        .map(|(name, _, _)| name.as_str())
+        .collect();
+    params
+        .iter()
+        .filter(|(key, _, per_locale)| {
+            let templ = key.split('(').next().unwrap_or(key);
+            !per_locale.contains_key(&Locale::EnUs) && used_in_en_us.contains(templ)
+        })
+        .map(|(key, total, per_locale)| (key.as_str(), *total, per_locale))
+        .collect()
 }
 
 fn print_templ_locales_section<'a, I>(label: &str, rows: I)
@@ -584,8 +636,15 @@ fn main() -> Result<(), Error> {
                 let recorder_handler = spawn(move || {
                     let mut known: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
                     let mut invalid: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
+                    let mut params: HashMap<String, HashMap<Locale, usize>> = HashMap::new();
                     while let Ok(event) = rx.recv() {
-                        if !ingest_templ_event(event, &mut known, &mut invalid, IGNORED) {
+                        if !ingest_templ_event(
+                            event,
+                            &mut known,
+                            &mut invalid,
+                            &mut params,
+                            IGNORED,
+                        ) {
                             break;
                         }
                     }
@@ -608,9 +667,10 @@ fn main() -> Result<(), Error> {
                             .map(|(name, count, per_locale)| (name.as_str(), *count, per_locale)),
                     );
 
+                    let seen: HashSet<&str> =
+                        known_sorted.iter().map(|(n, _, _)| n.as_str()).collect();
+
                     if full_build {
-                        let seen: HashSet<&str> =
-                            known_sorted.iter().map(|(n, _, _)| n.as_str()).collect();
                         let mut unused: Vec<String> = TEMPL_MAP
                             .iter()
                             .map(|t| t.name.replace('-', "_").to_lowercase())
@@ -627,7 +687,30 @@ fn main() -> Result<(), Error> {
                         info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
                     }
 
+                    let params_sorted = into_sorted_templ_stats(params);
+
+                    if full_build {
+                        let unused_params = unused_params(
+                            TEMPL_MAP
+                                .iter()
+                                .map(|t| (t.name.replace('-', "_").to_lowercase(), t.params)),
+                            &seen,
+                            &params_sorted,
+                        );
+                        info!("--- templ params unused ({}) ---", unused_params.len());
+                        let mut tw = TabWriter::new(vec![]);
+                        for (i, name) in unused_params.iter().enumerate() {
+                            writeln!(&mut tw, "{:2}\t{name}", i + 1).expect("unable to write");
+                        }
+                        info!("{}", String::from_utf8_lossy(&tw.into_inner().unwrap()));
+                    }
+
                     if multi_locale {
+                        print_templ_locales_section(
+                            "templ params translated-only",
+                            translated_only_params(&params_sorted, &known_sorted),
+                        );
+
                         let mut translated_only: Vec<(&str, usize, &HashMap<Locale, usize>)> =
                             known_sorted
                                 .iter()
@@ -1116,6 +1199,7 @@ mod tests {
             name: name.to_string(),
             locale,
             known,
+            supplied: vec![],
         }
     }
 
@@ -1123,16 +1207,19 @@ mod tests {
     fn ingest_templ_event_routes_known_and_invalid() {
         let mut known = HashMap::new();
         let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
         assert!(ingest_templ_event(
             record("Compat", Locale::EnUs, true),
             &mut known,
             &mut invalid,
+            &mut params,
             &[],
         ));
         assert!(ingest_templ_event(
             record("typo_macro", Locale::Fr, false),
             &mut known,
             &mut invalid,
+            &mut params,
             &[],
         ));
         assert_eq!(known["compat"][&Locale::EnUs], 1);
@@ -1145,12 +1232,13 @@ mod tests {
     fn ingest_templ_event_lowercases_and_accumulates_per_locale() {
         let mut known = HashMap::new();
         let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
         for event in [
             record("CSSxRef", Locale::EnUs, true),
             record("cssxref", Locale::EnUs, true),
             record("CSSXREF", Locale::Fr, true),
         ] {
-            ingest_templ_event(event, &mut known, &mut invalid, &[]);
+            ingest_templ_event(event, &mut known, &mut invalid, &mut params, &[]);
         }
         assert_eq!(known["cssxref"][&Locale::EnUs], 2);
         assert_eq!(known["cssxref"][&Locale::Fr], 1);
@@ -1161,26 +1249,165 @@ mod tests {
     fn ingest_templ_event_skips_ignored_names() {
         let mut known = HashMap::new();
         let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
         ingest_templ_event(
-            record("Echo", Locale::EnUs, true),
+            TemplStatEvent::Record {
+                name: "Echo".to_string(),
+                locale: Locale::EnUs,
+                known: true,
+                supplied: vec!["text"],
+            },
             &mut known,
             &mut invalid,
+            &mut params,
             &["echo"],
         );
         assert!(known.is_empty());
         assert!(invalid.is_empty());
+        assert!(params.is_empty());
     }
 
     #[test]
     fn ingest_templ_event_returns_false_on_stop() {
         let mut known = HashMap::new();
         let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
         assert!(!ingest_templ_event(
             TemplStatEvent::Stop,
             &mut known,
             &mut invalid,
+            &mut params,
             &[],
         ));
+    }
+
+    #[test]
+    fn ingest_templ_event_counts_supplied_params_per_locale() {
+        let mut known = HashMap::new();
+        let mut invalid = HashMap::new();
+        let mut params = HashMap::new();
+        for (locale, supplied) in [
+            (Locale::EnUs, vec!["api", "label"]),
+            (Locale::Fr, vec!["api"]),
+        ] {
+            let event = TemplStatEvent::Record {
+                name: "DOMxRef".to_string(),
+                locale,
+                known: true,
+                supplied,
+            };
+            ingest_templ_event(event, &mut known, &mut invalid, &mut params, &[]);
+        }
+        assert_eq!(params["domxref(api)"][&Locale::EnUs], 1);
+        assert_eq!(params["domxref(api)"][&Locale::Fr], 1);
+        assert_eq!(params["domxref(label)"][&Locale::EnUs], 1);
+        assert!(!params["domxref(label)"].contains_key(&Locale::Fr));
+        assert!(!params.contains_key("domxref(anchor)"));
+    }
+
+    fn stats(rows: &[(&str, &[Locale])]) -> Vec<(String, usize, HashMap<Locale, usize>)> {
+        rows.iter()
+            .map(|(name, locales)| {
+                let per_locale: HashMap<Locale, usize> =
+                    locales.iter().map(|locale| (*locale, 1)).collect();
+                (name.to_string(), locales.len(), per_locale)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn unused_params_lists_unsupplied_params_of_used_templates() {
+        struct Case {
+            name: &'static str,
+            used: &'static [&'static str],
+            supplied: &'static [&'static str],
+            expected: &'static [&'static str],
+        }
+
+        let templs: [(&str, &'static [&'static str]); 2] = [
+            ("cssxref", &["name", "label", "_old"]),
+            ("glossary", &["term", "label"]),
+        ];
+        let cases = [
+            Case {
+                name: "all supplied",
+                used: &["cssxref", "glossary"],
+                supplied: &[
+                    "cssxref(name)",
+                    "cssxref(label)",
+                    "cssxref(_old)",
+                    "glossary(term)",
+                    "glossary(label)",
+                ],
+                expected: &[],
+            },
+            Case {
+                name: "unsupplied, sorted",
+                used: &["cssxref", "glossary"],
+                supplied: &["cssxref(name)", "glossary(term)"],
+                expected: &["cssxref(_old)", "cssxref(label)", "glossary(label)"],
+            },
+            Case {
+                name: "unused template skipped",
+                used: &["cssxref"],
+                supplied: &["cssxref(name)", "cssxref(label)", "cssxref(_old)"],
+                expected: &[],
+            },
+        ];
+        for case in cases {
+            let used: HashSet<&str> = case.used.iter().copied().collect();
+            let supplied: Vec<(&str, &[Locale])> = case
+                .supplied
+                .iter()
+                .map(|key| (*key, &[Locale::EnUs][..]))
+                .collect();
+            let actual = unused_params(
+                templs.iter().map(|(n, p)| (n.to_string(), *p)),
+                &used,
+                &stats(&supplied),
+            );
+            assert_eq!(actual, case.expected, "{}", case.name);
+        }
+    }
+
+    #[test]
+    fn translated_only_params_requires_en_us_template_usage() {
+        struct Case {
+            name: &'static str,
+            known: Vec<(&'static str, &'static [Locale])>,
+            params: Vec<(&'static str, &'static [Locale])>,
+            expected: &'static [&'static str],
+        }
+
+        let cases = vec![
+            Case {
+                name: "supplied in en-US",
+                known: vec![("cssxref", &[Locale::EnUs, Locale::Fr])],
+                params: vec![("cssxref(label)", &[Locale::EnUs, Locale::Fr])],
+                expected: &[],
+            },
+            Case {
+                name: "supplied in translated-content only",
+                known: vec![("cssxref", &[Locale::EnUs, Locale::Fr])],
+                params: vec![("cssxref(label)", &[Locale::Fr])],
+                expected: &["cssxref(label)"],
+            },
+            Case {
+                name: "translated-only template skipped",
+                known: vec![("oldmacro", &[Locale::Fr])],
+                params: vec![("oldmacro(label)", &[Locale::Fr])],
+                expected: &[],
+            },
+        ];
+        for case in cases {
+            let known = stats(&case.known);
+            let params = stats(&case.params);
+            let actual: Vec<&str> = translated_only_params(&params, &known)
+                .into_iter()
+                .map(|(key, _, _)| key)
+                .collect();
+            assert_eq!(actual, case.expected, "{}", case.name);
+        }
     }
 
     #[test]
