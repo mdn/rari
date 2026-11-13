@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/mdn/rari/compare/v1.2.2...v1.3.0) (2026-11-13)
+
+
+### Features
+
+* **build:** add option to skip writing `contributors.txt` ([#1039](https://github.com/mdn/rari/issues/1039)) ([831b17b](https://github.com/mdn/rari/commit/831b17b99c74f060dc6e509bb2a40d56109ff60f))
+
+
+### Bug Fixes
+
+* **contributors:** replace only `/blob/` segment in commits URL ([#1040](https://github.com/mdn/rari/issues/1040)) ([7a77cfc](https://github.com/mdn/rari/commit/7a77cfc2c19ad88d3a9f04b06c40a05a70ab923d))
+* **listsubpagesforsidebar:** open list items ([#1032](https://github.com/mdn/rari/issues/1032)) ([9f49d57](https://github.com/mdn/rari/commit/9f49d57df04e6c5a4db734f250142537cb246c2f))
+
+
+### Miscellaneous
+
+* **deps:** bump scraper from 0.27.0 to 0.29.0 + html5ever from 0.39.0 to 0.40.1 ([#1013](https://github.com/mdn/rari/issues/1013)) ([312d88b](https://github.com/mdn/rari/commit/312d88b2437eee28d1f5ec436d70ee22c9de6731))
+* **deps:** bump the cargo group with 4 updates ([#1037](https://github.com/mdn/rari/issues/1037)) ([46daa4f](https://github.com/mdn/rari/commit/46daa4fc433645f6550875f24aee32d02bb85bc9))
+
 ## [1.2.2](https://github.com/mdn/rari/compare/v1.2.1...v1.2.2) (2026-11-10)
 
 
