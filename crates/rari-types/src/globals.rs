@@ -145,7 +145,7 @@ pub fn json_svg_data_lookup() -> &'static JsonSVGDataLookup {
 pub static GIT_HISTORY: LazyLock<HashMap<PathBuf, HistoryEntry>> = LazyLock::new(|| {
     let f = content_root().join("_git_history.json");
     let mut map = if let Ok(json_str) = fs::read_to_string(f) {
-        serde_json::from_str(&json_str).expect("unable to parse l10n json")
+        serde_json::from_str(&json_str).expect("unable to parse _git_history.json")
     } else {
         HashMap::new()
     };
@@ -153,12 +153,14 @@ pub static GIT_HISTORY: LazyLock<HashMap<PathBuf, HistoryEntry>> = LazyLock::new
         let f = translated_root.join("_git_history.json");
         if let Ok(json_str) = fs::read_to_string(f) {
             let translated: HashMap<PathBuf, HistoryEntry> =
-                serde_json::from_str(&json_str).expect("unable to parse l10n json");
+                serde_json::from_str(&json_str).expect("unable to parse _git_history.json");
             map.extend(translated);
         };
     }
     map
 });
+
+/// Loads the history entries generated for content files.
 pub fn git_history() -> &'static HashMap<PathBuf, HistoryEntry> {
     &GIT_HISTORY
 }
