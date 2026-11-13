@@ -10,6 +10,7 @@ rust-version.workspace = true
 rari-utils.workspace = true
 rari-types.workspace = true
 rari-md.workspace = true
+rari-deps.workspace = true
 rari-data.workspace = true
 rari-templ-func.workspace = true
 

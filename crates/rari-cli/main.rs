@@ -483,6 +483,7 @@ fn main() -> Result<(), Error> {
 
     if !cli.skip_updates {
         rari_deps::webref_css::update_webref_css(rari_types::globals::data_dir())?;
+        rari_deps::webref_events::update_webref_events(rari_types::globals::data_dir())?;
         rari_deps::web_features::update_web_features(rari_types::globals::data_dir())?;
         rari_deps::developer_signals::update_developer_signals(rari_types::globals::data_dir())?;
         rari_deps::bcd::update_bcd(rari_types::globals::data_dir())?;

@@ -8,6 +8,7 @@ pub mod cssinfo;
 pub mod csssyntax;
 pub mod echo;
 pub mod embeds;
+pub mod eventinfo;
 pub mod firefox_for_developers;
 pub mod glossary;
 pub mod glossarydisambiguation;
