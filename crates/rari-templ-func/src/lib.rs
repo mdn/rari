@@ -184,6 +184,7 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
 	}
 	});
     let block = dup.block;
+    let brace_token = block.brace_token;
     dup.block = parse_quote! {
         {
             use ::rari_types::ArgError;
@@ -193,6 +194,8 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
             #block
         }
     };
+    // Keep the original body span, otherwise rustc records no coverage for the wrapper.
+    dup.block.brace_token = brace_token;
 
     function
         .sig
