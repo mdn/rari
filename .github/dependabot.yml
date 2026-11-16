@@ -18,6 +18,16 @@ updates:
       prefix: chore
       include: scope
 
+  - package-ecosystem: cargo
+    directory: /tools
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
+    commit-message:
+      prefix: ci
+      include: scope
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

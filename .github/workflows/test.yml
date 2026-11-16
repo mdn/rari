@@ -83,9 +83,15 @@ jobs:
       - name: sccache-cache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
 
+      - name: Read tool versions
+        id: tools
+        run: |
+          ID=$(cargo pkgid --offline --locked --manifest-path tools/Cargo.toml cargo-llvm-cov)
+          echo "cargo-llvm-cov=${ID##*@}" >> "$GITHUB_OUTPUT"
+
       - uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
         with:
-          tool: cargo-llvm-cov@0.9.1
+          tool: cargo-llvm-cov@${{ steps.tools.outputs.cargo-llvm-cov }}
 
       - name: Run tests
         run: cargo llvm-cov --locked --verbose --workspace --all-targets --no-fail-fast --no-report
