@@ -32,12 +32,12 @@ impl<'a> LinkModifier<'a> {
         Self {
             badges: page.status(),
             baseline: get_baseline_status(page),
-            ..Self::plain(badge_locale)
+            ..Self::without_badges(badge_locale)
         }
     }
 
     /// Renders without status badges or baseline.
-    pub fn plain(badge_locale: Locale) -> Self {
+    pub fn without_badges(badge_locale: Locale) -> Self {
         Self {
             badges: &[],
             badge_locale,
@@ -172,7 +172,7 @@ pub fn render_link_via_page(
                 ..if with_badges {
                     LinkModifier::with_badges(&page, locale)
                 } else {
-                    LinkModifier::plain(locale)
+                    LinkModifier::without_badges(locale)
                 }
             };
             return render_internal_link(
