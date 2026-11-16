@@ -101,7 +101,7 @@ jobs:
 
       - uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov@0.9.1
 
       - name: Run tests with coverage
         run: cargo llvm-cov --locked --workspace --all-targets --no-fail-fast --no-report
