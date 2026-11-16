@@ -113,7 +113,17 @@ jobs:
             --slurpfile base base/coverage-summary.json \
             --slurpfile pr pr/coverage-summary.json \
             --arg base_sha "${BASE_SHA:0:7}" \
+            --arg root "$GITHUB_WORKSPACE/" \
             --arg report_url "$REPORT_URL" '
+            # PR and baseline runs share the runner workspace path.
+            def normalize:
+              try {
+                total: (.data[0].totals.lines | {count, covered}),
+                files: [
+                  .data[0].files[]
+                  | {name: (.filename | ltrimstr($root))} + (.summary.lines | {count, covered})
+                ]
+              } catch error("invalid coverage summary");
             def valid:
               type == "object"
               and ([.count, .covered] | all(type == "number" and . >= 0 and . == floor and . < 1e9))
@@ -129,8 +139,8 @@ jobs:
             def delta: if . < 0 then "-\(-. | number) pp" else "+\(number) pp" end;
             def by_name: map({key: .name, value: tenths}) | from_entries;
 
-            ($base[0] | checked) as $b
-            | ($pr[0] | checked) as $p
+            ($base[0] | normalize | checked) as $b
+            | ($pr[0] | normalize | checked) as $p
             | ($b.total | tenths) as $bt
             | ($p.total | tenths) as $pt
             | ($b.files | by_name) as $bf

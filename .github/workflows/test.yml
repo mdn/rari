@@ -120,15 +120,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Write JSON summary
-        run: |
-          cargo llvm-cov report --workspace --json --summary-only \
-            | jq --arg root "$GITHUB_WORKSPACE/" '{
-                total: (.data[0].totals.lines | {count, covered}),
-                files: [
-                  .data[0].files[]
-                  | {name: (.filename | ltrimstr($root))} + (.summary.lines | {count, covered})
-                ]
-              }' > coverage-summary.json
+        run: cargo llvm-cov report --workspace --json --summary-only --output-path coverage-summary.json
 
       # Baseline for the coverage diff of later pull requests.
       - name: Upload JSON summary
