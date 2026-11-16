@@ -87,6 +87,53 @@ jobs:
       - name: Run doc tests
         run: cargo test --locked --verbose --workspace --doc --no-fail-fast
 
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@1a3a6d54512beeaffd394f8d516ca16f2c506a20 # 1.97
+        with:
+          components: llvm-tools-preview
+
+      - uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
+        with:
+          tool: cargo-llvm-cov
+
+      - name: Run tests with coverage
+        run: cargo llvm-cov --locked --workspace --all-targets --no-fail-fast --no-report
+
+      - name: Write summary
+        run: |
+          {
+            echo "## Test coverage"
+            echo
+            echo '```'
+            cargo llvm-cov report --summary-only | grep -E '^(Filename|TOTAL)'
+            echo '```'
+            echo
+            echo "<details><summary>Per file</summary>"
+            echo
+            echo '```'
+            cargo llvm-cov report --summary-only
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate HTML report
+        run: cargo llvm-cov report --html
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-report
+          path: target/llvm-cov/html
+          retention-days: 14
+
   lint:
     runs-on: ubuntu-latest
 
