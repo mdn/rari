@@ -112,20 +112,20 @@ jobs:
             echo "## Test coverage"
             echo
             echo '```'
-            cargo llvm-cov report --summary-only | grep -E '^(Filename|TOTAL)'
+            cargo llvm-cov report --workspace --summary-only | grep -E '^(Filename|TOTAL)'
             echo '```'
             echo
             echo "<details><summary>Per file</summary>"
             echo
             echo '```'
-            cargo llvm-cov report --summary-only
+            cargo llvm-cov report --workspace --summary-only
             echo '```'
             echo
             echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate HTML report
-        run: cargo llvm-cov report --html
+        run: cargo llvm-cov report --workspace --html
 
       - name: Upload HTML report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
