@@ -121,7 +121,7 @@ jobs:
 
       - name: Write JSON summary
         run: |
-          cargo llvm-cov report --json --summary-only \
+          cargo llvm-cov report --workspace --json --summary-only \
             | jq --arg root "$GITHUB_WORKSPACE/" '{
                 total: (.data[0].totals.lines | {count, covered}),
                 files: [
