@@ -3,7 +3,7 @@ use std::fmt::Write;
 use rari_deps::webref_events::{EventIndex, events_index};
 use rari_templ_func::rari_f;
 use rari_types::fm_types::PageType;
-use rari_types::{ArgError, locale::Locale};
+use rari_types::locale::Locale;
 
 use crate::error::DocError;
 use crate::helpers::api_inheritance::inheritance;
@@ -33,19 +33,6 @@ impl Labels {
     }
 }
 
-fn parse_composed(arg: Option<&str>) -> Result<Option<bool>, ArgError> {
-    match arg {
-        None => Ok(None),
-        Some("composed") => Ok(Some(true)),
-        Some(_) => Err(ArgError::at(
-            "eventinfo",
-            1,
-            "composed",
-            ArgError::MustBeParsable,
-        )),
-    }
-}
-
 fn row(out: &mut String, label: &str, value: bool, labels: &Labels) {
     let value = if value { labels.yes } else { labels.no };
     let _ = write!(
@@ -66,7 +53,6 @@ fn warn_conflict(name: &str, interface: &str, event_type: &str) {
 fn render_event_info(
     slug: &str,
     page_type: PageType,
-    composed: Option<&str>,
     index: Option<&EventIndex>,
     is_a: &dyn Fn(&str, &str) -> bool,
     labels: &Labels,
@@ -78,7 +64,6 @@ fn render_event_info(
             "{slug}: eventinfo templ"
         )));
     };
-    let composed = parse_composed(composed)?;
 
     let entries = index.map(|index| index.get(event_type).map(Vec::as_slice).unwrap_or_default());
     if entries.is_some_and(<[_]>::is_empty) {
@@ -94,15 +79,13 @@ fn render_event_info(
     for (name, flag, label) in [
         ("bubbles", flags.bubbles, labels.bubbles),
         ("cancelable", flags.cancelable, labels.cancelable),
+        ("composed", flags.composed, labels.composed),
     ] {
         match flag {
             Flag::Known(value) => row(&mut rows, label, value, labels),
             Flag::Conflict => warn_conflict(name, interface, event_type),
             Flag::Unknown => {}
         }
-    }
-    if let Some(composed) = composed {
-        row(&mut rows, labels.composed, composed, labels);
     }
 
     if rows.is_empty() {
@@ -117,16 +100,12 @@ fn real_is_a(child: &str, parent: &str) -> bool {
     inheritance(child).contains(&parent)
 }
 
-/// Renders the Bubbles and Cancelable rows of an event page from webref data.
-///
-/// # Arguments
-/// * `composed` - Optional flag, `"composed"` adds the Composed row
+/// Renders the Bubbles, Cancelable and Composed rows of an event page from webref data.
 #[rari_f(register = "crate::Templ")]
-pub fn eventinfo(composed: Option<String>) -> Result<String, DocError> {
+pub fn eventinfo() -> Result<String, DocError> {
     render_event_info(
         env.slug,
         env.page_type,
-        composed.as_deref(),
         events_index(),
         &real_is_a,
         &Labels::new(env.locale)?,
@@ -173,28 +152,15 @@ mod test {
             name: &'static str,
             slug: &'static str,
             page_type: PageType,
-            composed: Option<&'static str>,
             with_index: bool,
             expected: Result<String, &'static str>,
         }
         let ev = PageType::WebApiEvent;
         let cases = vec![
             Case {
-                name: "bubbles and cancelable",
+                name: "bubbles, cancelable and composed",
                 slug: "Web/API/Element/click_event",
                 page_type: ev,
-                composed: None,
-                with_index: true,
-                expected: Ok(table(&[
-                    row_html("Bubbles", "Yes"),
-                    row_html("Cancelable", "Yes"),
-                ])),
-            },
-            Case {
-                name: "composed flag adds last row",
-                slug: "Web/API/Element/click_event",
-                page_type: ev,
-                composed: Some("composed"),
                 with_index: true,
                 expected: Ok(table(&[
                     row_html("Bubbles", "Yes"),
@@ -203,18 +169,9 @@ mod test {
                 ])),
             },
             Case {
-                name: "only composed when webref has no flags",
-                slug: "Web/API/SpeechRecognition/audioend_event",
-                page_type: ev,
-                composed: Some("composed"),
-                with_index: true,
-                expected: Ok(table(&[row_html("Composed", "Yes")])),
-            },
-            Case {
                 name: "nothing known renders nothing",
                 slug: "Web/API/SpeechRecognition/audioend_event",
                 page_type: ev,
-                composed: None,
                 with_index: true,
                 expected: Ok(String::new()),
             },
@@ -222,7 +179,6 @@ mod test {
                 name: "unknown event type renders nothing",
                 slug: "Web/API/Element/nonsense_event",
                 page_type: ev,
-                composed: None,
                 with_index: true,
                 expected: Ok(String::new()),
             },
@@ -230,7 +186,6 @@ mod test {
                 name: "index failed to load renders nothing",
                 slug: "Web/API/Element/click_event",
                 page_type: ev,
-                composed: None,
                 with_index: false,
                 expected: Ok(String::new()),
             },
@@ -238,23 +193,13 @@ mod test {
                 name: "conflicting values are hidden",
                 slug: "Web/API/Window/error_event",
                 page_type: ev,
-                composed: None,
                 with_index: true,
                 expected: Ok(String::new()),
-            },
-            Case {
-                name: "invalid composed flag",
-                slug: "Web/API/Element/click_event",
-                page_type: ev,
-                composed: Some("true"),
-                with_index: true,
-                expected: Err("eventinfo argument 1 (composed)"),
             },
             Case {
                 name: "wrong page type",
                 slug: "Web/API/Element/click_event",
                 page_type: PageType::WebApiInterface,
-                composed: None,
                 with_index: true,
                 expected: Err("eventinfo templ"),
             },
@@ -262,7 +207,6 @@ mod test {
                 name: "wrong slug",
                 slug: "Web/API/Element",
                 page_type: ev,
-                composed: None,
                 with_index: true,
                 expected: Err("eventinfo templ"),
             },
@@ -272,7 +216,6 @@ mod test {
             let result = render_event_info(
                 case.slug,
                 case.page_type,
-                case.composed,
                 case.with_index.then_some(&index),
                 &is_a,
                 &LABELS,
@@ -306,7 +249,11 @@ mod test {
             Case {
                 name: "Element inherited by HTMLElement and friends",
                 slug: "Web/API/Element/click_event",
-                expected: table(&[row_html("Bubbles", "Yes"), row_html("Cancelable", "Yes")]),
+                expected: table(&[
+                    row_html("Bubbles", "Yes"),
+                    row_html("Cancelable", "Yes"),
+                    row_html("Composed", "Yes"),
+                ]),
             },
             Case {
                 name: "page interface inherits from target",
@@ -323,7 +270,6 @@ mod test {
             let out = render_event_info(
                 case.slug,
                 PageType::WebApiEvent,
-                None,
                 Some(&index),
                 &real_is_a,
                 &LABELS,

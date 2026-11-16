@@ -30,6 +30,7 @@ pub(crate) enum Flag {
 pub(crate) struct EventFlags {
     pub(crate) bubbles: Flag,
     pub(crate) cancelable: Flag,
+    pub(crate) composed: Flag,
 }
 
 /// Picks the value from the closest tier of candidates.
@@ -41,7 +42,7 @@ pub(crate) struct EventFlags {
 /// ancestor tiers, disagreement is a conflict, and so are disagreeing descendants
 /// with no exact value to decide.
 ///
-/// `cancelable` is per entry in webref, so an entry's value applies to all its matching
+/// `cancelable` and `composed` are per entry in webref, so an entry's value applies to all its matching
 /// targets (known limitation).
 fn resolve(candidates: &[(Relation, bool)]) -> Flag {
     let mut descendants_conflict = false;
@@ -93,6 +94,7 @@ pub(crate) fn select_flags(
 
     let mut bubbles = vec![];
     let mut cancelable = vec![];
+    let mut composed = vec![];
     for entry in entries {
         let mut entry_relations = vec![];
         for target in &entry.targets {
@@ -106,17 +108,19 @@ pub(crate) fn select_flags(
                 bubbles.push((relation, value));
             }
         }
-        if let Some(value) = entry.cancelable {
-            cancelable.extend(
-                entry_relations
-                    .into_iter()
-                    .map(|relation| (relation, value)),
-            );
+        for (value, out) in [
+            (entry.cancelable, &mut cancelable),
+            (entry.composed, &mut composed),
+        ] {
+            if let Some(value) = value {
+                out.extend(entry_relations.iter().map(|relation| (*relation, value)));
+            }
         }
     }
     EventFlags {
         bubbles: resolve(&bubbles),
         cancelable: resolve(&cancelable),
+        composed: resolve(&composed),
     }
 }
 
@@ -201,6 +205,7 @@ mod tests {
             event_type: &'static str,
             bubbles: Flag,
             cancelable: Flag,
+            composed: Flag,
         }
         let cases = vec![
             Case {
@@ -209,6 +214,7 @@ mod tests {
                 event_type: "click",
                 bubbles: Known(true),
                 cancelable: Known(true),
+                composed: Known(true),
             },
             Case {
                 name: "click on HTMLElement is exact",
@@ -216,6 +222,7 @@ mod tests {
                 event_type: "click",
                 bubbles: Known(true),
                 cancelable: Known(true),
+                composed: Known(true),
             },
             Case {
                 name: "change with multiple entries",
@@ -223,6 +230,7 @@ mod tests {
                 event_type: "change",
                 bubbles: Known(true),
                 cancelable: Unknown,
+                composed: Unknown,
             },
             Case {
                 name: "change on unrelated interface",
@@ -230,6 +238,7 @@ mod tests {
                 event_type: "change",
                 bubbles: Unknown,
                 cancelable: Unknown,
+                composed: Unknown,
             },
             Case {
                 name: "no flags",
@@ -237,6 +246,7 @@ mod tests {
                 event_type: "audioend",
                 bubbles: Unknown,
                 cancelable: Unknown,
+                composed: Unknown,
             },
             Case {
                 name: "unknown type",
@@ -244,6 +254,7 @@ mod tests {
                 event_type: "nonsense",
                 bubbles: Unknown,
                 cancelable: Unknown,
+                composed: Unknown,
             },
             Case {
                 name: "duplicate bubbles conflict",
@@ -251,6 +262,7 @@ mod tests {
                 event_type: "wheel",
                 bubbles: Conflict,
                 cancelable: Known(false),
+                composed: Known(true),
             },
             Case {
                 name: "cancelable conflict",
@@ -258,6 +270,7 @@ mod tests {
                 event_type: "error",
                 bubbles: Unknown,
                 cancelable: Conflict,
+                composed: Unknown,
             },
             Case {
                 name: "page inherits from target",
@@ -265,6 +278,7 @@ mod tests {
                 event_type: "selectionchange",
                 bubbles: Known(true),
                 cancelable: Known(false),
+                composed: Unknown,
             },
             Case {
                 name: "page inherits from target, other entry",
@@ -272,6 +286,7 @@ mod tests {
                 event_type: "resize",
                 bubbles: Known(false),
                 cancelable: Unknown,
+                composed: Unknown,
             },
         ];
         let index = rari_deps::webref_events::parse_index(FIXTURE).unwrap();
@@ -281,6 +296,7 @@ mod tests {
                 .map(Vec::as_slice)
                 .unwrap_or_default();
             let flags = select_flags(case.interface, entries, &is_a);
+            assert_eq!(flags.composed, case.composed, "{} (composed)", case.name);
             assert_eq!(flags.bubbles, case.bubbles, "{} (bubbles)", case.name);
             assert_eq!(
                 flags.cancelable, case.cancelable,

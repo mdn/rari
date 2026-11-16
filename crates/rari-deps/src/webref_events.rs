@@ -20,6 +20,7 @@ pub struct EventEntry {
     #[serde(rename = "type")]
     pub event_type: String,
     pub cancelable: Option<bool>,
+    pub composed: Option<bool>,
     #[serde(default)]
     pub targets: Vec<EventTarget>,
 }
