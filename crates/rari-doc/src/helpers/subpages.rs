@@ -75,7 +75,7 @@ pub fn write_li_with_badges(
         &LinkModifier {
             code,
             only_en_us: locale_page.locale() != locale,
-            ..LinkModifier::from_page(page, locale)
+            ..LinkModifier::with_badges(page, locale)
         },
         true,
     )?;
@@ -107,7 +107,7 @@ pub fn write_li_with_details(
         &LinkModifier {
             code,
             only_en_us: locale_page.locale() != locale,
-            ..LinkModifier::from_page(page, locale)
+            ..LinkModifier::with_badges(page, locale)
         },
         true,
     )?;
@@ -128,7 +128,7 @@ pub fn write_parent_li(out: &mut String, page: &Page, locale: Locale) -> Result<
         None,
         &LinkModifier {
             only_en_us: page.locale() != locale,
-            ..LinkModifier::from_page(page, locale)
+            ..LinkModifier::with_badges(page, locale)
         },
         true,
     )?;

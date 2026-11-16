@@ -28,7 +28,7 @@ pub struct LinkModifier<'a> {
 
 impl<'a> LinkModifier<'a> {
     /// Takes status badges and baseline from `page`.
-    pub fn from_page(page: &'a Page, badge_locale: Locale) -> Self {
+    pub fn with_badges(page: &'a Page, badge_locale: Locale) -> Self {
         Self {
             badges: page.status(),
             baseline: get_baseline_status(page),
@@ -170,7 +170,7 @@ pub fn render_link_via_page(
                 code,
                 only_en_us: page.locale() == Locale::EnUs && locale != Locale::EnUs,
                 ..if with_badges {
-                    LinkModifier::from_page(&page, locale)
+                    LinkModifier::with_badges(&page, locale)
                 } else {
                     LinkModifier::plain(locale)
                 }

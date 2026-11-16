@@ -707,7 +707,7 @@ impl SidebarMetaEntry {
                     &LinkModifier {
                         code: self.code,
                         only_en_us: page.locale() != locale,
-                        ..LinkModifier::from_page(page, page.locale())
+                        ..LinkModifier::with_badges(page, page.locale())
                     },
                 )?;
             }

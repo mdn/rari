@@ -47,7 +47,7 @@ pub fn listsubpagesforsidebar(
             &LinkModifier {
                 code,
                 only_en_us: locale_page.locale() != env.locale,
-                ..LinkModifier::from_page(&page, env.locale)
+                ..LinkModifier::with_badges(&page, env.locale)
             },
             true,
         )?;
