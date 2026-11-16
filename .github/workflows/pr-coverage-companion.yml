@@ -1,0 +1,186 @@
+name: PR Coverage Companion
+
+on:
+  workflow_run:
+    workflows: ["Test"]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  identify-pr:
+    # Not limited to successful runs: coverage is independent of the other jobs.
+    if: |
+      github.repository_owner == 'mdn' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      number: ${{ steps.identify-pr.outputs.number }}
+    steps:
+      - name: Identify PR
+        id: identify-pr
+        env:
+          BASE_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          # Fork PRs control the artifact, so trust only the event payload and the API.
+          # Query the head repo: for fork PRs, the base repo returns no PRs for the commit.
+          # Filter on head.sha: the endpoint also lists PRs that merely contain the commit.
+          PR_NUMBER=$(gh api "repos/$HEAD_REPO/commits/$HEAD_SHA/pulls" \
+            --jq 'first(.[] | select(.base.repo.full_name == env.BASE_REPO and .head.sha == env.HEAD_SHA and .state == "open") | .number)')
+          if [[ -z "$PR_NUMBER" ]]; then
+            echo "::notice::No open PR with head $HEAD_SHA; nothing to do."
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+  comment:
+    needs: identify-pr
+    if: needs.identify-pr.outputs.number != ''
+    runs-on: ubuntu-latest
+    permissions:
+      # Download artifacts of the triggering run and the baseline run.
+      actions: read
+      # Comment on the pull request.
+      pull-requests: write
+    concurrency:
+      group: ${{ github.workflow }}-${{ needs.identify-pr.outputs.number }}
+      cancel-in-progress: false
+    env:
+      GH_REPO: ${{ github.repository }}
+      GITHUB_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+    steps:
+      - name: Download coverage summaries
+        id: download
+        env:
+          WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
+        run: |
+          has_summary() {
+            gh api "/repos/$GH_REPO/actions/runs/$1/artifacts?name=coverage-summary" \
+              --jq '.artifacts | any(.expired == false)'
+          }
+
+          if [[ "$(has_summary "$RUN_ID")" != "true" ]]; then
+            echo "::notice::No coverage-summary artifact in run $RUN_ID; nothing to do."
+            exit 0
+          fi
+
+          # The PR run measures the merge commit, so the baseline is the latest `main`.
+          BASE_RUN_ID=
+          while read -r ID SHA; do
+            if [[ "$(has_summary "$ID")" == "true" ]]; then
+              BASE_RUN_ID=$ID
+              BASE_SHA=$SHA
+              break
+            fi
+          done < <(gh api "/repos/$GH_REPO/actions/workflows/$WORKFLOW_ID/runs?branch=main&event=push&per_page=20" \
+            --jq '.workflow_runs[] | "\(.id) \(.head_sha)"')
+          if [[ -z "$BASE_RUN_ID" ]]; then
+            echo "::notice::No coverage-summary artifact in recent runs on main; nothing to do."
+            exit 0
+          fi
+
+          gh run download "$RUN_ID" --name coverage-summary --dir pr
+          gh run download "$BASE_RUN_ID" --name coverage-summary --dir base
+          echo "base-sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        if: steps.download.outputs.base-sha != ''
+        env:
+          PR: ${{ needs.identify-pr.outputs.number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          BASE_SHA: ${{ steps.download.outputs.base-sha }}
+        run: |
+          [[ "$PR" =~ ^[0-9]+$ ]] || { echo "::error::Invalid PR number: $PR"; exit 1; }
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid base SHA: $BASE_SHA"; exit 1; }
+
+          REPORT_URL=
+          ARTIFACT_ID=$(gh api "/repos/$GH_REPO/actions/runs/$RUN_ID/artifacts?name=coverage-report" \
+            --jq 'first(.artifacts[] | select(.expired == false) | .id)')
+          if [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]; then
+            REPORT_URL="https://github.com/$GH_REPO/actions/runs/$RUN_ID/artifacts/$ARTIFACT_ID"
+          fi
+
+          export MARKER='<!-- rari-coverage-diff -->'
+
+          # The PR summary is controlled by the PR, so validate before rendering.
+          # Empty output means no change, at a precision of 0.1 percentage points.
+          BODY=$(jq -rn \
+            --slurpfile base base/coverage-summary.json \
+            --slurpfile pr pr/coverage-summary.json \
+            --arg base_sha "${BASE_SHA:0:7}" \
+            --arg report_url "$REPORT_URL" '
+            def valid:
+              type == "object"
+              and ([.count, .covered] | all(type == "number" and . >= 0 and . == floor and . < 1e9))
+              and .covered <= .count;
+            def checked:
+              if (.total | valid)
+                and (.files | type == "array" and length <= 10000)
+                and (.files | all(valid and (.name | type == "string" and test("^[A-Za-z0-9_./-]{1,200}$"))))
+              then . else error("invalid coverage summary") end;
+            def tenths: if .count > 0 then (.covered * 1000 / .count | round) else 0 end;
+            def number: "\(. / 10 | floor).\(. % 10)";
+            def pct: if . == null then "-" else "\(number)%" end;
+            def delta: if . < 0 then "-\(-. | number) pp" else "+\(number) pp" end;
+            def by_name: map({key: .name, value: tenths}) | from_entries;
+
+            ($base[0] | checked) as $b
+            | ($pr[0] | checked) as $p
+            | ($b.total | tenths) as $bt
+            | ($p.total | tenths) as $pt
+            | ($b.files | by_name) as $bf
+            | ($p.files | by_name) as $pf
+            | [
+                ($bf + $pf | keys[]) as $name
+                | {name: $name, base: $bf[$name], pr: $pf[$name]}
+                | select(.base != .pr)
+              ] as $rows
+            | ($rows | length) as $n
+            | if $bt == $pt and $n == 0 then empty else
+                env.MARKER,
+                "**Test coverage:** \($bt | pct) → \($pt | pct) of lines (\($pt - $bt | delta)), compared to `main` at \($base_sha)",
+                (if $n > 0 then
+                  "",
+                  "<details><summary>\($n) \(if $n == 1 then "file" else "files" end) changed</summary>",
+                  "",
+                  "| File | `main` | PR | Change |",
+                  "| --- | --: | --: | --: |",
+                  ($rows[:50][]
+                    | "| `\(.name)` | \(.base | pct) | \(.pr | pct) | \(
+                        if .base == null then "new"
+                        elif .pr == null then "removed"
+                        else .pr - .base | delta end
+                      ) |"),
+                  (if $n > 50 then "", "And \($n - 50) more." else empty end),
+                  "",
+                  "</details>"
+                else empty end),
+                (if $report_url != "" then "", "[Download report](\($report_url)) (`index.html`)" else empty end)
+              end
+          ')
+
+          COMMENT_ID=$(gh api --paginate --slurp "/repos/$GH_REPO/issues/$PR/comments" \
+            | jq -r 'first(.[][] | select(.user.login == "github-actions[bot]" and (.body | contains(env.MARKER))) | .id) // empty')
+
+          CURRENT_HEAD=$(gh api "/repos/$GH_REPO/pulls/$PR" \
+            --jq 'select(.state == "open") | .head.sha')
+          if [[ "$CURRENT_HEAD" != "$HEAD_SHA" ]]; then
+            echo "::notice::PR #$PR is closed or has a newer head; nothing to do."
+            exit 0
+          fi
+
+          if [[ -n "$BODY" ]]; then
+            if [[ -n "$COMMENT_ID" ]]; then
+              gh api -X PATCH "/repos/$GH_REPO/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
+            else
+              gh api -X POST "/repos/$GH_REPO/issues/$PR/comments" -f body="$BODY" > /dev/null
+            fi
+          elif [[ -n "$COMMENT_ID" ]]; then
+            printf -v BODY '%s\n**Test coverage:** No change.' "$MARKER"
+            gh api -X PATCH "/repos/$GH_REPO/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
+          fi
