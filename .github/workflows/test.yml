@@ -108,17 +108,18 @@ jobs:
 
       - name: Write summary
         run: |
+          REPORT=$(cargo llvm-cov report --workspace --summary-only)
           {
             echo "## Test coverage"
             echo
             echo '```'
-            cargo llvm-cov report --workspace --summary-only | grep -E '^(Filename|TOTAL)'
+            grep -E '^(Filename|TOTAL)' <<<"$REPORT"
             echo '```'
             echo
             echo "<details><summary>Per file</summary>"
             echo
             echo '```'
-            cargo llvm-cov report --workspace --summary-only
+            echo "$REPORT"
             echo '```'
             echo
             echo "</details>"
