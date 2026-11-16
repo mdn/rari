@@ -1,4 +1,4 @@
-use comrak::nodes::{AlertType, AstNode, NodeValue};
+use comrak::nodes::{AstNode, NodeValue};
 use rari_types::locale::Locale;
 
 #[derive(PartialEq, Eq)]
@@ -103,27 +103,5 @@ fn remove_leading_space_if_zh_locale(node: &AstNode, locale: Locale) {
         && matches!(next_sibling.data.borrow().value, NodeValue::SoftBreak)
     {
         next_sibling.detach();
-    }
-}
-
-/// Returns the default title for an alert type
-pub fn alert_type_default_title(alert_type: &AlertType) -> String {
-    match *alert_type {
-        AlertType::Note => String::from("Note"),
-        AlertType::Tip => String::from("Tip"),
-        AlertType::Important => String::from("Important"),
-        AlertType::Warning => String::from("Warning"),
-        AlertType::Caution => String::from("Caution"),
-    }
-}
-
-/// Returns the CSS class to use for an alert type
-pub fn alert_type_css_class(alert_type: &AlertType) -> String {
-    match *alert_type {
-        AlertType::Note => String::from("markdown-alert-note"),
-        AlertType::Tip => String::from("markdown-alert-tip"),
-        AlertType::Important => String::from("markdown-alert-important"),
-        AlertType::Warning => String::from("markdown-alert-warning"),
-        AlertType::Caution => String::from("markdown-alert-caution"),
     }
 }

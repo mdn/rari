@@ -24,9 +24,6 @@ impl RariApi {
         anchorize(content)
     }
 
-    pub fn live_sample_base_url() -> &'static str {
-        &settings().live_samples_base_url
-    }
     pub fn get_page_nowarn(url: &str) -> Result<Page, DocError> {
         RariApi::get_page_internal(url, LinkWarn::No)
     }

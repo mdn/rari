@@ -34,7 +34,6 @@ use rari_types::globals::{
     curriculum_root, generic_content_root,
 };
 use rari_types::locale::{Locale, LocaleFilter};
-use rari_utils::concat_strs;
 use rari_utils::io::read_to_string;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -161,47 +160,6 @@ pub fn read_sidebar(name: &str, locale: Locale, slug: &str) -> Result<Arc<MetaSi
         }
     };
     Ok(sidebar)
-}
-
-/// Retrieves a documentation page from the cache based on the given slug and locale.
-///
-/// This function attempts to retrieve a documentation page from the static cache using the provided slug and locale.
-/// If the locale is `en-US`, it uses the `STATIC_DOC_PAGE_FILES` cache; otherwise, it uses the
-/// `STATIC_DOC_PAGE_TRANSLATED_FILES` cache.
-///
-/// If the page is found in the cache, it returns `Ok(page)`.
-/// If the page is not found, it returns a `DocError::NotFoundInStaticCache` error.
-/// If there is a problem with the cache, it returns a `DocError::FileCacheBroken` error.
-///
-/// # Arguments
-///
-/// * `slug` - A string slice that holds the slug of the documentation page.
-/// * `locale` - A `Locale` that specifies the locale of the documentation page.
-///
-/// # Returns
-///
-/// * `Result<Page, DocError>` - Returns `Ok(Page)` if the page is found in the cache, or
-///   `Err(DocError)` if the page is not found..
-pub fn doc_page_from_slug(slug: &str, locale: Locale) -> Result<Page, DocError> {
-    let cache = if locale == Locale::EnUs {
-        &STATIC_DOC_PAGE_FILES
-    } else {
-        &STATIC_DOC_PAGE_TRANSLATED_FILES
-    };
-    cache.get().map_or_else(
-        || Err(DocError::FileCacheBroken),
-        |static_files| {
-            if let Some(page) = static_files.get(&(locale, Cow::Borrowed(slug))) {
-                return Ok(page.clone());
-            }
-            Err(DocError::NotFoundInStaticCache(concat_strs!(
-                "/",
-                locale.as_url_str(),
-                "/docs/",
-                slug
-            )))
-        },
-    )
 }
 
 /// Retrieves a documentation page from the static cache based on the given file path.
