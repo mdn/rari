@@ -11,6 +11,7 @@
 //!   - `STATIC_DOC_PAGE_FILES`: Stores documentation pages indexed by locale and URL.
 //!   - `STATIC_DOC_PAGE_TRANSLATED_FILES`: Stores translated documentation pages indexed by locale and URL.
 //!   - `STATIC_DOC_PAGE_FILES_BY_PATH`: Stores documentation pages indexed by file path.
+//!   - `STATIC_DOC_PAGE_PATHS`: Stores the sorted file paths of the documentation pages.
 //!
 //! - **Dynamic Caches**: These caches store documentation pages that can be modified during runtime.
 //!   - `CACHED_DOC_PAGE_FILES`: Stores documentation pages indexed by file path.
@@ -62,6 +63,8 @@ pub(crate) static STATIC_DOC_PAGE_TRANSLATED_FILES: OnceLock<
     HashMap<(Locale, Cow<'_, str>), Page>,
 > = OnceLock::new();
 pub(crate) static STATIC_DOC_PAGE_FILES_BY_PATH: OnceLock<HashMap<PathBuf, Page>> = OnceLock::new();
+/// The keys of `STATIC_DOC_PAGE_FILES_BY_PATH`, sorted.
+pub(crate) static STATIC_DOC_PAGE_PATHS: OnceLock<Vec<PathBuf>> = OnceLock::new();
 pub static CACHED_DOC_PAGE_FILES: OnceLock<Arc<DashMap<PathBuf, Page>>> = OnceLock::new();
 type SidebarFilesCache = Arc<DashMap<(String, Locale), Arc<MetaSidebar>>>;
 pub(crate) static CACHED_SIDEBAR_FILES: LazyLock<SidebarFilesCache> =
@@ -486,8 +489,8 @@ pub fn translated_locale_paths(translated_root: &Path, filter: LocaleFilter<'_>)
 /// This function reads documentation pages in parallel from the content root directory and caches them
 /// in the `STATIC_DOC_PAGE_FILES` static variable. If a translated content root directory is available,
 /// it also reads translated documentation pages and caches them in the `STATIC_DOC_PAGE_TRANSLATED_FILES`
-/// static variable. Additionally, it initializes `TRANSLATIONS_BY_SLUG` fills `STATIC_DOC_PAGE_FILES_BY_PATH`
-/// static variable.
+/// static variable. Additionally, it initializes `TRANSLATIONS_BY_SLUG` and fills the
+/// `STATIC_DOC_PAGE_FILES_BY_PATH` and `STATIC_DOC_PAGE_PATHS` static variables.
 ///
 /// For `LocaleFilter::Only`, the translated cache is populated only for the
 /// listed (non-en-US) locales. Downstream lookups by `(Locale, slug)` in
@@ -533,6 +536,12 @@ pub fn read_and_cache_doc_pages(filter: LocaleFilter<'_>) -> Result<Vec<Page>, D
         docs.extend(translated_docs)
     }
     init_translations_from_static_docs();
+    let mut paths: Vec<PathBuf> = docs
+        .iter()
+        .map(|doc| doc.full_path().to_path_buf())
+        .collect();
+    paths.sort_unstable();
+    STATIC_DOC_PAGE_PATHS.set(paths).unwrap();
     STATIC_DOC_PAGE_FILES_BY_PATH
         .set(
             docs.iter()
