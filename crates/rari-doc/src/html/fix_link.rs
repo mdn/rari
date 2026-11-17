@@ -7,15 +7,17 @@ use rari_types::locale::{Locale, default_locale};
 use rari_utils::concat_strs;
 
 use crate::helpers::l10n::l10n_json_data;
+use crate::html::sidebar_template::{CURRENT_MARKER_ATTR, PageRecorder};
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
 use crate::redirects::resolve_redirect;
 use crate::resolve::{strip_locale_from_url, url_with_locale};
 
-pub fn check_and_fix_link(
+pub(crate) fn check_and_fix_link(
     el: &mut Element,
     page: &impl PageLike,
     data_issues: bool,
+    recorder: Option<&PageRecorder>,
 ) -> HandlerResult {
     let templ_link = el.has_attribute("data-templ-link");
     if templ_link {
@@ -29,7 +31,22 @@ pub fn check_and_fix_link(
     }
     if original_href.starts_with('/') || original_href.starts_with("https://developer.mozilla.org")
     {
-        handle_internal_link(&original_href, el, page, data_issues, templ_link, auto_link)
+        if let Some(recorder) = recorder
+            && !templ_link
+        {
+            // Unchecked links can report issues, which belong to every page.
+            recorder.page_specific.set(true);
+            return Ok(());
+        }
+        handle_internal_link(
+            &original_href,
+            el,
+            page,
+            data_issues,
+            templ_link,
+            auto_link,
+            recorder,
+        )
     } else if original_href.starts_with("http:") || original_href.starts_with("https:") {
         handle_external_link(el, page.locale())
     } else {
@@ -57,13 +74,14 @@ pub fn handle_external_link(el: &mut Element, locale: Locale) -> HandlerResult {
     Ok(())
 }
 
-pub fn handle_internal_link(
+fn handle_internal_link(
     original_href: &str,
     el: &mut Element,
     page: &impl PageLike,
     data_issues: bool,
     templ_link: bool,
     auto_link: bool,
+    recorder: Option<&PageRecorder>,
 ) -> HandlerResult {
     // Strip prefix for curriculum links.
     let original_href = if page.page_type() == PageType::Curriculum || auto_link {
@@ -94,7 +112,11 @@ pub fn handle_internal_link(
         resolve_redirect(&maybe_prefixed_href).unwrap_or(Cow::Borrowed(&maybe_prefixed_href));
     let mut resolved_href_no_hash =
         &resolved_href[..resolved_href.find('#').unwrap_or(resolved_href.len())];
-    if resolved_href_no_hash == page.url() {
+    if let Some(recorder) = recorder {
+        let mut link_urls = recorder.link_urls.borrow_mut();
+        el.set_attribute(CURRENT_MARKER_ATTR, &link_urls.len().to_string())?;
+        link_urls.push(resolved_href_no_hash.to_string());
+    } else if resolved_href_no_hash == page.url() {
         el.set_attribute("aria-current", "page")?;
     }
     let en_us_fallback = if !Page::exists(resolved_href_no_hash)
