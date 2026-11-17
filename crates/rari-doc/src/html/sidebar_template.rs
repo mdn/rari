@@ -367,6 +367,127 @@ mod tests {
         }
     }
 
+    /// Links whose raw `href` differs from the URL they resolve to.
+    const UNRESOLVED_SIDEBAR: &str = concat!(
+        "<ol>",
+        "<li><details><summary>Hash</summary><ol>",
+        "<li><a data-templ-link href=\"/en-US/play/A#x\">A#x</a></li>",
+        "</ol></details></li>",
+        "<li><a data-templ-link href=\"/en-US/play/A\">A</a></li>",
+        "<li><details><summary>Absolute</summary><ol>",
+        "<li><a data-templ-link href=\"https://developer.mozilla.org/en-US/play/B\">B</a></li>",
+        "<li><a data-templ-link href=\"https://developer.mozilla.org/en-US/play/C#y\">C#y</a></li>",
+        "</ol></details></li>",
+        "<li><details><summary>Hash only</summary><ol>",
+        "<li><a data-templ-link href=\"/en-US/play/D#z\">D#z</a></li>",
+        "<li><a data-templ-link href=\"/en-US/play/D#z\">D#z again</a></li>",
+        "</ol></details></li>",
+        "<li><a data-templ-link href=\"/en-US/play/E/\">E/</a></li>",
+        "<li><a data-templ-link href=\"/en-US/play/f\">f</a></li>",
+        "<li><a data-templ-link href=\"#frag\">Fragment</a></li>",
+        "</ol>",
+    );
+
+    #[test]
+    fn template_matches_uncached_for_unresolved_hrefs() {
+        struct Case {
+            name: &'static str,
+            url: &'static str,
+            /// Marks expected in the output, as (mark, count).
+            marks: [(&'static str, usize); 3],
+        }
+        let cases = vec![
+            Case {
+                name: "hash link before plain link",
+                url: "/en-US/play/A",
+                marks: [
+                    ("<em>", 1),
+                    ("<details open=\"\">", 0),
+                    ("aria-current=\"page\"", 2),
+                ],
+            },
+            Case {
+                name: "absolute link",
+                url: "/en-US/play/B",
+                marks: [
+                    ("<em>", 0),
+                    ("<details open=\"\">", 0),
+                    ("aria-current=\"page\"", 1),
+                ],
+            },
+            Case {
+                name: "absolute link with hash",
+                url: "/en-US/play/C",
+                marks: [
+                    ("<em>", 0),
+                    ("<details open=\"\">", 0),
+                    ("aria-current=\"page\"", 1),
+                ],
+            },
+            Case {
+                name: "hash links only, linked twice",
+                url: "/en-US/play/D",
+                marks: [
+                    ("<em>", 0),
+                    ("<details open=\"\">", 0),
+                    ("aria-current=\"page\"", 2),
+                ],
+            },
+            Case {
+                name: "trailing slash",
+                url: "/en-US/play/E",
+                marks: [
+                    ("<em>", 0),
+                    ("<details open=\"\">", 0),
+                    ("aria-current=\"page\"", 0),
+                ],
+            },
+            Case {
+                name: "different case",
+                url: "/en-US/play/F",
+                marks: [
+                    ("<em>", 0),
+                    ("<details open=\"\">", 0),
+                    ("aria-current=\"page\"", 0),
+                ],
+            },
+        ];
+        for locale in [Locale::EnUs, Locale::De] {
+            let template = SidebarTemplate::build(
+                UNRESOLVED_SIDEBAR,
+                &TestPage {
+                    locale,
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+            .expect("sidebar is page-independent");
+
+            for case in &cases {
+                let page = TestPage {
+                    url: case.url.to_string(),
+                    locale,
+                    ..Default::default()
+                };
+                let rendered = template.render(case.url);
+                assert_eq!(
+                    rendered,
+                    postprocess_sidebar_uncached(UNRESOLVED_SIDEBAR, &page).unwrap(),
+                    "{} ({locale})",
+                    case.name
+                );
+                for (mark, count) in case.marks {
+                    assert_eq!(
+                        rendered.matches(mark).count(),
+                        count,
+                        "{}: {mark} ({locale}) in {rendered}",
+                        case.name
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn unsupported_sidebars_have_no_template() {
         struct Case {
