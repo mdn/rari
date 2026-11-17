@@ -220,7 +220,8 @@ fn get_search_index(locale: Locale) -> Result<Vec<SearchItem>, DocError> {
         None,
     )?;
 
-    build_search_items(&docs, locale)
+    // Section titles need built pages, so only page titles are served.
+    build_search_items(&docs, locale, &Default::default())
 }
 
 #[derive(Debug)]

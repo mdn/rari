@@ -34,6 +34,7 @@ use crate::pages::page::{Page, PageBuilder, PageLike};
 use crate::pages::types::spa::SPA;
 use crate::resolve::url_to_folder_path;
 use crate::rss::create_rss;
+use crate::search_index::{SectionTitle, SectionTitles, section_titles};
 
 #[derive(Clone, Debug, Default)]
 pub struct SitemapMeta<'a> {
@@ -98,9 +99,10 @@ pub fn build_single_page(page: &Page) -> Result<(BuiltPage, String), DocError> {
     Ok((built_page, hash))
 }
 
-pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
+pub fn build_single_doc(page: &Page) -> Result<(JsonDocMetadata, Vec<SectionTitle>), DocError> {
     let (built_doc, hash) = build_single_page(page)?;
     if let BuiltPage::Doc(json) = built_doc {
+        let sections = section_titles(&json.doc);
         let meta = JsonDocMetadata::from_json_doc(json.doc, hash);
 
         let out_path = build_out_root()
@@ -121,7 +123,7 @@ pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
         let mut contributors_buffed = BufWriter::new(contributors_file);
         contributors_buffed.write_all(contributors_txt_str.as_bytes())?;
 
-        Ok(meta)
+        Ok((meta, sections))
     } else {
         Err(DocError::NotADoc)
     }
@@ -149,12 +151,13 @@ pub fn build_single_doc(page: &Page) -> Result<JsonDocMetadata, DocError> {
 /// - An error occurs while building any of the documentation pages.
 pub fn build_docs<'a, 'b: 'a>(
     docs: &'b [Page],
-) -> Result<(Vec<SitemapMeta<'a>>, Vec<JsonDocMetadata>), DocError> {
-    docs.into_par_iter()
+) -> Result<(Vec<SitemapMeta<'a>>, Vec<JsonDocMetadata>, SectionTitles), DocError> {
+    let built = docs
+        .into_par_iter()
         .map(|page| {
             let history = git_history().get(page.path());
             let modified = history.map(|entry| entry.modified);
-            build_single_doc(page).map(|meta| {
+            build_single_doc(page).map(|(meta, sections)| {
                 (
                     SitemapMeta {
                         url: Cow::Borrowed(page.url()),
@@ -162,10 +165,12 @@ pub fn build_docs<'a, 'b: 'a>(
                         modified,
                     },
                     meta,
+                    (page.url().to_string(), sections),
                 )
             })
         })
-        .collect()
+        .collect::<Result<Vec<_>, DocError>>()?;
+    Ok(built.into_iter().multiunzip())
 }
 
 pub fn build_top_level_meta(locale_meta: Vec<JsonDocMetadata>) -> Result<(), DocError> {

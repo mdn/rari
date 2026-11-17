@@ -28,7 +28,7 @@ use rari_doc::pages::json::BuiltPage;
 use rari_doc::pages::page::Page;
 use rari_doc::pages::types::doc::Doc;
 use rari_doc::reader::read_docs_parallel;
-use rari_doc::search_index::build_search_index;
+use rari_doc::search_index::{SectionTitles, build_search_index};
 use rari_doc::templ::templs::TEMPL_MAP;
 use rari_doc::utils::{TEMPL_RECORDER_SENDER, TemplStatEvent, locale_and_typ_from_path};
 use rari_sitemap::Sitemaps;
@@ -661,6 +661,7 @@ fn main() -> Result<(), Error> {
             }
             let mut urls = Vec::new();
             let mut docs = Vec::new();
+            let mut section_titles = SectionTitles::default();
             if let Some(locales) = &requested_locales {
                 info!(
                     "Building locale(s): {} 🛠️",
@@ -712,7 +713,8 @@ fn main() -> Result<(), Error> {
                 || !arg_files.is_empty()
             {
                 let start = std::time::Instant::now();
-                let (docs, meta) = build_docs(&docs)?;
+                let (docs, meta, sections) = build_docs(&docs)?;
+                section_titles = sections;
                 build_top_level_meta(meta)?;
                 let num = docs.len();
                 urls.extend(docs);
@@ -723,7 +725,7 @@ fn main() -> Result<(), Error> {
             }
             if args.all || args.all_available || !args.no_basic || args.search_index {
                 let start = std::time::Instant::now();
-                build_search_index(&docs)?;
+                build_search_index(&docs, &section_titles)?;
                 info!("Took: {: >10.3?} to build search index", start.elapsed());
             }
             if args.all || args.generics || (args.all_available && generic_content_root().is_some())
