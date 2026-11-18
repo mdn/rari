@@ -6,7 +6,7 @@ use crate::error::DocError;
 use crate::issues::get_issue_counter;
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
-use crate::templ::css_feature_index::{CssRefCategory, resolve_css_feature};
+use crate::templ::css_feature_index::{CssRefCategory, css_feature_index};
 
 /// Creates a link to a CSS reference page on MDN.
 ///
@@ -113,22 +113,28 @@ pub fn cssxref_internal(
     // so try `Properties/` first then `Values/` — matching the legacy
     // behavior. If the index returns nothing, fall back to a bare `{slug}`
     // link under `Web/CSS/` (likely a 404).
+    let index = css_feature_index()?;
     let url_path = if name.starts_with("&lt;") || name.starts_with('<') {
-        resolve_css_feature(CssRefCategory::Values, slug)
+        index.resolve(CssRefCategory::Values, slug)
     } else if name.starts_with(':') {
-        is_function
-            .then(|| resolve_css_feature(CssRefCategory::Selectors, &format!("{slug}_function")))
-            .flatten()
-            .or_else(|| resolve_css_feature(CssRefCategory::Selectors, slug))
+        if is_function {
+            index
+                .resolve(CssRefCategory::Selectors, &format!("{slug}_function"))
+                .or_else(|| index.resolve(CssRefCategory::Selectors, slug))
+        } else {
+            index.resolve(CssRefCategory::Selectors, slug)
+        }
     } else if name.starts_with('@') {
-        resolve_css_feature(CssRefCategory::AtRules, slug)
+        index.resolve(CssRefCategory::AtRules, slug)
     } else if is_function {
-        resolve_css_feature(CssRefCategory::Values, &format!("{slug}_function"))
-            .or_else(|| resolve_css_feature(CssRefCategory::Values, slug))
+        index
+            .resolve(CssRefCategory::Values, &format!("{slug}_function"))
+            .or_else(|| index.resolve(CssRefCategory::Values, slug))
     } else {
-        resolve_css_feature(CssRefCategory::Properties, slug)
-            .or_else(|| resolve_css_feature(CssRefCategory::Values, slug))
-            .or_else(|| resolve_css_feature(CssRefCategory::Selectors, slug))
+        index
+            .resolve(CssRefCategory::Properties, slug)
+            .or_else(|| index.resolve(CssRefCategory::Values, slug))
+            .or_else(|| index.resolve(CssRefCategory::Selectors, slug))
     }
     .map_or_else(|| slug.to_string(), |s| format!("Reference/{s}"));
 

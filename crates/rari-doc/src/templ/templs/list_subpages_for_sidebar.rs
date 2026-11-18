@@ -1,7 +1,6 @@
 use rari_templ_func::rari_f;
 use rari_types::AnyArg;
 
-use crate::baseline::get_baseline_status;
 use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::html::links::{LinkModifier, render_internal_link};
@@ -39,6 +38,7 @@ pub fn listsubpagesforsidebar(
         let title = locale_page.short_title_or_title();
         let title = trim_before(title, title_only_after.as_deref());
         let title = trim_after(title, title_only_before.as_deref());
+        out.push_str("<li>");
         render_internal_link(
             &mut out,
             locale_page.url(),
@@ -46,11 +46,9 @@ pub fn listsubpagesforsidebar(
             &html_escape::encode_safe(title),
             None,
             &LinkModifier {
-                badges: page.status(),
-                badge_locale: env.locale,
                 code,
                 only_en_us: locale_page.locale() != env.locale,
-                baseline: get_baseline_status(&page),
+                ..LinkModifier::with_badges(&page, env.locale)
             },
             true,
         )?;

@@ -111,7 +111,7 @@ jobs:
       rari-binary-artifact-id: ${{ needs.build.outputs.rari-binary-artifact-id }}
 
   pr-review:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
     needs: build
     permissions:
       contents: read

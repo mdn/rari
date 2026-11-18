@@ -67,6 +67,7 @@ pub struct Settings {
     pub data_issues: bool,
     pub json_issues: bool,
     pub json_live_samples: bool,
+    pub skip_contributors_txt: bool,
     pub blog_unpublished: bool,
     pub blog_pagination: bool,
 }

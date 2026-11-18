@@ -14,10 +14,12 @@
 //! PascalCase class references across content + translated-content.
 
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock};
+use std::sync::{Arc, OnceLock};
 
 use indexmap::IndexSet;
 
+use super::get_or_build_index;
+use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::issues::get_issue_counter;
 use crate::pages::page::PageLike;
@@ -67,15 +69,14 @@ impl JsRefIndex {
     }
 }
 
-static JS_REF_INDEX: LazyLock<JsRefIndex> = LazyLock::new(build_index);
+static JS_REF_INDEX: OnceLock<JsRefIndex> = OnceLock::new();
 
-fn build_index() -> JsRefIndex {
+fn build_index() -> Result<JsRefIndex, DocError> {
     let pages = get_sub_pages(
         "/en-US/docs/Web/JavaScript/Reference",
         None,
         SubPagesSorter::Slug,
-    )
-    .expect("failed to build jsxref reference index");
+    )?;
 
     let mut primary: HashMap<String, IndexSet<Arc<str>>> = HashMap::new();
     for page in &pages {
@@ -84,7 +85,7 @@ fn build_index() -> JsRefIndex {
         };
         index_one(&mut primary, sub_slug);
     }
-    JsRefIndex::from_primary(primary)
+    Ok(JsRefIndex::from_primary(primary))
 }
 
 /// Add the index entries (full sub-path, `Global_Objects/*` strip,
@@ -189,9 +190,12 @@ fn normalize(name: &str) -> String {
 ///    `Global_Objects/Int8Array/Int8Array`), that page is returned instead.
 ///
 /// The returned `&'static str` borrows from `JS_REF_INDEX`, which is a
-/// `LazyLock` that lives for the rest of the process.
-pub fn resolve_js_ref(name: &str) -> Option<&'static str> {
-    resolve_from_name(&JS_REF_INDEX, name)
+/// `OnceLock` that lives for the rest of the process.
+pub fn resolve_js_ref(name: &str) -> Result<Option<&'static str>, DocError> {
+    Ok(resolve_from_name(
+        get_or_build_index(&JS_REF_INDEX, build_index)?,
+        name,
+    ))
 }
 
 fn resolve_from_name<'a>(idx: &'a JsRefIndex, name: &str) -> Option<&'a str> {

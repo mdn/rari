@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/mdn/rari/compare/v1.2.2...v1.3.0) (2026-11-16)
+
+
+### Features
+
+* **build:** add option to skip writing `contributors.txt` ([#1039](https://github.com/mdn/rari/issues/1039)) ([831b17b](https://github.com/mdn/rari/commit/831b17b99c74f060dc6e509bb2a40d56109ff60f))
+* **sidebar:** annotate assessment links ([#969](https://github.com/mdn/rari/issues/969)) ([f4e92b4](https://github.com/mdn/rari/commit/f4e92b4c984a8f6417783d4062556a50689bfcda))
+
+
+### Bug Fixes
+
+* **contributors:** replace only `/blob/` segment in commits URL ([#1040](https://github.com/mdn/rari/issues/1040)) ([7a77cfc](https://github.com/mdn/rari/commit/7a77cfc2c19ad88d3a9f04b06c40a05a70ab923d))
+* **listsubpagesforsidebar:** open list items ([#1032](https://github.com/mdn/rari/issues/1032)) ([9f49d57](https://github.com/mdn/rari/commit/9f49d57df04e6c5a4db734f250142537cb246c2f))
+
+
+### Miscellaneous
+
+* **deps:** bump scraper from 0.27.0 to 0.29.0 + html5ever from 0.39.0 to 0.40.1 ([#1013](https://github.com/mdn/rari/issues/1013)) ([312d88b](https://github.com/mdn/rari/commit/312d88b2437eee28d1f5ec436d70ee22c9de6731))
+* **deps:** bump the cargo group with 4 updates ([#1037](https://github.com/mdn/rari/issues/1037)) ([46daa4f](https://github.com/mdn/rari/commit/46daa4fc433645f6550875f24aee32d02bb85bc9))
+
+## [1.2.2](https://github.com/mdn/rari/compare/v1.2.1...v1.2.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* **templ:** avoid panics when building reference indexes ([#1020](https://github.com/mdn/rari/issues/1020)) ([9c11e09](https://github.com/mdn/rari/commit/9c11e09506026affc25916a3d6b9060e92cd7efe))
+
+
+### Miscellaneous
+
+* **deps:** bump comrak from 0.56.0 to 0.59.0 ([#1012](https://github.com/mdn/rari/issues/1012)) ([d178972](https://github.com/mdn/rari/commit/d1789724d5b7170fe4f7198d8184751fe8418efb))
+* **deps:** bump rustls from 0.23.45 to 0.23.46 ([#1015](https://github.com/mdn/rari/issues/1015)) ([bdd1f9a](https://github.com/mdn/rari/commit/bdd1f9ad67a8c0b014a5870c8cf78dd0292ec268))
+* **deps:** bump the cargo group with 2 updates ([#1017](https://github.com/mdn/rari/issues/1017)) ([9e9d212](https://github.com/mdn/rari/commit/9e9d212cef21bf7c8a85cbcbda05aa0bcafb5b69))
+* **deps:** bump the cargo group with 5 updates ([#1011](https://github.com/mdn/rari/issues/1011)) ([c63578f](https://github.com/mdn/rari/commit/c63578fd3b8c71171813eb09e87f818ceaf2e654))
+
+## [1.2.1](https://github.com/mdn/rari/compare/v1.2.0...v1.2.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **diff-test:** sort diff keys naturally ([#981](https://github.com/mdn/rari/issues/981)) ([147f9b0](https://github.com/mdn/rari/commit/147f9b0c2702b88551ad35d449de81dd134650e5))
+* **jsxref:** resolve constructor call links ([#961](https://github.com/mdn/rari/issues/961)) ([f1d58e8](https://github.com/mdn/rari/commit/f1d58e8a79ca96bffda361e9fda4c2dacc96cbeb))
+
+
+### Miscellaneous
+
+* **deps:** bump comrak from 0.55.0 to 0.56.0 ([#990](https://github.com/mdn/rari/issues/990)) ([996404c](https://github.com/mdn/rari/commit/996404c08d371e39a5f6e9719c4ef611b5186974))
+* **deps:** bump html-escape from 0.2.15 to 0.3.0 ([#1008](https://github.com/mdn/rari/issues/1008)) ([d7fc684](https://github.com/mdn/rari/commit/d7fc68452dd349f4cce79a8f7be422efc07f71d7))
+* **deps:** bump html-minifier from 5.0.2 to 6.0.0 ([#1007](https://github.com/mdn/rari/issues/1007)) ([c830b82](https://github.com/mdn/rari/commit/c830b82110f45fd607ed5be9ee390493c417a1c2))
+* **deps:** bump the cargo group with 3 updates ([#1004](https://github.com/mdn/rari/issues/1004)) ([cec33f2](https://github.com/mdn/rari/commit/cec33f24d26863a50c58bc70da0590176207c86e))
+* **deps:** bump the cargo group with 4 updates ([#1006](https://github.com/mdn/rari/issues/1006)) ([312f802](https://github.com/mdn/rari/commit/312f80205267bb27fa5cbe58517338da00b46668))
+* **rust:** add rust-toolchain.toml for 1.97 ([#997](https://github.com/mdn/rari/issues/997)) ([85d9d16](https://github.com/mdn/rari/commit/85d9d1666d4b9b02f15f1b455d34c6da332a00a8))
+
 ## [1.2.0](https://github.com/mdn/rari/compare/v1.1.0...v1.2.0) (2026-10-08)
 
 

@@ -108,6 +108,9 @@ pub(crate) fn render(env: &RariEnv, input: &str, offset: usize) -> Result<Render
                         encode_ref(templs.len(), &mut out, mac.end - mac.start)?;
                         templs.push(rendered);
                     }
+                    Err(
+                        e @ (DocError::SlugFolderMismatch(..) | DocError::ReferenceIndexError(_)),
+                    ) => return Err(e),
                     Err(e) if deny_warnings() => return Err(e),
                     Err(e) => {
                         match &e {

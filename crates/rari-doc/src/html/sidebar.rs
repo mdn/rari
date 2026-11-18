@@ -19,7 +19,6 @@ use tracing::{Level, span};
 use super::links::{LinkFlags, LinkModifier, render_link_from_page, render_link_via_page};
 use super::modifier::insert_attribute;
 use super::rewriter::post_process_html;
-use crate::baseline::get_baseline_status;
 use crate::cached_readers::read_sidebar;
 use crate::error::DocError;
 use crate::helpers;
@@ -162,6 +161,9 @@ pub fn build_sidebar(sidebar: &FmTempl, doc: &Doc) -> Result<String, DocError> {
                 let _enter = span.enter();
                 tracing::warn!("{typ} macro in sidebar frontmatter");
                 Default::default()
+            }
+            Err(e @ (DocError::SlugFolderMismatch(..) | DocError::ReferenceIndexError(_))) => {
+                return Err(e);
             }
             Err(e) => {
                 let span = span!(Level::ERROR, "sidebar", sidebar = name,);
@@ -703,11 +705,9 @@ impl SidebarMetaEntry {
                     out,
                     page,
                     &LinkModifier {
-                        badges: page.status(),
-                        badge_locale: page.locale(),
                         code: self.code,
                         only_en_us: page.locale() != locale,
-                        baseline: get_baseline_status(page),
+                        ..LinkModifier::with_badges(page, page.locale())
                     },
                 )?;
             }

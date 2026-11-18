@@ -71,7 +71,7 @@ pub fn contributors_txt(wiki_history: Option<&WikiHistoryEntry>, github_file_url
     let mut out = String::new();
     out.extend([
         "# Contributors by commit history\n",
-        &github_file_url.replace("blob", "commits"),
+        &github_file_url.replacen("/blob/", "/commits/", 1),
         "\n\n",
     ]);
     if let Some(wh) = wiki_history
@@ -84,4 +84,39 @@ pub fn contributors_txt(wiki_history: Option<&WikiHistoryEntry>, github_file_url
         ]);
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn commits_url_replaces_only_blob_segment() {
+        struct Case {
+            name: &'static str,
+            url: &'static str,
+            expected: &'static str,
+        }
+        let cases = [
+            Case {
+                name: "plain",
+                url: "https://github.com/mdn/content/blob/main/files/en-us/web/api/fetch/index.md",
+                expected: "https://github.com/mdn/content/commits/main/files/en-us/web/api/fetch/index.md",
+            },
+            Case {
+                name: "slug containing blob",
+                url: "https://github.com/mdn/content/blob/main/files/en-us/web/api/blob/index.md",
+                expected: "https://github.com/mdn/content/commits/main/files/en-us/web/api/blob/index.md",
+            },
+        ];
+        for case in cases {
+            let out = contributors_txt(None, case.url);
+            assert_eq!(
+                out,
+                format!("# Contributors by commit history\n{}\n\n", case.expected),
+                "{}",
+                case.name
+            );
+        }
+    }
 }

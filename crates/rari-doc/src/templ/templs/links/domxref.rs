@@ -64,7 +64,7 @@ pub fn domxref(
             ArgError::MustNotBeEmpty,
         )));
     }
-    let resolved = resolve_api_name(&api);
+    let resolved = resolve_api_name(&api)?;
     let mut url = format!(
         "/{}/docs/Web/API/{}",
         env.locale.as_url_str(),
