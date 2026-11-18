@@ -29,10 +29,6 @@ impl Tokenizer {
         self.char_code_at(self.pos + 1)
     }
 
-    pub fn next_non_ws_code(&self, pos: usize) -> char {
-        self.char_code_at(self.find_ws_end(pos))
-    }
-
     pub fn find_ws_end(&self, pos: usize) -> usize {
         self.str
             .iter()
