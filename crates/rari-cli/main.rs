@@ -1020,7 +1020,16 @@ fn main() -> Result<(), Error> {
 
                 // Fix flaws in all collected pages
                 let start = std::time::Instant::now();
+                if fix_content && args.locale.is_none() {
+                    rari_doc::broken_link_exceptions::begin_reference_scan();
+                }
                 let fixed = fix_all(&all_pages, args.locale)?;
+                if fix_content && args.locale.is_none() {
+                    let pruned = rari_doc::broken_link_exceptions::prune_file()?;
+                    if pruned > 0 {
+                        info!("Pruned {pruned} unused link-check exceptions");
+                    }
+                }
                 info!(
                     "Took: {: >8} for fixing {} pages (fixed {})",
                     fmt_secs(start.elapsed()),
