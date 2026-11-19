@@ -9,11 +9,10 @@
 //! a `<type>` in a formal-syntax box is documented at all.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::OnceLock;
 
 use css_syntax::syntax::CssRefKind;
 
-use super::get_or_build_index;
+use super::LazyIndex;
 use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::pages::page::PageLike;
@@ -71,7 +70,7 @@ impl CssFeatureIndex {
     }
 }
 
-static CSS_FEATURE_INDEX: OnceLock<CssFeatureIndex> = OnceLock::new();
+static CSS_FEATURE_INDEX: LazyIndex<CssFeatureIndex> = LazyIndex::new();
 
 fn build_index() -> Result<CssFeatureIndex, DocError> {
     // Slugs are locale-invariant in MDN content, so it's enough to walk the
@@ -165,7 +164,7 @@ fn add_suffix_aliases(
 }
 
 pub(crate) fn css_feature_index() -> Result<&'static CssFeatureIndex, DocError> {
-    get_or_build_index(&CSS_FEATURE_INDEX, build_index)
+    CSS_FEATURE_INDEX.get_or_build(build_index)
 }
 
 fn resolve_formal_syntax_ref_from_map<'a>(

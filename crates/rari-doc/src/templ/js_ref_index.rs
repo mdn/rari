@@ -14,11 +14,11 @@
 //! PascalCase class references across content + translated-content.
 
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use indexmap::IndexSet;
 
-use super::get_or_build_index;
+use super::LazyIndex;
 use crate::error::DocError;
 use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
 use crate::issues::get_issue_counter;
@@ -69,7 +69,7 @@ impl JsRefIndex {
     }
 }
 
-static JS_REF_INDEX: OnceLock<JsRefIndex> = OnceLock::new();
+static JS_REF_INDEX: LazyIndex<JsRefIndex> = LazyIndex::new();
 
 fn build_index() -> Result<JsRefIndex, DocError> {
     let pages = get_sub_pages(
@@ -190,10 +190,10 @@ fn normalize(name: &str) -> String {
 ///    `Global_Objects/Int8Array/Int8Array`), that page is returned instead.
 ///
 /// The returned `&'static str` borrows from `JS_REF_INDEX`, which is a
-/// `OnceLock` that lives for the rest of the process.
+/// static that lives for the rest of the process.
 pub fn resolve_js_ref(name: &str) -> Result<Option<&'static str>, DocError> {
     Ok(resolve_from_name(
-        get_or_build_index(&JS_REF_INDEX, build_index)?,
+        JS_REF_INDEX.get_or_build(build_index)?,
         name,
     ))
 }
