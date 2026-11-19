@@ -13,6 +13,7 @@ use url::Url;
 use crate::error::DocError;
 use crate::html::fix_img::handle_img;
 use crate::html::fix_link::check_and_fix_link;
+use crate::html::sidebar_template::{EM_MARKER_ATTR, EM_MARKER_COMMENT, PageRecorder};
 use crate::pages::page::PageLike;
 use crate::pages::types::curriculum::Curriculum;
 
@@ -44,6 +45,18 @@ pub fn post_process_html<T: PageLike>(
     input: &str,
     page: &T,
     sidebar: bool,
+) -> Result<String, DocError> {
+    post_process_html_internal(input, page, sidebar, None)
+}
+
+/// Like `post_process_html`, but with a `recorder` the page-specific parts are left out and
+/// marked instead: `EM_MARKER_ATTR` elements get their content enclosed in `EM_MARKER_COMMENT`
+/// comments, and internal links get a `CURRENT_MARKER_ATTR`.
+pub(crate) fn post_process_html_internal<T: PageLike>(
+    input: &str,
+    page: &T,
+    sidebar: bool,
+    recorder: Option<&PageRecorder>,
 ) -> Result<String, DocError> {
     let mut output = vec![];
     let mut ids = HashSet::new();
@@ -96,6 +109,11 @@ pub fn post_process_html<T: PageLike>(
             Ok(())
         }),
         element!("img[src]", |el| {
+            if let Some(recorder) = recorder {
+                // Image sources resolve relative to the page.
+                recorder.page_specific.set(true);
+                return Ok(());
+            }
             handle_img(el, page, data_issues, &base, &base_url)
         }),
         element!("img:not([loading])", |el| {
@@ -107,7 +125,7 @@ pub fn post_process_html<T: PageLike>(
             Ok(())
         }),
         element!("a[href]", |el| {
-            check_and_fix_link(el, page, data_issues)?;
+            check_and_fix_link(el, page, data_issues, recorder)?;
             Ok(())
         }),
         element!("pre:not(.notranslate)", |el| {
@@ -198,6 +216,20 @@ pub fn post_process_html<T: PageLike>(
             el.prepend("<em>", ContentType::Html);
             el.append("</em>", ContentType::Html);
             el.remove_attribute("data-rewriter");
+            Ok(())
+        }),
+        element!(constcat::concat!("*[", EM_MARKER_ATTR, "]"), |el| {
+            if let Some(marker) = el.get_attribute(EM_MARKER_ATTR) {
+                el.prepend(
+                    &concat_strs!("<!--", EM_MARKER_COMMENT, &marker, "-->"),
+                    ContentType::Html,
+                );
+                el.append(
+                    &concat_strs!("<!--/", EM_MARKER_COMMENT, &marker, "-->"),
+                    ContentType::Html,
+                );
+                el.remove_attribute(EM_MARKER_ATTR);
+            }
             Ok(())
         }),
         element!("*[data-sourcepos]", |el| {

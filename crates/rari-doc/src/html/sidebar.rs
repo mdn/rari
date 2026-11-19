@@ -19,6 +19,7 @@ use tracing::{Level, span};
 use super::links::{LinkFlags, LinkModifier, render_link_from_page, render_link_via_page};
 use super::modifier::insert_attribute;
 use super::rewriter::post_process_html;
+use super::sidebar_template::SidebarTemplate;
 use crate::cached_readers::read_sidebar;
 use crate::error::DocError;
 use crate::helpers;
@@ -96,6 +97,19 @@ fn expand_details_and_mark_current(html: &mut Html, a_selector: Selector) -> Res
 }
 
 pub fn postprocess_sidebar<T: PageLike>(
+    ks_rendered_sidebar: &str,
+    page: &T,
+) -> Result<String, DocError> {
+    if cache_content()
+        && page.page_type() != PageType::Curriculum
+        && let Some(template) = SidebarTemplate::get_or_build(ks_rendered_sidebar, page)?
+    {
+        return Ok(template.render(page.url()));
+    }
+    postprocess_sidebar_uncached(ks_rendered_sidebar, page)
+}
+
+pub(crate) fn postprocess_sidebar_uncached<T: PageLike>(
     ks_rendered_sidebar: &str,
     page: &T,
 ) -> Result<String, DocError> {
