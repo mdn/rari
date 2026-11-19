@@ -8,6 +8,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::mpsc::channel;
 use std::thread::spawn;
+use std::time::Duration;
 
 use anyhow::{Error, anyhow};
 use clap::{Args, Parser, Subcommand};
@@ -427,6 +428,10 @@ fn validate_locale_arg(locales: &[Locale]) -> Result<(), Error> {
     Ok(())
 }
 
+fn fmt_secs(d: Duration) -> String {
+    format!("{:.3}s", d.as_secs_f64())
+}
+
 fn main() -> Result<(), Error> {
     if let Ok(env_file) = dotenvy::from_filename(
         env::var("DOT_FILE")
@@ -696,8 +701,8 @@ fn main() -> Result<(), Error> {
                     read_and_cache_doc_pages(locale_filter)?
                 };
                 info!(
-                    "Took: {: >10.3?} for reading {} docs",
-                    start.elapsed(),
+                    "Took: {: >8} for reading {} docs",
+                    fmt_secs(start.elapsed()),
                     docs.len()
                 );
             }
@@ -706,7 +711,10 @@ fn main() -> Result<(), Error> {
                 let spas = build_spas(locale_filter)?;
                 let num = spas.len();
                 urls.extend(spas);
-                info!("Took: {: >10.3?} to build spas ({num})", start.elapsed(),);
+                info!(
+                    "Took: {: >8} to build spas ({num})",
+                    fmt_secs(start.elapsed()),
+                );
             }
             if args.all
                 || args.all_available
@@ -720,14 +728,17 @@ fn main() -> Result<(), Error> {
                 let num = docs.len();
                 urls.extend(docs);
                 info!(
-                    "Took: {: >10.3?} to build content docs ({num})",
-                    start.elapsed()
+                    "Took: {: >8} to build content docs ({num})",
+                    fmt_secs(start.elapsed())
                 );
             }
             if args.all || args.all_available || !args.no_basic || args.search_index {
                 let start = std::time::Instant::now();
                 build_search_index(&docs)?;
-                info!("Took: {: >10.3?} to build search index", start.elapsed());
+                info!(
+                    "Took: {: >8} to build search index",
+                    fmt_secs(start.elapsed())
+                );
             }
             if args.all || args.generics || (args.all_available && generic_content_root().is_some())
             {
@@ -736,8 +747,8 @@ fn main() -> Result<(), Error> {
                 let num = generic_pages.len();
                 urls.extend(generic_pages);
                 info!(
-                    "Took: {: >10.3?} to build generic pages ({num})",
-                    start.elapsed()
+                    "Took: {: >8} to build generic pages ({num})",
+                    fmt_secs(start.elapsed())
                 );
             }
             if args.all || args.curriculum || (args.all_available && curriculum_root().is_some()) {
@@ -746,8 +757,8 @@ fn main() -> Result<(), Error> {
                 let num = curriculum_pages.len();
                 urls.extend(curriculum_pages);
                 info!(
-                    "Took: {: >10.3?} to build curriculum pages ({num})",
-                    start.elapsed()
+                    "Took: {: >8} to build curriculum pages ({num})",
+                    fmt_secs(start.elapsed())
                 );
             }
             if args.all || args.blog || (args.all_available && blog_root().is_some()) {
@@ -755,7 +766,10 @@ fn main() -> Result<(), Error> {
                 let blog_pages = build_blog_pages()?;
                 let num = blog_pages.len();
                 urls.extend(blog_pages);
-                info!("Took: {: >10.3?} to build blog ({num})", start.elapsed());
+                info!(
+                    "Took: {: >8} to build blog ({num})",
+                    fmt_secs(start.elapsed())
+                );
             }
             if args.all
                 || args.spotlights
@@ -766,8 +780,8 @@ fn main() -> Result<(), Error> {
                 let num = contributor_spotlight_pages.len();
                 urls.extend(contributor_spotlight_pages);
                 info!(
-                    "Took: {: >10.3?} to build contributor spotlights ({num})",
-                    start.elapsed()
+                    "Took: {: >8} to build contributor spotlights ({num})",
+                    fmt_secs(start.elapsed())
                 );
             }
             let total_files = urls.len();
@@ -778,8 +792,8 @@ fn main() -> Result<(), Error> {
                 fs::create_dir_all(out_path).unwrap();
                 sitemaps.write_all_sitemaps(out_path)?;
                 info!(
-                    "Took: {: >10.3?} to write sitemaps ({})",
-                    start.elapsed(),
+                    "Took: {: >8} to write sitemaps ({})",
+                    fmt_secs(start.elapsed()),
                     sitemaps.sitemap_meta.len()
                 );
             }
@@ -881,7 +895,7 @@ fn main() -> Result<(), Error> {
             info!("Gathering history 📜");
             let start = std::time::Instant::now();
             gather_history()?;
-            info!("Took: {:?}", start.elapsed());
+            info!("Took: {: >8}", fmt_secs(start.elapsed()));
         }
         Commands::Content(content_subcommand) => match content_subcommand {
             ContentSubcommand::Move(args) => {
@@ -946,8 +960,8 @@ fn main() -> Result<(), Error> {
                         LocaleFilter::from(args.locale.as_ref().map(std::slice::from_ref));
                     let docs = read_and_cache_doc_pages(locale_filter)?;
                     info!(
-                        "Took: {: >10.3?} for reading {} content pages",
-                        start.elapsed(),
+                        "Took: {: >8} for reading {} content pages",
+                        fmt_secs(start.elapsed()),
                         docs.len()
                     );
                     all_pages.extend(docs);
@@ -958,8 +972,8 @@ fn main() -> Result<(), Error> {
                     let start = std::time::Instant::now();
                     let blog_pages: Vec<Page> = blog_files().posts.values().cloned().collect();
                     info!(
-                        "Took: {: >10.3?} for reading {} blog posts",
-                        start.elapsed(),
+                        "Took: {: >8} for reading {} blog posts",
+                        fmt_secs(start.elapsed()),
                         blog_pages.len()
                     );
                     all_pages.extend(blog_pages);
@@ -971,8 +985,8 @@ fn main() -> Result<(), Error> {
                     let curriculum_pages: Vec<Page> =
                         curriculum_files().by_url.values().cloned().collect();
                     info!(
-                        "Took: {: >10.3?} for reading {} curriculum pages",
-                        start.elapsed(),
+                        "Took: {: >8} for reading {} curriculum pages",
+                        fmt_secs(start.elapsed()),
                         curriculum_pages.len()
                     );
                     all_pages.extend(curriculum_pages);
@@ -984,8 +998,8 @@ fn main() -> Result<(), Error> {
                     let spotlight_pages: Vec<Page> =
                         contributor_spotlight_files().values().cloned().collect();
                     info!(
-                        "Took: {: >10.3?} for reading {} contributor spotlight pages",
-                        start.elapsed(),
+                        "Took: {: >8} for reading {} contributor spotlight pages",
+                        fmt_secs(start.elapsed()),
                         spotlight_pages.len()
                     );
                     all_pages.extend(spotlight_pages);
@@ -997,8 +1011,8 @@ fn main() -> Result<(), Error> {
                     let generic_pages: Vec<Page> =
                         generic_content_files().values().cloned().collect();
                     info!(
-                        "Took: {: >10.3?} for reading {} generic content pages",
-                        start.elapsed(),
+                        "Took: {: >8} for reading {} generic content pages",
+                        fmt_secs(start.elapsed()),
                         generic_pages.len()
                     );
                     all_pages.extend(generic_pages);
@@ -1008,8 +1022,8 @@ fn main() -> Result<(), Error> {
                 let start = std::time::Instant::now();
                 let fixed = fix_all(&all_pages, args.locale)?;
                 info!(
-                    "Took: {: >10.3?} for fixing {} pages (fixed {})",
-                    start.elapsed(),
+                    "Took: {: >8} for fixing {} pages (fixed {})",
+                    fmt_secs(start.elapsed()),
                     all_pages.len(),
                     fixed.len()
                 );
@@ -1228,5 +1242,44 @@ mod tests {
     #[test]
     fn finalize_requested_locales_empty_input_still_injects_en_us() {
         assert_eq!(finalize_requested_locales(&[]), vec![Locale::EnUs]);
+    }
+
+    #[test]
+    fn test_fmt_secs() {
+        struct Case {
+            name: &'static str,
+            input: Duration,
+            expected: &'static str,
+        }
+        let cases = vec![
+            Case {
+                name: "sub-ms",
+                input: Duration::from_micros(400),
+                expected: "0.000s",
+            },
+            Case {
+                name: "ms",
+                input: Duration::from_micros(4719),
+                expected: "0.005s",
+            },
+            Case {
+                name: "hundreds of ms",
+                input: Duration::from_micros(250_382),
+                expected: "0.250s",
+            },
+            Case {
+                name: "seconds",
+                input: Duration::from_millis(25_281),
+                expected: "25.281s",
+            },
+            Case {
+                name: "hundreds of seconds",
+                input: Duration::from_millis(999_999),
+                expected: "999.999s",
+            },
+        ];
+        for case in cases {
+            assert_eq!(fmt_secs(case.input), case.expected, "{}", case.name);
+        }
     }
 }
