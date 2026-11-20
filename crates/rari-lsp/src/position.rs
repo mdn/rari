@@ -80,8 +80,8 @@ pub(crate) fn retrieve_keyword_at_position(
         tree_sitter::Query::new(
             &tree_sitter_mdn::LANGUAGE.into(),
             r#"
-            [ (ident)
-              ("{{")
+            (macro_tag . (ident) @keywords)
+            [ ("{{")
               ("}}")
             ] @keywords
             "#,
@@ -97,6 +97,51 @@ pub(crate) fn retrieve_keyword_at_position(
         cursor_line,
         cursor_character,
     )
+}
+
+/// Returns the name of the macro whose arguments the cursor is in, if any.
+pub(crate) fn retrieve_macro_with_args_at_position(
+    doc: &mut Document,
+    parser: &mut tree_sitter::Parser,
+    cursor_line: usize,
+    cursor_character: usize,
+) -> Option<String> {
+    let document_content = doc.full.get_content(None);
+    doc.tree = parser.parse(document_content, doc.tree.as_ref());
+    let tree = doc.tree.as_ref()?;
+    find_macro_with_args_at_position(
+        tree.root_node(),
+        document_content.as_bytes(),
+        tree_sitter::Point {
+            row: cursor_line,
+            column: cursor_character,
+        },
+    )
+}
+
+fn find_macro_with_args_at_position(
+    root_node: tree_sitter::Node,
+    document_bytes: &[u8],
+    point: tree_sitter::Point,
+) -> Option<String> {
+    let mut node = root_node.descendant_for_point_range(point, point)?;
+    // The cursor may sit right before `}}` when the arguments are unclosed.
+    if node.kind() == "}}" && point > node.start_position() {
+        return None;
+    }
+    while node.kind() != "macro_tag" {
+        if node.kind() == "string" {
+            return None;
+        }
+        node = node.parent()?;
+    }
+    let ident = node
+        .named_child(0)
+        .filter(|child| child.kind() == "ident")?;
+    if point <= ident.end_position() {
+        return None;
+    }
+    ident.utf8_text(document_bytes).ok().map(String::from)
 }
 
 fn find_keyword_at_position(
@@ -132,4 +177,71 @@ fn is_within_cursor_range(
         && end_position.row == cursor_line
         && start_position.column <= cursor_character
         && end_position.column >= cursor_character
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn macro_with_args_at_position() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            column: usize,
+            expected: Option<&'static str>,
+        }
+
+        let cases = vec![
+            Case {
+                name: "after an argument",
+                input: r#"{{cssxref("color", )}}"#,
+                column: 19,
+                expected: Some("cssxref"),
+            },
+            Case {
+                name: "partially typed name",
+                input: r#"{{cssxref("color", anc)}}"#,
+                column: 22,
+                expected: Some("cssxref"),
+            },
+            Case {
+                name: "unclosed arguments",
+                input: r#"x {{cssxref("color", anc}} y"#,
+                column: 24,
+                expected: Some("cssxref"),
+            },
+            Case {
+                name: "inside a string",
+                input: r#"{{cssxref("color")}}"#,
+                column: 13,
+                expected: None,
+            },
+            Case {
+                name: "on the macro name",
+                input: r#"{{cssxref("color")}}"#,
+                column: 5,
+                expected: None,
+            },
+            Case {
+                name: "in text",
+                input: r#"x {{cssxref("color")}} y"#,
+                column: 1,
+                expected: None,
+            },
+        ];
+        let mut parser = crate::parser::initialise_parser();
+        for case in cases {
+            let tree = parser.parse(case.input, None).unwrap();
+            let actual = find_macro_with_args_at_position(
+                tree.root_node(),
+                case.input.as_bytes(),
+                tree_sitter::Point {
+                    row: 0,
+                    column: case.column,
+                },
+            );
+            assert_eq!(actual.as_deref(), case.expected, "{}", case.name);
+        }
+    }
 }
