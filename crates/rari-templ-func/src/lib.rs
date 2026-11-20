@@ -184,15 +184,17 @@ pub fn rari_f(attr: TokenStream, input: TokenStream) -> TokenStream {
 	}
 	});
     let block = dup.block;
-    dup.block = parse_quote! {
-        {
+    dup.block = Box::new(syn::Block {
+        // Keep the original body span, otherwise rustc records no coverage for the wrapper.
+        brace_token: block.brace_token,
+        stmts: parse_quote! {
             use ::rari_types::ArgError;
             use std::convert::TryInto;
             let mut args_iter = args.into_iter();
             #(#mapping)*
             #block
-        }
-    };
+        },
+    });
 
     function
         .sig
