@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 
 use lol_html::HandlerResult;
-use lol_html::html_content::Element;
+use lol_html::html_content::{ContentType, Element};
+use rari_data::baseline::BaselineStatus;
 use rari_types::fm_types::PageType;
 use rari_types::locale::{Locale, default_locale};
 use rari_utils::concat_strs;
 
+use crate::baseline::get_baseline_status;
 use crate::helpers::l10n::l10n_json_data;
 use crate::issues::get_issue_counter;
 use crate::pages::page::{Page, PageLike};
@@ -147,6 +149,14 @@ pub fn handle_internal_link(
         }
     }
 
+    if !remove_href
+        && let Ok(target) = Page::from_url_with_fallback(resolved_href_no_hash)
+        && let Some(baseline) = get_baseline_status(&target)
+        && shows_baseline_marker(baseline)
+    {
+        el.append(&baseline_marker(baseline, page.locale()), ContentType::Html);
+    }
+
     if !templ_link {
         let resolved_href = if no_locale {
             strip_locale_from_url(&resolved_href).1
@@ -238,4 +248,51 @@ pub fn handle_internal_link(
         }
     }
     Ok(())
+}
+
+pub fn shows_baseline_marker(baseline: BaselineStatus) -> bool {
+    baseline != BaselineStatus::High
+}
+
+pub fn baseline_marker(baseline: BaselineStatus, locale: Locale) -> String {
+    let title = l10n_json_data("Template", &format!("baseline_{baseline}_title"), locale);
+    let abbreviation = l10n_json_data(
+        "Template",
+        &format!("baseline_{baseline}_abbreviation"),
+        locale,
+    );
+    if let (Ok(title), Ok(abbreviation)) = (title, abbreviation) {
+        let title = html_escape::encode_quoted_attribute(title);
+        let abbreviation = html_escape::encode_quoted_attribute(abbreviation);
+        format!(
+            r#"<span role="img" data-baseline="{baseline}" title="{title}" aria-label="{abbreviation}"></span>"#
+        )
+    } else {
+        format!(r#"<span data-baseline="{baseline}"></span>"#)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_baseline_marker_is_labelled() {
+        assert_eq!(
+            baseline_marker(BaselineStatus::Discouraged, Locale::EnUs),
+            r#"<span role="img" data-baseline="discouraged" title="This feature is discouraged." aria-label="Discouraged"></span>"#
+        );
+        assert_eq!(
+            baseline_marker(BaselineStatus::Removing, Locale::EnUs),
+            r#"<span role="img" data-baseline="removing" title="This feature is scheduled for removal." aria-label="To be removed"></span>"#
+        );
+    }
+
+    #[test]
+    fn a_baseline_marker_without_strings_is_unlabelled() {
+        assert_eq!(
+            baseline_marker(BaselineStatus::Low, Locale::EnUs),
+            r#"<span data-baseline="low"></span>"#
+        );
+    }
 }

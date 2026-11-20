@@ -42,6 +42,24 @@
         }
       },
       "compat_features": ["api.limited"]
+    },
+    "removing": {
+      "kind": "feature",
+      "name": "Being Removed",
+      "description": "",
+      "description_html": "",
+      "status": {
+        "baseline": false,
+        "support": {},
+        "by_compat_key": {
+          "api.removing": { "baseline": false, "support": {} }
+        }
+      },
+      "compat_features": ["api.removing"],
+      "discouraged": {
+        "reason_html": "",
+        "removal_date": "2025-01-01"
+      }
     }
   }
 }
