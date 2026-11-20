@@ -10,3 +10,4 @@ pub mod popularities;
 pub mod web_ext_examples;
 pub mod web_features;
 pub mod webref_css;
+pub mod webref_events;

@@ -21,6 +21,8 @@ pub struct Deps {
     pub web_specs: VersionReq,
     #[serde(rename = "@webref/css")]
     pub webref_css: VersionReq,
+    #[serde(rename = "@webref/events")]
+    pub webref_events: VersionReq,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
