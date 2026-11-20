@@ -16,7 +16,7 @@ use crate::templ::css_feature_index::{CssRefCategory, css_feature_index};
 ///
 /// # Arguments
 /// * `name` - The CSS feature name (property, function, data type, etc.)
-/// * `display` - Optional custom display text for the link
+/// * `label` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
 ///
 /// # Examples
@@ -55,10 +55,10 @@ use crate::templ::css_feature_index::{CssRefCategory, css_feature_index};
 #[rari_f(register = "crate::Templ")]
 pub fn cssxref(
     name: String,
-    display: Option<String>,
+    label: Option<String>,
     anchor: Option<String>,
 ) -> Result<String, DocError> {
-    let display = display.as_deref().filter(|s| !s.is_empty());
+    let display = label.as_deref().filter(|s| !s.is_empty());
     cssxref_internal(&name, display, anchor.as_deref(), env.locale)
 }
 

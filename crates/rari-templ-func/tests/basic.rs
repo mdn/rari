@@ -123,3 +123,18 @@ fn env() {
         "some foobar"
     );
 }
+
+#[test]
+fn raw_identifier_params_drop_prefix() {
+    #[rari_f]
+    fn banner(r#type: String) -> Result<String, ArgError> {
+        Ok(r#type)
+    }
+
+    assert_eq!(
+        banner_any(&Default::default(), vec![])
+            .unwrap_err()
+            .to_string(),
+        "banner argument 1 (type) must be provided"
+    );
+}

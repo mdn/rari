@@ -12,7 +12,7 @@ use crate::templ::api::RariApi;
 /// code formatting to distinguish SVG elements in the text.
 ///
 /// # Arguments
-/// * `element_name` - The SVG element name (without angle brackets)
+/// * `element` - The SVG element name (without angle brackets)
 /// * `_` - Unused parameter (kept for compatibility)
 ///
 /// # Examples
@@ -23,18 +23,18 @@ use crate::templ::api::RariApi;
 /// # Special handling
 /// - Automatically wraps element name in `&lt;` and `&gt;` for display
 /// - Uses code formatting (`<code>` tags) by default
-/// - Links to `/Web/SVG/Reference/Element/{element_name}` path structure
+/// - Links to `/Web/SVG/Reference/Element/{element}` path structure
 #[rari_f(register = "crate::Templ")]
-pub fn svgelement(element_name: String, _: Option<AnyArg>) -> Result<String, DocError> {
-    svgxref_internal(&element_name, env.locale)
+pub fn svgelement(element: String, _: Option<AnyArg>) -> Result<String, DocError> {
+    svgxref_internal(&element, env.locale)
 }
 
-pub fn svgxref_internal(element_name: &str, locale: Locale) -> Result<String, DocError> {
-    let display = format!("&lt;{element_name}&gt;");
+pub fn svgxref_internal(element: &str, locale: Locale) -> Result<String, DocError> {
+    let display = format!("&lt;{element}&gt;");
     let url = format!(
         "/{}/docs/Web/SVG/Reference/Element/{}",
         locale.as_url_str(),
-        element_name,
+        element,
     );
 
     RariApi::link(
