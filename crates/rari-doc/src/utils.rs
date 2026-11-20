@@ -447,6 +447,8 @@ pub enum TemplStatEvent {
         name: String,
         locale: Locale,
         known: bool,
+        /// Parameters given a non-blank value in this invocation.
+        supplied: Vec<&'static str>,
     },
     Stop,
 }
