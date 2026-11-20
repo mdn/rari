@@ -77,8 +77,6 @@ jobs:
           persist-credentials: false
 
       - uses: dtolnay/rust-toolchain@1a3a6d54512beeaffd394f8d516ca16f2c506a20 # 1.97
-        with:
-          components: llvm-tools-preview
 
       - name: sccache-cache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
