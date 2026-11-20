@@ -6,7 +6,6 @@ on:
       - "**/*.rs"
       - "**/Cargo.lock"
       - "**/Cargo.toml"
-      - "!tools/**"
       - ".github/workflows/build-content-and-diff.yml"
 
 concurrency:
