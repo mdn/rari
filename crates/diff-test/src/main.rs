@@ -26,6 +26,7 @@ use serde_json::Value;
 use xml::fmt_html;
 
 mod natural;
+mod perf;
 mod xml;
 
 fn html(body: &str) -> String {
@@ -146,6 +147,8 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Diff(BuildArgs),
+    /// Time `rari build` on a base and a PR checkout and compare them.
+    Perf(perf::PerfArgs),
 }
 #[derive(Args)]
 struct BuildArgs {
@@ -575,6 +578,7 @@ fn main() -> Result<(), anyhow::Error> {
                 fs::write(stats_out, serde_json::to_vec_pretty(&stats)?)?;
             }
         }
+        Commands::Perf(args) => perf::run(args)?,
     }
     Ok(())
 }
@@ -641,7 +645,9 @@ mod tests {
                     .chain(case.flags.iter().copied()),
             )
             .unwrap_or_else(|err| panic!("{}: {err}", case.name));
-            let Commands::Diff(args) = cli.command;
+            let Commands::Diff(args) = cli.command else {
+                panic!("{}: expected the diff command", case.name);
+            };
             let result = args.validate();
             assert_eq!(result.is_ok(), case.valid, "{}", case.name);
             if let Err(err) = result {

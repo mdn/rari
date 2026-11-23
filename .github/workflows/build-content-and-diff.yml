@@ -20,7 +20,11 @@ env:
   CONTENT_ROOT: ${{ github.workspace }}/content/files
   DIFF: ${{ github.workspace }}/diff.html
   STATS: ${{ github.workspace }}/diff-stats.json
+  PERF: ${{ github.workspace }}/perf-stats.json
   CARGO_TERM_COLOR: always
+  # Measure the target the npm package ships, as its allocator behaves differently from glibc's.
+  RARI_TARGET: x86_64-unknown-linux-musl
+  RARI_BIN: target/x86_64-unknown-linux-musl/release/rari
 
 jobs:
   build-and-diff:
@@ -39,6 +43,9 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@1a3a6d54512beeaffd394f8d516ca16f2c506a20 # 1.97
+
+      - name: Install musl tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
@@ -67,13 +74,27 @@ jobs:
           path: rari-pr
           persist-credentials: false
 
+      # Compile separately so the builds below can double as warm-up runs for the timed ones.
+      - name: Compile base
+        working-directory: rari-base
+        # Inside the checkout, so the target is added to the `rust-toolchain.toml` toolchain.
+        run: |
+          rustup target add "$RARI_TARGET"
+          cargo build --locked --release --target "$RARI_TARGET"
+
+      - name: Compile PR
+        working-directory: rari-pr
+        run: |
+          rustup target add "$RARI_TARGET"
+          cargo build --locked --release --target "$RARI_TARGET"
+
       - name: Build with base
         working-directory: rari-base
         env:
           BUILD_OUT_ROOT: ${{ env.BUILD_BASE }}
           DEPS_DATA_DIR: ${{ github.workspace }}/deps-base
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run --locked --quiet --release build --json-issues
+        run: ./"$RARI_BIN" build --json-issues
 
       - name: Build with PR
         working-directory: rari-pr
@@ -81,7 +102,7 @@ jobs:
           BUILD_OUT_ROOT: ${{ env.BUILD_PR }}
           DEPS_DATA_DIR: ${{ github.workspace }}/deps-pr
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo run --locked --quiet --release build --json-issues
+        run: ./"$RARI_BIN" build --json-issues
 
       - name: Generate diff
         working-directory: rari-pr
@@ -104,9 +125,23 @@ jobs:
           path: ${{ env.DIFF }}
           if-no-files-found: error
 
+      # A failure here must not lose the diff stats, which the companion workflow needs.
+      - name: Measure build performance
+        continue-on-error: true
+        working-directory: rari-pr
+        run: |
+          cargo run --locked --quiet -p diff-test perf --rounds 3 \
+            --base-dir "$GITHUB_WORKSPACE/rari-base" --base-deps "$GITHUB_WORKSPACE/deps-base" \
+            --pr-dir "$GITHUB_WORKSPACE/rari-pr" --pr-deps "$GITHUB_WORKSPACE/deps-pr" \
+            --rari-bin "$RARI_BIN" --scratch "$RUNNER_TEMP/perf" \
+            --out "$PERF" --summary "$GITHUB_STEP_SUMMARY"
+
+      # Both files land at the artifact root, as they share the workspace as common ancestor.
       - name: Upload diff stats
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: build-diff-stats
-          path: ${{ env.STATS }}
+          path: |
+            ${{ env.STATS }}
+            ${{ env.PERF }}
           if-no-files-found: error
