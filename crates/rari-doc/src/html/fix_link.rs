@@ -12,6 +12,25 @@ use crate::pages::page::{Page, PageLike};
 use crate::redirects::resolve_redirect;
 use crate::resolve::{strip_locale_from_url, url_with_locale};
 
+/// Parses a comrak `data-sourcepos` value (`line:col-end_line:end_col`),
+/// shifting lines by the frontmatter offset.
+pub(crate) fn parse_sourcepos(pos: &str, fm_offset: usize) -> Option<(i64, i64, i64, i64)> {
+    let (start, end) = pos.split_once('-')?;
+    let (line, col) = start.split_once(':')?;
+    let shift = |l: i64| l + i64::try_from(fm_offset).unwrap_or(l - 1);
+    let line = line.parse::<i64>().map(shift).ok().unwrap_or(-1);
+    let col = col.parse::<i64>().ok().unwrap_or(0);
+    let (end_line, end_col) = end
+        .split_once(':')
+        .map(|(end_line, end_col)| {
+            let end_line = end_line.parse::<i64>().map(shift).ok().unwrap_or(-1);
+            let end_col = end_col.parse::<i64>().ok().unwrap_or(0);
+            (end_line, end_col)
+        })
+        .unwrap_or((-1, -1));
+    Some((line, col, end_line, end_col))
+}
+
 pub fn check_and_fix_link(
     el: &mut Element,
     page: &impl PageLike,
@@ -155,27 +174,9 @@ pub fn handle_internal_link(
         };
         if (original_href != resolved_href || remove_href) && !en_us_fallback {
             if let Some(pos) = el.get_attribute("data-sourcepos") {
-                if let Some((start, end)) = pos.split_once('-')
-                    && let Some((line, col)) = start.split_once(':')
+                if let Some((line, col, end_line, end_col)) =
+                    parse_sourcepos(&pos, page.fm_offset())
                 {
-                    let line = line
-                        .parse::<i64>()
-                        .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
-                        .ok()
-                        .unwrap_or(-1);
-                    let col = col.parse::<i64>().ok().unwrap_or(0);
-                    let (end_line, end_col) = end
-                        .split_once(':')
-                        .map(|(end_line, end_col)| {
-                            let end_line = end_line
-                                .parse::<i64>()
-                                .map(|l| l + i64::try_from(page.fm_offset()).unwrap_or(l - 1))
-                                .ok()
-                                .unwrap_or(-1);
-                            let end_col = end_col.parse::<i64>().ok().unwrap_or(0);
-                            (end_line, end_col)
-                        })
-                        .unwrap_or((-1, -1));
                     let ic = get_issue_counter();
                     if remove_href {
                         tracing::warn!(
@@ -238,4 +239,66 @@ pub fn handle_internal_link(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_sourcepos;
+
+    struct Case {
+        name: &'static str,
+        pos: &'static str,
+        fm_offset: usize,
+        expected: Option<(i64, i64, i64, i64)>,
+    }
+
+    #[test]
+    fn parses_sourcepos() {
+        let cases = vec![
+            Case {
+                name: "full",
+                pos: "3:5-3:20",
+                fm_offset: 4,
+                expected: Some((7, 5, 7, 20)),
+            },
+            Case {
+                name: "multi-line",
+                pos: "1:1-2:9",
+                fm_offset: 0,
+                expected: Some((1, 1, 2, 9)),
+            },
+            Case {
+                name: "no end position",
+                pos: "3:5-x",
+                fm_offset: 1,
+                expected: Some((4, 5, -1, -1)),
+            },
+            Case {
+                name: "unparsable numbers",
+                pos: "a:b-c:d",
+                fm_offset: 1,
+                expected: Some((-1, 0, -1, 0)),
+            },
+            Case {
+                name: "no dash",
+                pos: "3:5",
+                fm_offset: 0,
+                expected: None,
+            },
+            Case {
+                name: "no colon",
+                pos: "3-4:5",
+                fm_offset: 0,
+                expected: None,
+            },
+        ];
+        for case in cases {
+            assert_eq!(
+                parse_sourcepos(case.pos, case.fm_offset),
+                case.expected,
+                "{}",
+                case.name
+            );
+        }
+    }
 }
