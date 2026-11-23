@@ -143,5 +143,8 @@ tower-http = { version = "0.7", features = ["fs"] }
 tower = "0.5"
 dotenvy = "0.15"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [lints.clippy]
 print_stdout = "deny"
