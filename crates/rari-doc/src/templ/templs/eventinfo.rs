@@ -10,6 +10,7 @@ use crate::helpers::api_inheritance::inheritance;
 use crate::helpers::l10n::l10n_json_data;
 use crate::helpers::webref_events::{Flag, parse_event_slug, select_flags};
 use crate::issues::get_issue_counter;
+use crate::templ::api::RariApi;
 
 struct Labels {
     bubbles: &'static str,
@@ -18,6 +19,9 @@ struct Labels {
     yes: &'static str,
     no: &'static str,
 }
+
+/// Renders a label as a link to the `Event` property page named `property`.
+type LabelLink<'a> = &'a dyn Fn(&str, &str) -> Result<String, DocError>;
 
 impl Labels {
     fn new(locale: Locale) -> Result<Self, DocError> {
@@ -55,6 +59,7 @@ fn render_event_info(
     page_type: PageType,
     index: Option<&EventIndex>,
     is_a: &dyn Fn(&str, &str) -> bool,
+    link: LabelLink,
     labels: &Labels,
 ) -> Result<String, DocError> {
     let Some((interface, event_type)) =
@@ -82,7 +87,7 @@ fn render_event_info(
         ("composed", flags.composed, labels.composed),
     ] {
         match flag {
-            Flag::Known(value) => row(&mut rows, label, value, labels),
+            Flag::Known(value) => row(&mut rows, &link(name, label)?, value, labels),
             Flag::Conflict => warn_conflict(name, interface, event_type),
             Flag::Unknown => {}
         }
@@ -100,6 +105,13 @@ fn real_is_a(child: &str, parent: &str) -> bool {
     inheritance(child).contains(&parent)
 }
 
+fn real_link(locale: Locale) -> impl Fn(&str, &str) -> Result<String, DocError> {
+    move |property, label| {
+        let url = format!("/{}/docs/Web/API/Event/{property}", locale.as_url_str());
+        RariApi::link(&url, Some(locale), Some(label), false, None, false)
+    }
+}
+
 /// Renders the Bubbles, Cancelable and Composed rows of an event page from webref data.
 #[rari_f(register = "crate::Templ")]
 pub fn eventinfo() -> Result<String, DocError> {
@@ -108,6 +120,7 @@ pub fn eventinfo() -> Result<String, DocError> {
         env.page_type,
         events_index(),
         &real_is_a,
+        &real_link(env.locale),
         &Labels::new(env.locale)?,
     )
 }
@@ -135,8 +148,17 @@ mod test {
         )
     }
 
+    fn link(property: &str, label: &str) -> Result<String, DocError> {
+        Ok(format!(
+            r#"<a href="/en-US/docs/Web/API/Event/{property}">{label}</a>"#
+        ))
+    }
+
     fn row_html(label: &str, value: &str) -> String {
-        format!(r#"<tr><th scope="row">{label}</th><td>{value}</td></tr>"#)
+        let property = label.to_lowercase();
+        format!(
+            r#"<tr><th scope="row"><a href="/en-US/docs/Web/API/Event/{property}">{label}</a></th><td>{value}</td></tr>"#
+        )
     }
 
     fn table(rows: &[String]) -> String {
@@ -218,6 +240,7 @@ mod test {
                 case.page_type,
                 case.with_index.then_some(&index),
                 &is_a,
+                &link,
                 &LABELS,
             );
             match (result, case.expected) {
@@ -272,6 +295,7 @@ mod test {
                 PageType::WebApiEvent,
                 Some(&index),
                 &real_is_a,
+                &link,
                 &LABELS,
             )
             .unwrap();
