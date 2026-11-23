@@ -59,6 +59,11 @@ use tracing_subscriber::{Layer, filter};
 
 mod serve;
 
+// musl's default allocator serializes allocations across threads, slowing parallel builds ~5x.
+#[cfg(target_env = "musl")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]

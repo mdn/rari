@@ -143,5 +143,8 @@ tower-http = { version = "0.7", features = ["fs"] }
 tower = "0.5"
 dotenvy = "0.15"
 
+[target.'cfg(target_env = "musl")'.dependencies]
+mimalloc = "0.1"
+
 [lints.clippy]
 print_stdout = "deny"
