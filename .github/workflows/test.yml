@@ -109,6 +109,18 @@ jobs:
             echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Generate HTML report
+        continue-on-error: true
+        run: cargo llvm-cov report --workspace --html
+
+      - name: Upload HTML report
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-report
+          path: target/llvm-cov/html
+          retention-days: 14
+
   # Separate job, as doctest coverage needs nightly.
   doc-test:
     needs: build
