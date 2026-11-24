@@ -89,6 +89,26 @@ jobs:
       - name: Run tests
         run: cargo llvm-cov --locked --verbose --workspace --all-targets --no-fail-fast --no-report
 
+      - name: Write summary
+        continue-on-error: true
+        run: |
+          REPORT=$(cargo llvm-cov report --workspace --summary-only)
+          {
+            echo "## Test coverage"
+            echo
+            echo '```'
+            grep -E '^(Filename|TOTAL)' <<<"$REPORT"
+            echo '```'
+            echo
+            echo "<details><summary>Per file</summary>"
+            echo
+            echo '```'
+            echo "$REPORT"
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # Separate job, as doctest coverage needs nightly.
   doc-test:
     needs: build
