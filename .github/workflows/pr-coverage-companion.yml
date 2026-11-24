@@ -49,15 +49,20 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ needs.identify-pr.outputs.number }}
       cancel-in-progress: false
-    env:
-      GH_REPO: ${{ github.repository }}
-      GITHUB_TOKEN: ${{ github.token }}
-      MARKER: "<!-- rari-coverage-diff -->"
-      RUN_ID: ${{ github.event.workflow_run.id }}
     steps:
+      # `workflow_run` checks out `main`, so the script is trusted.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      # Outside the workspace, so the PR-controlled artifact cannot overwrite the script.
       - name: Download coverage summaries
         id: download
         env:
+          GH_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
           WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
         run: |
           has_summary() {
@@ -86,132 +91,18 @@ jobs:
             exit 0
           fi
 
-          gh run download "$RUN_ID" --name coverage-summary --dir pr
-          gh run download "$BASE_RUN_ID" --name coverage-summary --dir base
+          gh run download "$RUN_ID" --name coverage-summary --dir "$RUNNER_TEMP/coverage/pr"
+          gh run download "$BASE_RUN_ID" --name coverage-summary --dir "$RUNNER_TEMP/coverage/base"
           echo "base-sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
-
-      - name: Render comment
-        if: steps.download.outputs.base-sha != ''
-        env:
-          BASE_SHA: ${{ steps.download.outputs.base-sha }}
-        run: |
-          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid base SHA: $BASE_SHA"; exit 1; }
-
-          REPORT_URL=
-          ARTIFACT_ID=$(gh api "/repos/$GH_REPO/actions/runs/$RUN_ID/artifacts?name=coverage-report" \
-            --jq 'first(.artifacts[] | select(.expired == false) | .id)')
-          if [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]; then
-            REPORT_URL="https://github.com/$GH_REPO/actions/runs/$RUN_ID/artifacts/$ARTIFACT_ID"
-          fi
-
-          # The PR summary is controlled by the PR, so validate before rendering.
-          # Empty output means no change, at a precision of 0.1 percentage points.
-          jq -rn \
-            --slurpfile base base/coverage-summary.json \
-            --slurpfile pr pr/coverage-summary.json \
-            --arg base_sha "${BASE_SHA:0:7}" \
-            --arg root "$GITHUB_WORKSPACE/" \
-            --arg report_url "$REPORT_URL" '
-            # PR and baseline runs share the runner workspace path.
-            def normalize:
-              try {
-                total: (.data[0].totals.lines | {count, covered}),
-                files: [
-                  .data[0].files[]
-                  | {name: (.filename | ltrimstr($root))} + (.summary.lines | {count, covered})
-                ]
-              } catch error("invalid coverage summary");
-            def valid:
-              type == "object"
-              and ([.count, .covered] | all(type == "number" and . >= 0 and . == floor and . < 1e9))
-              and .covered <= .count;
-            def checked:
-              if (.total | valid)
-                and (.files | type == "array" and length <= 10000)
-                and (.files | all(valid and (.name | type == "string" and test("^[A-Za-z0-9_./-]{1,200}$"))))
-              then . else error("invalid coverage summary") end;
-            def tenths: if .count > 0 then (.covered * 1000 / .count | round) else 0 end;
-            def number: "\(. / 10 | floor).\(. % 10)";
-            def pct: if . == null then "-" else "\(number)%" end;
-            def delta: if . < 0 then "-\(-. | number) pp" else "+\(number) pp" end;
-            def by_name: map({key: .name, value: tenths}) | from_entries;
-
-            ($base[0] | normalize | checked) as $b
-            | ($pr[0] | normalize | checked) as $p
-            | ($b.total | tenths) as $bt
-            | ($p.total | tenths) as $pt
-            | ($b.files | by_name) as $bf
-            | ($p.files | by_name) as $pf
-            | [
-                ($bf + $pf | keys[]) as $name
-                | {name: $name, base: $bf[$name], pr: $pf[$name]}
-                | select(.base != .pr)
-              ]
-              # New and removed files first, then the largest changes.
-              | sort_by(if .base == null or .pr == null then [0, 0] else [1, -(.pr - .base | fabs)] end, .name) as $rows
-            | ($rows | length) as $n
-            | if $bt == $pt and $n == 0 then empty else
-                env.MARKER,
-                "**Test coverage:** \(
-                  if $bt == $pt then "\($pt | pct) of lines (unchanged)"
-                  else "\($bt | pct) → \($pt | pct) of lines (\($pt - $bt | delta))" end
-                ), compared to `main` at \($base_sha)",
-                (if $n > 0 then
-                  "",
-                  "<details><summary>\($n) \(if $n == 1 then "file" else "files" end) changed</summary>",
-                  "",
-                  "| File | `main` | PR | Change |",
-                  "| --- | --: | --: | --: |",
-                  ($rows[:50][]
-                    | "| `\(.name)` | \(.base | pct) | \(.pr | pct) | \(
-                        if .base == null then "new"
-                        elif .pr == null then "removed"
-                        else .pr - .base | delta end
-                      ) |"),
-                  (if $n > 50 then "", "And \($n - 50) more." else empty end),
-                  "",
-                  "</details>"
-                else empty end),
-                (if $report_url != "" then "", "[Download report](\($report_url)) (`index.html`)" else empty end)
-              end
-          ' > comment.md
 
       - name: Comment on PR
         if: steps.download.outputs.base-sha != '' || steps.download.outputs.missing == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
+          BASE_SHA: ${{ steps.download.outputs.base-sha }}
           PR: ${{ needs.identify-pr.outputs.number }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          MISSING: ${{ steps.download.outputs.missing }}
-        run: |
-          [[ "$PR" =~ ^[0-9]+$ ]] || { echo "::error::Invalid PR number: $PR"; exit 1; }
-
-          BODY=
-          if [[ -f comment.md ]]; then
-            BODY=$(<comment.md)
-          fi
-
-          COMMENT_ID=$(gh api --paginate --slurp "/repos/$GH_REPO/issues/$PR/comments" \
-            | jq -r 'first(.[][] | select(.user.login == "github-actions[bot]" and (.body | contains(env.MARKER))) | .id) // empty')
-
-          CURRENT_HEAD=$(gh api "/repos/$GH_REPO/pulls/$PR" \
-            --jq 'select(.state == "open") | .head.sha')
-          if [[ "$CURRENT_HEAD" != "$HEAD_SHA" ]]; then
-            echo "::notice::PR #$PR is closed or has a newer head; nothing to do."
-            exit 0
-          fi
-
-          if [[ -n "$BODY" ]]; then
-            if [[ -n "$COMMENT_ID" ]]; then
-              gh api -X PATCH "/repos/$GH_REPO/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
-            else
-              gh api -X POST "/repos/$GH_REPO/issues/$PR/comments" -f body="$BODY" > /dev/null
-            fi
-          elif [[ -n "$COMMENT_ID" ]]; then
-            # Without a summary, the comment would keep the numbers of an older head.
-            STATUS="No change."
-            if [[ "$MISSING" == "true" ]]; then
-              STATUS="Not available for ${HEAD_SHA:0:7}."
-            fi
-            printf -v BODY '%s\n**Test coverage:** %s' "$MARKER" "$STATUS"
-            gh api -X PATCH "/repos/$GH_REPO/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
-          fi
+          SUMMARY_DIR: ${{ runner.temp }}/coverage
+        with:
+          script: |
+            const { run } = require("./.github/scripts/coverage-comment.js");
+            await run({ github, context, core });
