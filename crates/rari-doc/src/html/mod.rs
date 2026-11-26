@@ -9,3 +9,4 @@ pub mod modifier;
 pub mod rewriter;
 pub mod sections;
 pub mod sidebar;
+mod sidebar_template;
