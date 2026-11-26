@@ -23,30 +23,46 @@ jobs:
     outputs:
       rari-binary-artifact-id: ${{ steps.upload.outputs.artifact-id }}
 
-    env:
-      RUSTC_WRAPPER: sccache
-      SCCACHE_GHA_ENABLED: true
-
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@1a3a6d54512beeaffd394f8d516ca16f2c506a20 # 1.97
-
-      - name: sccache-cache
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-
+      # Same build as in build-and-upload-binaries.yml, to test the binary that gets released.
       - name: Build
-        run: cargo build --locked --release --verbose
+        uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1.30.2
+        with:
+          bin: rari
+          target: x86_64-unknown-linux-musl
+          profile: release-lto
+          dry-run: true
+          dry-run-intended: true
 
       - name: Upload binary
         id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rari-binary
-          path: target/release/rari
+          path: target/x86_64-unknown-linux-musl/release-lto/rari
           retention-days: 1
+
+  # No job runs this binary, but its release build must not break.
+  build-aarch64:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build
+        uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1.30.2
+        with:
+          bin: rari
+          target: aarch64-unknown-linux-musl
+          profile: release-lto
+          dry-run: true
+          dry-run-intended: true
 
   format:
     needs: build
