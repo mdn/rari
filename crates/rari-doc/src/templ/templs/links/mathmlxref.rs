@@ -1,8 +1,7 @@
 use rari_templ_func::rari_f;
-use rari_utils::concat_strs;
 
 use crate::error::DocError;
-use crate::templ::api::RariApi;
+use crate::templ::element_xref::{ElementFamily, link_element};
 
 /// Creates a link to a MathML element reference page on MDN.
 ///
@@ -29,21 +28,15 @@ use crate::templ::api::RariApi;
 #[rari_f(register = "crate::Templ")]
 pub fn mathmlelement(element_name: String) -> Result<String, DocError> {
     let element_name = element_name.to_lowercase();
-    let display = concat_strs!("&lt;", element_name.as_str(), "&gt;");
-    let title = concat_strs!("<", element_name.as_str(), ">");
-    let url = concat_strs!(
-        "/",
-        env.locale.as_url_str(),
-        "/docs/Web/MathML/Reference/Element/",
-        element_name.as_str()
-    );
-
-    RariApi::link(
-        &url,
-        Some(env.locale),
-        Some(&display),
+    let display = format!("&lt;{element_name}&gt;");
+    let title = format!("<{element_name}>");
+    link_element(
+        ElementFamily::Mathml,
+        &element_name,
+        &display,
         true,
         Some(&title),
-        false,
+        None,
+        env.locale,
     )
 }
