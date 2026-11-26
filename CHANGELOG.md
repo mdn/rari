@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1](https://github.com/mdn/rari/compare/v1.3.0...v1.3.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **cli:** print build timings in seconds ([#1052](https://github.com/mdn/rari/issues/1052)) ([91864d1](https://github.com/mdn/rari/commit/91864d114229ce2c3c672b43bca751361ac488e9))
+* **templ-func:** keep body span in `rari_f` wrapper ([#1041](https://github.com/mdn/rari/issues/1041)) ([b4777e9](https://github.com/mdn/rari/commit/b4777e98b029124c338d62d1ec0a65ddcc8b9c71))
+
+
+### Miscellaneous
+
+* **deps:** bump rand from 0.10.3 to 0.10.4 in the cargo group ([#1056](https://github.com/mdn/rari/issues/1056)) ([516f6eb](https://github.com/mdn/rari/commit/516f6eb345577ac35e70f806ecd3c8b968814afc))
+* **deps:** bump the cargo group with 5 updates ([#1075](https://github.com/mdn/rari/issues/1075)) ([7585ef9](https://github.com/mdn/rari/commit/7585ef925f9eddd62a17a4e9022a60790e01d8c2))
+* remove unused functions ([#1042](https://github.com/mdn/rari/issues/1042)) ([8cc9446](https://github.com/mdn/rari/commit/8cc9446b66305e42fcebec6e31da830ed72f2497))
+
 ## [1.3.0](https://github.com/mdn/rari/compare/v1.2.2...v1.3.0) (2026-11-16)
 
 
