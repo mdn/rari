@@ -49,7 +49,7 @@ pub fn update_popularities(base_path: &Path) -> Result<Option<PathBuf>, DepsErro
         };
 
         let mut max = f64::INFINITY;
-        let pop_csv = reqwest::blocking::get(CURRENT_URL).expect("unable to download popularities");
+        let pop_csv = crate::client::get(CURRENT_URL)?;
         let mut rdr = csv::Reader::from_reader(pop_csv);
         for row in rdr.deserialize::<PopularityRow>().flatten().take(LIMIT) {
             if row.page.contains("/docs/") && !row.page.contains(['$', '?']) {

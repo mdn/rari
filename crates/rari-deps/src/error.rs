@@ -10,6 +10,14 @@ pub enum DepsError {
     RariIoError(#[from] rari_utils::error::RariIoError),
     #[error(transparent)]
     FetchError(#[from] reqwest::Error),
+    #[error("{hint}")]
+    UnknownIssuer {
+        hint: String,
+        #[source]
+        source: reqwest::Error,
+    },
+    #[error("could not build HTTP client: {0}")]
+    ClientError(String),
     #[error(transparent)]
     HeaderError(#[from] reqwest::header::ToStrError),
     #[error("no version for webref")]
