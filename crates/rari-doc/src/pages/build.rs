@@ -4,7 +4,7 @@ use std::path::Path;
 
 use rari_md::m2h;
 use rari_types::fm_types::PageType;
-use rari_types::globals::{base_url, content_branch, git_history};
+use rari_types::globals::{base_url, content_branch, git_history, settings};
 use rari_types::locale::Locale;
 use rari_utils::concat_strs;
 use scraper::Html;
@@ -25,6 +25,7 @@ use crate::helpers::title::{TitleFormat, page_title, render_title, transform_tit
 use crate::html::banner::build_banner;
 use crate::html::bubble_up::bubble_up_curriculum_page;
 use crate::html::code::{Code, code_blocks};
+use crate::html::fragments::check_fragment_links;
 use crate::html::modifier::{
     add_missing_ids, collect_fragment_ids, insert_self_links_for_dts, remove_empty_p,
 };
@@ -190,6 +191,7 @@ fn build_content<T: PageLike>(page: &T) -> Result<PageContent, DocError> {
     insert_self_links_for_dts(&mut fragment)?;
     expand_details_and_mark_current_for_inline_sidebar(&mut fragment, page.url())?;
     let live_samples = code_blocks(&mut fragment);
+    check_fragment_links(&mut fragment, page, settings().data_issues);
     let Split {
         sections,
         summary,

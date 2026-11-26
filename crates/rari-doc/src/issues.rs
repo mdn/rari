@@ -295,6 +295,7 @@ pub struct DisplayIssue {
 pub enum IssueType {
     TemplRedirectedLink,
     TemplBrokenLink,
+    TemplBrokenFragment,
     TemplIllCasedLink,
     TemplIllCasedArg,
     TemplInvalidArg,
@@ -305,6 +306,7 @@ pub enum IssueType {
     TemplBcdMissing,
     RedirectedLink,
     BrokenLink,
+    BrokenFragment,
     IllCasedLink,
     #[default]
     Unknown,
@@ -317,6 +319,7 @@ impl FromStr for IssueType {
         Ok(match s {
             "templ-redirected-link" => Self::TemplRedirectedLink,
             "templ-broken-link" => Self::TemplBrokenLink,
+            "templ-broken-fragment" => Self::TemplBrokenFragment,
             "templ-ill-cased-link" => Self::TemplIllCasedLink,
             "templ-ill-cased-arg" => Self::TemplIllCasedArg,
             "templ-invalid-arg" => Self::TemplInvalidArg,
@@ -327,6 +330,7 @@ impl FromStr for IssueType {
             "templ-bcd-missing" => Self::TemplBcdMissing,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
+            "broken-fragment" => Self::BrokenFragment,
             "ill-cased-link" => Self::IllCasedLink,
             _ => Self::Unknown,
         })
@@ -537,6 +541,37 @@ impl DIssue {
                     ));
                     DIssue::BrokenLink {
                         display_issue: di,
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::BrokenFragment => {
+                    di.fixed = false;
+                    di.fixable = Some(di.suggestion.is_some());
+                    di.explanation = Some(format!(
+                        "Fragment {} doesn't exist on this page",
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::BrokenLink {
+                        display_issue: di,
+                        href: additional.remove("url"),
+                    }
+                }
+                IssueType::TemplBrokenFragment => {
+                    let source = issue_source(&mut additional);
+                    di.fixed = false;
+                    di.fixable = Some(false);
+                    di.explanation = Some(format!(
+                        "{} produces link {} whose fragment doesn't exist on this page",
+                        if source.name.is_some() {
+                            source.label.as_str()
+                        } else {
+                            "A macro"
+                        },
+                        additional.get("url").map(|s| s.as_str()).unwrap_or("?")
+                    ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: source.name,
                         href: additional.remove("url"),
                     }
                 }

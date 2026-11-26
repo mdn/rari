@@ -201,7 +201,13 @@ pub fn post_process_html<T: PageLike>(
             Ok(())
         }),
         element!("*[data-sourcepos]", |el| {
-            el.remove_attribute("data-sourcepos");
+            // Kept on fragment links for `check_fragment_links`, which removes it.
+            let keep = !sidebar
+                && el.tag_name() == "a"
+                && el.get_attribute("href").is_some_and(|h| h.starts_with('#'));
+            if !keep {
+                el.remove_attribute("data-sourcepos");
+            }
             Ok(())
         }),
         element!("*[data-add-note]", |el| {
