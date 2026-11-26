@@ -2636,6 +2636,7 @@ dependencies = [
  "dashmap",
  "dialoguer",
  "dotenvy",
+ "libc",
  "rari-deps",
  "rari-doc",
  "rari-lsp",

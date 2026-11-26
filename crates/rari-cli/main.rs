@@ -58,6 +58,9 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{Layer, filter};
 
 mod serve;
+mod timings;
+
+use timings::Timings;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -279,6 +282,12 @@ struct BuildArgs {
     #[arg(long, help = "Skip writing contributors.txt for docs")]
     skip_contributors_txt: bool,
     #[arg(
+        long,
+        value_name = "FILE",
+        help = "Write wall time, CPU time, peak memory and phase timings as JSON to <FILE>"
+    )]
+    timings: Option<PathBuf>,
+    #[arg(
         short,
         long,
         help = "Noop flag to legacy compatibility (has no effect on build)"
@@ -433,6 +442,7 @@ fn fmt_secs(d: Duration) -> String {
 }
 
 fn main() -> Result<(), Error> {
+    let mut timings = Timings::start();
     if let Ok(env_file) = dotenvy::from_filename(
         env::var("DOT_FILE")
             .map(Cow::Owned)
@@ -702,7 +712,7 @@ fn main() -> Result<(), Error> {
                 };
                 info!(
                     "Took: {: >8} for reading {} docs",
-                    fmt_secs(start.elapsed()),
+                    fmt_secs(timings.record("read_docs", start)),
                     docs.len()
                 );
             }
@@ -713,7 +723,7 @@ fn main() -> Result<(), Error> {
                 urls.extend(spas);
                 info!(
                     "Took: {: >8} to build spas ({num})",
-                    fmt_secs(start.elapsed()),
+                    fmt_secs(timings.record("build_spas", start)),
                 );
             }
             if args.all
@@ -729,7 +739,7 @@ fn main() -> Result<(), Error> {
                 urls.extend(docs);
                 info!(
                     "Took: {: >8} to build content docs ({num})",
-                    fmt_secs(start.elapsed())
+                    fmt_secs(timings.record("build_content_docs", start))
                 );
             }
             if args.all || args.all_available || !args.no_basic || args.search_index {
@@ -737,7 +747,7 @@ fn main() -> Result<(), Error> {
                 build_search_index(&docs)?;
                 info!(
                     "Took: {: >8} to build search index",
-                    fmt_secs(start.elapsed())
+                    fmt_secs(timings.record("build_search_index", start))
                 );
             }
             if args.all || args.generics || (args.all_available && generic_content_root().is_some())
@@ -748,7 +758,7 @@ fn main() -> Result<(), Error> {
                 urls.extend(generic_pages);
                 info!(
                     "Took: {: >8} to build generic pages ({num})",
-                    fmt_secs(start.elapsed())
+                    fmt_secs(timings.record("build_generic_pages", start))
                 );
             }
             if args.all || args.curriculum || (args.all_available && curriculum_root().is_some()) {
@@ -758,7 +768,7 @@ fn main() -> Result<(), Error> {
                 urls.extend(curriculum_pages);
                 info!(
                     "Took: {: >8} to build curriculum pages ({num})",
-                    fmt_secs(start.elapsed())
+                    fmt_secs(timings.record("build_curriculum_pages", start))
                 );
             }
             if args.all || args.blog || (args.all_available && blog_root().is_some()) {
@@ -768,7 +778,7 @@ fn main() -> Result<(), Error> {
                 urls.extend(blog_pages);
                 info!(
                     "Took: {: >8} to build blog ({num})",
-                    fmt_secs(start.elapsed())
+                    fmt_secs(timings.record("build_blog", start))
                 );
             }
             if args.all
@@ -781,7 +791,7 @@ fn main() -> Result<(), Error> {
                 urls.extend(contributor_spotlight_pages);
                 info!(
                     "Took: {: >8} to build contributor spotlights ({num})",
-                    fmt_secs(start.elapsed())
+                    fmt_secs(timings.record("build_contributor_spotlights", start))
                 );
             }
             let total_files = urls.len();
@@ -793,7 +803,7 @@ fn main() -> Result<(), Error> {
                 sitemaps.write_all_sitemaps(out_path)?;
                 info!(
                     "Took: {: >8} to write sitemaps ({})",
-                    fmt_secs(start.elapsed()),
+                    fmt_secs(timings.record("write_sitemaps", start)),
                     sitemaps.sitemap_meta.len()
                 );
             }
@@ -871,6 +881,10 @@ fn main() -> Result<(), Error> {
                     let mut buffed = BufWriter::new(file);
                     serde_json::to_writer_pretty(&mut buffed, issues).unwrap();
                 }
+            }
+
+            if let Some(timings_path) = &args.timings {
+                timings.write(timings_path)?;
             }
         }
         Commands::Serve(args) => {
