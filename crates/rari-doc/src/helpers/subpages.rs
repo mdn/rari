@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use memoize::memoize;
 use rari_types::fm_types::PageType;
@@ -10,6 +10,7 @@ use rari_types::locale::Locale;
 
 use super::l10n::l10n_json_data;
 use super::titles::api_page_title;
+use crate::cached_readers::STATIC_DOC_PAGE_PATHS;
 use crate::error::DocError;
 use crate::html::links::{LinkModifier, render_internal_link};
 use crate::pages::page::{Page, PageLike, PageReader};
@@ -335,7 +336,27 @@ pub fn get_sub_pages(
     Ok(vec![])
 }
 
+/// Returns the files in `sorted_paths` that are at most `depth` folders below `folder`.
+fn sub_paths(sorted_paths: &[PathBuf], folder: &Path, depth: Option<usize>) -> Vec<PathBuf> {
+    let folder_depth = folder.components().count();
+    let start = sorted_paths.partition_point(|path| path.as_path() < folder);
+    sorted_paths[start..]
+        .iter()
+        .take_while(|path| path.starts_with(folder))
+        .filter(|path| {
+            depth.is_none_or(|depth| path.components().count() - folder_depth <= depth + 1)
+        })
+        .cloned()
+        .collect()
+}
+
 fn read_sub_folders(folder: PathBuf, depth: Option<usize>) -> Result<Vec<PathBuf>, ignore::Error> {
+    // The static cache holds every doc of the roots it covers, so there is no need to hit the disk.
+    if let Some(paths) = STATIC_DOC_PAGE_PATHS.get()
+        && paths.binary_search(&folder.join("index.md")).is_ok()
+    {
+        return Ok(sub_paths(paths, &folder, depth));
+    }
     if cache_content() {
         read_sub_folders_internal(folder, depth)
     } else {
@@ -356,4 +377,88 @@ fn read_sub_folders_internal(
         .filter(|f| f.file_type().map(|ft| ft.is_file()).unwrap_or(false))
         .map(|f| f.into_path())
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sub_paths_respects_folder_and_depth() {
+        let mut sorted_paths: Vec<PathBuf> = [
+            "/files/en-us/web/api/index.md",
+            "/files/en-us/web/api/window/index.md",
+            "/files/en-us/web/api/window/fetch/index.md",
+            // `-` sorts before `/` and `_` after it, unlike in component order.
+            "/files/en-us/web/api-extra/index.md",
+            "/files/en-us/web/api_extra/index.md",
+            "/files/en-us/web/css/index.md",
+            "/files/en-us/web/index.md",
+        ]
+        .iter()
+        .map(PathBuf::from)
+        .collect();
+        sorted_paths.sort_unstable();
+
+        struct Case {
+            name: &'static str,
+            folder: &'static str,
+            depth: Option<usize>,
+            expected: &'static [&'static str],
+        }
+        let cases = vec![
+            Case {
+                name: "unlimited depth",
+                folder: "/files/en-us/web/api",
+                depth: None,
+                expected: &[
+                    "/files/en-us/web/api/index.md",
+                    "/files/en-us/web/api/window/fetch/index.md",
+                    "/files/en-us/web/api/window/index.md",
+                ],
+            },
+            Case {
+                name: "direct children",
+                folder: "/files/en-us/web/api",
+                depth: Some(1),
+                expected: &[
+                    "/files/en-us/web/api/index.md",
+                    "/files/en-us/web/api/window/index.md",
+                ],
+            },
+            Case {
+                name: "folder only",
+                folder: "/files/en-us/web/api",
+                depth: Some(0),
+                expected: &["/files/en-us/web/api/index.md"],
+            },
+            Case {
+                name: "sibling sorting before `/` bytewise",
+                folder: "/files/en-us/web/api-extra",
+                depth: None,
+                expected: &["/files/en-us/web/api-extra/index.md"],
+            },
+            Case {
+                name: "sibling sorting after `/` bytewise",
+                folder: "/files/en-us/web/api_extra",
+                depth: None,
+                expected: &["/files/en-us/web/api_extra/index.md"],
+            },
+            Case {
+                name: "unknown folder",
+                folder: "/files/en-us/web/svg",
+                depth: None,
+                expected: &[],
+            },
+        ];
+        for case in cases {
+            let expected: Vec<PathBuf> = case.expected.iter().map(PathBuf::from).collect();
+            assert_eq!(
+                sub_paths(&sorted_paths, Path::new(case.folder), case.depth),
+                expected,
+                "{}",
+                case.name
+            );
+        }
+    }
 }
