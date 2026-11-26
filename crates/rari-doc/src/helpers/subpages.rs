@@ -316,6 +316,40 @@ pub fn get_sub_pages(
     depth: Option<usize>,
     sorter: SubPagesSorter,
 ) -> Result<Vec<Page>, DocError> {
+    let mut sub_pages = read_sub_pages(url, depth)?
+        .into_iter()
+        .map(|(_, page)| page)
+        .collect::<Result<Vec<_>, DocError>>()?;
+    sub_pages.sort_by(sorter.sorter());
+    Ok(sub_pages)
+}
+
+/// Like [`get_sub_pages`], but skips (and logs) sub pages that fail to read,
+/// so one broken page doesn't prevent building an index over the rest.
+///
+/// Skips are logged without a parent span, so they aren't reported as flaws
+/// of whichever page triggered the index build.
+pub(crate) fn get_sub_pages_skipping_errors(
+    url: &str,
+    depth: Option<usize>,
+    sorter: SubPagesSorter,
+) -> Result<Vec<Page>, DocError> {
+    let mut sub_pages = read_sub_pages(url, depth)?
+        .into_iter()
+        .filter_map(|(path, page)| {
+            page.inspect_err(|e| {
+                tracing::warn!(parent: None, "skipping unreadable page {}: {e}", path.display())
+            })
+            .ok()
+        })
+        .collect::<Vec<_>>();
+    sub_pages.sort_by(sorter.sorter());
+    Ok(sub_pages)
+}
+
+type SubPageRead = (PathBuf, Result<Page, DocError>);
+
+fn read_sub_pages(url: &str, depth: Option<usize>) -> Result<Vec<SubPageRead>, DocError> {
     let redirect = resolve_redirect(url);
     let url = match redirect.as_ref() {
         Some(redirect) if deny_warnings() => {
@@ -331,14 +365,14 @@ pub fn get_sub_pages(
     let full_path = doc.full_path();
     if let Some(folder) = full_path.parent() {
         let sub_folders = read_sub_folders(folder.to_path_buf(), depth)?;
-
-        let mut sub_pages = sub_folders
-            .iter()
+        return Ok(sub_folders
+            .into_iter()
             .filter(|f| f.as_path() != full_path)
-            .map(|p| Page::read(p, Some(doc.locale())))
-            .collect::<Result<Vec<_>, DocError>>()?;
-        sub_pages.sort_by(sorter.sorter());
-        return Ok(sub_pages);
+            .map(|p| {
+                let page = Page::read(&p, Some(doc.locale()));
+                (p, page)
+            })
+            .collect());
     }
     Ok(vec![])
 }

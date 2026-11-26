@@ -23,7 +23,7 @@ use rari_types::fm_types::PageType;
 use rari_types::locale::Locale;
 
 use crate::error::DocError;
-use crate::helpers::subpages::{SubPagesSorter, get_sub_pages};
+use crate::helpers::subpages::{SubPagesSorter, get_sub_pages_skipping_errors};
 use crate::pages::page::PageLike;
 use crate::templ::api::RariApi;
 
@@ -88,8 +88,18 @@ fn build_index() -> ElementIndex {
 
 fn build_family_index(family: ElementFamily) -> FamilyIndex {
     let root = format!("/en-US/docs/{}", family.slug_prefix().trim_end_matches('/'));
-    let pages = get_sub_pages(&root, None, SubPagesSorter::Slug)
-        .unwrap_or_else(|e| panic!("failed to build {family:?} element index from {root}: {e}"));
+    // Don't panic: that would poison `ELEMENT_INDEX` until restart, and
+    // unresolved names still fall back to the default slug.
+    let pages = match get_sub_pages_skipping_errors(&root, None, SubPagesSorter::Slug) {
+        Ok(pages) => pages,
+        Err(e) => {
+            tracing::error!(
+                parent: None,
+                "failed to build {family:?} element index from {root}: {e}"
+            );
+            return FamilyIndex::default();
+        }
+    };
     let mut index = FamilyIndex::default();
     for page in pages {
         if page.page_type() != family.page_type() {
