@@ -15,10 +15,10 @@ use crate::templ::api_name_index::resolve_api_name;
 /// automatically format display text and anchors for methods and properties.
 ///
 /// # Arguments
-/// * `api_name` - The API name (interface, method, property, etc.)
-/// * `display` - Optional custom display text for the link
+/// * `api` - The API name (interface, method, property, etc.)
+/// * `label` - Optional custom display text for the link
 /// * `anchor` - Optional anchor/fragment to append to the URL
-/// * `no_code` - Optional flag to disable code formatting (default: false)
+/// * `plain` - Optional flag to disable code formatting (default: false)
 ///
 /// # Examples
 /// * `{{DOMxRef("Document")}}` -> links to Document interface
@@ -30,10 +30,10 @@ use crate::templ::api_name_index::resolve_api_name;
 /// - Converts spaces to underscores and removes `()` from method names
 /// - Handles prototype chain notation (`.prototype.` becomes `/`)
 /// - Appends method/property names to display text when using anchors
-/// - Formats links with `<code>` tags unless `no_code` is true
+/// - Formats links with `<code>` tags unless `plain` is true
 ///
 /// # Name resolution
-/// The (normalized) `api_name` is resolved against an index of all
+/// The (normalized) `api` is resolved against an index of all
 /// `Web/API/*` pages (see [`crate::templ::api_name_index`]). Authors can use:
 /// - A full sub-path: `{{domxref("BackgroundFetchManager/fetch")}}`
 /// - A bare interface or grouped name: `{{domxref("SyncEvent")}}`
@@ -42,16 +42,16 @@ use crate::templ::api_name_index::resolve_api_name;
 ///   Members of other interfaces must be referenced by full sub-path.
 #[rari_f(register = "crate::Templ")]
 pub fn domxref(
-    api_name: String,
-    display: Option<String>,
+    api: String,
+    label: Option<String>,
     anchor: Option<String>,
-    no_code: Option<AnyArg>,
+    plain: Option<AnyArg>,
 ) -> Result<String, DocError> {
     let span = span!(Level::ERROR, "domxref", basepath = "/docs/Web/API/");
     let _enter = span.enter();
-    let display = display.as_deref().filter(|s| !s.is_empty());
-    let mut display_with_fallback = Cow::Borrowed(display.unwrap_or(api_name.as_str()));
-    let api = api_name
+    let display = label.as_deref().filter(|s| !s.is_empty());
+    let mut display_with_fallback = Cow::Borrowed(display.unwrap_or(api.as_str()));
+    let api = api
         .replace(' ', "_")
         .replace("()", "")
         .replace(".prototype.", ".")
@@ -60,7 +60,7 @@ pub fn domxref(
         return Err(DocError::ArgError(ArgError::at(
             "domxref",
             1,
-            "api_name",
+            "api",
             ArgError::MustNotBeEmpty,
         )));
     }
@@ -81,7 +81,7 @@ pub fn domxref(
         }
     }
 
-    let code = !no_code.map(|nc| nc.as_bool()).unwrap_or_default();
+    let code = !plain.map(|plain| plain.as_bool()).unwrap_or_default();
     RariApi::link(
         &url,
         Some(env.locale),

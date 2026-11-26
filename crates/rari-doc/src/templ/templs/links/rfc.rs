@@ -8,11 +8,11 @@ use crate::helpers::l10n::l10n_json_data;
 ///
 /// This macro generates links to RFC documents hosted on the IETF datatracker.
 /// It supports linking to specific sections within an RFC and can include
-/// custom descriptive content in the link text.
+/// a custom title in the link text.
 ///
 /// # Arguments
 /// * `number` - The RFC number (e.g., 7231, 3986, 2616)
-/// * `content` - Optional descriptive content to append to the link text
+/// * `title` - Optional title to append to the link text
 /// * `anchor` - Optional section number to link to a specific section
 ///
 /// # Examples
@@ -25,14 +25,14 @@ use crate::helpers::l10n::l10n_json_data;
 /// - Links directly to https://datatracker.ietf.org/doc/html/rfc{number}
 /// - Section anchors are formatted as `#section-{anchor}`
 /// - Localizes the word "section" based on the current locale
-/// - Combines content and section information intelligently in link text
+/// - Combines title and section information intelligently in link text
 #[rari_f(register = "crate::Templ")]
 pub fn rfc(
     number: AnyArg,
-    content: Option<String>,
+    title: Option<String>,
     anchor: Option<AnyArg>,
 ) -> Result<String, DocError> {
-    let (content, anchor): (String, String) = match (content, anchor) {
+    let (title, anchor): (String, String) = match (title, anchor) {
         (None, None) => Default::default(),
         (None, Some(anchor)) => (
             format!(
@@ -41,10 +41,10 @@ pub fn rfc(
             ),
             format!("#section-{anchor}"),
         ),
-        (Some(content), None) => (format!(": {content}"), Default::default()),
-        (Some(content), Some(anchor)) => (
+        (Some(title), None) => (format!(": {title}"), Default::default()),
+        (Some(title), Some(anchor)) => (
             format!(
-                ", {} {anchor}: {content}",
+                ", {} {anchor}: {title}",
                 l10n_json_data("Common", "section", env.locale)?
             ),
             format!("#section-{anchor}"),
@@ -52,6 +52,6 @@ pub fn rfc(
     };
     let number = number.as_int();
     Ok(format!(
-        r#"<a href="https://datatracker.ietf.org/doc/html/rfc{number}{anchor}">RFC {number}{content}</a>"#
+        r#"<a href="https://datatracker.ietf.org/doc/html/rfc{number}{anchor}">RFC {number}{title}</a>"#
     ))
 }
