@@ -302,6 +302,8 @@ pub enum IssueType {
     TemplSyntaxError,
     TemplUnknown,
     TemplMdnDataMissing,
+    TemplWebrefEventsMissing,
+    TemplWebrefEventsConflict,
     TemplBcdMissing,
     RedirectedLink,
     BrokenLink,
@@ -324,6 +326,8 @@ impl FromStr for IssueType {
             "templ-syntax-error" => Self::TemplSyntaxError,
             "templ-unknown" => Self::TemplUnknown,
             "templ-mdn-data-missing" => Self::TemplMdnDataMissing,
+            "templ-webref-events-missing" => Self::TemplWebrefEventsMissing,
+            "templ-webref-events-conflict" => Self::TemplWebrefEventsConflict,
             "templ-bcd-missing" => Self::TemplBcdMissing,
             "redirected-link" => Self::RedirectedLink,
             "broken-link" => Self::BrokenLink,
@@ -668,6 +672,17 @@ impl DIssue {
                         source.label,
                         additional.get("name").map(|s| s.as_str()).unwrap_or("?")
                     ));
+                    DIssue::Macros {
+                        display_issue: di,
+                        macro_name: source.name,
+                        href: None,
+                    }
+                }
+                IssueType::TemplWebrefEventsMissing | IssueType::TemplWebrefEventsConflict => {
+                    let source = issue_source(&mut additional);
+                    di.fixed = false;
+                    di.fixable = Some(false);
+                    di.explanation = additional.remove("message");
                     DIssue::Macros {
                         display_issue: di,
                         macro_name: source.name,
