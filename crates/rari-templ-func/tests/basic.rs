@@ -1,5 +1,5 @@
 use rari_templ_func::rari_f;
-use rari_types::{Arg, ArgError, Quotes, RariEnv};
+use rari_types::{Arg, ArgError, Args, Quotes, RariEnv};
 
 #[test]
 fn basic() {
@@ -30,7 +30,7 @@ fn basic() {
     assert_eq!(
         something_any(
             &Default::default(),
-            vec![Some(Arg::String("foo".into(), Quotes::Double))]
+            vec![Some(Arg::String("foo".into(), Quotes::Double))].into()
         )
         .unwrap(),
         "some foo"
@@ -38,17 +38,20 @@ fn basic() {
     assert_eq!(
         many_any(
             &Default::default(),
-            vec![Some(Arg::Int(1)), Some(Arg::Int(2))]
+            vec![Some(Arg::Int(1)), Some(Arg::Int(2))].into()
         )
         .unwrap(),
         "1 2"
     );
     assert_eq!(
-        many_any(&Default::default(), vec![Some(Arg::Int(1))]).unwrap(),
+        many_any(&Default::default(), vec![Some(Arg::Int(1))].into()).unwrap(),
         "1 0"
     );
 
-    assert_eq!(booly_any(&Default::default(), vec![]).unwrap(), "false");
+    assert_eq!(
+        booly_any(&Default::default(), vec![].into()).unwrap(),
+        "false"
+    );
 }
 
 #[test]
@@ -90,7 +93,7 @@ fn arg_errors_name_the_offending_argument() {
         ),
     ];
     for (name, args, expected) in cases {
-        let e = link_any(&Default::default(), args).unwrap_err();
+        let e = link_any(&Default::default(), args.into()).unwrap_err();
         assert_eq!(e.to_string(), expected, "{name}");
     }
 
@@ -98,11 +101,100 @@ fn arg_errors_name_the_offending_argument() {
     assert_eq!(
         link_any(
             &Default::default(),
-            vec![Some(Arg::String("a".into(), Quotes::Double)), blank()]
+            vec![Some(Arg::String("a".into(), Quotes::Double)), blank()].into()
         )
         .unwrap(),
         "a "
     );
+}
+
+#[test]
+fn named_args() {
+    #[rari_f]
+    fn link(
+        url: String,
+        display: Option<String>,
+        anchor: Option<String>,
+        _deprecated: Option<String>,
+    ) -> Result<String, ArgError> {
+        Ok(format!(
+            "{url} {} {}",
+            display.unwrap_or_default(),
+            anchor.unwrap_or_default()
+        ))
+    }
+
+    struct Case {
+        name: &'static str,
+        positional: Vec<&'static str>,
+        named: Vec<(&'static str, &'static str)>,
+        expected: Result<&'static str, &'static str>,
+    }
+
+    let cases = vec![
+        Case {
+            name: "named optional argument after positional",
+            positional: vec!["a"],
+            named: vec![("anchor", "b")],
+            expected: Ok("a  b"),
+        },
+        Case {
+            name: "named required argument",
+            positional: vec![],
+            named: vec![("display", "d"), ("url", "a")],
+            expected: Ok("a d "),
+        },
+        Case {
+            name: "blank named optional argument",
+            positional: vec!["a"],
+            named: vec![("display", "")],
+            expected: Ok("a  "),
+        },
+        Case {
+            name: "missing required argument",
+            positional: vec![],
+            named: vec![("anchor", "b")],
+            expected: Err("link argument 1 (url) must be provided"),
+        },
+        Case {
+            name: "argument given positionally and by name",
+            positional: vec!["a"],
+            named: vec![("url", "b")],
+            expected: Err("link argument 1 (url) is provided more than once"),
+        },
+        Case {
+            name: "argument named twice",
+            positional: vec!["a"],
+            named: vec![("anchor", "b"), ("anchor", "c")],
+            expected: Err("link argument 3 (anchor) is provided more than once"),
+        },
+        Case {
+            name: "unknown name",
+            positional: vec!["a"],
+            named: vec![("Anchor", "b")],
+            expected: Err("link has no argument named Anchor"),
+        },
+        Case {
+            name: "underscore-prefixed parameter",
+            positional: vec!["a"],
+            named: vec![("_deprecated", "b")],
+            expected: Err("link has no argument named _deprecated"),
+        },
+    ];
+    let arg = |s: &str| Some(Arg::String(s.into(), Quotes::Double));
+    for case in cases {
+        let args = Args {
+            positional: case.positional.into_iter().map(arg).collect(),
+            named: case
+                .named
+                .into_iter()
+                .map(|(name, value)| (name.to_string(), arg(value)))
+                .collect(),
+        };
+        let actual = link_any(&Default::default(), args).map_err(|e| e.to_string());
+        let expected = case.expected.map(String::from).map_err(String::from);
+        assert_eq!(actual, expected, "{}", case.name);
+    }
 }
 
 #[test]
@@ -131,8 +223,19 @@ fn raw_identifier_params_drop_prefix() {
         Ok(r#type)
     }
 
+    let named = |name: &str| Args {
+        positional: vec![],
+        named: vec![(
+            name.to_string(),
+            Some(Arg::String("worker".into(), Quotes::Double)),
+        )],
+    };
     assert_eq!(
-        banner_any(&Default::default(), vec![])
+        banner_any(&Default::default(), named("type")).unwrap(),
+        "worker"
+    );
+    assert_eq!(
+        banner_any(&Default::default(), vec![].into())
             .unwrap_err()
             .to_string(),
         "banner argument 1 (type) must be provided"

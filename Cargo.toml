@@ -145,3 +145,6 @@ dotenvy = "0.15"
 
 [lints.clippy]
 print_stdout = "deny"
+
+[patch.crates-io]
+tree-sitter-mdn = { git = "https://github.com/mdn/tree-sitter-mdn", branch = "named-macro-arguments" }
