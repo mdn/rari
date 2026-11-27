@@ -827,22 +827,10 @@ mod test {
 
     #[test]
     fn test_multiplier_whitespace() -> Result<(), SyntaxDefinitionError> {
-        assert_eq!(
-            parse("<length>{1,4}")?,
-            parse("<length>{1, 4}")?
-        );
-        assert_eq!(
-            parse("<length>{1,4}")?,
-            parse("<length>{ 1 , 4 }")?
-        );
-        assert_eq!(
-            parse("<length>{1,}")?,
-            parse("<length>{1, }")?
-        );
-        assert_eq!(
-            parse("<length>{1}")?,
-            parse("<length>{ 1 }")?
-        );
+        assert_eq!(parse("<length>{1,4}")?, parse("<length>{1, 4}")?);
+        assert_eq!(parse("<length>{1,4}")?, parse("<length>{ 1 , 4 }")?);
+        assert_eq!(parse("<length>{1,}")?, parse("<length>{1, }")?);
+        assert_eq!(parse("<length>{1}")?, parse("<length>{ 1 }")?);
         Ok(())
     }
 
