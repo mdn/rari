@@ -276,16 +276,18 @@ pub struct MultiplierRange {
     pub max: u32,
 }
 
-// TODO: This should ignore whitespace and comments
+// TODO: This should ignore comments
 // See https://www.w3.org/TR/css-values-4/#component-multipliers
 fn read_multiplier_range(
     tokenizer: &mut Tokenizer,
 ) -> Result<MultiplierRange, SyntaxDefinitionError> {
     tokenizer.eat(LEFT_CURLY_BRACKET)?;
+    scan_spaces(tokenizer);
     let min = scan_number(tokenizer).parse::<u32>().unwrap();
-
+    scan_spaces(tokenizer);
     let max = if tokenizer.char_code() == COMMA {
         tokenizer.pos += 1;
+        scan_spaces(tokenizer);
         if tokenizer.char_code() != RIGHT_CURLY_BRACKET {
             scan_number(tokenizer).parse::<u32>().unwrap()
         } else {
@@ -295,6 +297,7 @@ fn read_multiplier_range(
         min
     };
 
+    scan_spaces(tokenizer);
     tokenizer.eat(RIGHT_CURLY_BRACKET)?;
 
     Ok(MultiplierRange { min, max })
@@ -819,6 +822,15 @@ mod test {
         let result = read_multiplier_range(&mut tokenizer)?;
         assert_eq!(result.min, 1);
         assert_eq!(result.max, 1);
+        Ok(())
+    }
+
+    #[test]
+    fn test_multiplier_whitespace() -> Result<(), SyntaxDefinitionError> {
+        assert_eq!(parse("<length>{1,4}")?, parse("<length>{1, 4}")?);
+        assert_eq!(parse("<length>{1,4}")?, parse("<length>{ 1 , 4 }")?);
+        assert_eq!(parse("<length>{1,}")?, parse("<length>{1, }")?);
+        assert_eq!(parse("<length>{1}")?, parse("<length>{ 1 }")?);
         Ok(())
     }
 
