@@ -276,18 +276,35 @@ pub struct MultiplierRange {
     pub max: u32,
 }
 
-// TODO: This should ignore whitespace and comments
-// See https://www.w3.org/TR/css-values-4/#component-multipliers
+fn read_range_number(tokenizer: &mut Tokenizer) -> Result<u32, SyntaxDefinitionError> {
+    let start = tokenizer.pos;
+    while tokenizer.char_code().is_ascii_digit() {
+        tokenizer.pos += 1;
+    }
+    tokenizer.str[start..tokenizer.pos]
+        .iter()
+        .collect::<String>()
+        .parse::<u32>()
+        .map_err(|_| SyntaxDefinitionError::ParseErrorInvalidNumber)
+}
+
+// Whitespace is allowed inside the braces, see https://www.w3.org/TR/css-values-4/#component-multipliers
+// Comments are not supported.
 fn read_multiplier_range(
     tokenizer: &mut Tokenizer,
 ) -> Result<MultiplierRange, SyntaxDefinitionError> {
     tokenizer.eat(LEFT_CURLY_BRACKET)?;
-    let min = scan_number(tokenizer).parse::<u32>().unwrap();
+    scan_spaces(tokenizer);
+    let min = read_range_number(tokenizer)?;
+    scan_spaces(tokenizer);
 
     let max = if tokenizer.char_code() == COMMA {
         tokenizer.pos += 1;
+        scan_spaces(tokenizer);
         if tokenizer.char_code() != RIGHT_CURLY_BRACKET {
-            scan_number(tokenizer).parse::<u32>().unwrap()
+            let max = read_range_number(tokenizer)?;
+            scan_spaces(tokenizer);
+            max
         } else {
             0
         }
@@ -1246,5 +1263,97 @@ mod test {
             })
         );
         Ok(())
+    }
+
+    #[test]
+    fn test_multiplier_range() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            expected: Option<(u32, u32)>,
+        }
+        let cases = [
+            Case {
+                name: "min and max",
+                input: "<length>{1,4}",
+                expected: Some((1, 4)),
+            },
+            Case {
+                name: "space after comma",
+                input: "<length>{1, 4}",
+                expected: Some((1, 4)),
+            },
+            Case {
+                name: "spaces everywhere",
+                input: "<length>{ 1 , 4 }",
+                expected: Some((1, 4)),
+            },
+            Case {
+                name: "exact",
+                input: "<length>{2}",
+                expected: Some((2, 2)),
+            },
+            Case {
+                name: "exact with spaces",
+                input: "<length>{ 2 }",
+                expected: Some((2, 2)),
+            },
+            Case {
+                name: "open ended",
+                input: "<length>{1,}",
+                expected: Some((1, 0)),
+            },
+            Case {
+                name: "open ended with spaces",
+                input: "<length>{1 , }",
+                expected: Some((1, 0)),
+            },
+            Case {
+                name: "hash multiplier",
+                input: "<length>#{1, 4}",
+                expected: Some((1, 4)),
+            },
+            Case {
+                name: "missing min",
+                input: "<length>{,4}",
+                expected: None,
+            },
+            Case {
+                name: "not a number",
+                input: "<length>{a}",
+                expected: None,
+            },
+            Case {
+                name: "empty",
+                input: "<length>{}",
+                expected: None,
+            },
+            Case {
+                name: "unterminated",
+                input: "<length>{1",
+                expected: None,
+            },
+            Case {
+                name: "unterminated after comma",
+                input: "<length>{1,",
+                expected: None,
+            },
+            Case {
+                name: "number overflow",
+                input: "<length>{99999999999}",
+                expected: None,
+            },
+        ];
+        for case in cases {
+            let actual = parse(case.input).ok().and_then(|node| match node {
+                Node::Group(group) => match group.terms.as_slice() {
+                    [Node::Multiplier(m)] => Some((m.min, m.max)),
+                    _ => None,
+                },
+                Node::Multiplier(m) => Some((m.min, m.max)),
+                _ => None,
+            });
+            assert_eq!(actual, case.expected, "{}: {}", case.name, case.input);
+        }
     }
 }
