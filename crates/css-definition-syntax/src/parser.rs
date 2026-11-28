@@ -381,7 +381,10 @@ fn maybe_multiplied(tokenizer: &mut Tokenizer, node: Node) -> Result<Node, Synta
         // Check if there's another multiplier following this one (e.g. {n}? stacking).
         let next = tokenizer.char_code();
         let is_next_multiplier = matches!(next, ASTERISK | PLUS_SIGN | QUESTION_MARK | NUMBER_SIGN)
-            || (next == LEFT_CURLY_BRACKET && tokenizer.next_char_code().is_ascii_digit());
+            || (next == LEFT_CURLY_BRACKET
+                && tokenizer
+                    .char_code_at(tokenizer.find_ws_end(tokenizer.pos + 1))
+                    .is_ascii_digit());
         return if is_next_multiplier {
             maybe_multiplied(
                 tokenizer,
@@ -1312,6 +1315,16 @@ mod test {
                 name: "hash multiplier",
                 input: "<length>#{1, 4}",
                 expected: Ok((1, 4)),
+            },
+            Case {
+                name: "stacked after plus",
+                input: "<length>+{ 2 }",
+                expected: Ok((2, 2)),
+            },
+            Case {
+                name: "stacked after range",
+                input: "<length>{1,2}{ 2, 3 }",
+                expected: Ok((2, 3)),
             },
             Case {
                 name: "missing min",
