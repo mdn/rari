@@ -1270,90 +1270,97 @@ mod test {
         struct Case {
             name: &'static str,
             input: &'static str,
-            expected: Option<(u32, u32)>,
+            expected: Result<(u32, u32), &'static str>,
         }
         let cases = [
             Case {
                 name: "min and max",
                 input: "<length>{1,4}",
-                expected: Some((1, 4)),
+                expected: Ok((1, 4)),
             },
             Case {
                 name: "space after comma",
                 input: "<length>{1, 4}",
-                expected: Some((1, 4)),
+                expected: Ok((1, 4)),
             },
             Case {
                 name: "spaces everywhere",
                 input: "<length>{ 1 , 4 }",
-                expected: Some((1, 4)),
+                expected: Ok((1, 4)),
             },
             Case {
                 name: "exact",
                 input: "<length>{2}",
-                expected: Some((2, 2)),
+                expected: Ok((2, 2)),
             },
             Case {
                 name: "exact with spaces",
                 input: "<length>{ 2 }",
-                expected: Some((2, 2)),
+                expected: Ok((2, 2)),
             },
             Case {
                 name: "open ended",
                 input: "<length>{1,}",
-                expected: Some((1, 0)),
+                expected: Ok((1, 0)),
             },
             Case {
                 name: "open ended with spaces",
                 input: "<length>{1 , }",
-                expected: Some((1, 0)),
+                expected: Ok((1, 0)),
             },
             Case {
                 name: "hash multiplier",
                 input: "<length>#{1, 4}",
-                expected: Some((1, 4)),
+                expected: Ok((1, 4)),
             },
             Case {
                 name: "missing min",
                 input: "<length>{,4}",
-                expected: None,
+                expected: Err("Parse error: Expected number"),
             },
             Case {
                 name: "not a number",
                 input: "<length>{a}",
-                expected: None,
+                expected: Err("Parse error: Expected number"),
             },
             Case {
                 name: "empty",
                 input: "<length>{}",
-                expected: None,
+                expected: Err("Parse error: Expected number"),
             },
             Case {
                 name: "unterminated",
                 input: "<length>{1",
-                expected: None,
+                expected: Err("Parse error: Expected }"),
             },
             Case {
                 name: "unterminated after comma",
                 input: "<length>{1,",
-                expected: None,
+                expected: Err("Parse error: Expected number"),
             },
             Case {
                 name: "number overflow",
                 input: "<length>{99999999999}",
-                expected: None,
+                expected: Err("Parse error: Expected number"),
             },
         ];
         for case in cases {
-            let actual = parse(case.input).ok().and_then(|node| match node {
-                Node::Group(group) => match group.terms.as_slice() {
-                    [Node::Multiplier(m)] => Some((m.min, m.max)),
-                    _ => None,
+            let actual = match parse(case.input) {
+                Ok(Node::Multiplier(m)) => Ok((m.min, m.max)),
+                Ok(Node::Group(group)) => match group.terms.as_slice() {
+                    [Node::Multiplier(m)] => Ok((m.min, m.max)),
+                    _ => Err("not a multiplier".to_string()),
                 },
-                Node::Multiplier(m) => Some((m.min, m.max)),
-                _ => None,
-            });
-            assert_eq!(actual, case.expected, "{}: {}", case.name, case.input);
+                Ok(_) => Err("not a multiplier".to_string()),
+                Err(err) => Err(err.to_string()),
+            };
+            assert_eq!(
+                actual,
+                case.expected.map_err(str::to_string),
+                "{}: {}",
+                case.name,
+                case.input
+            );
         }
     }
 }
