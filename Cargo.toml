@@ -23,7 +23,6 @@ strip = "symbols"
 debug-assertions = false
 overflow-checks = false
 lto = "fat"
-panic = "abort"
 incremental = false
 codegen-units = 1
 
@@ -139,7 +138,7 @@ clap = { version = "4.5.1", features = ["derive", "env"] }
 clap-verbosity-flag = { version = "3", features = ["tracing"] }
 tabwriter = "1"
 axum = "0.8"
-tower-http = { version = "0.7", features = ["fs"] }
+tower-http = { version = "0.7", features = ["catch-panic", "fs"] }
 tower = "0.5"
 dotenvy = "0.15"
 
