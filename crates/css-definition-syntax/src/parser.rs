@@ -285,7 +285,7 @@ fn read_range_number(tokenizer: &mut Tokenizer) -> Result<u32, SyntaxDefinitionE
         .iter()
         .collect::<String>()
         .parse::<u32>()
-        .map_err(|_| SyntaxDefinitionError::ParseErrorInvalidNumber)
+        .map_err(|_| SyntaxDefinitionError::ParseErrorExpectedNumber)
 }
 
 // Whitespace is allowed inside the braces, see https://www.w3.org/TR/css-values-4/#component-multipliers

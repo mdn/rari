@@ -17,5 +17,5 @@ pub enum SyntaxDefinitionError {
     #[error("Parse error: Unexpected input")]
     ParseErrorUnexpectedInput,
     #[error("Parse error: Expected number")]
-    ParseErrorInvalidNumber,
+    ParseErrorExpectedNumber,
 }
