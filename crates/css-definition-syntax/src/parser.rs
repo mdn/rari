@@ -276,18 +276,35 @@ pub struct MultiplierRange {
     pub max: u32,
 }
 
-// TODO: This should ignore whitespace and comments
-// See https://www.w3.org/TR/css-values-4/#component-multipliers
+fn read_range_number(tokenizer: &mut Tokenizer) -> Result<u32, SyntaxDefinitionError> {
+    let start = tokenizer.pos;
+    while tokenizer.char_code().is_ascii_digit() {
+        tokenizer.pos += 1;
+    }
+    tokenizer.str[start..tokenizer.pos]
+        .iter()
+        .collect::<String>()
+        .parse::<u32>()
+        .map_err(|_| SyntaxDefinitionError::ParseErrorExpectedNumber)
+}
+
+// Whitespace is allowed inside the braces, see https://www.w3.org/TR/css-values-4/#component-multipliers
+// Comments are not supported.
 fn read_multiplier_range(
     tokenizer: &mut Tokenizer,
 ) -> Result<MultiplierRange, SyntaxDefinitionError> {
     tokenizer.eat(LEFT_CURLY_BRACKET)?;
-    let min = scan_number(tokenizer).parse::<u32>().unwrap();
+    scan_spaces(tokenizer);
+    let min = read_range_number(tokenizer)?;
+    scan_spaces(tokenizer);
 
     let max = if tokenizer.char_code() == COMMA {
         tokenizer.pos += 1;
+        scan_spaces(tokenizer);
         if tokenizer.char_code() != RIGHT_CURLY_BRACKET {
-            scan_number(tokenizer).parse::<u32>().unwrap()
+            let max = read_range_number(tokenizer)?;
+            scan_spaces(tokenizer);
+            max
         } else {
             0
         }
@@ -364,7 +381,10 @@ fn maybe_multiplied(tokenizer: &mut Tokenizer, node: Node) -> Result<Node, Synta
         // Check if there's another multiplier following this one (e.g. {n}? stacking).
         let next = tokenizer.char_code();
         let is_next_multiplier = matches!(next, ASTERISK | PLUS_SIGN | QUESTION_MARK | NUMBER_SIGN)
-            || (next == LEFT_CURLY_BRACKET && tokenizer.next_char_code().is_ascii_digit());
+            || (next == LEFT_CURLY_BRACKET
+                && tokenizer
+                    .char_code_at(tokenizer.find_ws_end(tokenizer.pos + 1))
+                    .is_ascii_digit());
         return if is_next_multiplier {
             maybe_multiplied(
                 tokenizer,
@@ -1246,5 +1266,114 @@ mod test {
             })
         );
         Ok(())
+    }
+
+    #[test]
+    fn test_multiplier_range() {
+        struct Case {
+            name: &'static str,
+            input: &'static str,
+            expected: Result<(u32, u32), &'static str>,
+        }
+        let cases = [
+            Case {
+                name: "min and max",
+                input: "<length>{1,4}",
+                expected: Ok((1, 4)),
+            },
+            Case {
+                name: "space after comma",
+                input: "<length>{1, 4}",
+                expected: Ok((1, 4)),
+            },
+            Case {
+                name: "spaces everywhere",
+                input: "<length>{ 1 , 4 }",
+                expected: Ok((1, 4)),
+            },
+            Case {
+                name: "exact",
+                input: "<length>{2}",
+                expected: Ok((2, 2)),
+            },
+            Case {
+                name: "exact with spaces",
+                input: "<length>{ 2 }",
+                expected: Ok((2, 2)),
+            },
+            Case {
+                name: "open ended",
+                input: "<length>{1,}",
+                expected: Ok((1, 0)),
+            },
+            Case {
+                name: "open ended with spaces",
+                input: "<length>{1 , }",
+                expected: Ok((1, 0)),
+            },
+            Case {
+                name: "hash multiplier",
+                input: "<length>#{1, 4}",
+                expected: Ok((1, 4)),
+            },
+            Case {
+                name: "stacked after plus",
+                input: "<length>+{ 2 }",
+                expected: Ok((2, 2)),
+            },
+            Case {
+                name: "stacked after range",
+                input: "<length>{1,2}{ 2, 3 }",
+                expected: Ok((2, 3)),
+            },
+            Case {
+                name: "missing min",
+                input: "<length>{,4}",
+                expected: Err("Parse error: Expected number"),
+            },
+            Case {
+                name: "not a number",
+                input: "<length>{a}",
+                expected: Err("Parse error: Expected number"),
+            },
+            Case {
+                name: "empty",
+                input: "<length>{}",
+                expected: Err("Parse error: Expected number"),
+            },
+            Case {
+                name: "unterminated",
+                input: "<length>{1",
+                expected: Err("Parse error: Expected }"),
+            },
+            Case {
+                name: "unterminated after comma",
+                input: "<length>{1,",
+                expected: Err("Parse error: Expected number"),
+            },
+            Case {
+                name: "number overflow",
+                input: "<length>{99999999999}",
+                expected: Err("Parse error: Expected number"),
+            },
+        ];
+        for case in cases {
+            let actual = match parse(case.input) {
+                Ok(Node::Multiplier(m)) => Ok((m.min, m.max)),
+                Ok(Node::Group(group)) => match group.terms.as_slice() {
+                    [Node::Multiplier(m)] => Ok((m.min, m.max)),
+                    _ => Err("not a multiplier".to_string()),
+                },
+                Ok(_) => Err("not a multiplier".to_string()),
+                Err(err) => Err(err.to_string()),
+            };
+            assert_eq!(
+                actual,
+                case.expected.map_err(str::to_string),
+                "{}: {}",
+                case.name,
+                case.input
+            );
+        }
     }
 }
