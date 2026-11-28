@@ -25,6 +25,7 @@ use rari_types::globals::{blog_root, content_root, content_translated_root};
 use rari_types::locale::Locale;
 use serde::Serialize;
 use tower::ServiceExt;
+use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::services::ServeFile;
 use tracing::{Level, error, info, span};
 
@@ -284,7 +285,8 @@ pub fn serve() -> Result<(), anyhow::Error> {
             let app = Router::new()
                 .route("/_document/fixfixableflaws", put(wrapped_fix_issues))
                 .route("/{locale}/search-index.json", get(get_search_index_handler))
-                .fallback(wrapped_handler);
+                .fallback(wrapped_handler)
+                .layer(CatchPanicLayer::new());
 
             const PORT: u16 = 8083;
             let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{PORT}"))
